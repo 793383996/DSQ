@@ -4216,9 +4216,37 @@ var defaultAccValue = "无";
 
 var version = "20240202"; //版本号，用来更新data.json的缓存
 
+// 配方查找索引 - 优化查找性能从 O(n) 到 O(1)
+var recipeIndexByProduct = {};  // 产物名 → [配方索引数组]
+var recipeIndexByMaterial = {}; // 原料名 → [配方索引数组]
+
 function f_initData() {
+  // 清空索引，准备重建
+  recipeIndexByProduct = {};
+  recipeIndexByMaterial = {};
+  
   $(data).each(function (i, item) {
     item.id = i; //配方的id，用index设置，data改变时应该重置配方
+
+    // 构建产物索引
+    for (var j = 0; j < item.s.length; j++) {
+      var productName = item.s[j].name;
+      if (!recipeIndexByProduct[productName]) {
+        recipeIndexByProduct[productName] = [];
+      }
+      recipeIndexByProduct[productName].push(i);
+    }
+    
+    // 构建原料索引
+    if (item.q) {
+      for (var j = 0; j < item.q.length; j++) {
+        var materialName = item.q[j].name;
+        if (!recipeIndexByMaterial[materialName]) {
+          recipeIndexByMaterial[materialName] = [];
+        }
+        recipeIndexByMaterial[materialName].push(i);
+      }
+    }
 
     var ms = [];
     if (item.m == "研究站") {
@@ -4509,30 +4537,23 @@ function f_fillData() {
   //    $("#selore").append("<option value='" + i / 100 + "'>" + i + "%</option>");
   //}
 }
-//找到这个物品的配方
+//找到这个物品的配方 - 使用索引查找 O(n) → O(k)
 function getPfs(name) {
   var pfs = [];
-  for (var i = 0; i < data.length; i++) {
-    var item = data[i];
-    for (var j = 0; j < item.s.length; j++) {
-      if (item.s[j].name == name) {
-        var pf = $.extend(true, {}, item);
-        pfs.push(pf);
-      }
-    }
+  var indices = recipeIndexByProduct[name] || [];
+  for (var i = 0; i < indices.length; i++) {
+    var pf = $.extend(true, {}, data[indices[i]]);
+    pfs.push(pf);
   }
   return pfs;
 }
+// 根据原料名查找配方 - 使用索引查找 O(n) → O(k)
 function getPfsByQ(name) {
   var pfs = [];
-  for (var i = 0; i < data.length; i++) {
-    var item = data[i];
-    for (var j = 0; item.q && j < item.q.length; j++) {
-      if (item.q[j].name == name) {
-        var pf = $.extend(true, {}, item);
-        pfs.push(pf);
-      }
-    }
+  var indices = recipeIndexByMaterial[name] || [];
+  for (var i = 0; i < indices.length; i++) {
+    var pf = $.extend(true, {}, data[indices[i]]);
+    pfs.push(pf);
   }
   return pfs;
 }
@@ -4702,13 +4723,10 @@ function find(name, normalize_recipe) {
     return get(data[parseInt(pf)]);
   }
 
-  for (var i = 0; i < data.length; i++) {
-    var item = data[i];
-    for (var j = 0; j < item.s.length; j++) {
-      if (item.s[j].name == name) {
-        return get(item);
-      }
-    }
+  // 使用索引查找，替代遍历 O(n) → O(1)
+  var indices = recipeIndexByProduct[name];
+  if (indices && indices.length > 0) {
+    return get(data[indices[0]]);  // 返回第一个匹配的配方
   }
 }
 
