@@ -1,6 +1,6 @@
 //蓝图转JSON https://github.com/cying314/edit-dspblue-print
 const itemMap = {
-	water: { name: "沙土", iconId: 1099, remark: "沙土" },
+	sand: { name: "sand", iconId: 1099, remark: "沙土" },
     water: { name: "water", iconId: 1000, remark: "水" },
     ironOre: { name: "ironOre", iconId: 1001, remark: "铁矿" },
     copperOre: { name: "copperOre", iconId: 1002, remark: "铜矿" },
