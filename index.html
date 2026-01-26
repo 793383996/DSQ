@@ -3,6 +3,7 @@
 <head>
   <title>戴森球计划量产量化计算器工具</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="keywords" content="戴森球计划,量产量化工具,量产量化计算器,自动化工具,生产工具" />
   <meta name="description" content="《戴森球计划》自动化量产计算器，可以全自动计算量产某个产品的具体产能需求。" />
   <script src="./Scripts/jquery.min.2.1.4.js"></script>
@@ -14,75 +15,90 @@
   <script src="./Scripts/pako.js"></script>
   <script src="./Scripts/blueprint.js"></script>
   <link rel="stylesheet" type="text/css" href="./Scripts/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 
-<body style="padding:5px;">
-  每分钟数量：<input type="text" id="txtnumber" value="60" />
-  或者：<select id="selmaince">
-    <option value="">选择设备数量</option>
-  </select>
-  <a href="javascript:f_add()" style="margin-left:10px;margin-right:10px;"><img
-      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" /></a>
-  <div class="custom-dropdown" id="customDropdown">
-    <button onclick="toggleDropdown()" style="width: 200px;">增加需求</button>
-    <div class="custom-dropdown-content" id="dropdownContent"></div>
+<body>
+  <!-- 页面标题 -->
+  <div style="text-align: center; margin-bottom: 20px; padding: 20px 0;">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 600; background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+      戴森球计划量产量化计算器
+    </h1>
+    <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
   </div>
-  <div class="custom-dropdown">
-    <button id="btnSetting">
-      参数设置
-    </button>
-    <button id="btnReset1">
-      修复计算空白
-    </button>
-  </div>
-  <div style="margin-top:5px;">
-    <!-- <button id="btnReset2">重置设备</button> -->
-    <!-- <button id="btnReset3">重置速度</button> -->
-    <!-- <button id="btnReset4">重置配方</button> -->
-    <!-- <input type="checkbox" id="isMerge" checked />合并同配方多产物 -->
-    <input type="checkbox" id="hideSource" /><label for="hideSource">隐藏原料</label>
-    <select id="selmodein">
-      <option value="制作台Mk.Ⅰ">制作台Mk.Ⅰ</option>
-      <option value="制作台Mk.Ⅱ">制作台Mk.Ⅱ</option>
-      <option value="制作台Mk.Ⅲ">制作台Mk.Ⅲ</option>
-      <option value="重组式制造台">重组式制造台</option>
-    </select>
-    <select id="furnace">
-      <option value="电弧熔炉">电弧熔炉</option>
-      <option value="位面熔炉">位面熔炉</option>
-      <option value="负熵熔炉">负熵熔炉</option>
-    </select>
-    <select id="chemical">
-      <option value="化工厂">化工厂</option>
-      <option value="量子化工厂">量子化工厂</option>
-    </select>
-    <select id="accType">
-      <option value="增产剂Mk.Ⅰ">增产剂Mk.Ⅰ</option>
-      <option value="增产剂Mk.Ⅱ">增产剂Mk.Ⅱ</option>
-      <option value="增产剂Mk.Ⅲ">增产剂Mk.Ⅲ</option>
-    </select>
-    <select id="accValue">
-      <option value="无">无</option>
-      <option value="加速">加速</option>
-      <option value="增产">增产</option>
-    </select>
-    <select id="research">
-      <option value="矩阵研究站">矩阵研究站</option>
-      <option value="自演化研究站">自演化研究站</option>
-    </select>
-    <input type="checkbox" id="selfAcc" checked /><label for="selfAcc">自喷涂增产剂</label>
-    <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP">外部输入增产剂</label>
 
-    <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt">1条传送带最高支持设备数量</label>
-    <span id="projectdiv" style="display:none;">
-      <select id="selprojects"></select>
-      <button id="btnLoadProject">
-        加载方案
-      </button>
-      <button id="btnReset5">
-        重置方案
-      </button>
-    </span>
+  <!-- 顶部控制区域 -->
+  <div class="control-bar">
+    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #4a5568;">每分钟数量：</span>
+        <input type="text" id="txtnumber" value="60" style="width: 70px;" />
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #4a5568;">或者：</span>
+        <select id="selmaince">
+          <option value="">选择设备数量</option>
+        </select>
+      </div>
+      <a href="javascript:f_add()" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
+      </a>
+      <div class="custom-dropdown" id="customDropdown">
+        <button onclick="toggleDropdown()" style="width: 160px;">增加需求</button>
+        <div class="custom-dropdown-content" id="dropdownContent"></div>
+      </div>
+      <div class="custom-dropdown">
+        <button id="btnSetting">参数设置</button>
+        <button id="btnReset1" style="background: linear-gradient(135deg, #f97316, #ea580c);">修复计算空白</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 选项控制区域 -->
+  <div class="control-bar">
+    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <input type="checkbox" id="hideSource" /><label for="hideSource">隐藏原料</label>
+      <select id="selmodein">
+        <option value="制作台Mk.Ⅰ">制作台Mk.Ⅰ</option>
+        <option value="制作台Mk.Ⅱ">制作台Mk.Ⅱ</option>
+        <option value="制作台Mk.Ⅲ">制作台Mk.Ⅲ</option>
+        <option value="重组式制造台">重组式制造台</option>
+      </select>
+      <select id="furnace">
+        <option value="电弧熔炉">电弧熔炉</option>
+        <option value="位面熔炉">位面熔炉</option>
+        <option value="负熵熔炉">负熵熔炉</option>
+      </select>
+      <select id="chemical">
+        <option value="化工厂">化工厂</option>
+        <option value="量子化工厂">量子化工厂</option>
+      </select>
+      <select id="accType">
+        <option value="增产剂Mk.Ⅰ">增产剂Mk.Ⅰ</option>
+        <option value="增产剂Mk.Ⅱ">增产剂Mk.Ⅱ</option>
+        <option value="增产剂Mk.Ⅲ">增产剂Mk.Ⅲ</option>
+      </select>
+      <select id="accValue">
+        <option value="无">无</option>
+        <option value="加速">加速</option>
+        <option value="增产">增产</option>
+      </select>
+      <select id="research">
+        <option value="矩阵研究站">矩阵研究站</option>
+        <option value="自演化研究站">自演化研究站</option>
+      </select>
+    </div>
+    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
+      <input type="checkbox" id="selfAcc" checked /><label for="selfAcc">自喷涂增产剂</label>
+      <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP">外部输入增产剂</label>
+      <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt">1条传送带最高支持设备数量</label>
+      <span id="projectdiv" style="display:none;">
+        <select id="selprojects"></select>
+        <button id="btnLoadProject">加载方案</button>
+        <button id="btnReset5" style="background: linear-gradient(135deg, #f97316, #ea580c);">重置方案</button>
+      </span>
+    </div>
   </div>
   <div id="Split" style="display:none;">
   </div>
@@ -145,7 +161,7 @@
     </div>
   </div>
   <div id="result">
-    <div class="list">
+    <div class="list" v-if="xqs && xqs.length">
       <span v-for="(x,index) in xqs">
         <img v-bind:src="'data:image/png;base64,' + icons[x.item.name]" style="width:40px;height:40px;"
           v-if="icons[x.item.name]" v-bind:title="x.item.name"
@@ -161,17 +177,15 @@
           </div>
         </span>
       </span>
-      <span v-if="xqs && xqs.length">
-        <button onclick="f_reset()">
-          重置
-        </button>
-        <button onclick="f_save()">保存方案</button>
-        <!-- <button onclick="let configSpan = document.getElementById('blueprintConfig'); if(configSpan.style.display === 'none'){configSpan.style.display='block'}else {configSpan.style.display='none'}">蓝图配置</button> -->
-        <button onclick="generateBlueprint()">生成蓝图</button>
-        &nbsp&nbsp
-        戴森球计划工具交流讨论QQ群：<a
-          href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=UzzPv3ic7Fk9EDCyHo_4gkWQLR3WEA9Y&authKey=ysjOY0JQOSpT2ZCLkttSzI73sXyzu%2FXEqJXMmY2O645LpO6GOD5lRBrjdalqpO5k&noverify=0&group_code=53309723"
-          target="_blank">53309723</a>
+      <span v-if="xqs && xqs.length" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+        <button onclick="f_reset()" style="background: linear-gradient(135deg, #ef4444, #dc2626);">重置</button>
+        <button onclick="f_save()" style="background: linear-gradient(135deg, #10b981, #059669);">保存方案</button>
+        <button onclick="generateBlueprint()" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">生成蓝图</button>
+        <span style="margin-left: 10px; color: #4a5568;">
+          戴森球计划工具交流讨论QQ群：<a
+            href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=UzzPv3ic7Fk9EDCyHo_4gkWQLR3WEA9Y&authKey=ysjOY0JQOSpT2ZCLkttSzI73sXyzu%2FXEqJXMmY2O645LpO6GOD5lRBrjdalqpO5k&noverify=0&group_code=53309723"
+            target="_blank">53309723</a>
+        </span>
         <!-- <br/> -->
         <!-- <span id="blueprintConfig" style="display: none">蓝图配置： -->
         <!-- <div style="margin-left: 2%"> -->
@@ -319,14 +333,17 @@
             <!-- </td> -->
           </tr>
           <tr class="total">
-            <td colspan="3" align="right">合计： </td>
+            <td colspan="3" align="right" style="font-size: 15px; color: #2980b9;">合计： </td>
             <td colspan="5">
-              <span v-for="item in total"> {{item.name}}*{{item.value}} </span>
-              <br />
-              <span title="包含自喷涂所需">总喷涂增产剂数量：{{totalAcc}}</span>
-              <a href="javascript:f_ig_acc()">排除增产剂产线</a><br />
-              <span>占地格子数：{{totalSpace}}</span><br />
-              <span>耗能估算：{{totalEnergy}}M</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                <span v-for="item in total" style="background: #e3f2fd; padding: 4px 10px; border-radius: 6px; color: #1565c0;"> {{item.name}}*{{item.value}} </span>
+              </div>
+              <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+                <span title="包含自喷涂所需" style="color: #d97706;">总喷涂增产剂数量：{{totalAcc}}</span>
+                <a href="javascript:f_ig_acc()" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
+                <span style="color: #0891b2;">占地格子数：{{totalSpace}}</span>
+                <span style="color: #059669;">耗能估算：{{totalEnergy}}M</span>
+              </div>
             </td>
           </tr>
           <tr class="" v-if="items2 && items2.length">
@@ -366,30 +383,26 @@
               <!-- 使用说明结束 -->
             </td>
           </tr>
-          <!-- 广告开始 -->
-          <tr class="">
-            <td colspan="8">
-              <!-- 广告内容开始 -->
-              <div data-include="advertise"></div>
-              <!-- 广告内容结束 -->
-            </td>
-          </tr>
-          <!-- 广告结束 -->
         </tbody>
       </table>
     </div>
   </div>
-  <div style="text-align:center;">
-    <p>
+  <div class="footer-section" style="text-align:center; margin-top: 20px;">
+    <p style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px;">
       <!-- 底部内容开始 -->
-      <a href="https://www.svlik.com/" target="_blank">Svlik's Blog</a> |
-      <a href="https://122474363.github.io/DSQ/" target="_blank">备用站</a> |
-      <a href="https://github.com/122474363/DSQ" target="_blank">源代码</a> |
+      <a href="https://www.svlik.com/" target="_blank">Svlik's Blog</a>
+      <span style="color: #9ca3af;">|</span>
+      <a href="https://122474363.github.io/DSQ/" target="_blank">备用站</a>
+      <span style="color: #9ca3af;">|</span>
+      <a href="https://github.com/122474363/DSQ" target="_blank">源代码</a>
+      <span style="color: #9ca3af;">|</span>
       <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
       <script>
         LA.init({ id: "JhZJOw4SXkYdrNrB", ck: "JhZJOw4SXkYdrNrB", autoTrack: true })
-      </script><a href="https://v6.51.la/s/mxZ3hcb6pXsWbgp" target="_blank">网站统计</a> | <a
-        href="//www.svlik.com/t/dsq/img/ZSM.jpg" target="_blank">赞赏码</a>
+      </script>
+      <a href="https://v6.51.la/s/mxZ3hcb6pXsWbgp" target="_blank">网站统计</a>
+      <span style="color: #9ca3af;">|</span>
+      <a href="//www.svlik.com/t/dsq/img/ZSM.jpg" target="_blank">赞赏码</a>
       <!-- 底部内容结束 -->
     </p>
     <div>
