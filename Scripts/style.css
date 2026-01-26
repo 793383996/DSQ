@@ -257,13 +257,23 @@
         }
 
         /* ========== 配方与设备选择样式 ========== */
-        .ms,
+        /* 
+         * 命名说明（历史遗留，JS动态引用，勿改类名）：
+         * .pfs = recipe-list     配方列表容器（纵向排列）
+         * .ms  = machine-list    设备/选项列表容器（横向排列）
+         * .pf  = recipe-tag      配方标签
+         * .m   = machine-tag     设备/选项标签
+         * .pf2 = recipe-tag-alt  配方标签（深色变体）
+         */
+
+        /* 列表容器：纵向排列（配方列表） */
         .pfs {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
 
+        /* 列表容器：横向排列（设备/增产剂选项） */
         .ms {
             display: flex;
             flex-direction: row;
@@ -271,6 +281,7 @@
             gap: 4px;
         }
 
+        /* 标签基础样式：配方(.pf) 和 设备(.m) 共用 */
         .m,
         .pf {
             display: block;
@@ -287,16 +298,19 @@
             border: 1px solid #9ca3af;
         }
 
+        /* 标签悬停效果 */
         .m:hover,
         .pf:hover {
             background: linear-gradient(135deg, #d1d5db, #9ca3af);
             transform: translateY(-1px);
         }
 
+        /* 配方标签：深色变体 */
         .pf2 {
             background: linear-gradient(135deg, #374151, #1f2937);
         }
 
+        /* 设备标签：额外样式（带图标） */
         .m {
             text-decoration: none;
             white-space: nowrap;
@@ -306,28 +320,33 @@
             gap: 4px;
         }
 
+        /* 设备标签内图标 */
         .m img {
             width: 20px;
             height: 20px;
             vertical-align: bottom;
         }
 
+        /* 标签选中状态 */
         .selected {
-            background: linear-gradient(135deg, #3498db, #2980b9) !important;
+            background: linear-gradient(135deg, #C0E0FB, #3395D7) !important;
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
         }
 
+        /* 配方链接文字颜色 */
         a.pf {
             color: white;
         }
 
+        /* 选中状态链接样式 */
         a.selected {
             color: white;
             text-decoration: none;
         }
 
+        /* 时间输入框 */
         .time {
             border: 1px solid #d1d5db;
             width: 60px;
@@ -336,6 +355,7 @@
             border-radius: 6px;
         }
 
+        /* 时间输入框：错误状态 */
         .time2 {
             border-color: #ef4444;
         }
@@ -507,6 +527,11 @@
         .total td {
             background: linear-gradient(135deg, #e3f2fd, #f0f9ff);
             font-weight: 500;
+        }
+
+        /* 合计行不需要悬停效果 */
+        tr.total:hover td {
+            background: linear-gradient(135deg, #e3f2fd, #f0f9ff);
         }
 
         /* ========== 弹出层样式 ========== */
