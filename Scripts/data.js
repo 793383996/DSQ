@@ -4510,7 +4510,6 @@ $(function () {
       game_data = data;
       isDataLoaded = true;
       f_initIcons();
-      addOptions();
     },
     error: function () {
       alert("游戏资源加载失败，图标将无法显示正常，请刷新再试");
@@ -4922,7 +4921,6 @@ function f_init() {
   loadSettingTime();
   loadSettingPf();
   loadSettingProjects();
-  addClickListener();
 
   projectsUpdate();
 
@@ -6626,115 +6624,4 @@ function generateBlueprint() {
     .writeText(b1.toStr())
     .then((r) => cocoMessage.success("已复制到粘贴板", 1000));
   // navigator.clipboard.writeText(JSON.stringify(b1.blueprintTemplate.buildings)).then(r => cocoMessage.success("已复制到粘贴板", 1000))
-}
-
-/**
- * 添加点击监听，处理下拉框显示状态
- */
-function addClickListener() {
-  document.body.addEventListener("click", function (event) {
-    var dropdown = document.getElementById("customDropdown");
-    var dropdownContent = document.getElementById("dropdownContent");
-
-    // Check if the clicked element is inside the dropdown or not
-    if (!dropdown.contains(event.target)) {
-      // Clicked outside the dropdown, hide the dropdown content
-      dropdownContent.style.display = "none";
-    }
-  });
-}
-
-/**
- * 切换下拉框显示状态
- */
-function toggleDropdown() {
-  var dropdownContent = document.getElementById("dropdownContent");
-  dropdownContent.style.display =
-    dropdownContent.style.display === "block" ? "none" : "block";
-}
-
-/**
- * 构建选项数据
- * @returns {{name: *, icon: *, group: *}}
- */
-function buildOptionsData() {
-  const icons_data = [...game_data.icons1, ...game_data.icons2]
-    .map((it) => ({
-      name: it.name.split("-")[2] ? it.name.split("-")[2] : it.name,
-      value: it.value,
-    }))
-    .reduce((acc, it) => {
-      if (!acc[it.name]) {
-        acc[it.name] = it.value;
-      }
-      return acc;
-    }, {});
-  return (
-    data
-      .filter((it) => it.group)
-      .map((it) => ({
-        items: it.s,
-        group: it.group,
-      }))
-      // flat the name array
-      .flatMap((it) =>
-        it.items.map((item) => ({
-          group: it.group,
-          name: item.name,
-          icon: icons_data[item.name],
-        }))
-      )
-      .filter(
-        (it, index, self) => self.findIndex((t) => t.name === it.name) === index
-      )
-      // group by
-      .reduce((acc, it) => {
-        if (!acc.find((t) => t.group === it.group)) {
-          acc.push({
-            group: it.group,
-            items: [],
-          });
-        }
-        acc
-          .find((t) => t.group === it.group)
-          .items.push({ name: it.name, icon: it.icon });
-        return acc;
-      }, [])
-  );
-}
-
-/**
- * 添加选项
- */
-function addOptions() {
-  const container = document.querySelector(".custom-dropdown-content");
-  const options_data = buildOptionsData();
-  options_data.forEach((it) => {
-    const group = document.createElement("div");
-    group.classList.add("group");
-    const group_name = document.createElement("div");
-    group_name.classList.add("group-name");
-    group_name.innerText = it.group;
-    group.appendChild(group_name);
-    const group_items = document.createElement("div");
-    group_items.classList.add("group-items");
-    it.items.forEach((item) => {
-      const group_item = document.createElement("div");
-      group_item.classList.add("group-item");
-      const group_item_icon = document.createElement("img");
-      group_item_icon.src = "data:image/png;base64," + item.icon;
-      group_item_icon.alt = item.name;
-      group_item.appendChild(group_item_icon);
-      const group_item_name = document.createElement("div");
-      group_item_name.innerText = item.name;
-      group_item.appendChild(group_item_name);
-      group_items.appendChild(group_item);
-      group_item.addEventListener("click", () => {
-        f_add3(item.name);
-        toggleDropdown();
-      });
-    });
-    group.appendChild(group_items);
-    container.appendChild(group);
-  });
 }

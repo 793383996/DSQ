@@ -649,12 +649,6 @@
             color: #2c3e50;
         }
 
-        /* ========== 自定义下拉菜单 ========== */
-        .custom-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
         .custom-dropdown button {
             background: linear-gradient(135deg, #3498db, #2980b9);
             border: none;
@@ -670,76 +664,6 @@
             background: linear-gradient(135deg, #2980b9, #2472a4);
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
-        }
-
-        .custom-dropdown-content {
-            display: none;
-            position: absolute;
-            background: #fff;
-            min-width: 14rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            max-height: 500px;
-            overflow-y: auto;
-            margin-top: 5px;
-        }
-
-        /* 滚动条样式 */
-        .custom-dropdown-content::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .custom-dropdown-content::-webkit-scrollbar-track {
-            background: #f3f4f6;
-            border-radius: 4px;
-        }
-
-        .custom-dropdown-content::-webkit-scrollbar-thumb {
-            background: #9ca3af;
-            border-radius: 4px;
-        }
-
-        .custom-dropdown-content::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-        }
-
-        .group {
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .group:last-child {
-            border-bottom: none;
-        }
-
-        .group-name {
-            padding: 10px 15px;
-            font-weight: 600;
-            color: #1565c0;
-            font-size: 13px;
-            background: #e3f2fd;
-        }
-
-        .group-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 15px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            color: #4a5568;
-        }
-
-        .group-item:hover {
-            background: #e3f2fd;
-            color: #1565c0;
-        }
-
-        .group-item img {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
-            border-radius: 4px;
         }
 
         /* ========== 物品图标样式 ========== */
