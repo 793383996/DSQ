@@ -387,6 +387,7 @@
 
         /* ========== 设置面板样式 ========== */
         #MoreSetting {
+            display: none;
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 0, 0, 0.08);
@@ -394,6 +395,15 @@
             margin: 15px 10px;
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        #MoreSetting.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         #MoreSetting h4 {
@@ -536,11 +546,21 @@
 
         /* ========== 弹出层样式 ========== */
         #UIselector {
+            display: none;
             position: absolute;
             left: 50px;
             top: 50px;
             z-index: 1000;
             border-radius: 12px;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.25s ease;
+        }
+
+        #UIselector.show {
+            display: block;
+            opacity: 1;
+            transform: scale(1);
         }
 
         #Split {

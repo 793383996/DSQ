@@ -4981,7 +4981,18 @@ function f_init() {
     update_all();
   });
   $("#btnSetting").click(function () {
-    $("#MoreSetting").toggle();
+    var $moreSetting = $("#MoreSetting");
+    if ($moreSetting.hasClass("show")) {
+      $moreSetting.removeClass("show");
+      setTimeout(function() {
+        $moreSetting.hide();
+      }, 300);
+    } else {
+      $moreSetting.show();
+      setTimeout(function() {
+        $moreSetting.addClass("show");
+      }, 10);
+    }
   });
   $("#showMaxOneBelt").change(function () {
     update_all();
@@ -5987,7 +5998,18 @@ function f_add() {
   if (!isDataLoaded) {
     alert("游戏资源尚未加载完毕");
   }
-  $("#UIselector").show();
+  var $uiSelector = $("#UIselector");
+  if ($uiSelector.hasClass("show")) {
+    $uiSelector.removeClass("show");
+    setTimeout(function() {
+      $uiSelector.hide();
+    }, 250);
+  } else {
+    $uiSelector.show();
+    setTimeout(function() {
+      $uiSelector.addClass("show");
+    }, 10);
+  }
 }
 function actions(that) {
   // console.log(that.value)
@@ -6128,7 +6150,11 @@ function f_initIcons() {
           var name = $(this).attr("data-name");
           if (!name) return;
           f_add3(name);
-          $("#UIselector").hide();
+          var $uiSelector = $("#UIselector");
+          $uiSelector.removeClass("show");
+          setTimeout(function() {
+            $uiSelector.hide();
+          }, 250);
         });
       }
     }
@@ -6331,7 +6357,7 @@ function getRecipe() {
     ["压制胶囊", "压制胶囊"],
     ["近程电浆炮", "近程电浆炮"],
     ["干扰塔", "干扰塔"],
-    ["全息信标", "holoBeacon"],
+    ["全息信标", "全息信标"],
     ["None", "None"],
   ];
   let outputHasHydrogen = false;
