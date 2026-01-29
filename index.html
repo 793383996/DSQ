@@ -345,10 +345,10 @@
           <tr class="total">
             <td colspan="3" align="right" style="font-size: 15px; color: #2980b9;">合计： </td>
             <td colspan="5">
-              <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+              <div v-if="totalDisplay && totalDisplay.length" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
                 <span v-for="item in totalDisplay" style="background: #e3f2fd; padding: 4px 10px; border-radius: 6px; color: #1565c0;"> {{item.name}}*{{item.value}} </span>
               </div>
-              <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+              <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                 <span title="包含自喷涂所需" style="color: #d97706;">总喷涂增产剂数量：{{totalAcc}}</span>
                 <a href="javascript:f_ig_acc()" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
                 <span style="color: #0891b2;">占地格子数：{{totalSpace}}</span>
