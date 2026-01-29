@@ -754,7 +754,8 @@ class Blueprint {
     inputData,
     outputData,
     parameters = null,
-    needSprayCoater = false
+    needSprayCoater = false,
+    finalOutputOwnerIdx = -1
   ) {
     // needSprayCoater = false
     // 在y轴方向生成一条长度为length的传送带, direction = -1 表示y轴负方向， 1表示y轴正方向
@@ -852,6 +853,9 @@ class Blueprint {
         if (!(direction < 0 && i === 0)) {
           outputObjIdx = this.buildingIndex + 1 + direction;
         }
+      } else if (finalOutputOwnerIdx !== -1) {
+        outputObjIdx = finalOutputOwnerIdx;
+        outputToSlot = 3;
       }
       let nodeParameters = null;
       if (direction > 0 && i === outputData.length - 1) {
@@ -2440,6 +2444,12 @@ class Blueprint {
             count: (outputRate * 60).toFixed(0),
           };
           needSprayCoater = false;
+          // 获取生产该终产物的建筑索引，用于设置传送带的 outputObjIdx
+          if (this.sorters[itemName] && this.sorters[itemName].output.length > 0) {
+            finalOutputOwnerIdx = this.sorters[itemName].output[0].ownerObjIdx;
+          } else {
+            finalOutputOwnerIdx = -1;
+          }
         }
 
         let direction = 1; // 表示传送带方向沿y轴正方向，用于终产物和中间产物
@@ -2453,7 +2463,8 @@ class Blueprint {
           inputData,
           outputData,
           parameters,
-          needSprayCoater
+          needSprayCoater,
+          finalOutputOwnerIdx
         );
       }
     }
