@@ -1,6 +1,9 @@
 # 本地测试文件夹
 localTest/
 
+https_server.py
+localhost.crt
+localhost.key
 # 证书文件（敏感）
 *.crt
 *.key
