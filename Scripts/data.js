@@ -4380,6 +4380,8 @@ function loadSetting() {
   if (json) {
     eval("settings = " + json);
   }
+  document.getElementById("onlyConveyorBeltMk3").checked = true;
+  document.getElementById("onlySorterMk3").checked = true;
 }
 var settings_time = {};
 function saveSettingTime() {
