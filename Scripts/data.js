@@ -4906,6 +4906,19 @@ function f_init() {
         }
       },
     },
+    computed: {
+      totalDisplay: function () {
+        if (!this.total || !this.total.length) return [];
+        return this.total.map(function (item) {
+          return {
+            name: item.name,
+            value: item.value,
+            energy: item.energy ? item.energy.toFixed(2) : "0.00",
+            space: item.space ? Math.round(item.space) : 0,
+          };
+        });
+      },
+    },
   });
   f_initData();
   f_fillData();
@@ -6062,7 +6075,7 @@ function f_initIcons() {
       icons[icon.name] = icon.value;
     }
   }
-  app.icons = icons;
+  app.icons = Object.freeze(icons);
   $(document).click(function (e) {
     if (!$(e.target).closest("#UIselector").length) {
       $("#UIselector").hide();
