@@ -174,7 +174,7 @@ const itemMap = {
     压制胶囊: { name: "压制胶囊", iconId: 1613, remark: "压制胶囊" },
 	近程电浆炮: { name: "近程电浆炮", iconId: 3010, remark: "近程电浆炮" },
 	干扰塔: { name: "干扰塔", iconId: 3006, remark: "干扰塔" },
-    holoBeacon: { name: "holoBeacon", iconId: 3011, remark: "全息信标" },
+    全息信标: { name: "全息信标", iconId: 3011, remark: "全息信标" },
     templateItem: { name: "templateItem", iconId: 0, remark: "模板" },
 	//itemId是在传送带中设置这个产物，然后转换成json来提取
 };
@@ -577,7 +577,7 @@ const recipeMap = {
   "sorterMk3+superMagneticRing+processor=sorterMk4": 160, // 集装分拣器
   "steel+superMagneticRing+plasmaExciter+processor=近程电浆炮": 157, // 近程电浆炮
   "copperIngot+plasmaExciter+diamond+processor=干扰塔": 130, // 干扰塔
-  "ironIngot+prism+plasmaExciter+circuitBoard=holoBeacon": 161, // 全息信标
+  "ironIngot+prism+plasmaExciter+circuitBoard=全息信标": 161, // 全息信标
   //recipeId是在制造台中设置输出这个产物，然后转换成json来提取
 };
 
