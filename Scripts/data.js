@@ -4556,12 +4556,6 @@ function f_fillData() {
     });
     $("#seldata").append(jgroup);
   });
-
-  for (var i = 1; i < 200; i = i + 1) {
-    $("#selmaince").append(
-      "<option value='" + i + "'>需要" + i + "个设备</option>"
-    );
-  }
   //for (var i = 110; i < 1000; i = i + 10) {
   //    $("#selore").append("<option value='" + i / 100 + "'>" + i + "%</option>");
   //}
