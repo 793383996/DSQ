@@ -49,11 +49,11 @@
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">每分钟产量：</span>
-        <input type="text" id="txtnumber" value="60" style="width: 50px;" />
+        <input type="text" id="txtnumber" value="60" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px;" />
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">或生产设备数：</span>
-        <input type="number" id="selmaince" min="1" max="1000" style="width: 50px; -moz-appearance: textfield;" />
+        <input type="number" id="selmaince" min="1" max="1000" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px; -moz-appearance: textfield;" />
       </div>
       <a href="javascript:f_add()" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
