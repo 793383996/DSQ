@@ -2514,8 +2514,9 @@ class Blueprint {
               break;
             }
 
-            // 当前传送带连接分拣器达到上限，或在X射线裂解(氢)/重整精炼(精炼油)后，连接下一个传送带
-            if ((doneSorterNum - refineryNum) % this.config.maxSorterNumOneBelt === 0 || doneSorterNum === 0) {
+            // 当前传送带连接分拣器达到上限，连接下一个传送带
+            // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
+            if (doneSorterNum % this.config.maxSorterNumOneBelt === 0 || doneSorterNum === 0) {
               outputData.push([this.sorters[itemName].input[j].index]);
             } else {
               outputData[outputData.length - 1].push(
