@@ -958,6 +958,12 @@ class Blueprint {
       }
       this.buildings.push(this.newSprayCoater(sprayCoaterOffset, sprayYaw));
     }
+    
+    // 修复：更新占地区域X坐标，防止下一条传送带粘连
+    // 每条传送带占据1列X坐标，更新x2确保下条传送带从新列开始
+    if (buildingX > 0 && this.occupiedArea.length > 0) {
+      this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+    }
   }
 
   calculateBuildingArea(subRecipe) {
