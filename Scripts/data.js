@@ -6504,8 +6504,10 @@ function getRecipe() {
     if (!blueprintTitle) {
       // blueprint name and icon id
       let outputItemName = nodeList[1].getAttribute("data-name");
-      let outputRate = nodeList[2].getElementsByTagName("span")[0].innerText;
-      blueprintTitle = outputItemName + "-" + outputRate + "/min";
+      let outputRateText = nodeList[2].getElementsByTagName("span")[0].innerText;
+      // 移除小数点后的0：5.000 -> 5, 5.100 -> 5.1
+      let outputRate = parseFloat(outputRateText).toString();
+      blueprintTitle = outputItemName + "-" + outputRate + "min";
       let resultList = document.querySelectorAll(
         "#result > div:nth-child(1) > span"
       );
@@ -6513,9 +6515,10 @@ function getRecipe() {
       for (let i = 0; i < resultList.length - 1; i++) {
         let result = resultList[i];
         let outputItemName = result.querySelector("img").title;
-        outputItemNameList = [...outputItemNameList, outputItemName];
-        let outputRate = result.querySelector("span > span").textContent;
-        blueprintDesc += outputItemName + "-" + outputRate + "/min\n";
+        let outputRateText = result.querySelector("span > span").textContent;
+        // 移除小数点后的0：5.000 -> 5, 5.100 -> 5.1
+        let outputRate = parseFloat(outputRateText).toString();
+        blueprintDesc += outputItemName + "-" + outputRate + "min\n";
       }
 
       let mapItemMap = {};
