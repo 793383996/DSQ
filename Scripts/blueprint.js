@@ -782,6 +782,11 @@ class Blueprint {
           buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
           buildingY = 1;  // 从蓝图开始位置重新开始
           this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+          // 换列后，前一个节点断开输出连接
+          if (this.buildings.length > 0) {
+            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+            this.buildings[this.buildings.length - 1].outputToSlot = 0;
+          }
         }
       }
       let outputObjIdx = this.buildingIndex + 2;
@@ -872,6 +877,11 @@ class Blueprint {
           buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
           buildingY = 1;  // 从蓝图开始位置重新开始
           this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+          // 换列后，前一个节点断开输出连接
+          if (this.buildings.length > 0) {
+            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+            this.buildings[this.buildings.length - 1].outputToSlot = 0;
+          }
         }
       }
       if (!(direction > 0 && i === outputData.length - 1)) {
@@ -924,6 +934,11 @@ class Blueprint {
             buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
             buildingY = 1;
             this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+            // 换列后，前一个节点断开输出连接
+            if (this.buildings.length > 0) {
+              this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+              this.buildings[this.buildings.length - 1].outputToSlot = 0;
+            }
           }
           this.buildings.push(
             this.newConveyorNode(
@@ -942,6 +957,11 @@ class Blueprint {
           buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
           buildingY = 1;
           this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+          // 换列后，前一个节点断开输出连接
+          if (this.buildings.length > 0) {
+            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+            this.buildings[this.buildings.length - 1].outputToSlot = 0;
+          }
         }
         sprayCoaterOffset = { x: buildingX, y: buildingY, z: buildingZ };
         this.sprayCoaterOffsetList.push({
@@ -965,6 +985,11 @@ class Blueprint {
           buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
           buildingY = 1;
           this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+          // 换列后，前一个节点断开输出连接
+          if (this.buildings.length > 0) {
+            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+            this.buildings[this.buildings.length - 1].outputToSlot = 0;
+          }
         }
         this.buildings.push(
           this.newConveyorNode(
@@ -983,6 +1008,11 @@ class Blueprint {
         buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
         buildingY = 1;
         this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+        // 换列后，前一个节点断开输出连接
+        if (this.buildings.length > 0) {
+          this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+          this.buildings[this.buildings.length - 1].outputToSlot = 0;
+        }
       }
       this.buildings.push(
         this.newConveyorNode(
@@ -1000,6 +1030,11 @@ class Blueprint {
         buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
         buildingY = 1;
         this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
+        // 换列后，前一个节点断开输出连接
+        if (this.buildings.length > 0) {
+          this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+          this.buildings[this.buildings.length - 1].outputToSlot = 0;
+        }
       }
       this.buildings.push(
         this.newConveyorNode(
