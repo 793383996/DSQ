@@ -6519,6 +6519,7 @@ function getRecipe() {
         // 移除小数点后的0：5.000 -> 5, 5.100 -> 5.1
         let outputRate = parseFloat(outputRateText).toString();
         blueprintDesc += outputItemName + "-" + outputRate + "min\n";
+        outputItemNameList.push(outputItemName);
       }
 
       let mapItemMap = {};
