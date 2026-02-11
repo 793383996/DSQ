@@ -2378,6 +2378,13 @@ class Blueprint {
     this.occupiedArea[this.occupiedArea.length - 2].y2++; // y轴方向空一格避免喷涂机和建筑碰撞
     // 生成传送带并连接到分拣器
     const zero = 0.0000000001; // rate是每秒生产量，除不尽时会有精度误差，小数点后16位都是准确的，取0.0000000001为判断标准足够了。
+    // 堆叠模式：z=0 层每个传送带节点的分拣器在 cloneToStackLayers 后被克隆 stackLayers 倍
+    // 为保证克隆后每节点不超过 maxSorterNumOneBelt，z=0 层每节点只分配 floor(max/stackLayers) 个
+    // 例：stackLayers=4, max=8 → z=0 每节点 2 个分拣器 → 克隆后 2×4=8 ≤ 8
+    const stackLayers = this.config.stackLayers || 1;
+    const sortersPerNode = stackLayers > 1
+      ? Math.max(1, Math.floor(this.config.maxSorterNumOneBelt / stackLayers))
+      : this.config.maxSorterNumOneBelt;
     for (let item in itemSummary) {
       const itemName = item;
       // console.log(itemName)
@@ -2423,7 +2430,7 @@ class Blueprint {
               // 当前带接受运力不能满足分拣器，则该分拣器连接下一个带上的节点
               break;
             }
-            if (doneSorterNum % this.config.maxSorterNumOneBelt === 0) {
+            if (doneSorterNum % sortersPerNode === 0) {
               inputData.push([this.sorters[itemName].output[j].index]);
             } else {
               inputData[inputData.length - 1].push(
@@ -2584,7 +2591,7 @@ class Blueprint {
 
             // 当前传送带连接分拣器达到上限，连接下一个传送带
             // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
-            if (doneSorterNum % this.config.maxSorterNumOneBelt === 0 || doneSorterNum === 0) {
+            if (doneSorterNum % sortersPerNode === 0 || doneSorterNum === 0) {
               outputData.push([this.sorters[itemName].input[j].index]);
             } else {
               outputData[outputData.length - 1].push(
