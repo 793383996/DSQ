@@ -777,17 +777,6 @@ class Blueprint {
         this.occupiedArea[this.occupiedArea.length - 1].x2 += 1;
       } else {
         buildingY += 1;
-        // 检查是否超出蓝图高度，如果超出则换到新列从头开始
-        if (buildingY > this.blueprintSize.y) {
-          buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-          buildingY = 1;  // 从蓝图开始位置重新开始
-          this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-          // 换列后，前一个节点断开输出连接
-          if (this.buildings.length > 0) {
-            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-            this.buildings[this.buildings.length - 1].outputToSlot = 0;
-          }
-        }
       }
       let outputObjIdx = this.buildingIndex + 2;
       let outputToSlot = 1;
@@ -819,13 +808,6 @@ class Blueprint {
       // 添加节点用于放置喷涂机
       // 为避免供料口被堵，喷涂机只放在第偶数个节点上
       if (nodeNum % 2 === 0) {
-        buildingY++;
-        // 检查是否超出蓝图高度
-        if (buildingY > this.blueprintSize.y) {
-          buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-          buildingY = 1;
-          this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-        }
         this.buildings.push(
           this.newConveyorNode(
             { x: buildingX, y: buildingY, z: buildingZ },
@@ -837,14 +819,7 @@ class Blueprint {
           )
         );
       }
-      buildingY++;
-      // 检查是否超出蓝图高度
-      if (buildingY > this.blueprintSize.y) {
-        buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-        buildingY = 1;
-        this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-      }
-      sprayCoaterOffset = { x: buildingX, y: buildingY, z: buildingZ };
+      sprayCoaterOffset = { x: buildingX, y: ++buildingY, z: buildingZ };
       this.sprayCoaterOffsetList.push({
         x: buildingX,
         y: buildingY - 1,
@@ -872,17 +847,6 @@ class Blueprint {
         this.occupiedArea[this.occupiedArea.length - 1].x2 += 1;
       } else {
         buildingY += 1;
-        // 检查是否超出蓝图高度，如果超出则换到新列从头开始
-        if (buildingY > this.blueprintSize.y) {
-          buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-          buildingY = 1;  // 从蓝图开始位置重新开始
-          this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-          // 换列后，前一个节点断开输出连接
-          if (this.buildings.length > 0) {
-            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-            this.buildings[this.buildings.length - 1].outputToSlot = 0;
-          }
-        }
       }
       if (!(direction > 0 && i === outputData.length - 1)) {
         if (!(direction < 0 && i === 0)) {
@@ -924,32 +888,13 @@ class Blueprint {
         }
       }
     }
-    // 修复：中间产物多余产能传送带(outputData为空)且无喷涂机时，
-    // 最后一个节点的outputObjIdx仍指向buildingIndex+2，会错误连接到下一个物品的传送带，
-    // 导致N状跨物品粘连。此处将其终结为-1。
-    if (direction > 0 && outputData.length === 0 && !needSprayCoater && nodeNum > 0) {
-      this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-      this.buildings[this.buildings.length - 1].outputToSlot = 0;
-    }
     if (direction < 0) {
       // let outputObjIdx = this.buildingIndex
       if (needSprayCoater) {
         if (nodeNum % 2 === 0) {
-          buildingY++;
-          // 检查是否超出蓝图高度
-          if (buildingY > this.blueprintSize.y) {
-            buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-            buildingY = 1;
-            this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-            // 换列后，前一个节点断开输出连接
-            if (this.buildings.length > 0) {
-              this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-              this.buildings[this.buildings.length - 1].outputToSlot = 0;
-            }
-          }
           this.buildings.push(
             this.newConveyorNode(
-              { x: buildingX, y: buildingY, z: buildingZ },
+              { x: buildingX, y: ++buildingY, z: buildingZ },
               [0, 0],
               conveyor,
               this.buildingIndex,
@@ -958,19 +903,7 @@ class Blueprint {
             )
           );
         }
-        buildingY++;
-        // 检查是否超出蓝图高度
-        if (buildingY > this.blueprintSize.y) {
-          buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-          buildingY = 1;
-          this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-          // 换列后，前一个节点断开输出连接
-          if (this.buildings.length > 0) {
-            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-            this.buildings[this.buildings.length - 1].outputToSlot = 0;
-          }
-        }
-        sprayCoaterOffset = { x: buildingX, y: buildingY, z: buildingZ };
+        sprayCoaterOffset = { x: buildingX, y: ++buildingY, z: buildingZ };
         this.sprayCoaterOffsetList.push({
           x: buildingX,
           y: buildingY + 1,
@@ -986,21 +919,9 @@ class Blueprint {
             null
           )
         );
-        buildingY++;
-        // 检查是否超出蓝图高度
-        if (buildingY > this.blueprintSize.y) {
-          buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-          buildingY = 1;
-          this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-          // 换列后，前一个节点断开输出连接
-          if (this.buildings.length > 0) {
-            this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-            this.buildings[this.buildings.length - 1].outputToSlot = 0;
-          }
-        }
         this.buildings.push(
           this.newConveyorNode(
-            { x: buildingX, y: buildingY, z: buildingZ },
+            { x: buildingX, y: ++buildingY, z: buildingZ },
             [180, 180],
             conveyor,
             this.buildingIndex,
@@ -1009,21 +930,9 @@ class Blueprint {
           )
         );
       }
-      buildingY++;
-      // 检查是否超出蓝图高度
-      if (buildingY > this.blueprintSize.y) {
-        buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-        buildingY = 1;
-        this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-        // 换列后，前一个节点断开输出连接
-        if (this.buildings.length > 0) {
-          this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-          this.buildings[this.buildings.length - 1].outputToSlot = 0;
-        }
-      }
       this.buildings.push(
         this.newConveyorNode(
-          { x: buildingX, y: buildingY, z: buildingZ },
+          { x: buildingX, y: ++buildingY, z: buildingZ },
           [180, 180],
           conveyor,
           this.buildingIndex,
@@ -1031,21 +940,9 @@ class Blueprint {
           null
         )
       );
-      buildingY++;
-      // 检查是否超出蓝图高度
-      if (buildingY > this.blueprintSize.y) {
-        buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-        buildingY = 1;
-        this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-        // 换列后，前一个节点断开输出连接
-        if (this.buildings.length > 0) {
-          this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-          this.buildings[this.buildings.length - 1].outputToSlot = 0;
-        }
-      }
       this.buildings.push(
         this.newConveyorNode(
-          { x: buildingX, y: buildingY, z: buildingZ },
+          { x: buildingX, y: ++buildingY, z: buildingZ },
           [180, 180],
           conveyor,
           this.buildingIndex,
@@ -1060,12 +957,6 @@ class Blueprint {
         sprayYaw = [180, 180];
       }
       this.buildings.push(this.newSprayCoater(sprayCoaterOffset, sprayYaw));
-    }
-    
-    // 修复：更新占地区域X坐标，防止下一条传送带粘连
-    // 每条传送带占据1列X坐标，更新x2确保下条传送带从新列开始
-    if (buildingX > 0 && this.occupiedArea.length > 0) {
-      this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
     }
   }
 
