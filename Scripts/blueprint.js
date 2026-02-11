@@ -2359,6 +2359,34 @@ class Blueprint {
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
 
+    // --- 堆叠模式：传送带只在 z=0 层，但需承载所有层的吞吐量 ---
+    // init() 已将 building.num 缩减为 ceil(N/stackLayers)，itemSummary.rate 只反映单层产能。
+    // cloneToStackLayers 后每个 z=0 分拣器被克隆 (stackLayers-1) 份，全部连接同一 z=0 传送带节点。
+    // 因此传送带实际吞吐 = 单层 rate × stackLayers。
+    // 此处将 itemSummary.rate 和 sorter.rate 按 stackLayers 放大，
+    // 确保传送带类型(MK等级)、列数、count 标签能正确承载全部层的流量。
+    const stackLayers = this.config.stackLayers || 1;
+    if (stackLayers > 1) {
+      for (let key in itemSummary) {
+        itemSummary[key].rate *= stackLayers;
+        if (itemSummary[key].inputRate !== undefined) {
+          itemSummary[key].inputRate *= stackLayers;
+        }
+      }
+      for (let itemName in this.sorters) {
+        if (this.sorters[itemName].output) {
+          for (let s of this.sorters[itemName].output) {
+            s.rate *= stackLayers;
+          }
+        }
+        if (this.sorters[itemName].input) {
+          for (let s of this.sorters[itemName].input) {
+            s.rate *= stackLayers;
+          }
+        }
+      }
+    }
+
     this.conveyorStartOffsetX =
       this.occupiedArea[this.occupiedArea.length - 1].x2;
     this.occupiedArea[this.occupiedArea.length - 1].x2++; // x轴方向空一格用于喷涂剂走线
@@ -2368,7 +2396,6 @@ class Blueprint {
     // 堆叠模式：z=0 层每个传送带节点的分拣器在 cloneToStackLayers 后被克隆 stackLayers 倍
     // 为保证克隆后每节点不超过 maxSorterNumOneBelt，z=0 层每节点只分配 floor(max/stackLayers) 个
     // 例：stackLayers=4, max=8 → z=0 每节点 2 个分拣器 → 克隆后 2×4=8 ≤ 8
-    const stackLayers = this.config.stackLayers || 1;
     const sortersPerNode = stackLayers > 1
       ? Math.max(1, Math.floor(this.config.maxSorterNumOneBelt / stackLayers))
       : this.config.maxSorterNumOneBelt;
