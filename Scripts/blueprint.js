@@ -762,22 +762,17 @@ class Blueprint {
       throw `newConveyor error: error conveyor - ${conveyor}`;
     }
     let nodeNum = 0;
-    let buildingX = 0,
-      buildingY = 0,
-      buildingZ = 0;
+    // 修复：无条件从 occupiedArea 初始化坐标，防止 inputData/outputData 为空时坐标留在 (0,0,0) 导致节点错位
+    let buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
+    let buildingY = this.occupiedArea[this.occupiedArea.length - 2].y2;
+    let buildingZ = 0;
+    this.occupiedArea[this.occupiedArea.length - 1].x2 += 1;
     for (let i = 0; i < inputData.length; i++) {
       if (direction < 0) {
         // 输入带不需要处理input，在最后加一个节点即可
         break;
       }
-      if (i === 0) {
-        buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-        buildingY = this.occupiedArea[this.occupiedArea.length - 2].y2 + 1;
-        buildingZ = 0;
-        this.occupiedArea[this.occupiedArea.length - 1].x2 += 1;
-      } else {
-        buildingY += 1;
-      }
+      buildingY += 1;
       let outputObjIdx = this.buildingIndex + 2;
       let outputToSlot = 1;
       this.buildings.push(
@@ -840,14 +835,7 @@ class Blueprint {
     for (let i = 0; i < outputData.length; i++) {
       let outputObjIdx = -1;
       let outputToSlot = 0;
-      if (direction < 0 && i === 0) {
-        buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-        buildingY = this.occupiedArea[this.occupiedArea.length - 2].y2 + 1;
-        buildingZ = 0;
-        this.occupiedArea[this.occupiedArea.length - 1].x2 += 1;
-      } else {
-        buildingY += 1;
-      }
+      buildingY += 1;
       if (!(direction > 0 && i === outputData.length - 1)) {
         if (!(direction < 0 && i === 0)) {
           outputObjIdx = this.buildingIndex + 1 + direction;
@@ -888,10 +876,9 @@ class Blueprint {
         }
       }
     }
-    // 修复：中间产物多余产能传送带(outputData为空)且无喷涂机时，
-    // 最后一个节点的outputObjIdx仍指向buildingIndex+2，会错误连接到下一个物品的传送带，
-    // 导致N状跨物品粘连。此处将其终结为-1。
-    if (direction > 0 && outputData.length === 0 && !needSprayCoater && nodeNum > 0) {
+    // 修复：outputData为空时，最后一个节点的outputObjIdx仍指向buildingIndex+2，
+    // 会错误连接到下一个物品的传送带或喷涂机，导致跨物品粘连。此处将其终结为-1。
+    if (direction > 0 && outputData.length === 0 && nodeNum > 0) {
       this.buildings[this.buildings.length - 1].outputObjIdx = -1;
       this.buildings[this.buildings.length - 1].outputToSlot = 0;
     }
@@ -2420,6 +2407,14 @@ class Blueprint {
         let inputData = [];
         let outputData = [];
         let doneSorterNum = 0;
+        // 修复：浮点精度导致所有分拣器已消耗但循环未终止，安全退出防止死循环或错位节点
+        if (item.fromBuildingNum !== 0 && this.sorters[itemName].output.length === 0) {
+          break;
+        }
+        if (item.fromBuildingNum === 0 && item.toBuildingNum !== 0 &&
+          this.sorters[itemName].input && this.sorters[itemName].input.length === 0) {
+          break;
+        }
         if (item.fromBuildingNum !== 0) {
           for (let j = this.sorters[itemName].output.length - 1; j >= 0; j--) {
             if (this.sorters[itemName].output[j].rate - inputRate > zero) {
