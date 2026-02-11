@@ -6622,6 +6622,7 @@ function generateBlueprint() {
     ), // 电线杆间隔几排
     // onlyConveyorBeltMk3Downgrade: document.getElementById('onlyConveyorBeltMk3Downgrade').checked  // 三级传送带运力降级
     onlyConveyorBeltMk3Downgrade: false, // 三级传送带运力降级
+    stackLayers: parseInt(document.getElementById("stackLayers").value) || 1, // 建筑堆叠层数（1=不堆叠）
   };
   // console.log(config)
   let b1 = new Blueprint(
@@ -6634,6 +6635,7 @@ function generateBlueprint() {
   b1.generateBuildings();
   b1.generateConveyorBelts();
   b1.generateConveyorBeltsForSprayCoater();
+  b1.cloneToStackLayers(); // 堆叠模式：将 z=0 层克隆到 z=10,20,30
   b1.blueprintTemplate.buildings = b1.buildings;
   b1.blueprintTemplate.header.desc = recipe.blueprintDesc.trimEnd();
   switch (recipe.blueprintIcon.length) {
