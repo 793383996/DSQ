@@ -153,7 +153,8 @@
             <!-- <span class="label">紧凑布局</span><input type="checkbox" id="compactLayout">（高纬度可能出现碰撞）<br/> -->
             <!-- <span class="label">临界运力传送带自升级</span><input type="checkbox" id="upgradeConveyorBelt"><br /> -->
             <span class="label">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" checked><br />
-            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" checked><br />
+            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" checked onchange="if(this.checked) document.getElementById('useSorterMk4').checked=false"><br />
+            <span class="label">使用四级分拣器（集装分拣器）</span><input type="checkbox" id="useSorterMk4" onchange="if(this.checked) document.getElementById('onlySorterMk3').checked=false"><br />
             <!-- <span class="label">三级传送带运力降级</span><input type="checkbox" id="onlyConveyorBeltMk3Downgrade">（三级传送带运力锁定在1680/min，可在一定程度上解决蓝图产量低于预期的问题）<br/> -->
             <span class="label">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" checked="checked"><br />
             <span class="label">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" min="1" max="2"

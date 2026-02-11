@@ -6610,7 +6610,8 @@ function generateBlueprint() {
     compactLayout: false,
     upgradeConveyorBelt: false, // 360/min的运力时使用3级传送带（无带流情况下，原料的需求和供应都是集中处理，1级传送带满运力情况下可能会有运送不及时问题导致产量低于预期
     onlyConveyorBeltMk3: document.getElementById("onlyConveyorBeltMk3").checked, // 是否只使用三级传送带
-    onlySorterMk3: document.getElementById("onlySorterMk3").checked, // 是否只使用三级传送带
+    onlySorterMk3: document.getElementById("onlySorterMk3").checked, // 是否只使用三级分拣器
+    useSorterMk4: document.getElementById("useSorterMk4").checked, // 是否使用四级集装分拣器
     maxLabLayers: parseInt(document.getElementById("maxLabLayers").value),
     selfSpray: document.getElementById("selfAcc").checked, // 是否自喷涂增产剂
     generateTeslaTower: document.getElementById("generateTeslaTower").checked, // 是否自动插电线杆

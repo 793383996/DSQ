@@ -1851,14 +1851,14 @@ class Blueprint {
         let actual_rate =
           outputItem.rate * productionSpeed * actual_building_num * extra_rate;
         let sorter = buildingMap.sorterMk1;
-        if (this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
-          // 一级分拣器不够用时直接使用三级分拣器，二级分拣器没太大价值，直接略过
-          sorter = buildingMap.sorterMk3;
+        if (this.config.useSorterMk4 || this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
+          // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
+          sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
         }
         if (buildingMap[subRecipe.building.name].category === productionCategory.lab &&
-          actual_rate > buildingMap.sorterMk3.sortingSpeed
+          actual_rate > sorter.sortingSpeed
         ) {
-          // 研究站层数过高时会出现一个3级分拣器无法满足运力的问题
+          // 研究站层数过高时会出现一个分拣器无法满足运力的问题，追加额外分拣器
           let newSorter2 = this.getBuildingTemplate();
           newSorter2.itemId = sorter.itemId;
           newSorter2.modelIndex = sorter.modelIndex;
@@ -1882,7 +1882,7 @@ class Blueprint {
             if (this.sorters[outputItem.name].output) {
               this.sorters[outputItem.name].output.push({
                 index: newSorter2.index,
-                rate: buildingMap.sorterMk3.sortingSpeed,
+                rate: sorter.sortingSpeed,
                 ownerObjIdx: nowBuildingIndex, // 分拣器附属生产建筑的index
                 ownerName: subRecipe.building.name,
                 ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
@@ -1892,7 +1892,7 @@ class Blueprint {
               this.sorters[outputItem.name].output = [
                 {
                   index: newSorter2.index,
-                  rate: buildingMap.sorterMk3.sortingSpeed,
+                  rate: sorter.sortingSpeed,
                   ownerObjIdx: nowBuildingIndex,
                   ownerName: subRecipe.building.name,
                   ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
@@ -1906,7 +1906,7 @@ class Blueprint {
               output: [
                 {
                   index: newSorter2.index,
-                  rate: buildingMap.sorterMk3.sortingSpeed,
+                  rate: sorter.sortingSpeed,
                   ownerObjIdx: nowBuildingIndex,
                   ownerName: subRecipe.building.name,
                   ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
@@ -1915,7 +1915,7 @@ class Blueprint {
               ],
             };
           }
-          actual_rate -= buildingMap.sorterMk3.sortingSpeed;
+          actual_rate -= sorter.sortingSpeed;
         }
         let newSorter = this.getBuildingTemplate();
         newSorter.itemId = sorter.itemId;
@@ -1994,15 +1994,15 @@ class Blueprint {
           actual_rate *= extra_rate;
         }
         let sorter = buildingMap.sorterMk1;
-        if (this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
-          // 一级分拣器不够用时直接使用三级分拣器
-          sorter = buildingMap.sorterMk3;
+        if (this.config.useSorterMk4 || this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
+          // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
+          sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
         }
 
         if (buildingMap[subRecipe.building.name].category === productionCategory.lab &&
-          actual_rate > buildingMap.sorterMk3.sortingSpeed
+          actual_rate > sorter.sortingSpeed
         ) {
-          // 研究站层数过高时会出现一个3级分拣器无法满足运力的问题
+          // 研究站层数过高时会出现一个分拣器无法满足运力的问题，追加额外分拣器
           let newSorter2 = this.getBuildingTemplate();
           newSorter2.itemId = sorter.itemId;
           newSorter2.modelIndex = sorter.modelIndex;
@@ -2026,7 +2026,7 @@ class Blueprint {
             if (this.sorters[inputItem.name].output) {
               this.sorters[inputItem.name].output.push({
                 index: newSorter2.index,
-                rate: buildingMap.sorterMk3.sortingSpeed,
+                rate: sorter.sortingSpeed,
                 ownerObjIdx: nowBuildingIndex, // 分拣器附属生产建筑的index
                 ownerName: subRecipe.building.name,
                 ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
@@ -2036,7 +2036,7 @@ class Blueprint {
               this.sorters[inputItem.name].output = [
                 {
                   index: newSorter2.index,
-                  rate: buildingMap.sorterMk3.sortingSpeed,
+                  rate: sorter.sortingSpeed,
                   ownerObjIdx: nowBuildingIndex,
                   ownerName: subRecipe.building.name,
                   ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
@@ -2050,7 +2050,7 @@ class Blueprint {
               output: [
                 {
                   index: newSorter2.index,
-                  rate: buildingMap.sorterMk3.sortingSpeed,
+                  rate: sorter.sortingSpeed,
                   ownerObjIdx: nowBuildingIndex,
                   ownerName: subRecipe.building.name,
                   ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
@@ -2059,7 +2059,7 @@ class Blueprint {
               ],
             };
           }
-          actual_rate -= buildingMap.sorterMk3.sortingSpeed;
+          actual_rate -= sorter.sortingSpeed;
         }
 
         let newSorter = this.getBuildingTemplate();
@@ -2418,9 +2418,9 @@ class Blueprint {
               const newSorterRate =
                 this.sorters[itemName].input[j].rate - outputRate;
               let sorter = buildingMap.sorterMk1;
-              if (this.config.onlySorterMk3 || newSorterRate > sorter.sortingSpeed) {
-                // 一级分拣器不够用时直接使用三级分拣器，先不支持二级分拣器
-                sorter = buildingMap.sorterMk3;
+              if (this.config.useSorterMk4 || this.config.onlySorterMk3 || newSorterRate > sorter.sortingSpeed) {
+                // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
+                sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
               }
               let newSorter = this.getBuildingTemplate();
               // console.log(`new sorter: ${newSorter.index}`)
@@ -3823,6 +3823,7 @@ class Blueprint {
       [2011, inserterParamParser],
       [2012, inserterParamParser],
       [2013, inserterParamParser],
+      [2014, inserterParamParser],
       [2101, storageParamParser],
       [2102, storageParamParser],
       [2106, tankParamParser],
