@@ -2060,20 +2060,10 @@ class Blueprint {
 
   init() {
     this.mapRecipeID();
-    // 堆叠模式：将每个配方的建筑数量按堆叠层数缩减，每层只放 1/N 的建筑
-    // Lab 也需要缩减以保持 z=0 层传送带吞吐量平衡（Lab 不被克隆到高层，
-    // 但其 building.num 必须与同层非 Lab 建筑保持一致，否则传送带容量不匹配）
-    if (this.config.stackLayers > 1) {
-      for (let subRecipe of this.recipe.subRecipes) {
-        if (subRecipe.building) {
-          subRecipe.building.num = Math.ceil(
-            subRecipe.building.num / this.config.stackLayers
-          );
-        }
-      }
-      // building.num 已缩减，后续 generateConveyorBelts 中 itemSummary 的 rate
-      // 计算公式为 outputItem.rate * productionSpeed * building.num，会自动适配单层
-    }
+    // 堆叠模式不缩减 building.num：
+    // 传送带只在 z=0 层，需承载所有层的吞吐量，building.num 保持原值
+    // 以确保 calculateBlueprintArea / generateConveyorBelts 按完整产线计算
+    // cloneToStackLayers 中通过重分配（而非克隆）将多余建筑移至上层
     this.calculateBlueprintArea();
     if (this.config.onlyConveyorBeltMk3Downgrade) {
       buildingMap.conveyorBeltMK3.transportSpeed = 28;
@@ -2085,14 +2075,17 @@ class Blueprint {
   }
 
   /**
-   * 将 z=0 层的全部建筑克隆到 z=10, z=20, ... 层，实现建筑垂直堆叠。
+   * 堆叠模式：将 z=0 层的生产建筑按配方分组后重分配到多个 z 层。
    * 必须在 generateBuildings + generateConveyorBelts + generateConveyorBeltsForSprayCoater 之后调用。
    *
-   * 克隆规则：
-   *  - 只克隆生产建筑、分拣器、电力感应塔（不克隆传送带、喷涂机、Lab）
-   *  - 传送带只在 z=0 层，高层分拣器直接引用 z=0 传送带节点
-   *  - 非 Lab 生产建筑 / 电力感应塔的 inputObjIdx 指向地基（foundation, z=-10）
-   *  - 研究站（Lab）不参与堆叠（已有自身 maxLabLayers 机制），克隆时跳过
+   * 核心策略（重分配，非克隆）：
+   *  - 不缩减 building.num → 先按完整产线生成全部建筑 + 传送带
+   *  - 按 recipeId 分组，每组内按 ceil(N/stackLayers) 切分到各 z 层
+   *  - 就地修改被分配到上层的建筑 / 分拣器的 z 坐标（不创建新建筑）
+   *  - 传送带、喷涂机、Lab 不参与重分配（保留在 z=0）
+   *  - 电力感应塔克隆到每个上层（每层需要独立供电）
+   *  - 上层生产建筑的 inputObjIdx 指向地基（foundation, z=-10）
+   *  - 上层分拣器仍引用 z=0 传送带节点（index 不变，只改 z）
    *  - 地基只生成 1 个，所有层共用
    */
   cloneToStackLayers() {
@@ -2102,14 +2095,7 @@ class Blueprint {
     const stackLayers = this.config.stackLayers;
     const zStep = 10; // 每层间距
 
-    // --- 1. 记录 z=0 层的全部建筑 ---
-    const baseBuildings = this.buildings.slice(); // 浅拷贝列表
-    const baseCount = baseBuildings.length;
-    // z=0 层 index 范围：baseBuildings[0].index ~ baseBuildings[baseCount-1].index
-    const baseMinIndex = baseBuildings[0].index;
-    const baseMaxIndex = baseBuildings[baseCount - 1].index;
-
-    // --- 2. 生成地基（foundation, z=-10），所有层共用 ---
+    // --- 1. 生成地基（foundation, z=-10），所有上层共用 ---
     const foundationBuilding = this.getBuildingTemplate();
     foundationBuilding.itemId = 1131;
     foundationBuilding.modelIndex = 37;
@@ -2122,69 +2108,99 @@ class Blueprint {
     this.buildings.push(foundationBuilding);
     const foundationIndex = foundationBuilding.index;
 
-    // --- 3. 识别需跳过的建筑类型 ---
-    // 研究站（Lab）不参与建筑堆叠，已有自身 maxLabLayers 机制
+    // --- 2. 分类常量 ---
     const labItemIds = new Set([
       buildingMap.lab.itemId,           // 2901
       buildingMap["自演化研究站"].itemId, // 2902
     ]);
-    // 传送带 itemIds: 2001(MK.I), 2002(MK.II), 2003(MK.III)
     const beltItemIds = new Set([2001, 2002, 2003]);
+    const sorterItemIds = new Set([2011, 2012, 2013, 2014]);
+    const sprayCoaterItemId = buildingMap.sprayCoater.itemId; // 2313
+    const teslaTowerItemId = buildingMap.teslaTower.itemId;   // 2201
 
-    // 过滤出需要克隆的建筑
-    // 排除项：Lab 及其分拣器、传送带、喷涂机
-    // 传送带只在 z=0 层，高层分拣器通过 outputObjIdx/inputObjIdx 直接引用 z=0 传送带节点
-    const labIndices = new Set();
-    for (const b of baseBuildings) {
-      if (labItemIds.has(b.itemId)) {
-        labIndices.add(b.index);
+    // --- 3. 识别可重分配的生产建筑（按 recipeId 分组）和电力感应塔 ---
+    const recipeGroups = new Map(); // recipeId → [building, ...]
+    const teslaTowers = [];
+
+    for (const b of this.buildings) {
+      if (b.index === foundationIndex) continue;
+      // 跳过：Lab、传送带、喷涂机、分拣器（分拣器在步骤 5 随建筑一起处理）
+      if (labItemIds.has(b.itemId)) continue;
+      if (beltItemIds.has(b.itemId)) continue;
+      if (b.itemId === sprayCoaterItemId) continue;
+      if (sorterItemIds.has(b.itemId)) continue;
+
+      if (b.itemId === teslaTowerItemId) {
+        teslaTowers.push(b);
+        continue;
+      }
+
+      // 有 recipeId 的非 Lab 建筑 = 生产建筑（制造台、冶炼厂、化工厂等）
+      if (b.recipeId > 0) {
+        if (!recipeGroups.has(b.recipeId)) {
+          recipeGroups.set(b.recipeId, []);
+        }
+        recipeGroups.get(b.recipeId).push(b);
       }
     }
-    const sprayCoaterItemId = buildingMap.sprayCoater.itemId; // 2313
-    const cloneableBuildings = baseBuildings.filter((b) => {
-      // 排除 Lab 自身
-      if (labItemIds.has(b.itemId)) return false;
-      // 排除连接到 Lab 的分拣器（inputObjIdx 或 outputObjIdx 指向 Lab）
-      if (labIndices.has(b.inputObjIdx) || labIndices.has(b.outputObjIdx)) return false;
-      // 排除传送带（只在 z=0 层，高层分拣器直接引用 z=0 传送带节点）
-      if (beltItemIds.has(b.itemId)) return false;
-      // 排除喷涂机（依附传送带，传送带不克隆则喷涂机也不克隆）
-      if (b.itemId === sprayCoaterItemId) return false;
-      return true;
-    });
 
-    // --- 4. 逐层克隆（使用映射表精确重映射 index） ---
-    for (let layer = 1; layer < stackLayers; layer++) {
+    // --- 4. 按配方分组，计算每栋建筑的目标层 ---
+    // 例：12 栋 stackLayers=4 → perLayer=3 → 0,1,2→层0  3,4,5→层1  6,7,8→层2  9,10,11→层3
+    const buildingLayerMap = new Map(); // buildingIndex → targetLayer（>0 才需要移动）
+
+    for (const [recipeId, buildings] of recipeGroups) {
+      const perLayer = Math.ceil(buildings.length / stackLayers);
+      for (let i = 0; i < buildings.length; i++) {
+        const layer = Math.floor(i / perLayer);
+        if (layer > 0) {
+          buildingLayerMap.set(buildings[i].index, layer);
+        }
+      }
+    }
+
+    // --- 5. 关联分拣器：连接被移动建筑的分拣器随建筑一起移动 ---
+    // OUTPUT 分拣器：inputObjIdx = 生产建筑 index
+    // INPUT 分拣器：outputObjIdx = 生产建筑 index
+    // 分拣器的另一端（传送带节点 index）保持不变 → 自动引用 z=0 传送带
+    for (const b of this.buildings) {
+      if (!sorterItemIds.has(b.itemId)) continue;
+      let targetLayer = 0;
+      if (buildingLayerMap.has(b.inputObjIdx)) {
+        targetLayer = buildingLayerMap.get(b.inputObjIdx);
+      } else if (buildingLayerMap.has(b.outputObjIdx)) {
+        targetLayer = buildingLayerMap.get(b.outputObjIdx);
+      }
+      if (targetLayer > 0) {
+        buildingLayerMap.set(b.index, targetLayer);
+      }
+    }
+
+    // --- 6. 就地修改 z 偏移（不创建新建筑，只移动位置） ---
+    for (const b of this.buildings) {
+      if (!buildingLayerMap.has(b.index)) continue;
+      const layer = buildingLayerMap.get(b.index);
       const zOffset = layer * zStep;
 
-      // 4a. 预分配 index 映射表：baseIndex → cloneIndex
-      // 因为跳过了 Lab/Lab-sorter，不能用简单 offset，必须用映射表
-      const indexMap = new Map();
-      let nextIndex = this.buildingIndex + 1;
-      for (const base of cloneableBuildings) {
-        indexMap.set(base.index, nextIndex);
-        nextIndex++;
+      if (b.localOffset) {
+        for (const o of b.localOffset) {
+          o.z = (o.z || 0) + zOffset;
+        }
       }
 
-      // 4b. 创建克隆体
-      for (const base of cloneableBuildings) {
-        const clone = this.getBuildingTemplate();
-        // clone.index 应等于 indexMap.get(base.index)
+      // 生产建筑（非分拣器）且 inputObjIdx === -1 → 指向地基
+      if (!sorterItemIds.has(b.itemId) && b.inputObjIdx === -1) {
+        b.inputObjIdx = foundationIndex;
+      }
+    }
 
-        // 复制基础属性
+    // --- 7. 克隆电力感应塔到每个上层（每层需要独立供电） ---
+    for (let layer = 1; layer < stackLayers; layer++) {
+      const zOffset = layer * zStep;
+      for (const base of teslaTowers) {
+        const clone = this.getBuildingTemplate();
         clone.itemId = base.itemId;
         clone.modelIndex = base.modelIndex;
         clone.areaIndex = base.areaIndex;
-        clone.recipeId = base.recipeId;
-        clone.filterId = base.filterId;
-        clone.outputToSlot = base.outputToSlot;
-        clone.inputFromSlot = base.inputFromSlot;
-        clone.outputFromSlot = base.outputFromSlot;
-        clone.inputToSlot = base.inputToSlot;
-        clone.outputOffset = base.outputOffset;
-        clone.inputOffset = base.inputOffset;
-
-        // 深拷贝 localOffset 并应用 z 偏移
         clone.localOffset = base.localOffset
           ? base.localOffset.map((o) => ({
               x: o.x,
@@ -2192,36 +2208,9 @@ class Blueprint {
               z: (o.z || 0) + zOffset,
             }))
           : null;
-
-        // 深拷贝 yaw
         clone.yaw = base.yaw ? base.yaw.slice() : [0, 0];
-
-        // 深拷贝 parameters
-        if (base.parameters !== null && base.parameters !== undefined) {
-          clone.parameters = JSON.parse(JSON.stringify(base.parameters));
-        } else {
-          clone.parameters = null;
-        }
-
-        // --- index 引用重映射（通过映射表） ---
-        if (indexMap.has(base.outputObjIdx)) {
-          clone.outputObjIdx = indexMap.get(base.outputObjIdx);
-        } else {
-          clone.outputObjIdx = base.outputObjIdx; // -1 或指向未克隆建筑，保持原值
-        }
-
-        if (indexMap.has(base.inputObjIdx)) {
-          clone.inputObjIdx = indexMap.get(base.inputObjIdx);
-        } else {
-          clone.inputObjIdx = base.inputObjIdx; // -1 或指向未克隆建筑，保持原值
-        }
-
-        // --- 处理 z=0 层 inputObjIdx === -1 的建筑在克隆层的指向 ---
-        // 传送带/喷涂机已被排除，此处只剩生产建筑、电力感应塔等
-        if (base.inputObjIdx === -1) {
-          clone.inputObjIdx = foundationIndex;
-        }
-
+        clone.parameters = null;
+        clone.inputObjIdx = foundationIndex;
         this.buildings.push(clone);
       }
     }
