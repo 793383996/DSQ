@@ -2053,13 +2053,14 @@ class Blueprint {
     if (this.config.stackLayers > 1) {
       for (let subRecipe of this.recipe.subRecipes) {
         if (subRecipe.building) {
+          // 保存原始 building.num（可能是浮点数），用于 generateConveyorBelts 还原真实总产能
+          // ceil 取整会膨胀产能（如 0.666/4 → ceil=1，4层总计4 >> 原始0.666×4=2.666）
+          subRecipe.building.originalNum = subRecipe.building.num;
           subRecipe.building.num = Math.ceil(
             subRecipe.building.num / this.config.stackLayers
           );
         }
       }
-      // building.num 已缩减，后续 generateConveyorBelts 中 itemSummary 的 rate
-      // 计算公式为 outputItem.rate * productionSpeed * building.num，会自动适配单层
     }
     this.calculateBlueprintArea();
     if (this.config.onlyConveyorBeltMk3Downgrade) {
@@ -2261,6 +2262,12 @@ class Blueprint {
           extra_rate += itemMap[this.recipe.proliferator].accelerate;
         }
       }
+      // 堆叠模式：使用原始 building.num 计算速率，避免 ceil 向上取整导致产能膨胀
+      // 例：原始 num=0.666, stackLayers=4 → ceil(0.666/4)=1 → 1*4=4 远大于原始 0.666*4=2.666
+      // 使用 originalNum 可保持配方链各环节速率平衡一致
+      const effectiveNum = (subRecipe.building && subRecipe.building.originalNum !== undefined)
+        ? subRecipe.building.originalNum
+        : (subRecipe.building ? subRecipe.building.num : 0);
       for (let outputItem of subRecipe.output) {
         let outputRate = 0;
         let fromBuildingNum = 0;
@@ -2270,15 +2277,15 @@ class Blueprint {
           if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
             // 研究站可堆叠，需特殊处理
             fromBuildingNum = Math.ceil(
-              subRecipe.building.num / this.config.maxLabLayers
+              effectiveNum / this.config.maxLabLayers
             );
           } else {
-            fromBuildingNum = subRecipe.building.num;
+            fromBuildingNum = effectiveNum;
           }
           outputRate =
             outputItem.rate *
             buildingMap[subRecipe.building.name].productionSpeed *
-            subRecipe.building.num *
+            effectiveNum *
             extra_rate;
         }
         if (itemSummary[outputItem.name]) {
@@ -2299,10 +2306,10 @@ class Blueprint {
         let toBuildingNum = 0;
         if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
           toBuildingNum = Math.ceil(
-            subRecipe.building.num / this.config.maxLabLayers
+            effectiveNum / this.config.maxLabLayers
           );
         } else {
-          toBuildingNum = subRecipe.building.num;
+          toBuildingNum = effectiveNum;
         }
         if (itemSummary[inputItem.name]) {
           itemSummary[inputItem.name].toBuildingNum += toBuildingNum;
@@ -2317,20 +2324,20 @@ class Blueprint {
             itemSummary[inputItem.name].inputRate +=
               inputItem.rate *
               buildingMap[subRecipe.building.name].productionSpeed *
-              subRecipe.building.num *
+              effectiveNum *
               extra_rate;
           } else {
             // 无增产剂或增产时原料速率不变
             itemSummary[inputItem.name].inputRate +=
               inputItem.rate *
               buildingMap[subRecipe.building.name].productionSpeed *
-              subRecipe.building.num;
+              effectiveNum;
           }
         } else {
           let itemInputRate =
             inputItem.rate *
             buildingMap[subRecipe.building.name].productionSpeed *
-            subRecipe.building.num;
+            effectiveNum;
           if (subRecipe.acceleratorMode === 1) {
             itemInputRate *= extra_rate;
           }
@@ -2359,29 +2366,39 @@ class Blueprint {
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
 
-    // --- 堆叠模式：传送带只在 z=0 层，但需承载所有层的吞吐量 ---
-    // init() 已将 building.num 缩减为 ceil(N/stackLayers)，itemSummary.rate 只反映单层产能。
-    // cloneToStackLayers 后每个 z=0 分拣器被克隆 (stackLayers-1) 份，全部连接同一 z=0 传送带节点。
-    // 因此传送带实际吞吐 = 单层 rate × stackLayers。
-    // 此处将 itemSummary.rate 和 sorter.rate 按 stackLayers 放大，
-    // 确保传送带类型(MK等级)、列数、count 标签能正确承载全部层的流量。
+    // --- 堆叠模式：分拣器速率校正 ---
+    // itemSummary.rate 已通过 originalNum 计算，反映原始配方的真实总产能（不受 ceil 膨胀影响）。
+    // 但分拣器速率 (this.sorters[].rate) 是在 newProductionBuilding 中基于
+    // actual_building_num = Math.min(1, reducedNum - i) 计算的，只反映单个 z=0 建筑的产能。
+    // 堆叠后该分拣器被克隆到每个 z 层，共 stackLayers 份连接同一 z=0 传送带节点。
+    // 但直接 *= stackLayers 会导致 ceil 膨胀（reducedNum*stackLayers > originalNum）。
+    // 正确做法：按每个子配方的 originalNum/reducedNum 比率缩放分拣器速率，
+    // 使 sum(sorter.rate) == itemSummary.rate，保持配方链各物料速率一致。
     const stackLayers = this.config.stackLayers || 1;
     if (stackLayers > 1) {
-      for (let key in itemSummary) {
-        itemSummary[key].rate *= stackLayers;
-        if (itemSummary[key].inputRate !== undefined) {
-          itemSummary[key].inputRate *= stackLayers;
+      // 构建 recipeID → 缩放比率 的映射
+      const scaleRatioMap = {};
+      for (let subRecipe of this.recipe.subRecipes) {
+        if (subRecipe.building && subRecipe.building.originalNum !== undefined) {
+          scaleRatioMap[subRecipe.recipeID] =
+            subRecipe.building.originalNum / subRecipe.building.num;
         }
       }
       for (let itemName in this.sorters) {
         if (this.sorters[itemName].output) {
           for (let s of this.sorters[itemName].output) {
-            s.rate *= stackLayers;
+            const ratio = scaleRatioMap[s.recipeID];
+            if (ratio !== undefined) {
+              s.rate *= ratio;
+            }
           }
         }
         if (this.sorters[itemName].input) {
           for (let s of this.sorters[itemName].input) {
-            s.rate *= stackLayers;
+            const ratio = scaleRatioMap[s.recipeID];
+            if (ratio !== undefined) {
+              s.rate *= ratio;
+            }
           }
         }
       }
