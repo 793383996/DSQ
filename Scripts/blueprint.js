@@ -2089,9 +2089,9 @@ class Blueprint {
    * 必须在 generateBuildings + generateConveyorBelts + generateConveyorBeltsForSprayCoater 之后调用。
    *
    * 克隆规则：
-   *  - 每层是 z=0 的完全镜像（相同 x,y，z += layer * 10）
-   *  - 分拣器只连接同层建筑（cross_z = 0）
-   *  - 非 Lab 生产建筑的 inputObjIdx 指向地基（foundation, z=-10）
+   *  - 只克隆生产建筑、分拣器、电力感应塔（不克隆传送带、喷涂机、Lab）
+   *  - 传送带只在 z=0 层，高层分拣器直接引用 z=0 传送带节点
+   *  - 非 Lab 生产建筑 / 电力感应塔的 inputObjIdx 指向地基（foundation, z=-10）
    *  - 研究站（Lab）不参与堆叠（已有自身 maxLabLayers 机制），克隆时跳过
    *  - 地基只生成 1 个，所有层共用
    */
@@ -2131,19 +2131,25 @@ class Blueprint {
     // 传送带 itemIds: 2001(MK.I), 2002(MK.II), 2003(MK.III)
     const beltItemIds = new Set([2001, 2002, 2003]);
 
-    // 过滤出需要克隆的建筑（排除 Lab 及其关联的分拣器）
-    // Lab 的分拣器通过 inputObjIdx/outputObjIdx 指向 Lab，也需要排除
+    // 过滤出需要克隆的建筑
+    // 排除项：Lab 及其分拣器、传送带、喷涂机
+    // 传送带只在 z=0 层，高层分拣器通过 outputObjIdx/inputObjIdx 直接引用 z=0 传送带节点
     const labIndices = new Set();
     for (const b of baseBuildings) {
       if (labItemIds.has(b.itemId)) {
         labIndices.add(b.index);
       }
     }
+    const sprayCoaterItemId = buildingMap.sprayCoater.itemId; // 2313
     const cloneableBuildings = baseBuildings.filter((b) => {
       // 排除 Lab 自身
       if (labItemIds.has(b.itemId)) return false;
       // 排除连接到 Lab 的分拣器（inputObjIdx 或 outputObjIdx 指向 Lab）
       if (labIndices.has(b.inputObjIdx) || labIndices.has(b.outputObjIdx)) return false;
+      // 排除传送带（只在 z=0 层，高层分拣器直接引用 z=0 传送带节点）
+      if (beltItemIds.has(b.itemId)) return false;
+      // 排除喷涂机（依附传送带，传送带不克隆则喷涂机也不克隆）
+      if (b.itemId === sprayCoaterItemId) return false;
       return true;
     });
 
@@ -2211,14 +2217,9 @@ class Blueprint {
         }
 
         // --- 处理 z=0 层 inputObjIdx === -1 的建筑在克隆层的指向 ---
+        // 传送带/喷涂机已被排除，此处只剩生产建筑、电力感应塔等
         if (base.inputObjIdx === -1) {
-          if (beltItemIds.has(base.itemId)) {
-            // 传送带：保持 inputObjIdx = -1
-            clone.inputObjIdx = -1;
-          } else {
-            // 生产建筑、电力感应塔等：inputObjIdx 指向地基
-            clone.inputObjIdx = foundationIndex;
-          }
+          clone.inputObjIdx = foundationIndex;
         }
 
         this.buildings.push(clone);
