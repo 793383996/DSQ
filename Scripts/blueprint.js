@@ -888,6 +888,13 @@ class Blueprint {
         }
       }
     }
+    // 修复：中间产物多余产能传送带(outputData为空)且无喷涂机时，
+    // 最后一个节点的outputObjIdx仍指向buildingIndex+2，会错误连接到下一个物品的传送带，
+    // 导致N状跨物品粘连。此处将其终结为-1。
+    if (direction > 0 && outputData.length === 0 && !needSprayCoater && nodeNum > 0) {
+      this.buildings[this.buildings.length - 1].outputObjIdx = -1;
+      this.buildings[this.buildings.length - 1].outputToSlot = 0;
+    }
     if (direction < 0) {
       // let outputObjIdx = this.buildingIndex
       if (needSprayCoater) {
@@ -957,6 +964,12 @@ class Blueprint {
         sprayYaw = [180, 180];
       }
       this.buildings.push(this.newSprayCoater(sprayCoaterOffset, sprayYaw));
+    }
+
+    // 修复：更新占地区域X坐标，防止下一条传送带粘连
+    // 每条传送带占据1列X坐标，更新x2确保下条传送带从新列开始
+    if (buildingX > 0 && this.occupiedArea.length > 0) {
+      this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
     }
   }
 
