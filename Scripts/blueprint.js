@@ -2372,30 +2372,13 @@ class Blueprint {
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
 
-     // 堆叠模式：放大rate × stackLayers
-      // num不缩减，itemSummary.rate反映完整60个设备的产能
-      // 需要在传送带和分拣器中体现这个产能
-      const stackLayers = this.config.stackLayers || 1;
-      if (stackLayers > 1) {
-        for (let key in itemSummary) {
-          itemSummary[key].rate *= stackLayers;
-          if (itemSummary[key].inputRate !== undefined) {
-            itemSummary[key].inputRate *= stackLayers;
-          }
-        }
-        for (let itemName in this.sorters) {
-          if (this.sorters[itemName].output) {
-            for (let s of this.sorters[itemName].output) {
-              s.rate *= stackLayers;
-            }
-          }
-          if (this.sorters[itemName].input) {
-            for (let s of this.sorters[itemName].input) {
-              s.rate *= stackLayers;
-            }
-          }
-        }
-      }
+    // 堆叠模式：传送带按单层 rate 设计，克隆后各层共享 z=0 传送带网络
+    // 注意：不再放大 rate，因为：
+    // 1. 堆叠后所有层的产物都汇聚到 z=0 的传送带
+    // 2. z=0 传送带只需要支撑单层总产能，不需要 ×stackLayers
+    // 3. 克隆时每个设备会被复制 stackLayers 份，但传送带网络只在 z=0
+    const stackLayers = this.config.stackLayers || 1;
+    // 不再放大 rate，保持单层原始 rate
 
     this.conveyorStartOffsetX =
       this.occupiedArea[this.occupiedArea.length - 1].x2;
