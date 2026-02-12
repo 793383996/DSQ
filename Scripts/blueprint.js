@@ -2190,14 +2190,12 @@ class Blueprint {
         }
 
         // index引用重映射
-        // 所有克隆体的outputObjIdx指向z=0的传送带（不通过indexMap）
-        // 这样4层都连接到同一套传送带网络
-        if (indexMap.has(base.outputObjIdx)) {
-          clone.outputObjIdx = indexMap.get(base.outputObjIdx);
-        } else {
-          clone.outputObjIdx = base.outputObjIdx;
-        }
+        // 修复：所有克隆体的outputObjIdx都保持原值（指向z=0的分拣器）
+        // 这样所有层的设备都连接到z=0的分拣器，再连接到z=0的传送带网络
+        // 避免克隆设备outputObjIdx指向克隆分拣器导致的连接异常
+        clone.outputObjIdx = base.outputObjIdx;
 
+        // inputObjIdx需要重映射（连接到同层克隆分拣器）
         if (indexMap.has(base.inputObjIdx)) {
           clone.inputObjIdx = indexMap.get(base.inputObjIdx);
         } else {
