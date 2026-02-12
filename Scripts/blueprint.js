@@ -2605,7 +2605,7 @@ class Blueprint {
 
             // 当前传送带连接分拣器达到上限，连接下一个传送带
             // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
-            if (doneSorterNum % sortersPerNode === 0 || doneSorterNum === 0) {
+            if ((doneSorterNum + 1) % sortersPerNode === 0 || doneSorterNum === 0) {
               outputData.push([this.sorters[itemName].input[j].index]);
             } else {
               outputData[outputData.length - 1].push(
