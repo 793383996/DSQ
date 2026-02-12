@@ -2107,17 +2107,24 @@ class Blueprint {
     const baseBuildings = this.buildings.slice();
     const baseCount = baseBuildings.length;
 
-    // --- 2. 生成地基（所有层共用）---
-    const foundationBuilding = this.getBuildingTemplate();
-    foundationBuilding.itemId = 1131;
-    foundationBuilding.modelIndex = 37;
-    foundationBuilding.localOffset = [
-      { x: 0, y: 0, z: -zStep },
-      { x: 0, y: 0, z: -zStep },
-    ];
-    foundationBuilding.inputToSlot = 1;
-    foundationBuilding.parameters = null;
-    this.buildings.push(foundationBuilding);
+    // --- 2. 生成地基（每层独立地基）---
+    // 每层设备都需要连接到该层对应的地基
+    // 注意：地基在 baseBuildings 之后生成，所以第一个地基的 index = baseCount + 1
+    // 后续地基按顺序递增：baseCount+1, baseCount+2, baseCount+3, baseCount+4
+    const foundationStartIndex = baseCount + 1;
+    for (let layer = 0; layer < stackLayers; layer++) {
+      const foundationZ = (layer - 1) * zStep;  // z=-10, 0, 10, 20
+      const foundationBuilding = this.getBuildingTemplate();
+      foundationBuilding.itemId = 1131;
+      foundationBuilding.modelIndex = 37;
+      foundationBuilding.localOffset = [
+        { x: 0, y: 0, z: foundationZ },
+        { x: 0, y: 0, z: foundationZ },
+      ];
+      foundationBuilding.inputToSlot = 1;
+      foundationBuilding.parameters = null;
+      this.buildings.push(foundationBuilding);
+    }
 
     // --- 3. 识别需跳过的建筑类型 ---
     const labItemIds = new Set([
@@ -2190,15 +2197,26 @@ class Blueprint {
         }
 
         // index引用重映射
-        // 所有克隆体的outputObjIdx指向z=0的传送带（不通过indexMap）
-        // 这样4层都连接到同一套传送带网络
+        // outputObjIdx：所有克隆体的outputObjIdx指向z=0的传送带（不通过indexMap）
+        //           这样4层都连接到同一套传送带网络
+        // inputObjIdx：设备的inputObjIdx需要指向该层对应的地基
         if (indexMap.has(base.outputObjIdx)) {
           clone.outputObjIdx = indexMap.get(base.outputObjIdx);
         } else {
           clone.outputObjIdx = base.outputObjIdx;
         }
 
-        if (indexMap.has(base.inputObjIdx)) {
+        // 设备（生产建筑）的inputObjIdx指向该层对应的地基
+        // 分拣器的inputObjIdx保持指向同层设备
+        if (base.inputObjIdx === -1) {
+          // 如果base设备没有连接地基（inputObjIdx = -1），则指向该层对应的地基
+          // 地基索引计算：foundationStartIndex + layer
+          // layer=1 → z=10 设备 → z=0 地基 (foundationStartIndex + 1)
+          // layer=2 → z=20 设备 → z=10 地基 (foundationStartIndex + 2)
+          // layer=3 → z=30 设备 → z=20 地基 (foundationStartIndex + 3)
+          clone.inputObjIdx = foundationStartIndex + layer;
+        } else if (indexMap.has(base.inputObjIdx)) {
+          // 分拣器等指向同层克隆设备
           clone.inputObjIdx = indexMap.get(base.inputObjIdx);
         } else {
           clone.inputObjIdx = base.inputObjIdx;
