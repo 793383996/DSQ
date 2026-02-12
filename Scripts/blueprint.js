@@ -2372,13 +2372,32 @@ class Blueprint {
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
 
-    // 堆叠模式：传送带按单层 rate 设计，克隆后各层共享 z=0 传送带网络
-    // 注意：不再放大 rate，因为：
-    // 1. 堆叠后所有层的产物都汇聚到 z=0 的传送带
-    // 2. z=0 传送带只需要支撑单层总产能，不需要 ×stackLayers
-    // 3. 克隆时每个设备会被复制 stackLayers 份，但传送带网络只在 z=0
+    // 堆叠模式：传送带需要支撑所有堆叠层的总产能
+    // z=0 传送带汇聚所有层的产物，需要按总产能设计
+    // 例如：4层堆叠，每层15设备 → 总共60设备 → 传送带按60设备产能设计
     const stackLayers = this.config.stackLayers || 1;
-    // 不再放大 rate，保持单层原始 rate
+    if (stackLayers > 1) {
+      for (let key in itemSummary) {
+        itemSummary[key].rate *= stackLayers;
+        if (itemSummary[key].inputRate !== undefined) {
+          itemSummary[key].inputRate *= stackLayers;
+        }
+      }
+      // 分拣器 rate 也需要放大，与 item.rate 匹配
+      // 这样传送带容量设计才能正确
+      for (let itemName in this.sorters) {
+        if (this.sorters[itemName].output) {
+          for (let s of this.sorters[itemName].output) {
+            s.rate *= stackLayers;
+          }
+        }
+        if (this.sorters[itemName].input) {
+          for (let s of this.sorters[itemName].input) {
+            s.rate *= stackLayers;
+          }
+        }
+      }
+    }
 
     this.conveyorStartOffsetX =
       this.occupiedArea[this.occupiedArea.length - 1].x2;
@@ -2438,10 +2457,6 @@ class Blueprint {
         if (item.fromBuildingNum !== 0) {
           for (let j = this.sorters[itemName].output.length - 1; j >= 0; j--) {
             if (this.sorters[itemName].output[j].rate - inputRate > zero) {
-              // if ((j>0)&&(i+1 >= Math.ceil(item.rate/maxTransportSpeed))){
-              //     // 有分拣器还未连接 并且 不会再生成新的传送带了
-              //     // 这种情况就是建筑非整数时计算误差导致的，继续处理未连接的分拣器就可以了
-
               // 当前带接受运力不能满足分拣器，则该分拣器连接下一个带上的节点
               break;
             }
