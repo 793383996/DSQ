@@ -2047,19 +2047,30 @@ class Blueprint {
 
   init() {
     this.mapRecipeID();
-    // 堆叠模式：先完整生成设备，再在cloneToStackLayers()中分散摆放
-    // num不缩减，保持完整产能：60个设备 → 4层 × 15个
-    // 堆叠模式下init()不缩减num，generateConveyorBelts()也不放大rate
-    // 核心：先完整生成，再分散摆放
-    // if (this.config.stackLayers > 1) {
-    //   for (let subRecipe of this.recipe.subRecipes) {
-    //     if (subRecipe.building) {
-    //       subRecipe.building.num = Math.ceil(
-    //         subRecipe.building.num / this.config.stackLayers
-    //       );
-    //     }
-    //   }
-    // }
+    // 堆叠模式：根据堆叠层数缩减num
+    // 例如：60个设备，4层堆叠 → 每层15个设备
+    // init(): num=ceil(60/4)=15
+    // generateBuildings(): 15个设备在z=0
+    // generateConveyorBelts(): rate×4放大（支撑4层产能）
+    // cloneToStackLayers(): 复制15个设备到3层 → 总共60个设备
+    // 核心：4层并行工作，总产能=60min
+    //
+    // 重要：研究站（Lab）特殊处理
+    // - Lab 不参与克隆（布局复杂，暂不支持）
+    // - Lab.num 不缩减，保持完整数量在 z=0 层工作
+    // - 这样 Lab 的产能不会损失
+    if (this.config.stackLayers > 1) {
+      for (let subRecipe of this.recipe.subRecipes) {
+        if (subRecipe.building) {
+          // 排除 Lab（不缩减num，保持完整产能）
+          if (buildingMap[subRecipe.building.name].category !== productionCategory.lab) {
+            subRecipe.building.num = Math.ceil(
+              subRecipe.building.num / this.config.stackLayers
+            );
+          }
+        }
+      }
+    }
     this.calculateBlueprintArea();
     if (this.config.onlyConveyorBeltMk3Downgrade) {
       buildingMap.conveyorBeltMK3.transportSpeed = 28;
@@ -2074,28 +2085,29 @@ class Blueprint {
    * 将 z=0 层的全部建筑克隆到 z=10, z=20, ... 层，实现建筑垂直堆叠。
    * 必须在 generateBuildings + generateConveyorBelts + generateConveyorBeltsForSprayCoater 之后调用。
    *
-   * 克隆规则：
-   *  - 只克隆生产建筑、分拣器、电力感应塔（不克隆传送带、喷涂机、Lab）
-   *  - 传送带只在 z=0 层，高层分拣器直接引用 z=0 传送带节点
-   *  - 非 Lab 生产建筑 / 电力感应塔的 inputObjIdx 指向地基（foundation, z=-10）
-   *  - 研究站（Lab）不参与堆叠（已有自身 maxLabLayers 机制），克隆时跳过
-   *  - 地基只生成 1 个，所有层共用
+   * 方案A - 正确的堆叠逻辑：
+   * 1. init(): num=60（完整产能）
+   * 2. generateBuildings(): 15个设备在z=0布局
+   * 3. generateConveyorBelts(): 为60个设备生成传送带网络（rate × stackLayers）
+   * 4. cloneToStackLayers(): 
+   *    - 克隆设备和分拣器到z=10,20,30
+   *    - 所有层共享z=0的传送带网络
+   *    - 总产能 = 60min
+   *
+   * 核心：4层并行工作，所有层共享z=0传送带网络
    */
   cloneToStackLayers() {
     if (!this.config.stackLayers || this.config.stackLayers <= 1) {
       return;
     }
     const stackLayers = this.config.stackLayers;
-    const zStep = 10; // 每层间距
+    const zStep = 10;
 
-    // --- 1. 记录 z=0 层的全部建筑 ---
-    const baseBuildings = this.buildings.slice(); // 浅拷贝列表
+    // --- 1. 记录z=0层的全部建筑 ---
+    const baseBuildings = this.buildings.slice();
     const baseCount = baseBuildings.length;
-    // z=0 层 index 范围：baseBuildings[0].index ~ baseBuildings[baseCount-1].index
-    const baseMinIndex = baseBuildings[0].index;
-    const baseMaxIndex = baseBuildings[baseCount - 1].index;
 
-    // --- 2. 生成地基（foundation, z=-10），所有层共用 ---
+    // --- 2. 生成地基（所有层共用）---
     const foundationBuilding = this.getBuildingTemplate();
     foundationBuilding.itemId = 1131;
     foundationBuilding.modelIndex = 37;
@@ -2106,45 +2118,36 @@ class Blueprint {
     foundationBuilding.inputToSlot = 1;
     foundationBuilding.parameters = null;
     this.buildings.push(foundationBuilding);
-    const foundationIndex = foundationBuilding.index;
 
     // --- 3. 识别需跳过的建筑类型 ---
-    // 研究站（Lab）不参与建筑堆叠，已有自身 maxLabLayers 机制
     const labItemIds = new Set([
-      buildingMap.lab.itemId,           // 2901
-      buildingMap["自演化研究站"].itemId, // 2902
+      buildingMap.lab.itemId,
+      buildingMap["自演化研究站"].itemId,
     ]);
-    // 传送带 itemIds: 2001(MK.I), 2002(MK.II), 2003(MK.III)
     const beltItemIds = new Set([2001, 2002, 2003]);
+    const sprayCoaterItemId = buildingMap.sprayCoater.itemId;
 
-    // 过滤出需要克隆的建筑
-    // 排除项：Lab 及其分拣器、传送带、喷涂机
-    // 传送带只在 z=0 层，高层分拣器通过 outputObjIdx/inputObjIdx 直接引用 z=0 传送带节点
     const labIndices = new Set();
     for (const b of baseBuildings) {
       if (labItemIds.has(b.itemId)) {
         labIndices.add(b.index);
       }
     }
-    const sprayCoaterItemId = buildingMap.sprayCoater.itemId; // 2313
+
+    // 过滤出需要克隆的建筑（排除Lab、传送带、喷涂机）
     const cloneableBuildings = baseBuildings.filter((b) => {
-      // 排除 Lab 自身
       if (labItemIds.has(b.itemId)) return false;
-      // 排除连接到 Lab 的分拣器（inputObjIdx 或 outputObjIdx 指向 Lab）
       if (labIndices.has(b.inputObjIdx) || labIndices.has(b.outputObjIdx)) return false;
-      // 排除传送带（只在 z=0 层，高层分拣器直接引用 z=0 传送带节点）
       if (beltItemIds.has(b.itemId)) return false;
-      // 排除喷涂机（依附传送带，传送带不克隆则喷涂机也不克隆）
       if (b.itemId === sprayCoaterItemId) return false;
       return true;
     });
 
-    // --- 4. 逐层克隆（使用映射表精确重映射 index） ---
+    // --- 4. 逐层克隆 ---
     for (let layer = 1; layer < stackLayers; layer++) {
       const zOffset = layer * zStep;
 
-      // 4a. 预分配 index 映射表：baseIndex → cloneIndex
-      // 因为跳过了 Lab/Lab-sorter，不能用简单 offset，必须用映射表
+      // 预分配index映射表
       const indexMap = new Map();
       let nextIndex = this.buildingIndex + 1;
       for (const base of cloneableBuildings) {
@@ -2152,10 +2155,9 @@ class Blueprint {
         nextIndex++;
       }
 
-      // 4b. 创建克隆体
+      // 创建克隆体
       for (const base of cloneableBuildings) {
         const clone = this.getBuildingTemplate();
-        // clone.index 应等于 indexMap.get(base.index)
 
         // 复制基础属性
         clone.itemId = base.itemId;
@@ -2170,7 +2172,7 @@ class Blueprint {
         clone.outputOffset = base.outputOffset;
         clone.inputOffset = base.inputOffset;
 
-        // 深拷贝 localOffset 并应用 z 偏移
+        // 应用z偏移
         clone.localOffset = base.localOffset
           ? base.localOffset.map((o) => ({
               x: o.x,
@@ -2179,33 +2181,27 @@ class Blueprint {
             }))
           : null;
 
-        // 深拷贝 yaw
         clone.yaw = base.yaw ? base.yaw.slice() : [0, 0];
 
-        // 深拷贝 parameters
         if (base.parameters !== null && base.parameters !== undefined) {
           clone.parameters = JSON.parse(JSON.stringify(base.parameters));
         } else {
           clone.parameters = null;
         }
 
-        // 堆叠模式：index引用逻辑
-        // 设备和分拣器都分散到4层，但传送带只在z=0层
-        // 因此：
-        // - 设备的outputObjIdx：指向z=0传送带（不通过indexMap）
-        // - 设备的inputObjIdx：通过indexMap重映射，指向同层分拣器
-        // - 分拣器的outputObjIdx：指向z=0传送带（不通过indexMap）
-        // - 分拣器的inputObjIdx：通过indexMap重映射，指向同层设备
+        // index引用重映射
+        // 所有克隆体的outputObjIdx指向z=0的传送带（不通过indexMap）
+        // 这样4层都连接到同一套传送带网络
         if (indexMap.has(base.outputObjIdx)) {
           clone.outputObjIdx = indexMap.get(base.outputObjIdx);
         } else {
-          clone.outputObjIdx = base.outputObjIdx; // 指向z=0传送带
+          clone.outputObjIdx = base.outputObjIdx;
         }
 
         if (indexMap.has(base.inputObjIdx)) {
           clone.inputObjIdx = indexMap.get(base.inputObjIdx);
         } else {
-          clone.inputObjIdx = base.inputObjIdx; // -1 或指向未克隆建筑
+          clone.inputObjIdx = base.inputObjIdx;
         }
 
         this.buildings.push(clone);
@@ -2358,30 +2354,30 @@ class Blueprint {
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
 
-    // 堆叠模式：移除rate放大逻辑
-    // init()不再缩减num，itemSummary.rate已反映完整产能
-    // 传送带只在z=0层，高层分拣器直接引用z=0传送带节点
-    // const stackLayers = this.config.stackLayers || 1;
-    // if (stackLayers > 1) {
-    //   for (let key in itemSummary) {
-    //     itemSummary[key].rate *= stackLayers;
-    //     if (itemSummary[key].inputRate !== undefined) {
-    //       itemSummary[key].inputRate *= stackLayers;
-    //     }
-    //   }
-    //   for (let itemName in this.sorters) {
-    //     if (this.sorters[itemName].output) {
-    //       for (let s of this.sorters[itemName].output) {
-    //         s.rate *= stackLayers;
-    //       }
-    //     }
-    //     if (this.sorters[itemName].input) {
-    //       for (let s of this.sorters[itemName].input) {
-    //         s.rate *= stackLayers;
-    //       }
-    //     }
-    //   }
-    // }
+     // 堆叠模式：放大rate × stackLayers
+      // num不缩减，itemSummary.rate反映完整60个设备的产能
+      // 需要在传送带和分拣器中体现这个产能
+      const stackLayers = this.config.stackLayers || 1;
+      if (stackLayers > 1) {
+        for (let key in itemSummary) {
+          itemSummary[key].rate *= stackLayers;
+          if (itemSummary[key].inputRate !== undefined) {
+            itemSummary[key].inputRate *= stackLayers;
+          }
+        }
+        for (let itemName in this.sorters) {
+          if (this.sorters[itemName].output) {
+            for (let s of this.sorters[itemName].output) {
+              s.rate *= stackLayers;
+            }
+          }
+          if (this.sorters[itemName].input) {
+            for (let s of this.sorters[itemName].input) {
+              s.rate *= stackLayers;
+            }
+          }
+        }
+      }
 
     this.conveyorStartOffsetX =
       this.occupiedArea[this.occupiedArea.length - 1].x2;
