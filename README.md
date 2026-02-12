@@ -1,3 +1,5 @@
+运行 npm install && npm run dev 启动开发服务器。
+
 # 戴森球计划量产量化计算器工具
 <a href="https://www.gnu.org/licenses/gpl-3.0.html"><img src="https://img.shields.io/badge/license-GPLV3-blue" alt="license GPLV3"></a>
 - 支持多配方
@@ -5,9 +7,9 @@
 - 支持多需求叠加
 - 支持把计算结果进行保存（多方案）
 - 开源，纯前端，只需要会点Javascript就能修改代码
-- 常见问题可以进入<a href="https://github.com/122474363/DSQ/wiki">Wiki帮助</a>寻找答案
-- <a href="https://github.com/122474363/DSQ/issues">Issues</a>中的待办事项，有能力有时间的小伙伴也可以进行修复。
-- 如果提交PR长时间未处理，可以QQ艾特122474363进行合并。
+- 常见问题可以进入<a href="https://github.com/793383996/DSQ/wiki">Wiki帮助</a>寻找答案
+- <a href="https://github.com/793383996/DSQ/issues">Issues</a>中的待办事项，有能力有时间的小伙伴也可以进行修复。
+- 如果提交PR长时间未处理，可以QQ艾特793383996进行合并。
 - 戴森球计划工具交流讨论QQ群：<a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=UzzPv3ic7Fk9EDCyHo_4gkWQLR3WEA9Y&authKey=ysjOY0JQOSpT2ZCLkttSzI73sXyzu%2FXEqJXMmY2O645LpO6GOD5lRBrjdalqpO5k&noverify=0&group_code=53309723" target="_blank">53309723</a>
 
 ## 部署方式
