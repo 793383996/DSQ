@@ -11,6 +11,10 @@
 | `cocoMessage` 拦截 | ✅ | `bridge.ts` - 重定向至 `cocoMessageProxy` |
 | ES Module 导出修复 | ✅ | `legacy/data.js`, `legacy/blueprint.js` - 添加 export |
 | 动态模块加载 | ✅ | `loadLegacyModules()` - 延迟加载确保初始化顺序 |
+| 机器设置同步 | ✅ | `legacyUpdateMachineSettings()` - 设备类型/增产剂配置 |
+| 速度设置同步 | ✅ | `legacyUpdateSpeedSettings()` - 采矿机/分馏塔等速度 |
+| 物流设置同步 | ✅ | `legacyUpdateLogisticsSettings()` - 传送带类型/堆叠 |
+| 蓝图配置同步 | ✅ | `legacyUpdateConfig()` - 蓝图生成参数 |
 
 ### ✅ 第二阶段：状态中心化 (Pinia Store) - 已完成
 
@@ -21,122 +25,120 @@
 | `machineSettings` 状态 | ✅ | `stores/blueprint.ts` - 替代 `settings` |
 | 持久化策略 | ✅ | `SETTINGS_STORAGE_KEY = 'machine_settings20240202'` |
 | 状态同步机制 | ✅ | `syncStateToLegacy()` - 双向同步 |
+| 计算状态管理 | ✅ | `isCalculating`, `resultItems`, `calculationError` |
 
 ### ✅ 第三阶段：UI 组件化拆分 - 已完成
 
 | 组件 | 状态 | 功能 |
 |------|------|------|
 | `ControlPanel.vue` | ✅ | 产量输入、设备数输入、添加按钮、参数设置入口 |
-| `ConfigPanel.vue` | ✅ | 制作台/熔炉/化工厂/增产剂设置面板 |
+| `ConfigPanel.vue` | ✅ | 设备类型/增产剂/速度产量/物流配置/蓝图配置/显示设置 |
 | `ResultTable.vue` | ✅ | 计算结果展示、添加需求、排除/恢复操作 |
-| `AddItemDialog.vue` | ✅ | 添加需求对话框 |
+| `AddItemDialog.vue` | ✅ | 添加需求对话框，支持搜索和分类 |
 | `Toast.vue` | ✅ | 消息提示组件 |
+| `BlueprintGenerator.vue` | ✅ | 蓝图生成组件 |
 | `useIconProvider.ts` | ✅ | 图标加载与缓存，替代 jQuery `f_initIcons` |
+| `useToast.ts` | ✅ | Toast 代理，替代 `cocoMessage.js` |
 
-### ⏳ 第四阶段：指令化与事件解耦 - 部分完成
+### ✅ 第四阶段：指令化与事件解耦 - 已完成
 
 | 任务 | 状态 | 备注 |
 |------|------|------|
 | `onclick` → `@click` | ✅ | 所有组件已使用 Vue 事件绑定 |
 | `oncontextmenu` → `@contextmenu.prevent` | ✅ | ResultTable 已实现排除功能 |
-| Tooltip 组件化 | ⏳ | 待引入 Vue Tooltip 替代 `jquery.tips.js` |
-| `v-memo` 性能优化 | ⏳ | 待对 ResultTable 频繁更新场景优化 |
+| 表单双向绑定 | ✅ | `v-model` 替代 DOM 操作 |
+| 条件渲染 | ✅ | `v-if` 控制动态显示 |
+
+### ⏳ 第五阶段：遗留代码深度解耦 - 待进行
+
+| 任务 | 状态 | 优先级 | 备注 |
+|------|------|--------|------|
+| 移除 jQuery 依赖 | ⏳ | 高 | data.js 仍依赖 `$` |
+| 配方数据 JSON 化 | ⏳ | 高 | data.js → data.json |
+| 计算逻辑服务化 | ⏳ | 高 | loadNumber → CalculationService |
+| Tooltip 组件化 | ⏳ | 中 | 替代 `jquery.tips.js` |
+| `v-memo` 性能优化 | ⏳ | 中 | ResultTable 频繁更新场景 |
 
 ---
 
-## 1. 目录结构规范
-
-重构后的代码应遵循以下标准现代前端结构：
+## 1. 目录结构规范 (当前状态)
 
 ```text
 src/
-├── core/                # 遗留逻辑层 (黑盒)
-│   ├── legacy/          # 存放原 data.js, blueprint.js, pako.js
-│   └── bridge.ts        # 核心：遗留代码与 Vue 3 的适配层
-├── stores/              # 状态管理层
-│   └── blueprint.ts     # 托管 xqs, ig_names, settings 等全局变量
-├── components/          # UI 组件层
-│   ├── ControlPanel/    # 顶部控制栏组件 ✅
-│   ├── ConfigPanel/     # 设置抽屉组件 ✅
-│   ├── ResultTable/     # 核心计算表格组件 ✅
-│   ├── AddItemDialog/   # 添加需求对话框 ✅
-│   ├── Toast/           # 消息提示组件 ✅
-│   ├── BlueprintGenerator/ # 蓝图生成组件
-│   └── MoreSetting/     # 高级设置组件
-├── composables/         # 组合式函数
-│   ├── useIconProvider.ts # 图标提供者 ✅
-│   └── useToast.ts      # Toast 代理 ✅
-├── App.vue              # 根组件：负责生命周期管理 ✅
-└── main.ts              # 入口：挂载全局插件 ✅
-
+├── core/                      # 遗留逻辑层 (黑盒)
+│   ├── legacy/                # 存放原 data.js, blueprint.js, pako.js
+│   │   ├── data.js            # 配方数据 + 计算逻辑 (仍依赖 jQuery)
+│   │   ├── data.d.ts          # 类型声明
+│   │   ├── blueprint.js       # 蓝图生成逻辑
+│   │   ├── blueprint.d.ts     # 类型声明
+│   │   └── pako.js            # Gzip 压缩库
+│   └── bridge.ts              # 核心：遗留代码与 Vue 3 的适配层 ✅
+├── stores/                    # 状态管理层
+│   └── blueprint.ts           # 托管 demandList, excludeList, settings ✅
+├── components/                # UI 组件层
+│   ├── ControlPanel/          # 顶部控制栏组件 ✅
+│   ├── ConfigPanel/           # 参数设置面板 ✅
+│   ├── ResultTable/           # 核心计算表格组件 ✅
+│   ├── AddItemDialog/         # 添加需求对话框 ✅
+│   ├── Toast/                 # 消息提示组件 ✅
+│   └── BlueprintGenerator/    # 蓝图生成组件 ✅
+├── composables/               # 组合式函数
+│   ├── useIconProvider.ts     # 图标提供者 ✅
+│   └── useToast.ts            # Toast 代理 ✅
+├── App.vue                    # 根组件：负责生命周期管理 ✅
+└── main.ts                    # 入口：挂载全局插件 ✅
 ```
 
 ---
 
-## 2. 实施路线图与技术细节
+## 2. 已完成的核心接口
 
-### 第一阶段：构建"遗留代码适配器" (Bridge Pattern) ✅ 已完成
+### 2.1 Bridge 适配器接口 (`src/core/bridge.ts`)
 
-**目标**：在 TypeScript 环境中安全调用遗留全局函数，并消除对 `window` 对象的直接操作。
+```typescript
+// 状态同步
+export function syncStateToLegacy(state: StateSyncMap): void
+export function clearLegacyState(): void
 
-* **详细步骤**：
-1. ✅ 在 `bridge.ts` 中定义遗留函数的类型声明。
-2. ✅ 封装计算触发器：由于 `loadNumber()` 涉及递归计算，封装一个 `runCalculation` 函数，该函数负责：
-   * 同步 `Pinia` 状态到遗留变量。
-   * 执行 `xh_list = []; out_list = [];` 等清空操作。
-   * 调用核心算法并捕获错误。
+// 计算触发
+export async function runCalculation(): Promise<any>
 
-* **必要的细节**：
-* ✅ **拦截 `cocoMessage`**：在适配器中重定向 `window.cocoMessage` 到 Vue 3 的 Toast 代理，防止遗留代码崩溃导致 UI 挂死。
-* ✅ **ES Module 导出**：为 `data.js` 和 `blueprint.js` 添加 `export` 语句，解决 `"type": "module"` 兼容问题。
-* ✅ **动态加载**：`loadLegacyModules()` 确保初始化顺序正确。
+// 配置同步
+export function legacyUpdateMachineSettings(config: MachineConfigSettings): void
+export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void
+export function legacyUpdateLogisticsSettings(logistics: LogisticsSettings): void
+export function legacyUpdateConfig(config: Partial<BlueprintConfig>): void
 
-### 第二阶段：状态中心化 (Pinia Store 设计) ✅ 已完成
+// 数据访问
+export function getSelectableItems(): string[]
+export function getSelectableItemsWithIcons(): SelectableItemsResult
+export function getIconData(): { [key: string]: string }
 
-**目标**：将 `index.html` 中的全局变量 迁移为响应式状态。
+// 数据加载状态
+export function isLegacyDataLoaded(): boolean
+export function waitForLegacyData(timeout: number): Promise<boolean>
+```
 
-* **状态映射表**：
-  * ✅ `xqs` → `store.demandList` (量产需求列表)。
-  * ✅ `ig_names` → `store.excludeList` (排除列表)。
-  * ✅ `settings` → `store.machineSettings` (设备参数)。
+### 2.2 Pinia Store 接口 (`src/stores/blueprint.ts`)
 
-* **必要的细节**：
-* ✅ **持久化策略**：实现 `SETTINGS_STORAGE_KEY = 'machine_settings20240202'` 版本控制。
-* ✅ **双向同步**：`syncStateToLegacy()` 确保 Pinia 状态与遗留变量同步。
+```typescript
+// 状态
+const demandList = ref<DemandItem[]>([])
+const excludeList = ref<string[]>([])
+const machineSettings = ref<MachineSettings>({})
+const resultItems = ref<any[]>([])
+const isCalculating = ref(false)
+const calculationError = ref<string | null>(null)
 
-### 第三阶段：UI 组件化拆分 (SFC Transformation) ✅ 已完成
-
-**目标**：将 1000+ 行的 `index.html` 拆分为原子组件。
-
-1. **✅ `ControlPanel.vue` (产量控制)**：
-   * 迁移 `txtnumber` 的输入逻辑。
-   * 使用 `v-model` 替代 `oninput` 样式调整逻辑。
-
-2. **✅ `ConfigPanel.vue` (设置面板)**：
-   * 将原 `MoreSetting` 中的各种 `select` 选项（Mk.I, Mk.II 等）封装为响应式配置项。
-   * 移除 `document.getElementById('csd').value` 操作，改为监听 `store` 状态变更。
-
-3. **✅ `ResultTable.vue` (结果展示)**：
-   * 使用 Vue 的 `v-for` 循环渲染 `items` 数组。
-   * 图标处理：利用 `useIconProvider` 统一处理 Base64 图标，移除 jQuery 的 `f_initIcons`。
-
-4. **✅ 其他组件**：
-   * `AddItemDialog.vue` - 添加需求对话框
-   * `Toast.vue` - 消息提示组件
-   * `BlueprintGenerator.vue` - 蓝图生成组件
-   * `MoreSetting.vue` - 高级设置组件
-
-### 第四阶段：指令化与事件解耦 ⏳ 部分完成
-
-**目标**：彻底移除内联脚本。
-
-* **事件映射**：
-  * ✅ `onclick="f_add()"` → `@click="handleAddItem"`
-  * ✅ `oncontextmenu="f_remove_ig(...)"` → `@contextmenu.prevent="removeExcludeItem"`
-
-* **待完成**：
-  * ⏳ **Tips 组件化**：原项目依赖 `jquery.tips.js`，需引入 Vue Tooltip 组件。
-  * ⏳ **`v-memo` 性能优化**：对 ResultTable 频繁更新场景优化。
+// Actions
+function addDemand(name: string, num: number): void
+function removeDemand(name: string): void
+function updateDemand(name: string, num: number): void
+function addExclude(name: string): void
+function removeExclude(name: string): void
+function setMachineSetting<K>(key: K, value: MachineSettings[K]): void
+function clearAll(): void
+```
 
 ---
 
@@ -154,21 +156,58 @@ src/
 | **图标加载** | jQuery `f_initIcons()` | `useIconProvider.ts` | ✅ |
 | **状态持久化** | `localStorage` 直接操作 | Pinia + 版本控制 | ✅ |
 | **蓝图生成** | `generateBlueprint()` | 保留原逻辑 + bridge 封装 | ✅ |
+| **设备类型选择** | DOM 直接操作 | `ConfigPanel.vue` + store | ✅ |
+| **增产剂配置** | DOM 直接操作 | `ConfigPanel.vue` + store | ✅ |
+| **速度产量配置** | DOM 直接操作 | `ConfigPanel.vue` + bridge | ✅ |
+| **物流配置** | DOM 直接操作 | `ConfigPanel.vue` + bridge | ✅ |
+| **蓝图配置** | DOM 直接操作 | `ConfigPanel.vue` + bridge | ✅ |
 | **Tooltip 提示** | `jquery.tips.js` | 待引入 Vue Tooltip | ⏳ |
 | **性能优化** | 无 | 待添加 `v-memo` | ⏳ |
 
 ---
 
-## 4. 重构中的黑盒保护清单 (Architect's Check)
+## 4. 下一阶段重构计划
 
-在操作 `index.html` 解耦时，**严禁修改**以下逻辑流向，直至 UI 层稳定：
+### 4.1 移除 jQuery 依赖 (高优先级)
 
-1. **`find(name, normalize_recipe)` 的调用时机**：这是配方查询的核心入口。
-2. **`loadNumber()` 的递归深度**：量产计算的准确性全赖于此。
-3. **蓝图生成的参数构造**：`generateBlueprint()` 函数从 DOM 获取值的逻辑，应先改为从 `store` 获取，但其构造 `outputRecipe` 对象的数据格式必须保持原样。
+**目标**：彻底移除 `data.js` 对 jQuery 的依赖。
+
+**当前问题**：
+- `data.js` 顶部 `import $ from 'jquery'`
+- 部分遗留函数仍使用 `$()` 选择器
+
+**实施方案**：
+1. 审计 `data.js` 中所有 `$()` 调用
+2. 将 DOM 操作迁移至 Vue 组件
+3. 将事件监听迁移至 `@click` 等指令
+4. 移除 jQuery import
+
+### 4.2 配方数据 JSON 化 (高优先级)
+
+**目标**：将 `data.js` 中的配方数据提取为纯 JSON。
+
+**实施方案**：
+1. 提取 `data` 数组为 `data.json`
+2. 创建 `RecipeProvider` 类加载 JSON
+3. 保持 `loadNumber` 逻辑不变，仅替换数据源
+4. 添加 JSON Schema 校验
+
+### 4.3 计算逻辑服务化 (高优先级)
+
+**目标**：将 `loadNumber` 及相关函数封装为独立服务。
+
+**实施方案**：
+1. 创建 `CalculationService` 类
+2. 封装 `xh_list`, `out_list` 为 `CalculationContext`
+3. 提供异步计算接口
+4. 添加计算进度回调
 
 ---
 
 ## 5. 协作 AI 模型指令 (Instruction for Models)
 
-> "你现在的任务是协助进行 UI 层的 SFC 转换。在生成 Vue 组件代码时，请确保所有对 `data.js` 中全局函数的调用都通过 `useLegacyBridge()` 接口进行。禁止尝试优化 `loadNumber` 中的递归算法，仅负责将其输入的 `DOM value` 替换为响应式 `props` 或 `store state`。"
+> "你现在的任务是协助进行遗留代码解耦。在修改 `data.js` 或 `blueprint.js` 时，请确保：
+> 1. 所有对全局变量的访问都通过 `bridge.ts` 提供的接口进行
+> 2. 禁止尝试优化 `loadNumber` 中的递归算法
+> 3. 仅负责将 DOM 操作替换为 Vue 响应式状态
+> 4. 保持蓝图生成的二进制兼容性"

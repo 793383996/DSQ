@@ -152,6 +152,4 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     setError,
     clearAll
   }
-}, {
-  persist: false
 })

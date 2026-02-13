@@ -5,113 +5,505 @@
 * **严禁全局搜索替换**：严禁直接将 `s` 替换为 `outputs`，这会破坏 `loadNumber` 的递归链。
 * **影子运行**：重构后的代码必须支持与旧逻辑并行运行，通过 Baseline 对比验证。
 * **接口隔离**：新 UI 组件只能通过 `RecipeProvider` 接口访问数据，不得触碰底层原始对象。
+* **黑盒保护**：`loadNumber` 递归逻辑视为黑盒，仅允许外围包装，禁止修改核心算法。
 
 ---
 
-## 1. 第一阶段：定义标准语义化接口 (TypeScript 建模)
+## 1. 当前状态分析 (2026-02-13)
+
+### 1.1 文件结构
+
+```text
+src/core/legacy/
+├── data.js          # 配方数据 + 计算逻辑 (仍依赖 jQuery)
+├── data.d.ts        # 类型声明
+```
+
+### 1.2 数据结构 (简写字段)
+
+```javascript
+// 配方数据结构
+{
+  s: [{ name: "产物名", n: 数量 }],    // s: outputs 产物
+  q: [{ name: "原料名", n: 数量 }],    // q: inputs 原料
+  t: 1,                                // t: time 生产时间(秒)
+  m: "制作台",                         // m: machineType 设备类型
+  group: "组件",                       // 分组
+  noExtra: true,                       // 增产剂效果限制
+}
+```
+
+### 1.3 核心函数清单
+
+| 函数名 | 功能 | 状态 |
+|--------|------|------|
+| `loadNumber(name, num)` | 递归计算需求 | ⚠️ 黑盒，禁止修改 |
+| `find(name, normalize_recipe)` | 查找配方 | ⚠️ 黑盒，禁止修改 |
+| `update_all()` | 更新全局状态 | ⚠️ 黑盒，禁止修改 |
+| `f_add()` | 添加需求 | ✅ 已迁移至 Vue |
+| `f_reset()` | 重置状态 | ✅ 已迁移至 Vue |
+| `f_ig()` | 排除物品 | ✅ 已迁移至 Vue |
+| `f_initIcons()` | 初始化图标 | ✅ 已迁移至 useIconProvider |
+
+### 1.4 全局变量清单
+
+| 变量名 | 功能 | 迁移状态 |
+|--------|------|----------|
+| `xqs` | 需求列表 | ✅ → `store.demandList` |
+| `ig_names` | 排除列表 | ✅ → `store.excludeList` |
+| `xh_list` | 消耗列表 | ⏳ 待封装 |
+| `out_list` | 产出列表 | ⏳ 待封装 |
+| `items` | 计算结果 | ⏳ 待封装 |
+| `settings` | 设备设置 | ✅ → `store.machineSettings` |
+| `settings_time` | 速度设置 | ✅ → `bridge.legacyUpdateSpeedSettings` |
+| `settingsLocal` | 配方级设置 | ⏳ 待封装 |
+
+---
+
+## 2. 第一阶段：定义标准语义化接口 (TypeScript 建模)
 
 **目标**：消除 `s, q, n, t, m` 等命名带来的理解成本。
 
-1. **定义核心接口**：
-   创建 `src/core/types/recipe.ts`，定义标准的配方模型。
+### 2.1 核心接口定义
+
+创建 `src/core/types/recipe.ts`：
+
 ```typescript
-export interface IRecipe {
-    id: string;              // 对应原 key
-    name: string;            // 配方显示名称
-    outputs: Record<string, number>; // 对应原 s
-    inputs: Record<string, number>;  // 对应原 q
-    time: number;            // 对应原 t (单位：秒)
-    machineType: string;     // 对应原 m
-    isFluid: boolean;        // 对应原 f
-    // ...其他扩展字段
+/**
+ * 配方产出/需求项
+ */
+export interface IRecipeItem {
+  name: string    // 物品名称
+  n: number       // 数量
 }
 
+/**
+ * 配方定义 (语义化)
+ */
+export interface IRecipe {
+  id: string                      // 配方唯一标识
+  name: string                    // 配方显示名称
+  outputs: IRecipeItem[]          // 产物列表 (原 s)
+  inputs: IRecipeItem[]           // 原料列表 (原 q)
+  time: number                    // 生产时间/秒 (原 t)
+  machineType: string             // 设备类型 (原 m)
+  group?: string                  // 分组
+  noExtra?: boolean | null        // 增产剂效果限制
+}
+
+/**
+ * 配方索引接口
+ */
+export interface IRecipeIndex {
+  byProduct: Map<string, IRecipe[]>    // 按产物索引
+  byInput: Map<string, IRecipe[]>      // 按原料索引
+  byId: Map<string, IRecipe>           // 按 ID 索引
+}
 ```
 
+### 2.2 字段映射表
 
+| 简写 | 语义名 | 类型 | 说明 |
+|------|--------|------|------|
+| `s` | `outputs` | `IRecipeItem[]` | 产物列表 |
+| `q` | `inputs` | `IRecipeItem[]` | 原料列表 |
+| `t` | `time` | `number` | 生产时间(秒) |
+| `m` | `machineType` | `string` | 设备类型 |
+| `n` | `amount` | `number` | 数量 |
 
 ---
 
-## 2. 第二阶段：开发“防腐层”适配器 (RecipeAdapter)
+## 3. 第二阶段：开发"防腐层"适配器 (RecipeAdapter)
 
 **目标**：在不修改原始数据文件的前提下，提供语义化访问能力。
 
-1. **实现 `RecipeProvider` 类**：
-   该类负责加载原始 `data.js` 并将其转换为 `Map<string, IRecipe>`。
-2. **必要的细节（转换逻辑）**：
-* **字段映射**：映射逻辑必须在构造函数中完成，生成一个只读的 `Map`。
-* **索引预热**：初始化时预先生成 `ProductToRecipe` 索引，避免递归时频繁遍历 `Object.keys`。
-* **防御逻辑**：若原始数据缺失 `s` 字段，适配器必须抛出具体异常，指明哪个配方数据损坏。
+### 3.1 适配器实现
 
+创建 `src/core/adapters/RecipeAdapter.ts`：
 
-
----
-
-## 3. 第三阶段：计算引擎服务化 (Calculation Service)
-
-**目标**：将 `loadNumber` 及其依赖的全局变量（`xh_list`, `out_list`）封装。
-
-1. **封装 `CalculationContext**`：
-   创建一个上下文类，用于替代全局变量。
 ```typescript
-class CalculationContext {
-    consumption: Map<string, number> = new Map(); // 代替 xh_list
-    production: Map<string, number> = new Map();  // 代替 out_list
-    depth: number = 0;                            // 递归深度监控
+import type { IRecipe, IRecipeItem, IRecipeIndex } from '../types/recipe'
+
+/**
+ * 配方适配器 - 将简写数据转换为语义化接口
+ * 架构师注：此类为只读适配器，不修改原始数据
+ */
+export class RecipeAdapter {
+  private recipes: IRecipe[] = []
+  private index: IRecipeIndex = {
+    byProduct: new Map(),
+    byInput: new Map(),
+    byId: new Map()
+  }
+  
+  /**
+   * 从原始数据加载配方
+   * @param rawData 原始简写格式数据
+   */
+  loadFromRawData(rawData: any[]): void {
+    this.recipes = rawData.map((item, idx) => this.transformRecipe(item, idx))
+    this.buildIndex()
+  }
+  
+  /**
+   * 转换单个配方
+   */
+  private transformRecipe(raw: any, idx: number): IRecipe {
+    return {
+      id: `recipe_${idx}`,
+      name: raw.s?.[0]?.name || `未知配方_${idx}`,
+      outputs: this.transformItems(raw.s || []),
+      inputs: this.transformItems(raw.q || []),
+      time: raw.t || 1,
+      machineType: raw.m || '未知设备',
+      group: raw.group,
+      noExtra: raw.noExtra
+    }
+  }
+  
+  /**
+   * 转换物品列表
+   */
+  private transformItems(items: any[]): IRecipeItem[] {
+    return items.map(item => ({
+      name: item.name,
+      n: item.n ?? 1
+    }))
+  }
+  
+  /**
+   * 构建索引 - 预热查询性能
+   */
+  private buildIndex(): void {
+    this.recipes.forEach(recipe => {
+      // 按产物索引
+      recipe.outputs.forEach(output => {
+        const list = this.index.byProduct.get(output.name) || []
+        list.push(recipe)
+        this.index.byProduct.set(output.name, list)
+      })
+      
+      // 按原料索引
+      recipe.inputs.forEach(input => {
+        const list = this.index.byInput.get(input.name) || []
+        list.push(input)
+        this.index.byInput.set(input.name, list)
+      })
+      
+      // 按 ID 索引
+      this.index.byId.set(recipe.id, recipe)
+    })
+  }
+  
+  /**
+   * 按产物名称查找配方
+   */
+  findByProductName(name: string): IRecipe[] {
+    return this.index.byProduct.get(name) || []
+  }
+  
+  /**
+   * 获取所有配方
+   */
+  getAllRecipes(): IRecipe[] {
+    return [...this.recipes]
+  }
 }
 
+// 单例导出
+export const recipeAdapter = new RecipeAdapter()
 ```
 
+### 3.2 使用示例
 
-2. **逻辑迁移 (Functional Shifting)**：
-* 将 `loadNumber(name, num)` 迁移为 `CalculationService.calculate(name, num, context)`。
-* **先注后改**：复制原 `loadNumber` 逻辑到新方法中，在每一行关键逻辑旁添加注释，解释其对应的原简写字段含义。
-* **线程隔离**：确保该计算服务不直接操作 DOM，仅返回 `CalculationContext` 结果。
+```typescript
+import { recipeAdapter } from './adapters/RecipeAdapter'
 
+// 初始化
+recipeAdapter.loadFromRawData(window.data)
 
+// 查询
+const recipes = recipeAdapter.findByProductName('电力感应塔')
+```
 
 ---
 
-## 4. 第四阶段：数据文件 JSON 化 (Data Engineering)
+## 4. 第三阶段：计算引擎服务化 (Calculation Service)
+
+**目标**：将 `loadNumber` 及其依赖的全局变量封装。
+
+### 4.1 计算上下文
+
+创建 `src/core/services/CalculationContext.ts`：
+
+```typescript
+/**
+ * 计算上下文 - 替代全局变量
+ */
+export class CalculationContext {
+  /** 消耗列表 (替代 xh_list) */
+  consumption: Map<string, number> = new Map()
+  
+  /** 产出列表 (替代 out_list) */
+  production: Map<string, number> = new Map()
+  
+  /** 计算结果 (替代 items) */
+  results: CalculationResult[] = []
+  
+  /** 递归深度监控 */
+  depth: number = 0
+  
+  /** 最大递归深度 */
+  maxDepth: number = 100
+  
+  /**
+   * 添加消耗
+   */
+  addConsumption(name: string, amount: number): void {
+    const current = this.consumption.get(name) || 0
+    this.consumption.set(name, current + amount)
+  }
+  
+  /**
+   * 添加产出
+   */
+  addProduction(name: string, amount: number): void {
+    const current = this.production.get(name) || 0
+    this.production.set(name, current + amount)
+  }
+  
+  /**
+   * 重置上下文
+   */
+  reset(): void {
+    this.consumption.clear()
+    this.production.clear()
+    this.results = []
+    this.depth = 0
+  }
+}
+
+export interface CalculationResult {
+  name: string
+  amount: number
+  machineCount: number
+  recipe?: any
+}
+```
+
+### 4.2 计算服务接口
+
+创建 `src/core/services/CalculationService.ts`：
+
+```typescript
+import { CalculationContext, CalculationResult } from './CalculationContext'
+
+/**
+ * 计算服务 - 封装 loadNumber 逻辑
+ * 架构师注：核心算法保持不变，仅做外围包装
+ */
+export class CalculationService {
+  private context: CalculationContext = new CalculationContext()
+  
+  /**
+   * 执行计算
+   * 注意：实际计算仍调用 window.loadNumber，此处仅做结果封装
+   */
+  async calculate(
+    demands: Array<{ name: string; num: number }>,
+    excludes: string[]
+  ): Promise<CalculationResult[]> {
+    this.context.reset()
+    
+    // 同步状态到遗留代码
+    window.xqs = demands
+    window.ig_names = excludes
+    
+    try {
+      // 调用遗留计算逻辑 (黑盒)
+      if (typeof window.loadNumber === 'function') {
+        window.loadNumber()
+      }
+      
+      // 从遗留变量提取结果
+      return this.extractResults()
+    } catch (error) {
+      console.error('Calculation failed:', error)
+      throw error
+    }
+  }
+  
+  /**
+   * 从遗留变量提取计算结果
+   */
+  private extractResults(): CalculationResult[] {
+    const items = window.items || []
+    return items.map(item => ({
+      name: item.name,
+      amount: item.num || 0,
+      machineCount: item.m || 0,
+      recipe: item
+    }))
+  }
+  
+  /**
+   * 获取计算上下文
+   */
+  getContext(): CalculationContext {
+    return this.context
+  }
+}
+
+// 单例导出
+export const calculationService = new CalculationService()
+```
+
+---
+
+## 5. 第四阶段：数据文件 JSON 化 (Data Engineering)
 
 **目标**：将 `data.js` 从可执行脚本转变为纯静态数据。
 
-1. **自动化提取**：
-   运行一段临时脚本，将全局 `window.data` 对象通过 `JSON.stringify` 导出。
-2. **Schema 验证**：
-   使用 JSON Schema 校验导出的数据，确保没有循环引用且类型符合 `IRecipe` 规范。
-3. **资源加载优化**：
-   在新架构中，使用 Vite 的 `import data from './data.json'` 静态引入，利用构建工具实现 Tree Shaking。
+### 5.1 提取脚本
+
+创建临时脚本 `scripts/extract-data.ts`：
+
+```typescript
+import fs from 'fs'
+import path from 'path'
+
+// 动态加载原始数据
+async function extractData() {
+  const dataPath = path.resolve('src/core/legacy/data.js')
+  const content = fs.readFileSync(dataPath, 'utf-8')
+  
+  // 提取 data 数组
+  const match = content.match(/var data = (\[[\s\S]*?\]);/)
+  if (!match) {
+    throw new Error('Failed to extract data array')
+  }
+  
+  const data = JSON.parse(match[1])
+  
+  // 写入 JSON 文件
+  const outputPath = path.resolve('src/core/data/recipes.json')
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true })
+  fs.writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf-8')
+  
+  console.log(`Extracted ${data.length} recipes to ${outputPath}`)
+}
+
+extractData()
+```
+
+### 5.2 JSON Schema 校验
+
+创建 `src/core/data/schema.json`：
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["s", "m"],
+    "properties": {
+      "s": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "n": { "type": "number" }
+          }
+        }
+      },
+      "q": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "n": { "type": "number" }
+          }
+        }
+      },
+      "t": { "type": "number" },
+      "m": { "type": "string" },
+      "group": { "type": "string" },
+      "noExtra": { "type": ["boolean", "null"] }
+    }
+  }
+}
+```
 
 ---
 
-## 5. 重构执行流程图（给协作 AI 的指令）
+## 6. 重构执行流程图
 
-如果你引导其他 AI 模型进行重构，请按以下顺序下达任务：
-
-1. **任务 A（类型定义）**：
-> "请根据 `data.js` 的数据结构，在 `src/core/types` 下创建语义化的 TypeScript 接口。要求将简写（s, q, t）转换为完整英文单词（outputs, inputs, time），并为每个字段编写 JSDoc 注释。"
-
-
-2. **任务 B（适配器实现）**：
-> "请实现 `RecipeAdapter` 类。该类应接收原始的简写对象，并输出符合 `IRecipe` 接口的标准对象。要求：内部使用 `Map` 存储以优化查询性能，并实现单例模式。"
-
-
-3. **任务 C（计算逻辑搬迁）**：
-> "请在不改变算法逻辑的前提下，将 `loadNumber` 递归函数重构为 `Calculator` 类的私有方法。要求：移除对全局数组 `xh_list` 的直接修改，改用一个由调用者传入的 `Context` 对象来承载计算结果。"
-
-
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    data.js 重构路线图                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │ 阶段 1      │    │ 阶段 2      │    │ 阶段 3      │     │
+│  │ 类型定义    │───▶│ 适配器实现  │───▶│ 服务封装    │     │
+│  │ recipe.ts   │    │ RecipeAdapt │    │ Calculation │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│         │                  │                  │             │
+│         ▼                  ▼                  ▼             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │ IRecipe     │    │ 语义化访问  │    │ 异步计算    │     │
+│  │ IRecipeItem │    │ 索引预热    │    │ 上下文封装  │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │ 阶段 4      │    │ 阶段 5      │    │ 阶段 6      │     │
+│  │ JSON 化     │───▶│ jQuery 移除 │───▶│ 完全解耦    │     │
+│  │ recipes.json│    │ DOM 迁移    │    │ 独立模块    │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 6. 稳定性校验清单 (Architect's Regression)
+## 7. 稳定性校验清单 (Architect's Regression)
 
-* **比对测试**：
-* 输入：`电力感应塔`, 数量: `60`。
-* 操作：分别运行旧版 `update_all()` 和新版 `Calculator.calculate()`。
-* 预期：比对 `xh_list` 与新版 `context.consumption`，每个物料的数量必须精确到小数点后 6 位一致。
+### 7.1 比对测试
 
+```typescript
+// 测试用例
+const testCase = {
+  input: { name: '电力感应塔', num: 60 },
+  expected: {
+    consumption: { '铁块': 120, '铜块': 60 },
+    production: { '电力感应塔': 60 }
+  }
+}
 
-* **异常拦截**：
-* 模拟输入一个不存在的物料名，新版代码必须捕获该错误并调用 `cocoMessage.error`，而不是抛出 `Cannot read property 's' of undefined` 导致白屏。
+// 执行比对
+const legacyResult = runLegacyCalculation(testCase.input)
+const newResult = await calculationService.calculate([testCase.input], [])
 
+assert.deepStrictEqual(legacyResult, newResult)
+```
+
+### 7.2 异常拦截
+
+- [ ] 输入不存在的物料名 → 应返回友好错误，不抛出 `Cannot read property 's' of undefined`
+- [ ] 递归深度超限 → 应终止并提示"配方链过长"
+- [ ] 数据格式错误 → 应提示具体配方 ID 和字段名
+
+---
+
+## 8. 协作 AI 模型指令
+
+> "你现在的任务是协助进行 `data.js` 的解耦重构。请遵循以下规则：
+> 1. 禁止修改 `loadNumber` 函数内部的递归逻辑
+> 2. 所有对 `window.data` 的访问必须通过 `RecipeAdapter` 进行
+> 3. 新增代码必须包含完整的 TypeScript 类型注解
+> 4. 每个公共函数必须包含 JSDoc 注释说明其用途"
