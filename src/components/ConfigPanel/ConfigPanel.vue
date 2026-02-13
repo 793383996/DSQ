@@ -138,11 +138,11 @@
           </div>
           <div class="config-row">
             <label>只使用三级分拣器</label>
-            <input type="checkbox" v-model="settings.onlySorterMk3" />
+            <input type="checkbox" v-model="settings.onlySorterMk3" @change="onOnlySorterMk3Change" />
           </div>
           <div class="config-row">
-            <label>使用四级集装分拣器</label>
-            <input type="checkbox" v-model="settings.useSorterMk4" />
+            <label>只使用四级分拣器</label>
+            <input type="checkbox" v-model="settings.useSorterMk4" @change="onUseSorterMk4Change" />
           </div>
           <div class="config-row">
             <label>自动插入电力感应塔</label>
@@ -306,6 +306,18 @@ watch(() => props.modelValue, (val) => {
     settings.research = machineSettings.research
   }
 })
+
+function onOnlySorterMk3Change() {
+  if (settings.onlySorterMk3) {
+    settings.useSorterMk4 = false
+  }
+}
+
+function onUseSorterMk4Change() {
+  if (settings.useSorterMk4) {
+    settings.onlySorterMk3 = false
+  }
+}
 
 function close() {
   visible.value = false
