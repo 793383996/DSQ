@@ -14,6 +14,7 @@ async function loadLegacyModules() {
     dataModule = dataMod
     blueprintModule = blueprintMod
     pakoModule = pakoMod
+    ;(window as any).pako = pakoMod
   }
   return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
 }
@@ -69,6 +70,7 @@ export interface Recipe {
 
 declare global {
   interface Window {
+    pako: any
     xqs: any[]
     ig_names: string[]
     settings: MachineSettings
@@ -83,13 +85,8 @@ declare global {
     items: any[]
     totalDisplay: any[]
     f_initIcons: () => void
-    f_add: () => void
     f_reset: () => void
     f_reset_ig: () => void
-    f_save: () => void
-    f_ig: (element: HTMLElement) => void
-    f_split: (element: HTMLElement) => void
-    f_tag: (element: HTMLElement) => void
     f_remove_ig: (name: string) => void
     removeItem: (index: number) => void
     onClickNumber: (index: number) => void
@@ -99,28 +96,10 @@ declare global {
     cancelEditorNumber: () => void
     cancelEditorNumberItem: () => void
     speedChange: (item: any) => void
-    f_split_recipe: (name: string, type: number) => void
-    f_split_select: (name: string, select: number) => void
-    f_add_recipe: (name: string, num: number, pf: number) => void
-    f_add_tag: (name: string, tag: string) => void
-    f_change_speed: (name: string, speed: number) => void
-    f_select_m: (name: string, m: string) => void
-    f_select_acc_type: (name: string, accType: string) => void
-    f_select_acc_value: (name: string, accValue: string) => void
     txtnumber: HTMLInputElement
     selmaince: HTMLInputElement
-    selmodein: HTMLSelectElement
-    furnace: HTMLSelectElement
-    chemical: HTMLSelectElement
-    accType: HTMLSelectElement
-    accValue: HTMLSelectElement
-    research: HTMLSelectElement
-    selfAcc: HTMLInputElement
-    isAddSelfAccP: HTMLInputElement
-    showMaxOneBelt: HTMLInputElement
-    hideSource: HTMLInputElement
-    fractionatorSpeed: HTMLInputElement
     pointLength: HTMLInputElement
+    hideSource: HTMLInputElement
     conveyorBeltStackLayer: HTMLInputElement
     onlyConveyorBeltMk3: HTMLInputElement
     onlySorterMk3: HTMLInputElement
@@ -130,13 +109,8 @@ declare global {
     stackLayers: HTMLInputElement
     x_y_ratio: HTMLInputElement
     maxLabLayers: HTMLInputElement
-    selprojects: HTMLSelectElement
-    btnLoadProject: HTMLButtonElement
-    btnReset5: HTMLButtonElement
-    projectdiv: HTMLElement
-    MoreSetting: HTMLElement
-    UIselector: HTMLElement
-    Split: HTMLElement
+    selfAcc: HTMLInputElement
+    isAddSelfAccP: HTMLInputElement
     xps_editor_index: number
     xps_editor_number: number
     items_editor_index: number
@@ -184,6 +158,8 @@ export function initLegacyBridge(): void {
   window.maxLabLayers = { value: '15' } as HTMLInputElement
   window.pointLength = { value: '1' } as HTMLInputElement
   window.hideSource = { checked: false } as HTMLInputElement
+  window.txtnumber = { value: '60' } as HTMLInputElement
+  window.selmaince = { value: '1' } as HTMLInputElement
   window.settingsLocal = {}
   window.defaultAccType = '增产剂Mk.Ⅰ'
   window.defaultAccValue = '无'

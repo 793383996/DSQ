@@ -1,6 +1,10 @@
 # `index.html` 现代化解耦重构详细实施方案
 
-## 0. 重构进度追踪 (2026-02-13 更新)
+## 0. 重构进度追踪 (2026-02-14 更新)
+
+> **状态**：✅ 已完成 - 所有核心重构任务已完成
+> 
+> **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
 
 ### ✅ 第一阶段：遗留代码适配器 (Bridge Pattern) - 已完成
 
@@ -49,12 +53,22 @@
 | 表单双向绑定 | ✅ | `v-model` 替代 DOM 操作 |
 | 条件渲染 | ✅ | `v-if` 控制动态显示 |
 
-### ⏳ 第五阶段：遗留代码深度解耦 - 待进行
+### ✅ 第五阶段：jQuery 移除 - 已完成 (2026-02-14)
 
 | 任务 | 状态 | 优先级 | 备注 |
 |------|------|--------|------|
-| 移除 jQuery 依赖 | ⏳ | 高 | data.js 仍依赖 `$` |
-| 配方数据 JSON 化 | ⏳ | 高 | data.js → data.json |
+| 移除 jQuery 依赖 | ✅ | 高 | data.js 已移除 jQuery |
+| `$.ajax` → `fetch()` | ✅ | 高 | 数据加载已替换 |
+| `$.extend` → `structuredClone()` | ✅ | 高 | 深拷贝已替换 |
+| `$.cookie` → `localStorage` | ✅ | 高 | Cookie 操作已替换 |
+| 废弃文件清理 | ✅ | 中 | jquery-*.js 已删除 |
+| 构建配置优化 | ✅ | 中 | Vite code splitting + esbuild |
+
+### ⏳ 后续优化 - 待进行
+
+| 任务 | 状态 | 优先级 | 备注 |
+|------|------|--------|------|
+| 配方数据 JSON 化 | ⏳ | 高 | 详见 [data重构.md](./data重构.md) |
 | 计算逻辑服务化 | ⏳ | 高 | loadNumber → CalculationService |
 | Tooltip 组件化 | ⏳ | 中 | 替代 `jquery.tips.js` |
 | `v-memo` 性能优化 | ⏳ | 中 | ResultTable 频繁更新场景 |
@@ -66,12 +80,11 @@
 ```text
 src/
 ├── core/                      # 遗留逻辑层 (黑盒)
-│   ├── legacy/                # 存放原 data.js, blueprint.js, pako.js
-│   │   ├── data.js            # 配方数据 + 计算逻辑 (仍依赖 jQuery)
+│   ├── legacy/                # 存放原 data.js, blueprint.js
+│   │   ├── data.js            # 配方数据 + 计算逻辑 (jQuery 已移除) ✅
 │   │   ├── data.d.ts          # 类型声明
 │   │   ├── blueprint.js       # 蓝图生成逻辑
-│   │   ├── blueprint.d.ts     # 类型声明
-│   │   └── pako.js            # Gzip 压缩库
+│   │   └── blueprint.d.ts     # 类型声明
 │   └── bridge.ts              # 核心：遗留代码与 Vue 3 的适配层 ✅
 ├── stores/                    # 状态管理层
 │   └── blueprint.ts           # 托管 demandList, excludeList, settings ✅
@@ -88,6 +101,16 @@ src/
 ├── App.vue                    # 根组件：负责生命周期管理 ✅
 └── main.ts                    # 入口：挂载全局插件 ✅
 ```
+
+### 1.1 pako 依赖说明 (2026-02-14 更新)
+
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| ~~`src/core/legacy/pako.js`~~ | ✅ 已删除 | 死代码，未被 import |
+| ~~`Scripts/pako.js`~~ | ✅ 已删除 | 参考文档，非运行时依赖 |
+| `npm pako@2.1.0` | ✅ 实际使用 | bridge.ts 通过 `import('pako')` 加载 |
+
+**修复**：bridge.ts 已添加 `window.pako` 挂载，供 blueprint.js 使用。
 
 ---
 

@@ -164,11 +164,11 @@ function formatNumber(num: number | undefined): string {
   return num.toFixed(2)
 }
 
-function getItemIcon(name: string): string | null {
+function getItemIcon(name: string): string | undefined {
   if (iconCache.value.has(name)) {
-    return iconCache.value.get(name) || null
+    return iconCache.value.get(name) || undefined
   }
-  return null
+  return undefined
 }
 
 function getItemInitial(name: string): string {

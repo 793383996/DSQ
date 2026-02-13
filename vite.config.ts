@@ -16,7 +16,19 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['vue', 'pinia'],
+          'pako': ['pako']
+        }
+      }
+    },
+    minify: 'esbuild',
+    esbuild: {
+      drop: ['console', 'debugger']
+    }
   },
   optimizeDeps: {
     include: ['vue', 'pinia']

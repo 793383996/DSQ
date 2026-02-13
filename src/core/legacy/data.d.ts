@@ -9,7 +9,6 @@ export const settings_time: Record<string, number>
 export const app: any
 export function f_init(): void
 export function f_initIcons(): void
-export function f_add(): void
 export function f_add3(name: string): void
 export function update_all(): void
 export function find(name: string, isProduct?: boolean): any
@@ -18,3 +17,6 @@ export function generateBlueprint(): string
 export function saveSettingTime(): void
 export function loadSettingTime(): void
 export function loadNumber(itemName: string, n: number): void
+export function f_reset(): void
+export function f_reset_ig(): void
+export function f_remove_ig(name: string): void

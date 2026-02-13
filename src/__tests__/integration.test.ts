@@ -3,7 +3,7 @@ import { mount, createApp } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import App from '../App.vue'
 import { useBlueprintStore } from '../stores/blueprint'
-import { initLegacyBridge, syncStateToLegacy } from '../core/bridge'
+import { initLegacyBridge, syncStateToLegacy, legacyGetProductionSettings, legacySetProductionSettings, clearLegacyState, legacyGetConfigFromDOM, legacyUpdateConfig } from '../core/bridge'
 import { useToast, cocoMessageProxy } from '../composables/useToast'
 
 describe('DSQ Calculator Integration Tests', () => {
