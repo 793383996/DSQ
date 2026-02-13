@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useBlueprintStore } from './stores/blueprint'
-import { initLegacyBridge, syncStateToLegacy, runCalculation } from './core/bridge'
+import { initLegacyBridge, syncStateToLegacy, runCalculation as executeLegacyCalculation } from './core/bridge'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
 import ResultTable from './components/ResultTable/ResultTable.vue'
@@ -58,11 +58,15 @@ onMounted(() => {
   }
 
   if (window.xqs && window.xqs.length > 0) {
-    store.demandList = window.xqs
+    window.xqs.forEach((item: any) => {
+      store.addDemand(item.name, item.num || item.number || 1)
+    })
   }
 
   if (window.ig_names && window.ig_names.length > 0) {
-    store.excludeList = window.ig_names
+    window.ig_names.forEach((name: string) => {
+      store.addExclude(name)
+    })
   }
 
   syncStateToLegacy({
@@ -92,7 +96,7 @@ async function runCalculation() {
       machineSettings: store.machineSettings
     })
 
-    const result = await runCalculation()
+    const result = await executeLegacyCalculation()
 
     if (result && result.out_list) {
       resultItems.value = result.out_list.map((item: any, index: number) => ({

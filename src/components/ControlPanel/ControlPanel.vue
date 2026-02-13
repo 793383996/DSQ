@@ -35,6 +35,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
+import { legacySetProductionSettings } from '../../core/bridge'
 
 const emit = defineEmits<{
   (e: 'open-settings'): void
@@ -55,29 +56,20 @@ const machineWidth = computed(() => {
   return (parseFloat(machineCount.value?.toString() || '1') >= 999 ? 150 : 70) + 'px'
 })
 
-function updateProductionMinute(e: Event) {
+function updateProductionPerMinute(e: Event) {
   const value = (e.target as HTMLInputElement).value
   productionPerMinute.value = parseFloat(value) || 1
-  store.setMachineSetting('modeIn', store.machineSettings.modeIn)
+  legacySetProductionSettings(productionPerMinute.value, machineCount.value)
 }
 
 function updateMachineCount(e: Event) {
   const value = (e.target as HTMLInputElement).value
   machineCount.value = parseInt(value) || 1
+  legacySetProductionSettings(productionPerMinute.value, machineCount.value)
 }
 
 function handleAdd() {
   emit('add-item')
-}
-
-function updateProductionPerMinute(e: Event) {
-  const value = (e.target as HTMLInputElement).value
-  productionPerMinute.value = parseFloat(value) || 1
-}
-
-function updateMachineCountHandler(e: Event) {
-  const value = (e.target as HTMLInputElement).value
-  machineCount.value = parseInt(value) || 1
 }
 </script>
 

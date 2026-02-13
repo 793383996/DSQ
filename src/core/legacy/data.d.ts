@@ -17,3 +17,4 @@ export function getRecipe(): any[]
 export function generateBlueprint(): string
 export function saveSettingTime(): void
 export function loadSettingTime(): void
+export function loadNumber(itemName: string, n: number): void

@@ -87,8 +87,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
+import { getIconData, waitForLegacyData, isLegacyDataLoaded } from '../../core/bridge'
 
 interface TableItem {
   name: string
@@ -120,7 +121,15 @@ const emit = defineEmits<{
 
 const store = useBlueprintStore()
 
-const iconCache = new Map<string, string>()
+const iconCache = ref<Map<string, string>>(new Map())
+
+onMounted(async () => {
+  if (!isLegacyDataLoaded()) {
+    await waitForLegacyData(10000)
+  }
+  const icons = getIconData()
+  iconCache.value = new Map(Object.entries(icons))
+})
 
 const visibleItems = computed(() => {
   if (!props.hideSource) return props.items
@@ -156,8 +165,8 @@ function formatNumber(num: number | undefined): string {
 }
 
 function getItemIcon(name: string): string | null {
-  if (iconCache.has(name)) {
-    return iconCache.get(name) || null
+  if (iconCache.value.has(name)) {
+    return iconCache.value.get(name) || null
   }
   return null
 }

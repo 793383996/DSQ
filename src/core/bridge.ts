@@ -175,6 +175,7 @@ export function initLegacyBridge(): void {
   window.onlySorterMk3 = { checked: true } as HTMLInputElement
   window.useSorterMk4 = { checked: false } as HTMLInputElement
   window.selfAcc = { checked: false } as HTMLInputElement
+  window.isAddSelfAccP = { checked: false } as HTMLInputElement
   window.generateTeslaTower = { checked: true } as HTMLInputElement
   window.teslaTowerLineInterval = { value: '1' } as HTMLInputElement
   window.conveyorBeltStackLayer = { value: '4' } as HTMLInputElement
@@ -548,7 +549,7 @@ export function getIconData(): { [key: string]: string } {
       if (reg.test(name)) {
         const match = name.match(reg)
         if (match && match[3]) {
-          result[match[3]] = icon.value
+          result[match[3]] = 'data:image/png;base64,' + icon.value
         }
       }
     }

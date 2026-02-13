@@ -5330,7 +5330,7 @@ var ig_names = []; //排除的物品
 //加载需求
 function loadNumber(itemName, n) {
   try {
-    if ($.inArray(itemName, ig_names) != -1) {
+    if (ig_names.indexOf(itemName) !== -1) {
       return;
     }
     if (
@@ -5356,7 +5356,7 @@ function loadNumber(itemName, n) {
     var accTotal = 0;
     for (var i = 0; item.q && i < item.q.length; i++) {
       var q = item.q[i];
-      if ($.inArray(q.name, ig_names) != -1) {
+      if (ig_names.indexOf(q.name) !== -1) {
         continue;
       }
       if (q.n === 0) continue;
@@ -5371,7 +5371,7 @@ function loadNumber(itemName, n) {
         else if (accType == "增产剂Mk.Ⅱ") (v = 1.2), (tm = 24);
         else if (accType == "增产剂Mk.Ⅲ") (v = 1.25), (tm = 60);
         // 自喷涂
-        if ($("#selfAcc")[0].checked) tm = tm * v - 1;
+        if (window.selfAcc && window.selfAcc.checked) tm = tm * v - 1;
         if (accValue == "增产" && item.noExtra) accValue = "无";
         if (item.q.length == 0 || item.noExtra === null) accValue = "无";
 
@@ -5386,13 +5386,13 @@ function loadNumber(itemName, n) {
 
         if (accValue == "加速") {
           accTotal += r / tm;
-          if (!$("#isAddSelfAccP").get(0).checked) {
+          if (!(window.isAddSelfAccP && window.isAddSelfAccP.checked)) {
             loadNumber(accType, r / tm);
           }
         } else if (accValue == "增产") {
           r /= v;
           accTotal += r / tm;
-          if (!$("#isAddSelfAccP").get(0).checked) {
+          if (!(window.isAddSelfAccP && window.isAddSelfAccP.checked)) {
             loadNumber(accType, r / tm);
           }
         }
@@ -5444,7 +5444,7 @@ function mergeMul() {
     if (!xh.value) continue;
     var itemName = xh.name;
     var item = find(itemName);
-    if ($.inArray(item.id, ids) != -1) continue;
+    if (ids.indexOf(item.id) !== -1) continue;
     var xhs = getXhs(item.id);
 
     if (xhs.length > 1) {
@@ -5856,6 +5856,9 @@ function update_all() {
   app.totalAcc = totalAcc.toFixed(2);
 }
 window.update_all = update_all;
+window.loadNumber = loadNumber;
+window.find = find;
+window.generateBlueprint = generateBlueprint;
 function selectM(id, m) {
   settings[id] = settings[id] || {};
   settings[id].m = m;
