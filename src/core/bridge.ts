@@ -1,8 +1,10 @@
 import { cocoMessageProxy } from '../composables/useToast'
+import { recipeAdapter } from './adapters/RecipeAdapter'
 
 let dataModule: any = null
 let blueprintModule: any = null
 let pakoModule: any = null
+let isBridgeInitialized = false
 
 async function loadLegacyModules() {
   if (!dataModule) {
@@ -15,6 +17,10 @@ async function loadLegacyModules() {
     blueprintModule = blueprintMod
     pakoModule = pakoMod
     ;(window as any).pako = pakoMod
+
+    if ((window as any).data && !recipeAdapter.isLoaded()) {
+      recipeAdapter.loadFromRawData((window as any).data)
+    }
   }
   return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
 }
@@ -73,7 +79,7 @@ declare global {
     pako: any
     xqs: any[]
     ig_names: string[]
-    settings: MachineSettings
+    settings: Record<string, { m?: string; accType?: string; accValue?: string }>
     cocoMessage: (msg: string, type?: string) => void
     loadNumber: () => any
     find: (name: string, normalize_recipe?: boolean) => any
@@ -125,16 +131,14 @@ declare global {
 }
 
 export function initLegacyBridge(): void {
+  if (isBridgeInitialized) {
+    console.log('[bridge] Already initialized, skipping')
+    return
+  }
+  isBridgeInitialized = true
+
   window.xqs = []
   window.ig_names = []
-  window.settings = {
-    modeIn: '制作台Mk.Ⅰ',
-    furnace: '电弧熔炉',
-    chemical: '化工厂',
-    accType: '增产剂Mk.Ⅰ',
-    accValue: '无',
-    research: '矩阵研究站'
-  }
   window.icons = {}
   window.xh_list = []
   window.out_list = []
@@ -165,6 +169,8 @@ export function initLegacyBridge(): void {
   window.defaultAccValue = '无'
 
   window.cocoMessage = cocoMessageProxy
+  
+  console.log('[bridge] Legacy bridge initialized')
 }
 
 export interface MachineConfigSettings {
@@ -233,9 +239,12 @@ export function legacyGetMachineSettings(): MachineConfigSettings {
 }
 
 export function syncStateToLegacy(state: StateSyncMap): void {
-  window.xqs = state.demandList
+  window.xqs = state.demandList.map(d => ({
+    name: d.name,
+    number: d.num || d.number || 1,
+    item: { name: d.name }
+  }))
   window.ig_names = state.excludeList
-  window.settings = state.machineSettings
 }
 
 export function clearLegacyState(): void {
@@ -535,6 +544,12 @@ export function getIconData(): { [key: string]: string } {
 }
 
 export function isLegacyDataLoaded(): boolean {
+  return typeof (window as any).update_all === 'function' &&
+         typeof (window as any).find === 'function' &&
+         Array.isArray((window as any).data)
+}
+
+export function isGameDataLoaded(): boolean {
   return (window as any).isDataLoaded === true
 }
 
@@ -546,7 +561,7 @@ export function waitForLegacyData(timeout: number = 10000): Promise<boolean> {
     }
 
     const startTime = Date.now()
-    const checkInterval = 100
+    const checkInterval = 50
 
     const interval = setInterval(() => {
       if (isLegacyDataLoaded()) {
@@ -554,6 +569,7 @@ export function waitForLegacyData(timeout: number = 10000): Promise<boolean> {
         resolve(true)
       } else if (Date.now() - startTime > timeout) {
         clearInterval(interval)
+        console.error('[bridge] Timeout waiting for legacy data')
         resolve(false)
       }
     }, checkInterval)

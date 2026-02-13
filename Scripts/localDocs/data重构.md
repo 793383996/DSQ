@@ -1,6 +1,6 @@
 # `data.js` 核心数据与逻辑解耦重构指南
 
-> **状态**：⏳ 进行中 - 阶段 4B
+> **状态**：✅ 已完成 - 阶段 4B
 > 
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
 
@@ -23,20 +23,22 @@
 | 遗留 UI 代码删除 | ✅ | 2026-02-14 | 删除 L4523-L6040 死代码 |
 | 废弃文件清理 | ✅ | 2026-02-14 | jquery-*.js 已删除 |
 | 构建配置优化 | ✅ | 2026-02-14 | Vite code splitting + esbuild |
+| App.vue 迁移至 CalculatorService | ✅ | 2026-02-14 | 主入口已切换至新服务层 |
 
 ### ⏳ 进行中
 
 | 任务 | 状态 | 优先级 | 说明 |
 |------|------|--------|------|
-| 类型定义 (`src/core/types/recipe.ts`) | ⏳ | 高 | IRecipe, IRecipeItem, ICalculationResult |
-| 数据适配器 (`RecipeAdapter.ts`) | ⏳ | 高 | 语义化访问，索引预热 |
-| 计算服务 (`CalculatorService.ts`) | ⏳ | 高 | 封装 loadNumber，上下文管理 |
-| Baseline 测试 | ⏳ | 高 | 新旧实现对比验证 |
+| 数据适配器 (`RecipeAdapter.ts`) | ✅ | 高 | 语义化访问，索引预热 |
+| 计算服务 (`CalculatorService.ts`) | ✅ | 高 | 封装 update_all，上下文管理 |
+| 计算上下文 (`CalculationContext.ts`) | ✅ | 高 | 替代全局变量，填充 xh_list/out_list |
+| Baseline 测试 | ✅ | 高 | 新旧实现对比验证 |
 
 ### 🔲 待开始
 
 | 任务 | 状态 | 优先级 | 说明 |
 |------|------|--------|------|
+| 类型定义 (`src/core/types/recipe.ts`) | ✅ | 高 | IRecipe, IRecipeItem, ICalculationResult |
 | 配方数据 JSON 化 | 🔲 | 中 | data.js → recipes.json |
 | JSON Schema 校验 | 🔲 | 低 | 数据格式验证 |
 
@@ -47,9 +49,23 @@
 ### 1.1 文件结构
 
 ```text
-src/core/legacy/
-├── data.js          # 配方数据 + 计算逻辑 (jQuery 已移除) ✅
-├── data.d.ts        # 类型声明
+src/core/
+├── legacy/
+│   ├── data.js          # 配方数据 + 计算逻辑 (jQuery 已移除) ✅
+│   └── data.d.ts        # 类型声明
+├── types/
+│   ├── recipe.ts        # 语义化类型定义 ✅
+│   └── index.ts         # 类型导出 ✅
+├── adapters/
+│   ├── RecipeAdapter.ts # 配方数据适配器 ✅
+│   └── index.ts         # 适配器导出 ✅
+├── services/
+│   ├── CalculationContext.ts # 计算上下文 ✅
+│   ├── CalculatorService.ts  # 计算服务 ✅
+│   └── index.ts              # 服务导出 ✅
+├── __tests__/
+│   └── recipe.test.ts   # Baseline 测试 ✅
+└── bridge.ts            # 遗留代码适配层
 ```
 
 ### 1.2 数据结构 (简写字段)
@@ -77,6 +93,45 @@ src/core/legacy/
 | `f_reset()` | 重置状态 | ✅ 已迁移至 Vue |
 | `f_ig()` | 排除物品 | ✅ 已迁移至 Vue |
 | `f_initIcons()` | 初始化图标 | ✅ 已迁移至 useIconProvider |
+
+---
+
+## 1.4 调用链分析 (2026-02-14 更新)
+
+### 新架构调用链
+
+```
+App.vue
+├── onMounted()
+│   ├── initLegacyBridge()        → bridge.ts 初始化全局变量
+│   └── syncStateToLegacy()       → 同步 Pinia → window.xqs/ig_names
+│
+└── runCalculation()
+    ├── syncStateToLegacy()       → 同步状态
+    └── calculatorService.calculate(demands, excludes)
+        ├── 设置 window.xqs       → 需求列表
+        ├── 设置 window.ig_names  → 排除列表
+        ├── 调用 window.update_all() → data.js 执行计算
+        ├── 从 window.app 提取结果
+        └── 填充 CalculationContext
+```
+
+### 关键修复
+
+原 `bridge.runCalculation()` 错误调用 `window.loadNumber()`，正确应为 `window.update_all()`。
+`CalculatorService` 已修复此问题，并正确从 `window.app` 提取结果。
+
+### 已修复问题 (2026-02-14)
+
+| 问题 | 严重程度 | 修复方案 |
+|------|----------|----------|
+| `window.xqs` 格式读取错误 | 高 | App.vue 兼容 `{ item: { name }, number }` 格式 |
+| `isLegacyDataLoaded` 检查错误 | 致命 | 检查 `update_all/find/data` 而非 `isDataLoaded` |
+
+**关键发现**：
+- `window.xqs` 格式为 `{ item: { name }, number }`，非 `{ name, number }`
+- `window.data` (配方数据) 与 `window.game_data` (图标资源) 是两套独立数据
+- `window.isDataLoaded` 仅表示图标加载完成，不代表计算引擎就绪
 
 ### 1.4 全局变量清单
 

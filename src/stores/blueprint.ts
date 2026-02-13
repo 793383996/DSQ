@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { syncStateToLegacy } from '../core/bridge'
 
 export interface DemandItem {
   name: string
@@ -55,44 +54,37 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     } else {
       demandList.value.push({ name, num })
     }
-    syncToLegacy()
   }
 
   function removeDemand(name: string) {
     demandList.value = demandList.value.filter(item => item.name !== name)
-    syncToLegacy()
   }
 
   function updateDemand(name: string, num: number) {
     const item = demandList.value.find(item => item.name === name)
     if (item) {
       item.num = Math.max(1, num)
-      syncToLegacy()
     }
   }
 
   function addExclude(name: string) {
     if (!excludeList.value.includes(name)) {
       excludeList.value.push(name)
-      syncToLegacy()
     }
   }
 
   function removeExclude(name: string) {
     excludeList.value = excludeList.value.filter(n => n !== name)
-    syncToLegacy()
   }
 
   function setMachineSetting<K extends keyof MachineSettings>(key: K, value: MachineSettings[K]) {
     machineSettings.value[key] = value
     persistSettings()
-    syncToLegacy()
   }
 
   function loadMachineSettings(settings: MachineSettings) {
     machineSettings.value = { ...settings }
     persistSettings()
-    syncToLegacy()
   }
 
   function persistSettings() {
@@ -101,14 +93,6 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     } catch (e) {
       console.warn('Failed to persist settings:', e)
     }
-  }
-
-  function syncToLegacy() {
-    syncStateToLegacy({
-      demandList: demandList.value,
-      excludeList: excludeList.value,
-      machineSettings: machineSettings.value
-    })
   }
 
   function setCalculating(calculating: boolean) {
@@ -128,7 +112,6 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     excludeList.value = []
     resultItems.value = []
     calculationError.value = null
-    syncToLegacy()
   }
 
   return {

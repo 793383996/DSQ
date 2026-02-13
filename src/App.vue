@@ -35,7 +35,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useBlueprintStore } from './stores/blueprint'
-import { initLegacyBridge, syncStateToLegacy, runCalculation as executeLegacyCalculation } from './core/bridge'
+import { initLegacyBridge, isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
+import { calculatorService } from './core/services/CalculatorService'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
 import ResultTable from './components/ResultTable/ResultTable.vue'
@@ -49,17 +50,24 @@ const hideSource = ref(false)
 const resultItems = ref<any[]>([])
 const isCalculating = ref(false)
 const calculationError = ref<string | null>(null)
+const isDataReady = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   initLegacyBridge()
 
-  if (window.settings) {
-    store.loadMachineSettings(window.settings as any)
+  const dataLoaded = await waitForLegacyData(10000)
+  isDataReady.value = dataLoaded
+
+  if (!dataLoaded) {
+    calculationError.value = '数据加载失败，请刷新页面重试'
+    return
   }
 
   if (window.xqs && window.xqs.length > 0) {
     window.xqs.forEach((item: any) => {
-      store.addDemand(item.name, item.num || item.number || 1)
+      const name = item.item?.name || item.name
+      const num = item.number || item.num || 1
+      store.addDemand(name, num)
     })
   }
 
@@ -68,12 +76,6 @@ onMounted(() => {
       store.addExclude(name)
     })
   }
-
-  syncStateToLegacy({
-    demandList: store.demandList,
-    excludeList: store.excludeList,
-    machineSettings: store.machineSettings
-  })
 })
 
 onUnmounted(() => {
@@ -85,21 +87,27 @@ async function runCalculation() {
     return
   }
 
+  if (!isDataReady.value && !isLegacyDataLoaded()) {
+    calculationError.value = '数据正在加载中，请稍候'
+    return
+  }
+
   isCalculating.value = true
   calculationError.value = null
   store.setCalculating(true)
 
   try {
-    syncStateToLegacy({
-      demandList: store.demandList,
-      excludeList: store.excludeList,
-      machineSettings: store.machineSettings
-    })
+    const demands = store.demandList.map(d => ({
+      name: d.name,
+      num: d.num || 1
+    }))
+    const excludes = [...store.excludeList]
 
-    const result = await executeLegacyCalculation()
+    const result = await calculatorService.calculate(demands, excludes)
 
-    if (result && result.out_list) {
-      resultItems.value = result.out_list.map((item: any, index: number) => ({
+    if (result && result.items) {
+      const allItems = [...result.items, ...(result.items2 || [])]
+      resultItems.value = allItems.map((item: any, index: number) => ({
         ...item,
         id: `${item.name}-${index}`
       }))

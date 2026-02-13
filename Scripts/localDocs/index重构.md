@@ -112,6 +112,18 @@ src/
 
 **修复**：bridge.ts 已添加 `window.pako` 挂载，供 blueprint.js 使用。
 
+### 1.2 已修复问题 (2026-02-14)
+
+| 问题 | 严重程度 | 修复方案 |
+|------|----------|----------|
+| `window.xqs` 格式读取错误 | 高 | App.vue 兼容 `{ item: { name }, number }` 格式 |
+| `isLegacyDataLoaded` 检查错误 | 致命 | 检查 `update_all/find/data` 而非 `isDataLoaded` |
+
+**关键发现**：
+- `window.xqs` 格式为 `{ item: { name }, number }`，非 `{ name, number }`
+- `window.data` (配方数据) 与 `window.game_data` (图标资源) 是两套独立数据
+- `window.isDataLoaded` 仅表示图标加载完成，不代表计算引擎就绪
+
 ---
 
 ## 2. 已完成的核心接口

@@ -15,8 +15,8 @@ describe('DSQ Calculator Integration Tests', () => {
     it('should initialize legacy bridge correctly', () => {
       expect(window.xqs).toEqual([])
       expect(window.ig_names).toEqual([])
-      expect(window.settings).toBeDefined()
-      expect(window.settings.modeIn).toBe('制作台Mk.Ⅰ')
+      expect(window.settingsLocal).toBeDefined()
+      expect(window.defaultAccType).toBe('增产剂Mk.Ⅰ')
     })
 
     it('should sync state to legacy variables', () => {
@@ -35,9 +35,10 @@ describe('DSQ Calculator Integration Tests', () => {
 
       syncStateToLegacy(state)
 
-      expect(window.xqs).toEqual(state.demandList)
+      expect(window.xqs).toEqual([
+        { name: '铁块', number: 60, item: { name: '铁块' } }
+      ])
       expect(window.ig_names).toEqual(state.excludeList)
-      expect(window.settings).toEqual(state.machineSettings)
     })
 
     it('should clear legacy state', () => {
