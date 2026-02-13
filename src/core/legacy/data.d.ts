@@ -5,6 +5,7 @@ export const icons: { [key: string]: string }
 export const xqs: any[]
 export const ig_names: string[]
 export const settings: any
+export const settings_time: Record<string, number>
 export const app: any
 export function f_init(): void
 export function f_initIcons(): void
@@ -14,3 +15,5 @@ export function update_all(): void
 export function find(name: string, isProduct?: boolean): any
 export function getRecipe(): any[]
 export function generateBlueprint(): string
+export function saveSettingTime(): void
+export function loadSettingTime(): void

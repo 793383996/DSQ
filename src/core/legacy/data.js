@@ -4201,6 +4201,7 @@ var data = [
     t: 6,
   },
 ];
+window.data = data;
 var manualGzSpeed = false; //是否采用手动输入的临界光子每分钟产量
 
 var energyData = {};
@@ -4244,6 +4245,8 @@ spaceData["粒子对撞机"] = 45;
 
 var defaultAccType = "增产剂Mk.Ⅰ";
 var defaultAccValue = "无";
+window.defaultAccType = defaultAccType;
+window.defaultAccValue = defaultAccValue;
 
 var version = "20240202"; //版本号，用来更新data.json的缓存
 
@@ -4359,7 +4362,9 @@ function f_initData() {
 // 这里决定所有数字保留小数的位数，设为2
 var pointLength = 3;
 var settingsLocal = {}; //不存储cookie
+window.settingsLocal = settingsLocal;
 var settings = {};
+window.settings = settings;
 function saveData(key, value) {
   if (window.localStorage) {
     localStorage.setItem(key, value);
@@ -4377,6 +4382,7 @@ function getData(key) {
 function saveSetting() {
   saveData("machine_settings" + version, JSON.stringify(settings));
 }
+window.saveSetting = saveSetting;
 function loadSetting() {
   var json = getData("machine_settings" + version);
   if (json) {
@@ -4388,13 +4394,16 @@ function loadSetting() {
   if (el2) el2.checked = true;
 }
 var settings_time = {};
+window.settings_time = settings_time;
 function saveSettingTime() {
   saveData("machine_settings_time" + version, JSON.stringify(settings_time));
 }
+window.saveSettingTime = saveSettingTime;
 function loadSettingTime() {
   var json = getData("machine_settings_time" + version);
   if (json) {
     eval("settings_time = " + json);
+    window.settings_time = settings_time;
   }
 }
 var settings_pf = {};
@@ -5197,6 +5206,7 @@ function f_init() {
   });
   $("#accType").change(function () {
     defaultAccType = $("#accType").val();
+    window.defaultAccType = defaultAccType;
     // 不知道为啥要写这个for
     for (var i in settings) {
       delete settings[i].accType;
@@ -5211,6 +5221,7 @@ function f_init() {
   });
   $("#accValue").change(function () {
     defaultAccValue = $("#accValue").val();
+    window.defaultAccValue = defaultAccValue;
     for (var i in settings) {
       delete settings[i].accValue;
     }
@@ -5844,6 +5855,7 @@ function update_all() {
   app.totalSpace = space;
   app.totalAcc = totalAcc.toFixed(2);
 }
+window.update_all = update_all;
 function selectM(id, m) {
   settings[id] = settings[id] || {};
   settings[id].m = m;
@@ -6580,28 +6592,34 @@ function generateBlueprint() {
   if (!outputRecipe.subRecipes) {
     return;
   }
+  function getChecked(id, defaultVal) {
+    var el = document.getElementById(id);
+    if (el) return el.checked;
+    if (window[id] && window[id].checked !== undefined) return window[id].checked;
+    return defaultVal;
+  }
+  function getValue(id, defaultVal) {
+    var el = document.getElementById(id);
+    if (el) return el.value;
+    if (window[id] && window[id].value !== undefined) return window[id].value;
+    return defaultVal;
+  }
   let config = {
-    maxSorterNumOneBelt: 8, // 一个传送带节点连接的最大分拣器数量
-    conveyorBeltStackLayer: parseInt(
-      document.getElementById("conveyorBeltStackLayer").value
-    ), // 传送带物品最大堆叠层数
-    x_y_ratio: parseFloat(document.getElementById("x_y_ratio").value), // 长宽比
-    // compactLayout: document.getElementById('compactLayout').checked,  // 是否采用紧凑布局（紧凑布局的蓝图中炼油厂、化工厂和对撞机在布局上会更紧凑，适合摆放在赤道带，在高纬度可能会出现碰撞问题）
+    maxSorterNumOneBelt: 8,
+    conveyorBeltStackLayer: parseInt(getValue("conveyorBeltStackLayer", "4")),
+    x_y_ratio: parseFloat(getValue("x_y_ratio", "2")),
     compactLayout: false,
-    upgradeConveyorBelt: false, // 360/min的运力时使用3级传送带（无带流情况下，原料的需求和供应都是集中处理，1级传送带满运力情况下可能会有运送不及时问题导致产量低于预期
-    onlyConveyorBeltMk3: document.getElementById("onlyConveyorBeltMk3").checked, // 是否只使用三级传送带
-    onlySorterMk3: document.getElementById("onlySorterMk3").checked, // 是否只使用三级分拣器
-    useSorterMk4: document.getElementById("useSorterMk4").checked, // 是否使用四级集装分拣器
-    maxLabLayers: parseInt(document.getElementById("maxLabLayers").value),
-    selfSpray: document.getElementById("selfAcc").checked, // 是否自喷涂增产剂
-    generateTeslaTower: document.getElementById("generateTeslaTower").checked, // 是否自动插电线杆
-    teslaTowerInterval: 10, // 同一排内电线杆距离
-    teslaTowerLineInterval: parseInt(
-      document.getElementById("teslaTowerLineInterval").value
-    ), // 电线杆间隔几排
-    // onlyConveyorBeltMk3Downgrade: document.getElementById('onlyConveyorBeltMk3Downgrade').checked  // 三级传送带运力降级
-    onlyConveyorBeltMk3Downgrade: false, // 三级传送带运力降级
-    stackLayers: parseInt(document.getElementById("stackLayers").value) || 1, // 建筑堆叠层数（1=不堆叠）
+    upgradeConveyorBelt: false,
+    onlyConveyorBeltMk3: getChecked("onlyConveyorBeltMk3", true),
+    onlySorterMk3: getChecked("onlySorterMk3", true),
+    useSorterMk4: getChecked("useSorterMk4", false),
+    maxLabLayers: parseInt(getValue("maxLabLayers", "15")),
+    selfSpray: getChecked("selfAcc", false),
+    generateTeslaTower: getChecked("generateTeslaTower", true),
+    teslaTowerInterval: 10,
+    teslaTowerLineInterval: parseInt(getValue("teslaTowerLineInterval", "1")),
+    onlyConveyorBeltMk3Downgrade: false,
+    stackLayers: parseInt(getValue("stackLayers", "1")) || 1,
   };
   // console.log(config)
   let b1 = new Blueprint(

@@ -201,8 +201,8 @@ function confirm() {
 .dialog {
   background: white;
   border-radius: 12px;
-  width: 90%;
-  max-width: 500px;
+  width: 95%;
+  max-width: 800px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -309,7 +309,7 @@ function confirm() {
   justify-content: flex-start;
   gap: 4px;
   padding: 6px;
-  min-height: 80px;
+  min-height: 90px;
 }
 
 .item-btn:hover {

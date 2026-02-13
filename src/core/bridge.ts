@@ -141,6 +141,12 @@ declare global {
     xps_editor_number: number
     items_editor_index: number
     items_editor_number: number
+    settings_time: Record<string, number>
+    saveSettingTime: () => void
+    settingsLocal: Record<string, { m?: string; accType?: string; accValue?: string }>
+    defaultAccType: string
+    defaultAccValue: string
+    update_all: () => void
   }
 }
 
@@ -163,8 +169,90 @@ export function initLegacyBridge(): void {
   window.totalDisplay = []
   window.xps_editor_index = -1
   window.items_editor_index = -1
+  window.settings_time = {}
+
+  window.onlyConveyorBeltMk3 = { checked: true } as HTMLInputElement
+  window.onlySorterMk3 = { checked: true } as HTMLInputElement
+  window.useSorterMk4 = { checked: false } as HTMLInputElement
+  window.selfAcc = { checked: false } as HTMLInputElement
+  window.generateTeslaTower = { checked: true } as HTMLInputElement
+  window.teslaTowerLineInterval = { value: '1' } as HTMLInputElement
+  window.conveyorBeltStackLayer = { value: '4' } as HTMLInputElement
+  window.stackLayers = { value: '1' } as HTMLInputElement
+  window.x_y_ratio = { value: '2' } as HTMLInputElement
+  window.maxLabLayers = { value: '15' } as HTMLInputElement
+  window.pointLength = { value: '1' } as HTMLInputElement
+  window.hideSource = { checked: false } as HTMLInputElement
+  window.settingsLocal = {}
+  window.defaultAccType = '增产剂Mk.Ⅰ'
+  window.defaultAccValue = '无'
 
   window.cocoMessage = cocoMessageProxy
+}
+
+export interface MachineConfigSettings {
+  modeIn: string
+  furnace: string
+  chemical: string
+  accType: string
+  accValue: string
+  research: string
+  hideSource: boolean
+}
+
+export function legacyUpdateMachineSettings(config: MachineConfigSettings): void {
+  const data = (window as any).data || []
+  const settingsLocal = (window as any).settingsLocal || {}
+  
+  data.forEach((item: any) => {
+    if (!settingsLocal[item.id]) {
+      settingsLocal[item.id] = {}
+    }
+    
+    if (item.mName === '制作台') {
+      settingsLocal[item.id].m = config.modeIn
+    }
+    if (item.mName === '冶炼设备') {
+      settingsLocal[item.id].m = config.furnace
+    }
+    if (item.mName === '化工设备') {
+      settingsLocal[item.id].m = config.chemical
+    }
+    if (item.mName === '研究站') {
+      settingsLocal[item.id].m = config.research
+    }
+    
+    settingsLocal[item.id].accType = config.accType
+    settingsLocal[item.id].accValue = config.accValue
+  })
+  
+  ;(window as any).settingsLocal = settingsLocal
+  ;(window as any).defaultAccType = config.accType
+  ;(window as any).defaultAccValue = config.accValue
+  
+  if (window.hideSource) {
+    window.hideSource.checked = config.hideSource
+  }
+  
+  if (typeof (window as any).saveSetting === 'function') {
+    ;(window as any).saveSetting()
+  }
+  
+  if (typeof (window as any).update_all === 'function') {
+    ;(window as any).update_all()
+  }
+}
+
+export function legacyGetMachineSettings(): MachineConfigSettings {
+  return {
+    modeIn: '制作台Mk.Ⅰ',
+    furnace: '电弧熔炉',
+    chemical: '化工厂',
+    accType: (window as any).defaultAccType || '增产剂Mk.Ⅰ',
+    accValue: (window as any).defaultAccValue || '无',
+    research: '矩阵研究站',
+    hideSource: window.hideSource?.checked ?? false
+  }
 }
 
 export function syncStateToLegacy(state: StateSyncMap): void {
@@ -240,6 +328,9 @@ export function legacyUpdateConfig(config: Partial<BlueprintConfig>): void {
   if (config.useSorterMk4 !== undefined && window.useSorterMk4) {
     window.useSorterMk4.checked = config.useSorterMk4
   }
+  if (config.selfSpray !== undefined && window.selfAcc) {
+    window.selfAcc.checked = config.selfSpray
+  }
   if (config.generateTeslaTower !== undefined && window.generateTeslaTower) {
     window.generateTeslaTower.checked = config.generateTeslaTower
   }
@@ -254,6 +345,93 @@ export function legacyUpdateConfig(config: Partial<BlueprintConfig>): void {
   }
   if (config.maxLabLayers !== undefined && window.maxLabLayers) {
     window.maxLabLayers.value = String(config.maxLabLayers)
+  }
+}
+
+export interface SpeedSettings {
+  oreSpeed: number
+  fractionatorSpeed: number
+  largeMinerSpeed: number
+  oilSpeed: number
+  orbitalDeuterium: number
+  orbitalFireIce: number
+  orbitalHydrogenIce: number
+  orbitalHydrogenGas: number
+  criticalPhotonSpeed: number
+  pointLength: number
+}
+
+export interface LogisticsSettings {
+  beltType: string
+  logisticStack: number
+}
+
+export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
+  const settingsTime = (window as any).settings_time || {}
+  
+  settingsTime['采矿机'] = speeds.oreSpeed / 100 * 0.5 * 6
+  settingsTime['大型采矿机'] = speeds.oreSpeed / 100 * 1 * 20
+  settingsTime['分馏塔'] = speeds.fractionatorSpeed
+  settingsTime['原油萃取站'] = speeds.oilSpeed
+  settingsTime['轨道采集器(气态)'] = speeds.orbitalHydrogenGas
+  settingsTime['轨道采集器(巨冰)'] = speeds.orbitalHydrogenIce
+  settingsTime['射线接收塔'] = speeds.criticalPhotonSpeed
+  
+  ;(window as any).settings_time = settingsTime
+  
+  if (typeof (window as any).saveSettingTime === 'function') {
+    ;(window as any).saveSettingTime()
+  }
+  
+  if (window.pointLength) {
+    window.pointLength.value = String(speeds.pointLength)
+  }
+  
+  if (typeof (window as any).update_all === 'function') {
+    ;(window as any).update_all()
+  }
+}
+
+export function legacyUpdateLogisticsSettings(logistics: LogisticsSettings): void {
+  ;(window as any).logisticsSettings = {
+    beltType: logistics.beltType,
+    logisticStack: logistics.logisticStack
+  }
+  
+  const beltSpeedMap: Record<string, number> = {
+    '传送带': 360,
+    '高速传送带': 720,
+    '极速传送带': 1800
+  }
+  ;(window as any).beltSpeed = beltSpeedMap[logistics.beltType] || 1800
+  
+  if (typeof (window as any).update_all === 'function') {
+    ;(window as any).update_all()
+  }
+}
+
+export function legacyGetLogisticsSettings(): LogisticsSettings {
+  const settings = (window as any).logisticsSettings || {}
+  return {
+    beltType: settings.beltType || '极速传送带',
+    logisticStack: settings.logisticStack || 1
+  }
+}
+
+export function legacyGetSpeedSettings(): SpeedSettings {
+  const settingsTime = (window as any).settings_time || {}
+  
+  return {
+    oreSpeed: Math.round((settingsTime['采矿机'] || 3) / 0.5 / 6 * 100),
+    fractionatorSpeed: settingsTime['分馏塔'] || 18,
+    largeMinerSpeed: Math.round((settingsTime['大型采矿机'] || 20) / 1 / 20 * 100),
+    oilSpeed: settingsTime['原油萃取站'] || 4,
+    orbitalDeuterium: 0.02,
+    orbitalFireIce: 0.5,
+    orbitalHydrogenIce: settingsTime['轨道采集器(巨冰)'] || 0.5,
+    orbitalHydrogenGas: settingsTime['轨道采集器(气态)'] || 1,
+    criticalPhotonSpeed: settingsTime['射线接收塔'] || 5,
+    pointLength: parseInt(window.pointLength?.value || '1')
   }
 }
 
