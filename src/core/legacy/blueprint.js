@@ -4021,3 +4021,5 @@ class Blueprint {
     return result;
   }
 }
+
+export { itemMap, productionCategory, buildingType, buildingMap, recipeMap, Blueprint }

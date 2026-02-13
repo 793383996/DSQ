@@ -1,12 +1,27 @@
-import { data } from './legacy/data'
-import * as blueprint from './legacy/blueprint'
-import * as pako from './legacy/pako'
 import { cocoMessageProxy } from '../composables/useToast'
 
+let dataModule: any = null
+let blueprintModule: any = null
+let pakoModule: any = null
+
+async function loadLegacyModules() {
+  if (!dataModule) {
+    const [dataMod, blueprintMod, pakoMod] = await Promise.all([
+      import('./legacy/data'),
+      import('./legacy/blueprint'),
+      import('pako')
+    ])
+    dataModule = dataMod
+    blueprintModule = blueprintMod
+    pakoModule = pakoMod
+  }
+  return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
+}
+
 export interface LegacyGlobals {
-  data: typeof data
-  blueprint: typeof blueprint
-  pako: typeof pako
+  data: any
+  blueprint: any
+  pako: any
 }
 
 export interface StateSyncMap {
@@ -264,4 +279,128 @@ export function legacySetProductionSettings(
   }
 }
 
-export { data, blueprint, pako }
+export { loadLegacyModules }
+
+export function getSelectableItems(): string[] {
+  const items: string[] = []
+  const reg = /^(\d)-(\d{1,2})-(.+)$/
+  const gameData = (window as any).game_data
+  if (!gameData) return items
+
+  const iconArrays = [gameData.icons1, gameData.icons2]
+  const seen = new Set<string>()
+
+  for (const icons of iconArrays) {
+    if (!Array.isArray(icons)) continue
+    for (const icon of icons) {
+      const name = icon.name
+      if (reg.test(name)) {
+        const match = name.match(reg)
+        if (match && match[3]) {
+          const itemName = match[3]
+          if (!seen.has(itemName)) {
+            seen.add(itemName)
+            items.push(itemName)
+          }
+        }
+      }
+    }
+  }
+
+  return items
+}
+
+interface ItemWithIcon {
+  name: string
+  icon: string
+}
+
+interface SelectableItemsResult {
+  icons1: ItemWithIcon[]
+  icons2: ItemWithIcon[]
+}
+
+export function getSelectableItemsWithIcons(): SelectableItemsResult {
+  const result: SelectableItemsResult = { icons1: [], icons2: [] }
+  const reg = /^(\d)-(\d{1,2})-(.+)$/
+  const gameData = (window as any).game_data
+  if (!gameData) return result
+
+  const seen1 = new Set<string>()
+  const seen2 = new Set<string>()
+
+  function processIcons(icons: any[], target: ItemWithIcon[], seen: Set<string>) {
+    if (!Array.isArray(icons)) return
+    for (const icon of icons) {
+      const name = icon.name
+      if (reg.test(name)) {
+        const match = name.match(reg)
+        if (match && match[3]) {
+          const itemName = match[3]
+          if (!seen.has(itemName)) {
+            seen.add(itemName)
+            target.push({
+              name: itemName,
+              icon: icon.value
+            })
+          }
+        }
+      }
+    }
+  }
+
+  processIcons(gameData.icons1, result.icons1, seen1)
+  processIcons(gameData.icons2, result.icons2, seen2)
+
+  return result
+}
+
+export function getIconData(): { [key: string]: string } {
+  const result: { [key: string]: string } = {}
+  const reg = /^(\d)-(\d{1,2})-(.+)$/
+  const gameData = (window as any).game_data
+  if (!gameData) return result
+
+  const iconArrays = [gameData.icons1, gameData.icons2]
+
+  for (const icons of iconArrays) {
+    if (!Array.isArray(icons)) continue
+    for (const icon of icons) {
+      const name = icon.name
+      if (reg.test(name)) {
+        const match = name.match(reg)
+        if (match && match[3]) {
+          result[match[3]] = icon.value
+        }
+      }
+    }
+  }
+
+  return result
+}
+
+export function isLegacyDataLoaded(): boolean {
+  return (window as any).isDataLoaded === true
+}
+
+export function waitForLegacyData(timeout: number = 10000): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (isLegacyDataLoaded()) {
+      resolve(true)
+      return
+    }
+
+    const startTime = Date.now()
+    const checkInterval = 100
+
+    const interval = setInterval(() => {
+      if (isLegacyDataLoaded()) {
+        clearInterval(interval)
+        resolve(true)
+      } else if (Date.now() - startTime > timeout) {
+        clearInterval(interval)
+        resolve(false)
+      }
+    }, checkInterval)
+  })
+}

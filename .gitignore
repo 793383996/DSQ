@@ -27,3 +27,17 @@ Thumbs.db
 # 临时文件
 *.tmp
 *.log
+
+# Node.js
+node_modules/
+
+# Build输出
+dist/
+build/
+out/
+.vite/
+
+# 环境配置
+.env
+.env.local
+.env.*.local

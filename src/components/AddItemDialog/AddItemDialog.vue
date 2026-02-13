@@ -18,14 +18,41 @@
             />
           </div>
 
-          <div class="items-grid" v-if="filteredItems.length > 0">
+          <div class="tab-section" v-if="!isLoading">
+            <button
+              class="tab-btn"
+              :class="{ active: activeTab === 'icons1' }"
+              @click="activeTab = 'icons1'"
+            >
+              组件
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: activeTab === 'icons2' }"
+              @click="activeTab = 'icons2'"
+            >
+              建筑
+            </button>
+          </div>
+
+          <div class="items-grid" v-if="isLoading">
+            <div class="loading-hint">加载中...</div>
+          </div>
+          <div class="items-grid" v-else-if="filteredItems.length > 0">
             <button
               v-for="item in filteredItems"
               :key="item.name"
               class="item-btn"
               :class="{ selected: selectedItem?.name === item.name }"
               @click="selectItem(item)"
+              :title="item.name"
             >
+              <img
+                v-if="item.icon"
+                :src="'data:image/png;base64,' + item.icon"
+                :alt="item.name"
+                class="item-icon"
+              />
               <span class="item-name">{{ item.name }}</span>
             </button>
           </div>
@@ -63,8 +90,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
-import { data } from '../../core/legacy/data'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { getSelectableItemsWithIcons, waitForLegacyData, isLegacyDataLoaded } from '../../core/bridge'
+
+interface ItemData {
+  name: string
+  icon: string
+}
 
 interface Props {
   modelValue: boolean
@@ -79,25 +111,43 @@ const emit = defineEmits<{
 
 const visible = ref(props.modelValue)
 const searchKeyword = ref('')
-const selectedItem = ref<{ name: string } | null>(null)
+const selectedItem = ref<ItemData | null>(null)
 const quantity = ref(1)
 const searchInput = ref<HTMLInputElement | null>(null)
+const icons1Items = ref<ItemData[]>([])
+const icons2Items = ref<ItemData[]>([])
+const isLoading = ref(true)
+const activeTab = ref<'icons1' | 'icons2'>('icons1')
 
-const allItems = computed(() => {
-  return data.map((item: any) => {
-    const product = item.s?.[0]
-    return {
-      name: product?.name || '未知物品'
+async function loadItems() {
+  if (!isLegacyDataLoaded()) {
+    const loaded = await waitForLegacyData(10000)
+    if (!loaded) {
+      console.warn('Legacy data load timeout')
+      return
     }
-  }).filter((item: any) => item.name !== '未知物品')
+  }
+  const data = getSelectableItemsWithIcons()
+  icons1Items.value = data.icons1
+  icons2Items.value = data.icons2
+  isLoading.value = false
+}
+
+onMounted(() => {
+  loadItems()
+})
+
+const currentTabItems = computed(() => {
+  return activeTab.value === 'icons1' ? icons1Items.value : icons2Items.value
 })
 
 const filteredItems = computed(() => {
+  const items = currentTabItems.value
   if (!searchKeyword.value.trim()) {
-    return allItems.value.slice(0, 50)
+    return items
   }
   const keyword = searchKeyword.value.toLowerCase()
-  return allItems.value.filter((item: any) =>
+  return items.filter(item =>
     item.name.toLowerCase().includes(keyword)
   )
 })
@@ -114,7 +164,7 @@ watch(() => props.modelValue, (val) => {
   }
 })
 
-function selectItem(item: { name: string }) {
+function selectItem(item: ItemData) {
   selectedItem.value = item
 }
 
@@ -209,22 +259,57 @@ function confirm() {
   border-color: #3498db;
 }
 
+.tab-section {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 14px;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  border-color: #3498db;
+}
+
+.tab-btn.active {
+  border-color: #3498db;
+  background: #e8f4fc;
+  color: #2980b9;
+  font-weight: 500;
+}
+
 .items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 8px;
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
 .item-btn {
-  padding: 10px 12px;
   border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: white;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 6px;
+  min-height: 80px;
 }
 
 .item-btn:hover {
@@ -237,16 +322,36 @@ function confirm() {
   background: #e8f8f0;
 }
 
+.item-icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .item-name {
-  font-size: 13px;
+  font-size: 11px;
   color: #2d3748;
   word-break: break-all;
+  line-height: 1.2;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .no-results {
   text-align: center;
   padding: 40px 20px;
   color: #94a3b8;
+}
+
+.loading-hint {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+  font-size: 14px;
 }
 
 .quantity-section {

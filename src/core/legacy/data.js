@@ -1,3 +1,5 @@
+import $ from 'jquery'
+
 //配方 ，如果数据改变时有可能需要重置配方
 var data = [
   /*
@@ -4380,8 +4382,10 @@ function loadSetting() {
   if (json) {
     eval("settings = " + json);
   }
-  document.getElementById("onlyConveyorBeltMk3").checked = true;
-  document.getElementById("onlySorterMk3").checked = true;
+  var el1 = document.getElementById("onlyConveyorBeltMk3");
+  var el2 = document.getElementById("onlySorterMk3");
+  if (el1) el1.checked = true;
+  if (el2) el2.checked = true;
 }
 var settings_time = {};
 function saveSettingTime() {
@@ -4503,6 +4507,10 @@ var singleMake = [];
 var xqss = [];
 var game_data = {};
 var isDataLoaded = false;
+
+window.game_data = game_data;
+window.isDataLoaded = false;
+
 $(function () {
   $.ajax({
     url: "./Scripts/data.json?v" + version,
@@ -4510,7 +4518,9 @@ $(function () {
     timeout: 1000000,
     success: function (data) {
       game_data = data;
+      window.game_data = game_data;
       isDataLoaded = true;
+      window.isDataLoaded = true;
       f_initIcons();
     },
     error: function () {
@@ -4795,126 +4805,94 @@ function addItem(item, number) {
 var app = null;
 // 这里加入了一些用法和一些变量，用于处理“设备数量”处的输入框
 function f_init() {
-  app = new Vue({
-    el: "#result",
-    data: {
-      totalEnergy: 0,
-      totalSpace: 0,
-      totalAcc: 0,
-      total: [],
-      xqs: [],
-      icons: icons,
-      items: [],
-      items2: [],
-      items0: [],
-      ig_names: [],
-      xps_editor_index: -1,
-      xps_editor_number: 0,
-      items_editor_index: -1,
-      items_editor_number: 0,
+  app = {
+    totalEnergy: 0,
+    totalSpace: 0,
+    totalAcc: 0,
+    total: [],
+    xqs: [],
+    icons: icons,
+    items: [],
+    items2: [],
+    items0: [],
+    ig_names: [],
+    xps_editor_index: -1,
+    xps_editor_number: 0,
+    items_editor_index: -1,
+    items_editor_number: 0,
+    speedChange: function (item) {
+      settings_time[item.machineName] = parseFloat(item.speed);
+      saveSettingTime();
+      update_all();
     },
-    methods: {
-      speedChange: function (item) {
-        settings_time[item.machineName] = parseFloat(item.speed);
-        saveSettingTime();
-        update_all();
-      },
-
-      onClickNumber: function (index) {
-        if (this.xqs && this.xqs[index]) {
-          this.xps_editor_index = index;
-          this.xps_editor_number = this.xqs[index].number;
-          Vue.nextTick(() => {
-            if (this.$refs.input && this.$refs.input[0]) {
-              let input = this.$refs.input[0];
-              input.focus();
-            }
-          });
-        }
-      },
-
-      onClickNumberItem: function (index_item) {
-        if (this.items && this.items[index_item]) {
-          this.items_editor_index = index_item;
-          this.items_editor_number = this.items[index_item].number2;
-          Vue.nextTick(() => {
-            if (this.$refs.input && this.$refs.input[0]) {
-              let input = this.$refs.input[0];
-              input.focus();
-            }
-          });
-        }
-      },
-
-      submitEditorNumber: function () {
-        if (this.xqs && this.xqs[this.xps_editor_index]) {
-          if (
-            //   去掉了检查输入为整数的逻辑
-            // Number.isInteger(this.number_editor_number) &&
-            this.xps_editor_number > 0
-          ) {
-            this.xqs[this.xps_editor_index].number = this.xps_editor_number;
-            update_all();
-          }
-          this.xps_editor_index = -1;
-        }
-      },
-      // 运行两遍可以防止1.999或2.001这种数值错误
-      submitEditorNumberItem: function () {
-        if (this.items && this.items[this.items_editor_index]) {
-          if (
-            // Number.isInteger(this.number_editor_number) &&
-            this.items_editor_number > 0
-          ) {
-            multiple =
-              this.items_editor_number /
-              this.items[this.items_editor_index].number2;
-
-            for (var i = 0; i < this.xqs.length; i++) {
-              this.xqs[i].number *= multiple;
-            }
-            update_all();
-            multiple =
-              this.items_editor_number /
-              this.items[this.items_editor_index].number2;
-
-            for (var i = 0; i < this.xqs.length; i++) {
-              this.xqs[i].number *= multiple;
-            }
-            update_all();
-          }
-          this.items_editor_index = -1;
-        }
-      },
-
-      cancelEditorNumber: function () {
-        this.xps_editor_index = -1;
-      },
-      cancelEditorNumberItem: function () {
-        this.items_editor_index = -1;
-      },
-
-      removeItem: function (index) {
-        if (this.xqs && this.xqs[index]) {
-          this.xqs.splice(index, 1);
+    onClickNumber: function (index) {
+      if (this.xqs && this.xqs[index]) {
+        this.xps_editor_index = index;
+        this.xps_editor_number = this.xqs[index].number;
+      }
+    },
+    onClickNumberItem: function (index_item) {
+      if (this.items && this.items[index_item]) {
+        this.items_editor_index = index_item;
+        this.items_editor_number = this.items[index_item].number2;
+      }
+    },
+    submitEditorNumber: function () {
+      if (this.xqs && this.xqs[this.xps_editor_index]) {
+        if (this.xps_editor_number > 0) {
+          this.xqs[this.xps_editor_index].number = this.xps_editor_number;
           update_all();
         }
-      },
+        this.xps_editor_index = -1;
+      }
     },
-    computed: {
-      totalDisplay: function () {
-        if (!this.total || !this.total.length) return [];
-        return this.total.map(function (item) {
-          return {
-            name: item.name,
-            value: item.value,
-            energy: item.energy ? item.energy.toFixed(2) : "0.00",
-            space: item.space ? Math.round(item.space) : 0,
-          };
-        });
-      },
+    submitEditorNumberItem: function () {
+      if (this.items && this.items[this.items_editor_index]) {
+        if (this.items_editor_number > 0) {
+          multiple =
+            this.items_editor_number /
+            this.items[this.items_editor_index].number2;
+
+          for (var i = 0; i < this.xqs.length; i++) {
+            this.xqs[i].number *= multiple;
+          }
+          update_all();
+          multiple =
+            this.items_editor_number /
+            this.items[this.items_editor_index].number2;
+
+          for (var i = 0; i < this.xqs.length; i++) {
+            this.xqs[i].number *= multiple;
+          }
+          update_all();
+        }
+        this.items_editor_index = -1;
+      }
     },
-  });
+    cancelEditorNumber: function () {
+      this.xps_editor_index = -1;
+    },
+    cancelEditorNumberItem: function () {
+      this.items_editor_index = -1;
+    },
+    removeItem: function (index) {
+      if (this.xqs && this.xqs[index]) {
+        this.xqs.splice(index, 1);
+        update_all();
+      }
+    },
+    totalDisplay: function () {
+      if (!this.total || !this.total.length) return [];
+      return this.total.map(function (item) {
+        return {
+          name: item.name,
+          value: item.value,
+          energy: item.energy ? item.energy.toFixed(2) : "0.00",
+          space: item.space ? Math.round(item.space) : 0,
+        };
+      });
+    },
+  };
   f_initData();
   f_fillData();
   doSpeed1();
@@ -5511,7 +5489,8 @@ function checkResult() {
 
 //每分钟需求: 引力透镜=0.1*接收塔=0.1*光子需求量/光子产量, 光子产量: 12(透镜×200%)/15(增产Ⅰ×250%)/18(增产Ⅱ×300%)/24(增产Ⅲ×400%)
 function fixGzSpeed() {
-  let fixedGzSpeed;
+  var fixedGzSpeed;
+  var item, accType, accValue;
   $(data).each(function () {
     if (this.s && this.s[0].name == "临界光子") {
       if (this.m) {
@@ -6659,4 +6638,91 @@ function generateBlueprint() {
     .writeText(b1.toStr())
     .then((r) => cocoMessage.success("已复制到粘贴板", 1000));
   // navigator.clipboard.writeText(JSON.stringify(b1.blueprintTemplate.buildings)).then(r => cocoMessage.success("已复制到粘贴板", 1000))
+}
+
+export {
+  data,
+  manualGzSpeed,
+  energyData,
+  spaceData,
+  defaultAccType,
+  defaultAccValue,
+  version,
+  recipeIndexByProduct,
+  recipeIndexByMaterial,
+  f_initData,
+  pointLength,
+  settingsLocal,
+  settings,
+  saveData,
+  getData,
+  saveSetting,
+  loadSetting,
+  settings_time,
+  saveSettingTime,
+  loadSettingTime,
+  settings_pf,
+  saveSettingPf,
+  loadSettingPf,
+  projects,
+  saveSettingProjects,
+  loadSettingProjects,
+  getMachine,
+  getAccType,
+  getAccValue,
+  getValue,
+  currentItem,
+  xqs,
+  singleMake,
+  xqss,
+  game_data,
+  isDataLoaded,
+  getGroup,
+  f_fillData,
+  getPfs,
+  getPfsByQ,
+  getIconImg,
+  getIconShow,
+  getAccSpeed,
+  getPfTitle,
+  find,
+  f_add3,
+  addItem,
+  app,
+  f_init,
+  single_list,
+  xh_list,
+  out_list,
+  addXH,
+  addAccTotal,
+  addOut,
+  findOut,
+  ig_names,
+  loadNumber,
+  getXhs,
+  doMergeMul,
+  mergeMul,
+  checkResult,
+  fixGzSpeed,
+  update_all,
+  selectM,
+  selectAccType,
+  selectAccValue,
+  selectPf,
+  f_tag,
+  f_ig,
+  f_ig_acc,
+  f_reset,
+  f_reset_ig,
+  f_remove_ig,
+  projectsUpdate,
+  f_save,
+  f_add,
+  actions,
+  f_split,
+  icons_define,
+  icons,
+  f_initIcons,
+  getRecipe,
+  generateBlueprint
 }
