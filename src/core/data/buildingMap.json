@@ -1,0 +1,213 @@
+{
+  "arcSmelter": {
+    "remark": "电弧熔炉",
+    "name": "arcSmelter",
+    "itemId": 2302,
+    "modelIndex": 62,
+    "productionSpeed": 1,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 0,
+    "slotMaxIndex": 7
+  },
+  "planeSmelter": {
+    "remark": "位面熔炉",
+    "name": "planeSmelter",
+    "itemId": 2315,
+    "modelIndex": 194,
+    "productionSpeed": 2,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 0,
+    "slotMaxIndex": 7
+  },
+  "负熵熔炉": {
+    "remark": "负熵熔炉",
+    "name": "负熵熔炉",
+    "itemId": 2319,
+    "modelIndex": 457,
+    "productionSpeed": 3,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 0,
+    "slotMaxIndex": 7
+  },
+  "assemblingMachineMk1": {
+    "remark": "制造台Mk.I",
+    "name": "assemblingMachineMk1",
+    "itemId": 2303,
+    "modelIndex": 65,
+    "productionSpeed": 0.75,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 1,
+    "slotMaxIndex": 8
+  },
+  "assemblingMachineMk2": {
+    "remark": "制造台MkⅡ",
+    "name": "assemblingMachineMk2",
+    "itemId": 2304,
+    "modelIndex": 66,
+    "productionSpeed": 1,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 1,
+    "slotMaxIndex": 8
+  },
+  "assemblingMachineMk3": {
+    "remark": "制造台Mk.III",
+    "name": "assemblingMachineMk3",
+    "itemId": 2305,
+    "modelIndex": 67,
+    "productionSpeed": 1.5,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 1,
+    "slotMaxIndex": 8
+  },
+  "重组式制造台": {
+    "remark": "重组式制造台",
+    "name": "重组式制造台",
+    "itemId": 2318,
+    "modelIndex": 456,
+    "productionSpeed": 3,
+    "size": { "x": 3, "y": 3 },
+    "type": 0,
+    "category": 1,
+    "slotMaxIndex": 8
+  },
+  "chemicalPlant": {
+    "remark": "化工厂",
+    "name": "chemicalPlant",
+    "itemId": 2309,
+    "modelIndex": 64,
+    "productionSpeed": 1,
+    "type": 0,
+    "category": 2,
+    "slotMaxIndex": 6
+  },
+  "量子化工厂": {
+    "remark": "量子化工厂",
+    "name": "量子化工厂",
+    "itemId": 2317,
+    "modelIndex": 376,
+    "productionSpeed": 2,
+    "type": 0,
+    "category": 2,
+    "slotMaxIndex": 6
+  },
+  "oilRefinery": {
+    "remark": "原油精炼厂",
+    "name": "oilRefinery",
+    "itemId": 2308,
+    "modelIndex": 63,
+    "productionSpeed": 1,
+    "type": 0,
+    "category": 3,
+    "slotMaxIndex": 5
+  },
+  "微型粒子对撞机": {
+    "remark": "粒子对撞机",
+    "name": "微型粒子对撞机",
+    "itemId": 2310,
+    "modelIndex": 69,
+    "productionSpeed": 1,
+    "type": 0,
+    "category": 4,
+    "slotMaxIndex": 8
+  },
+  "lab": {
+    "remark": "矩阵研究站",
+    "name": "lab",
+    "itemId": 2901,
+    "modelIndex": 70,
+    "productionSpeed": 1,
+    "type": 0,
+    "category": 5,
+    "height": 3,
+    "slotMaxIndex": 11
+  },
+  "自演化研究站": {
+    "remark": "自演化研究站",
+    "name": "自演化研究站",
+    "itemId": 2902,
+    "modelIndex": 455,
+    "productionSpeed": 3,
+    "type": 0,
+    "category": 5,
+    "height": 3,
+    "slotMaxIndex": 11
+  },
+  "sorterMk1": {
+    "name": "sorterMk1",
+    "itemId": 2011,
+    "modelIndex": 41,
+    "sortingSpeed": 1.5,
+    "size": { "x": 1, "y": 1 },
+    "type": 1,
+    "remark": "分拣器MK.I"
+  },
+  "sorterMk3": {
+    "name": "sorterMk3",
+    "itemId": 2013,
+    "modelIndex": 43,
+    "sortingSpeed": 6,
+    "size": { "x": 1, "y": 1 },
+    "type": 1,
+    "remark": "分拣器MK.Ⅲ"
+  },
+  "sorterMk4": {
+    "name": "sorterMk4",
+    "itemId": 2014,
+    "modelIndex": 483,
+    "sortingSpeed": 120,
+    "size": { "x": 1, "y": 1 },
+    "type": 1,
+    "remark": "分拣器MK.Ⅳ"
+  },
+  "conveyorBeltMk1": {
+    "name": "conveyorBeltMk1",
+    "itemId": 2001,
+    "modelIndex": 35,
+    "transportSpeed": 6,
+    "size": { "x": 1, "y": 1 },
+    "type": 2,
+    "remark": "传送带MK.I"
+  },
+  "conveyorBeltMK3": {
+    "name": "conveyorBeltMK3",
+    "itemId": 2003,
+    "modelIndex": 37,
+    "transportSpeed": 30,
+    "size": { "x": 1, "y": 1 },
+    "type": 2,
+    "remark": "传送带MK.Ⅲ"
+  },
+  "sprayCoater": {
+    "remark": "喷涂机",
+    "name": "sprayCoater",
+    "itemId": 2313,
+    "modelIndex": 120
+  },
+  "teslaTower": {
+    "remark": "电力感应塔",
+    "name": "teslaTower",
+    "itemId": 2201,
+    "modelIndex": 44
+  },
+  "satelliteSubstation": {
+    "remark": "卫星配电站",
+    "name": "satelliteSubstation",
+    "itemId": 2212,
+    "modelIndex": 68,
+    "powerDistribution": 30,
+    "size": { "x": 3, "y": 3 }
+  },
+  "templateBuilding": {
+    "name": "templateBuilding",
+    "itemId": 0,
+    "modelIndex": 0,
+    "size": { "x": 1, "y": 1 },
+    "remark": "模板"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "smelter": 0,
+  "assembling": 1,
+  "plant": 2,
+  "refinery": 3,
+  "collider": 4,
+  "lab": 5
+}

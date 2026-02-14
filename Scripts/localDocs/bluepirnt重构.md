@@ -1,6 +1,6 @@
 # `blueprint.js` 协议层解耦与重构详细实施方案
 
-> **状态**：⏳ 待开始 - 阶段 5
+> **状态**：⏳ 进行中 - 阶段 5
 > 
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md) | [堆叠流程重构.md](./堆叠流程重构.md)
 
@@ -15,20 +15,27 @@
 
 ## 0.1 重构进度追踪 (2026-02-14 更新)
 
-### ⏳ 待开始
+### ✅ 已完成
 
 | 任务 | 状态 | 优先级 | 说明 |
 |------|------|--------|------|
-| 类型定义 (`src/core/blueprint/types.ts`) | 🔲 | 高 | IBlueprintBuilding, IBlueprintData |
-| 二进制缓冲区 (`BlueprintBuffer.ts`) | 🔲 | 高 | 小端序读写器 |
+| 数据层解耦 (`src/core/data/*.json`) | ✅ | 高 | itemMap, buildingMap, recipeMap 等静态数据 |
+| 类型定义 (`src/core/types/blueprint.ts`) | ✅ | 高 | IBlueprintBuilding, IBlueprintData 等接口 |
+| 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅ | 高 | 小端序写入，Float32 精度保证 |
+| 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅ | 高 | 小端序读取，单元测试覆盖 |
+| MD5 工具 (`src/core/utils/md5.ts`) | ✅ | 中 | 从 blueprint.js 迁移，单元测试覆盖 |
+
+### ⏳ 进行中
+
+| 任务 | 状态 | 优先级 | 说明 |
+|------|------|--------|------|
 | 解析器 (`BlueprintParser.ts`) | 🔲 | 高 | 蓝图字符串解析 |
 | 编码器 (`BlueprintEncoder.ts`) | 🔲 | 高 | 蓝图数据编码 |
-| MD5 工具 (`Crypto.ts`) | 🔲 | 中 | 从 blueprint.js 迁移 |
 | Baseline 测试 | 🔲 | 高 | 字节级对比验证 |
 
 ### 前置依赖
 
-- [ ] data.js 核心逻辑解耦完成 (阶段 4B)
+- [x] data.js 核心逻辑解耦完成 (阶段 4B)
 - [ ] 堆叠模块服务化设计完成
 
 ---
