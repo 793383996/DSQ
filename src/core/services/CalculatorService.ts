@@ -1,6 +1,7 @@
 import type { ICalculationResult, IDemand } from '../types/recipe'
 import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
+import { logger } from '../../utils/logger'
 
 interface LegacyCalculationResult {
   items: any[]
@@ -75,7 +76,7 @@ export class CalculatorService {
       if (typeof (window as any).update_all === 'function') {
         ;(window as any).update_all()
       } else {
-        console.error('[CalculatorService] update_all function not found')
+        logger.error('[CalculatorService] update_all function not found')
         throw new Error('计算引擎未初始化')
       }
 
@@ -83,12 +84,12 @@ export class CalculatorService {
       this.fillContext()
       this.context.stopTimer()
 
-      console.log(`[CalculatorService] Calculation completed in ${this.context.elapsedTime.toFixed(2)}ms`)
+      logger.log(`[CalculatorService] Calculation completed in ${this.context.elapsedTime.toFixed(2)}ms`)
 
       return result
     } catch (error) {
       this.context.stopTimer()
-      console.error('[CalculatorService] Calculation failed:', error)
+      logger.error('[CalculatorService] Calculation failed:', error)
       throw error
     }
   }

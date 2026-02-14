@@ -26,6 +26,7 @@
         <tr
           v-for="(item, index) in visibleItems"
           :key="getItemKey(item, index)"
+          v-memo="[item.name, item.rate, item.count, isExcluded(item.name)]"
           :class="{ 'is-excluded': isExcluded(item.name) }"
         >
           <td class="col-icon">
@@ -87,9 +88,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
-import { getIconData, waitForLegacyData, isLegacyDataLoaded } from '../../core/bridge'
+import { useIconProvider } from '../../composables/useIconProvider'
 
 interface TableItem {
   name: string
@@ -120,16 +121,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useBlueprintStore()
-
-const iconCache = ref<Map<string, string>>(new Map())
-
-onMounted(async () => {
-  if (!isLegacyDataLoaded()) {
-    await waitForLegacyData(10000)
-  }
-  const icons = getIconData()
-  iconCache.value = new Map(Object.entries(icons))
-})
+const { getIcon } = useIconProvider()
 
 const visibleItems = computed(() => {
   if (!props.hideSource) return props.items
@@ -165,10 +157,8 @@ function formatNumber(num: number | undefined): string {
 }
 
 function getItemIcon(name: string): string | undefined {
-  if (iconCache.value.has(name)) {
-    return iconCache.value.get(name) || undefined
-  }
-  return undefined
+  const icon = getIcon(name)
+  return icon || undefined
 }
 
 function getItemInitial(name: string): string {

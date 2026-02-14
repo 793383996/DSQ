@@ -1,4 +1,5 @@
 import type { ICalculationResult } from '../types/recipe'
+import { logger } from '../../utils/logger'
 
 /**
  * 计算上下文 - 替代全局变量
@@ -73,7 +74,7 @@ export class CalculationContext {
   enterRecursion(): boolean {
     this.depth++
     if (this.depth > this.maxDepth) {
-      console.error(`[CalculationContext] Max recursion depth exceeded: ${this.maxDepth}`)
+      logger.error(`[CalculationContext] Max recursion depth exceeded: ${this.maxDepth}`)
       return false
     }
     return true

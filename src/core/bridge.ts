@@ -1,5 +1,6 @@
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
+import { logger } from '../utils/logger'
 
 let dataModule: any = null
 let blueprintModule: any = null
@@ -132,7 +133,7 @@ declare global {
 
 export function initLegacyBridge(): void {
   if (isBridgeInitialized) {
-    console.log('[bridge] Already initialized, skipping')
+    logger.log('[bridge] Already initialized, skipping')
     return
   }
   isBridgeInitialized = true
@@ -170,7 +171,7 @@ export function initLegacyBridge(): void {
 
   window.cocoMessage = cocoMessageProxy
   
-  console.log('[bridge] Legacy bridge initialized')
+  logger.log('[bridge] Legacy bridge initialized')
 }
 
 export interface MachineConfigSettings {

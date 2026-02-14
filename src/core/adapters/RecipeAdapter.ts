@@ -1,4 +1,5 @@
 import type { IRecipe, IRecipeItem, IRecipeIndex, IRawRecipe } from '../types/recipe'
+import { logger } from '../../utils/logger'
 
 /**
  * 配方适配器 - 将简写数据转换为语义化接口
@@ -23,12 +24,12 @@ export class RecipeAdapter {
    */
   loadFromRawData(rawData: IRawRecipe[]): void {
     if (this.loaded) {
-      console.warn('[RecipeAdapter] Data already loaded, skipping reload')
+      logger.warn('[RecipeAdapter] Data already loaded, skipping reload')
       return
     }
 
     if (!Array.isArray(rawData)) {
-      console.error('[RecipeAdapter] Invalid data format: expected array')
+      logger.error('[RecipeAdapter] Invalid data format: expected array')
       return
     }
 
@@ -36,7 +37,7 @@ export class RecipeAdapter {
     this.buildIndex()
     this.loaded = true
 
-    console.log(`[RecipeAdapter] Loaded ${this.recipes.length} recipes`)
+    logger.log(`[RecipeAdapter] Loaded ${this.recipes.length} recipes`)
   }
 
   /**
