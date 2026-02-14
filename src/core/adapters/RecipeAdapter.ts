@@ -1,4 +1,5 @@
-import type { IRecipe, IRecipeItem, IRecipeIndex, IRawRecipe } from '../types/recipe'
+import type { IRecipe, IRecipeItem, IRecipeIndex } from '../types/recipe'
+import type { IRawRecipe } from '../types/settings'
 import { logger } from '../../utils/logger'
 
 declare global {

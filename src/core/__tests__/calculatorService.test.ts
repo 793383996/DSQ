@@ -97,7 +97,7 @@ describe('CalculatorService', () => {
 
       expect(result.xqs).toHaveLength(1)
       expect(result.xqs[0].name).toBe('铁块')
-      expect(result.xqs[0].number).toBe(60)
+      expect(result.xqs[0].num).toBe(60)
     })
 
     it('should set window.xqs with demands', async () => {

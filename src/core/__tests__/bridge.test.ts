@@ -126,11 +126,23 @@ describe('bridge', () => {
       expect(window.selmaince.value).toBe('1')
     })
 
-    it('should initialize default accelerator settings', () => {
+    it('should initialize default accelerator settings only when not set', () => {
+      window.defaultAccType = undefined
+      window.defaultAccValue = undefined
       initLegacyBridge()
 
-      expect(window.defaultAccType).toBe('增产剂Mk.Ⅰ')
-      expect(window.defaultAccValue).toBe('无')
+      expect(window.defaultAccType).toBeUndefined()
+      expect(window.defaultAccValue).toBeUndefined()
+    })
+
+    it('should not overwrite existing accelerator settings from localStorage', () => {
+      window.defaultAccType = '增产剂Mk.Ⅲ'
+      window.defaultAccValue = '增产'
+
+      initLegacyBridge()
+
+      expect(window.defaultAccType).toBe('增产剂Mk.Ⅲ')
+      expect(window.defaultAccValue).toBe('增产')
     })
 
     it('should not reinitialize if already initialized', () => {

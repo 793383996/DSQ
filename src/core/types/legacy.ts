@@ -30,6 +30,9 @@ export interface ILegacyXhItem {
   name: string
   value: number
   value2?: number
+  number?: number
+  num?: number
+  item?: { name: string }
 }
 
 export interface ILegacyOutItem {
@@ -49,6 +52,9 @@ export interface ILegacyWindow {
   xqs: ILegacyXhItem[]
   ig_names: string[]
   settings: Record<string, ILegacySettings>
+  settings_time: Record<string, number>
+  settings_pf: Record<string, number>
+  settingsLocal: Record<string, ILegacySettings>
   cocoMessage: (msg: string, type?: string) => void
   loadNumber: () => unknown
   find: (name: string, normalize_recipe?: boolean) => ILegacyDataItem | null
@@ -90,7 +96,6 @@ export interface ILegacyWindow {
   xps_editor_number: number
   items_editor_index: number
   items_editor_number: number
-  settings_time: Record<string, number>
   saveSettingTime: () => void
   settingsLocal: Record<string, ILegacySettings>
   defaultAccType: string

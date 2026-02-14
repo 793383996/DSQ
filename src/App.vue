@@ -45,6 +45,7 @@ import { useBlueprintStore } from './stores/blueprint'
 import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
 import type { LegacyWindow } from './core/types/legacy'
 import { calculatorService } from './core/services/CalculatorService'
+import { logger } from './utils/logger'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
 import ResultTable from './components/ResultTable/ResultTable.vue'
@@ -68,12 +69,17 @@ function getWin(): LegacyWindow {
 }
 
 onMounted(async () => {
-  const dataLoaded = await waitForLegacyData(10000)
-  isDataReady.value = dataLoaded
+  const loadResult = await waitForLegacyData(10000, 2)
+  isDataReady.value = loadResult.success
 
-  if (!dataLoaded) {
+  if (!loadResult.success) {
     calculationError.value = t('errors.dataLoadFailed')
+    logger.error(`[App] Data load failed after ${loadResult.retries} retries`)
     return
+  }
+
+  if (loadResult.retries > 0) {
+    logger.log(`[App] Data loaded after ${loadResult.retries} retries`)
   }
 
   const win = getWin()

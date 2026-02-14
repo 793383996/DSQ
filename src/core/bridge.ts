@@ -1,7 +1,9 @@
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
+import { settingsAdapter } from './adapters/SettingsAdapter'
 import { logger } from '../utils/logger'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
+import type { IRawRecipe } from './types/settings'
 
 let dataModule: unknown = null
 let blueprintModule: unknown = null
@@ -35,8 +37,10 @@ async function loadLegacyModules() {
 
     const win = getWin()
     if (win.data && !recipeAdapter.isLoaded()) {
-      recipeAdapter.loadFromRawData(win.data as Record<string, unknown>)
+      recipeAdapter.loadFromRawData(win.data as unknown as IRawRecipe[])
     }
+
+    settingsAdapter.init()
 
     logger.log('[bridge] Legacy modules loaded successfully')
     return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
@@ -116,7 +120,6 @@ export function initLegacyBridge(): void {
   win.totalDisplay = []
   win.xps_editor_index = -1
   win.items_editor_index = -1
-  win.settings_time = {}
 
   win.onlyConveyorBeltMk3 = { checked: true } as HTMLInputElement
   win.onlySorterMk3 = { checked: true } as HTMLInputElement
@@ -133,9 +136,6 @@ export function initLegacyBridge(): void {
   win.hideSource = { checked: false } as HTMLInputElement
   win.txtnumber = { value: '60' } as HTMLInputElement
   win.selmaince = { value: '1' } as HTMLInputElement
-  win.settingsLocal = {}
-  win.defaultAccType = '增产剂Mk.Ⅰ'
-  win.defaultAccValue = '无'
 
   win.cocoMessage = cocoMessageProxy
 
@@ -213,6 +213,7 @@ export function syncStateToLegacy(state: StateSyncMap): void {
   const win = getWin()
   win.xqs = state.demandList.map(d => ({
     name: d.name,
+    value: d.num || d.number || 1,
     number: d.num || d.number || 1,
     item: { name: d.name }
   }))
@@ -378,7 +379,7 @@ export function legacyUpdateLogisticsSettings(logistics: LogisticsSettings): voi
 
 export function legacyGetLogisticsSettings(): LogisticsSettings {
   const win = getWin()
-  const settings = win.logisticsSettings || {}
+  const settings = win.logisticsSettings || ({} as { beltType?: string; logisticStack?: number })
   return {
     beltType: settings.beltType || '极速传送带',
     logisticStack: settings.logisticStack || 1
@@ -541,25 +542,46 @@ export function isGameDataLoaded(): boolean {
   return win.isDataLoaded === true
 }
 
-export function waitForLegacyData(timeout: number = 10000): Promise<boolean> {
+export interface LegacyDataLoadResult {
+  success: boolean
+  retries: number
+  timedOut: boolean
+}
+
+export function waitForLegacyData(
+  timeout: number = 10000,
+  maxRetries: number = 2
+): Promise<LegacyDataLoadResult> {
   return new Promise(resolve => {
-    if (isLegacyDataLoaded()) {
-      resolve(true)
-      return
+    let retries = 0
+
+    function attempt(): void {
+      if (isLegacyDataLoaded()) {
+        resolve({ success: true, retries, timedOut: false })
+        return
+      }
+
+      const startTime = Date.now()
+      const checkInterval = 50
+
+      const interval = setInterval(() => {
+        if (isLegacyDataLoaded()) {
+          clearInterval(interval)
+          resolve({ success: true, retries, timedOut: false })
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(interval)
+          retries++
+          if (retries < maxRetries) {
+            logger.warn(`[bridge] Timeout, retrying (${retries}/${maxRetries})...`)
+            attempt()
+          } else {
+            logger.error('[bridge] Timeout waiting for legacy data after all retries')
+            resolve({ success: false, retries, timedOut: true })
+          }
+        }
+      }, checkInterval)
     }
 
-    const startTime = Date.now()
-    const checkInterval = 50
-
-    const interval = setInterval(() => {
-      if (isLegacyDataLoaded()) {
-        clearInterval(interval)
-        resolve(true)
-      } else if (Date.now() - startTime > timeout) {
-        clearInterval(interval)
-        logger.error('[bridge] Timeout waiting for legacy data')
-        resolve(false)
-      }
-    }, checkInterval)
+    attempt()
   })
 }

@@ -101,10 +101,8 @@ export class CalculatorService {
     clearLegacyGlobalState()
 
     if (!recipeAdapter.isLoaded()) {
-      const rawData = (window as unknown as Record<string, unknown>).data
-      if (rawData) {
-        recipeAdapter.loadFromRawData(rawData as Record<string, unknown>)
-      }
+      logger.error('[CalculatorService] RecipeAdapter not initialized - bridge load failed')
+      throw new Error('配方数据未初始化，请刷新页面重试')
     }
 
     const excludes = options.excludes || []
@@ -136,7 +134,7 @@ export class CalculatorService {
       const result = this.extractResults()
       result.xqs = demands.map(d => ({
         name: d.name,
-        number: d.num,
+        num: d.num,
         item: { name: d.name }
       }))
       result.ig_names = [...excludes]

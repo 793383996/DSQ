@@ -4256,6 +4256,8 @@ function f_initData() {
   // 清空索引，准备重建
   recipeIndexByProduct = {}
   recipeIndexByMaterial = {}
+  window.recipeIndexByProduct = recipeIndexByProduct
+  window.recipeIndexByMaterial = recipeIndexByMaterial
 
   data.forEach(function (item, i) {
     item.id = i //配方的id，用index设置，data改变时应该重置配方
@@ -4418,6 +4420,7 @@ function loadSetting() {
   if (el1) el1.checked = true
   if (el2) el2.checked = true
 }
+window.loadSetting = loadSetting
 var settings_time = {}
 window.settings_time = settings_time
 function saveSettingTime() {
@@ -4436,20 +4439,26 @@ function loadSettingTime() {
     }
   }
 }
+window.loadSettingTime = loadSettingTime
 var settings_pf = {}
+window.settings_pf = settings_pf
 function saveSettingPf() {
   saveData('machine_settings_pf' + version, JSON.stringify(settings_pf))
 }
+window.saveSettingPf = saveSettingPf
 function loadSettingPf() {
   var json = getData('machine_settings_pf' + version)
   if (json) {
     try {
       settings_pf = JSON.parse(json)
+      window.settings_pf = settings_pf
     } catch (e) {
       settings_pf = {}
+      window.settings_pf = settings_pf
     }
   }
 }
+window.loadSettingPf = loadSettingPf
 var projects = []
 function saveSettingProjects() {
   saveData('settings_projects' + version, JSON.stringify(projects))
@@ -4905,11 +4914,11 @@ function f_init() {
     }
   }
   f_initData()
-  doSpeed1()
-  update_all()
   loadSetting()
   loadSettingTime()
   loadSettingPf()
+  doSpeed1()
+  update_all()
 
   function doSpeed1() {
     var st = settings_time || {}
@@ -5477,7 +5486,6 @@ function update_all() {
     var accValue = (settings[item.id] || {}).accValue || defaultAccValue
     if (accValue == '增产' && item.noExtra) accValue = '无'
     if (item.q.length == 0 || item.noExtra === null) accValue = '无'
-
     ;['增产剂Mk.Ⅰ', '增产剂Mk.Ⅱ', '增产剂Mk.Ⅲ'].forEach(function (one) {
       outitem.accType.push({
         class: one == accType ? 'm selected' : 'm',
@@ -5491,7 +5499,6 @@ function update_all() {
         showName: one.replace('增产剂', '')
       })
     })
-
     ;['无', '加速', '增产'].forEach(function (one) {
       if (one != '无' && (item.q.length == 0 || item.noExtra === null)) return
       if (one == '增产' && item.noExtra) return
@@ -5553,6 +5560,8 @@ window.update_all = update_all
 window.loadNumber = loadNumber
 window.find = find
 window.generateBlueprint = generateBlueprint
+window.recipeIndexByProduct = recipeIndexByProduct
+window.recipeIndexByMaterial = recipeIndexByMaterial
 function selectM(id, m) {
   settings[id] = settings[id] || {}
   settings[id].m = m
