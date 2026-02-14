@@ -192,6 +192,7 @@
 import { ref, watch, reactive } from 'vue'
 import { useBlueprintStore, type MachineSettings } from '../../stores/blueprint'
 import { legacyUpdateMachineSettings, legacyGetMachineSettings, legacyUpdateConfig, legacyUpdateSpeedSettings, legacyUpdateLogisticsSettings } from '../../core/bridge'
+import { logger } from '../../utils/logger'
 
 interface Props {
   modelValue: boolean
@@ -281,7 +282,7 @@ function loadSettingsFromStorage() {
       Object.assign(settings, parsed)
     }
   } catch (e) {
-    console.warn('Failed to load settings from storage', e)
+    logger.warn('Failed to load settings from storage', e)
   }
 }
 
@@ -289,7 +290,7 @@ function saveSettingsToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   } catch (e) {
-    console.warn('Failed to save settings to storage', e)
+    logger.warn('Failed to save settings to storage', e)
   }
 }
 

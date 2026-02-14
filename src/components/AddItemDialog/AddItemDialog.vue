@@ -92,6 +92,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { getSelectableItemsWithIcons, waitForLegacyData, isLegacyDataLoaded } from '../../core/bridge'
+import { logger } from '../../utils/logger'
 
 interface ItemData {
   name: string
@@ -111,6 +112,7 @@ const emit = defineEmits<{
 
 const visible = ref(props.modelValue)
 const searchKeyword = ref('')
+const debouncedKeyword = ref('')
 const selectedItem = ref<ItemData | null>(null)
 const quantity = ref(1)
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -123,7 +125,7 @@ async function loadItems() {
   if (!isLegacyDataLoaded()) {
     const loaded = await waitForLegacyData(10000)
     if (!loaded) {
-      console.warn('Legacy data load timeout')
+      logger.warn('Legacy data load timeout')
       return
     }
   }
@@ -143,13 +145,24 @@ const currentTabItems = computed(() => {
 
 const filteredItems = computed(() => {
   const items = currentTabItems.value
-  if (!searchKeyword.value.trim()) {
+  if (!debouncedKeyword.value.trim()) {
     return items
   }
-  const keyword = searchKeyword.value.toLowerCase()
+  const keyword = debouncedKeyword.value.toLowerCase()
   return items.filter(item =>
     item.name.toLowerCase().includes(keyword)
   )
+})
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(searchKeyword, (val) => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+  debounceTimer = setTimeout(() => {
+    debouncedKeyword.value = val
+  }, 150)
 })
 
 watch(() => props.modelValue, (val) => {
@@ -159,6 +172,7 @@ watch(() => props.modelValue, (val) => {
       searchInput.value?.focus()
     })
     searchKeyword.value = ''
+    debouncedKeyword.value = ''
     selectedItem.value = null
     quantity.value = 1
   }

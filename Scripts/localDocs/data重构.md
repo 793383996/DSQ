@@ -24,21 +24,19 @@
 | 废弃文件清理 | ✅ | 2026-02-14 | jquery-*.js 已删除 |
 | 构建配置优化 | ✅ | 2026-02-14 | Vite code splitting + esbuild |
 | App.vue 迁移至 CalculatorService | ✅ | 2026-02-14 | 主入口已切换至新服务层 |
-
-### ⏳ 进行中
-
-| 任务 | 状态 | 优先级 | 说明 |
-|------|------|--------|------|
-| 数据适配器 (`RecipeAdapter.ts`) | ✅ | 高 | 语义化访问，索引预热 |
-| 计算服务 (`CalculatorService.ts`) | ✅ | 高 | 封装 update_all，上下文管理 |
-| 计算上下文 (`CalculationContext.ts`) | ✅ | 高 | 替代全局变量，填充 xh_list/out_list |
-| Baseline 测试 | ✅ | 高 | 新旧实现对比验证 |
+| 数据适配器 (`RecipeAdapter.ts`) | ✅ | 2026-02-14 | 语义化访问，索引预热 |
+| 计算服务 (`CalculatorService.ts`) | ✅ | 2026-02-14 | 封装 update_all，上下文管理 |
+| 计算上下文 (`CalculationContext.ts`) | ✅ | 2026-02-14 | 替代全局变量，填充 xh_list/out_list |
+| 类型定义 (`src/core/types/recipe.ts`) | ✅ | 2026-02-14 | IRecipe, IRecipeItem, ICalculationResult |
+| Baseline 测试 | ✅ | 2026-02-14 | 新旧实现对比验证 |
+| 图标缓存统一管理 | ✅ | 2026-02-14 | ResultTable 使用 useIconProvider |
+| v-memo 性能优化 | ✅ | 2026-02-14 | ResultTable 列表渲染优化 |
+| 日志环境控制 | ✅ | 2026-02-14 | 新增 logger.ts，生产环境静默 |
 
 ### 🔲 待开始
 
 | 任务 | 状态 | 优先级 | 说明 |
 |------|------|--------|------|
-| 类型定义 (`src/core/types/recipe.ts`) | ✅ | 高 | IRecipe, IRecipeItem, ICalculationResult |
 | 配方数据 JSON 化 | 🔲 | 中 | data.js → recipes.json |
 | JSON Schema 校验 | 🔲 | 低 | 数据格式验证 |
 

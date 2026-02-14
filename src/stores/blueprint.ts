@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { logger } from '../utils/logger'
 
 export interface DemandItem {
   name: string
@@ -24,7 +25,7 @@ function loadPersistedSettings(): MachineSettings {
       return JSON.parse(saved)
     }
   } catch (e) {
-    console.warn('Failed to load persisted settings:', e)
+    logger.warn('Failed to load persisted settings:', e)
   }
   return {
     modeIn: '制作台Mk.Ⅰ',
@@ -91,7 +92,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(machineSettings.value))
     } catch (e) {
-      console.warn('Failed to persist settings:', e)
+      logger.warn('Failed to persist settings:', e)
     }
   }
 

@@ -64,14 +64,20 @@
 | 废弃文件清理 | ✅ | 中 | jquery-*.js 已删除 |
 | 构建配置优化 | ✅ | 中 | Vite code splitting + esbuild |
 
+### ✅ 第六阶段：性能优化 - 已完成 (2026-02-14)
+
+| 任务 | 状态 | 优先级 | 备注 |
+|------|------|--------|------|
+| 图标缓存统一管理 | ✅ | 高 | ResultTable 使用 useIconProvider |
+| v-memo 性能优化 | ✅ | 中 | ResultTable 列表渲染优化 |
+| 日志环境控制 | ✅ | 中 | 新增 logger.ts，生产环境静默 |
+
 ### ⏳ 后续优化 - 待进行
 
 | 任务 | 状态 | 优先级 | 备注 |
 |------|------|--------|------|
-| 配方数据 JSON 化 | ⏳ | 高 | 详见 [data重构.md](./data重构.md) |
-| 计算逻辑服务化 | ⏳ | 高 | loadNumber → CalculationService |
-| Tooltip 组件化 | ⏳ | 中 | 替代 `jquery.tips.js` |
-| `v-memo` 性能优化 | ⏳ | 中 | ResultTable 频繁更新场景 |
+| 配方数据 JSON 化 | ⏳ | 中 | 详见 [data重构.md](./data重构.md) |
+| Tooltip 组件化 | ⏳ | 低 | 替代 `jquery.tips.js` |
 
 ---
 
