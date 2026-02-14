@@ -5,6 +5,7 @@ import Toast from './components/Toast/Toast.vue'
 import BlueprintGenerator from './components/BlueprintGenerator/BlueprintGenerator.vue'
 import { setToastInstance } from './composables/useToast'
 import { initLegacyBridge, loadLegacyModules } from './core/bridge'
+import { logger } from './utils/logger'
 import '../Scripts/style.css'
 
 initLegacyBridge()
@@ -27,4 +28,4 @@ app.component('BlueprintGenerator', BlueprintGenerator)
 
 app.mount('#app')
 
-loadLegacyModules().catch(console.error)
+loadLegacyModules().catch((e) => logger.error('Failed to load legacy modules:', e))

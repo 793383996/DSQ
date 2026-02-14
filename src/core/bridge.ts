@@ -263,7 +263,7 @@ export async function runCalculation(): Promise<any> {
     }
     throw new Error('loadNumber function not found')
   } catch (error) {
-    console.error('Calculation failed:', error)
+    logger.error('Calculation failed:', error)
     cocoMessageProxy('计算失败，请检查配置', 'error')
     throw error
   }
@@ -570,7 +570,7 @@ export function waitForLegacyData(timeout: number = 10000): Promise<boolean> {
         resolve(true)
       } else if (Date.now() - startTime > timeout) {
         clearInterval(interval)
-        console.error('[bridge] Timeout waiting for legacy data')
+        logger.error('[bridge] Timeout waiting for legacy data')
         resolve(false)
       }
     }, checkInterval)

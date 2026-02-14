@@ -1,5 +1,6 @@
 import { ref, shallowRef } from 'vue'
 import { itemMap } from '../core/legacy/blueprint'
+import { logger } from '../utils/logger'
 
 interface IconCache {
   [key: string]: string
@@ -27,7 +28,7 @@ export function useIconProvider() {
             cache[key] = base64
           }
         } catch (e) {
-          console.warn(`Failed to load icon for ${item.name}:`, e)
+          logger.warn(`Failed to load icon for ${item.name}:`, e)
         }
       }
     }
@@ -96,7 +97,7 @@ export function useIconProvider() {
               iconCache.value[name] = base64
             }
           } catch (e) {
-            console.warn(`Failed to preload icon for ${name}:`, e)
+            logger.warn(`Failed to preload icon for ${name}:`, e)
           }
           break
         }

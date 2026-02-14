@@ -32,6 +32,7 @@
 | 图标缓存统一管理 | ✅ | 2026-02-14 | ResultTable 使用 useIconProvider |
 | v-memo 性能优化 | ✅ | 2026-02-14 | ResultTable 列表渲染优化 |
 | 日志环境控制 | ✅ | 2026-02-14 | 新增 logger.ts，生产环境静默 |
+| 搜索防抖优化 | ✅ | 2026-02-14 | AddItemDialog 搜索延迟 150ms |
 
 ### 🔲 待开始
 

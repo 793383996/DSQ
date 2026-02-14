@@ -31,6 +31,7 @@ import { ref, computed } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { legacyGenerateBlueprint, legacyGetConfigFromDOM } from '../../core/bridge'
 import { useToast } from '../../composables/useToast'
+import { logger } from '../../utils/logger'
 
 const store = useBlueprintStore()
 const toast = useToast()
@@ -62,7 +63,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text)
     return true
   } catch (e) {
-    console.error('Failed to copy to clipboard:', e)
+    logger.error('Failed to copy to clipboard:', e)
     return false
   }
 }
