@@ -1,25 +1,39 @@
 <template>
   <div class="result-table-container">
     <div v-if="isLoading" class="loading-state">
-      <div class="spinner"></div>
-      <span>计算中...</span>
+      <div class="spinner" />
+      <span>{{ $t('resultTable.calculating') }}</span>
     </div>
 
     <div v-else-if="error" class="error-state">
       <span class="error-icon">!</span>
       <span>{{ error }}</span>
-      <button class="retry-btn" @click="$emit('retry')">重试</button>
+      <button class="retry-btn" @click="$emit('retry')">
+        {{ $t('common.retry') }}
+      </button>
     </div>
 
     <table v-else-if="items.length > 0" class="result-table">
       <thead>
         <tr>
-          <th class="col-icon">图标</th>
-          <th class="col-name">名称</th>
-          <th class="col-rate">速率</th>
-          <th class="col-count">数量</th>
-          <th class="col-building">建筑</th>
-          <th class="col-actions">操作</th>
+          <th class="col-icon">
+            {{ $t('resultTable.icon') }}
+          </th>
+          <th class="col-name">
+            {{ $t('resultTable.name') }}
+          </th>
+          <th class="col-rate">
+            {{ $t('resultTable.rate') }}
+          </th>
+          <th class="col-count">
+            {{ $t('resultTable.count') }}
+          </th>
+          <th class="col-building">
+            {{ $t('resultTable.building') }}
+          </th>
+          <th class="col-actions">
+            {{ $t('resultTable.actions') }}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -53,24 +67,24 @@
           <td class="col-actions">
             <button
               class="action-btn add-btn"
+              :title="$t('resultTable.addDemand')"
               @click="addToDemand(item)"
-              title="添加为需求"
             >
               +
             </button>
             <button
               v-if="!isExcluded(item.name)"
               class="action-btn exclude-btn"
+              :title="$t('resultTable.exclude')"
               @click="excludeItem(item)"
-              title="排除"
             >
               -
             </button>
             <button
               v-else
               class="action-btn include-btn"
+              :title="$t('resultTable.restore')"
               @click="includeItem(item)"
-              title="恢复"
             >
               +
             </button>
@@ -81,8 +95,8 @@
 
     <div v-else class="empty-state">
       <span class="empty-icon">📦</span>
-      <span>暂无计算结果</span>
-      <span class="empty-hint">请添加需求后点击计算</span>
+      <span>{{ $t('common.noData') }}</span>
+      <span class="empty-hint">{{ $t('resultTable.noResultsHint') }}</span>
     </div>
   </div>
 </template>
@@ -128,10 +142,11 @@ const visibleItems = computed(() => {
   if (!props.hideSource) return props.items
 
   return props.items.filter(item => {
-    const isSource = props.items.some(other =>
-      other.name !== item.name &&
-      (other as any).name !== item.name &&
-      getDemandNames().includes(item.name)
+    const isSource = props.items.some(
+      other =>
+        other.name !== item.name &&
+        (other as unknown as Record<string, unknown>).name !== item.name &&
+        getDemandNames().includes(item.name)
     )
     return !isSource
   })
@@ -319,7 +334,9 @@ function includeItem(item: TableItem) {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-icon {

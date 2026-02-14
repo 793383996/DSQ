@@ -1,11 +1,11 @@
 import pako from 'pako'
 import { BinaryReader } from './BinaryReader'
-import type { 
-  IBlueprintData, 
-  IBlueprintBuilding, 
-  IBlueprintArea, 
+import type {
+  IBlueprintData,
+  IBlueprintBuilding,
+  IBlueprintArea,
   IBlueprintHeader,
-  ICoordinate 
+  ICoordinate
 } from '../types/blueprint'
 import {
   ALL_ASSEMBLERS,
@@ -29,6 +29,21 @@ import {
 } from './BlueprintEncoder'
 
 const TIME_BASE = new Date(0).setUTCFullYear(1)
+
+type PakoModule = typeof pako
+
+function getPakoImpl(): PakoModule {
+  return (pako as unknown as { default?: PakoModule }).default || pako
+}
+
+function safeDecodeURIComponent(str: string): string {
+  try {
+    return decodeURIComponent(str)
+  } catch (e) {
+    console.warn('[BlueprintDecoder] Failed to decode URI component:', str, e)
+    return str
+  }
+}
 
 const STATION_PARAMS_META = {
   base: 320,
@@ -70,7 +85,7 @@ function decodeStationParams(view: DataView, maxItemKind: number): IStationParam
     deliveryAmountOfShips: getParam(view, base + 7),
     pilerCount: getParam(view, base + 8)
   }
-  
+
   const { base: storageBase, stride } = STATION_PARAMS_META.storage
   for (let i = 0; i < maxItemKind; i++) {
     result.storage.push({
@@ -80,7 +95,7 @@ function decodeStationParams(view: DataView, maxItemKind: number): IStationParam
       max: getParam(view, storageBase + i * stride + 3)
     })
   }
-  
+
   const { base: slotsBase, stride: slotsStride } = STATION_PARAMS_META.slots
   for (let i = 0; i < 12; i++) {
     result.slots.push({
@@ -88,7 +103,7 @@ function decodeStationParams(view: DataView, maxItemKind: number): IStationParam
       storageIdx: getParam(view, slotsBase + i * slotsStride + 1)
     })
   }
-  
+
   return result
 }
 
@@ -272,13 +287,13 @@ function readBuilding(reader: BinaryReader): IBlueprintBuilding {
   const recipeId = reader.getInt16()
   const filterId = reader.getInt16()
   const paramLength = reader.getInt16()
-  
+
   let parameters: BuildingParams = null
   if (paramLength > 0) {
     const paramView = reader.getView(paramLength * Int32Array.BYTES_PER_ELEMENT)
     parameters = decodeParams(itemId, paramView)
   }
-  
+
   return {
     index,
     areaIndex,
@@ -305,10 +320,10 @@ function parseHeader(headerStr: string): IBlueprintHeader {
   if (parts.length < 8) {
     throw new Error('Invalid blueprint header format')
   }
-  
+
   const layout = parseInt(parts[1], 10)
   const icons: number[] = []
-  
+
   let i = 2
   while (parts[i] !== '0' && i < parts.length) {
     const iconId = parseInt(parts[i], 10)
@@ -317,28 +332,28 @@ function parseHeader(headerStr: string): IBlueprintHeader {
     }
     i++
   }
-  
+
   const zeroIndex = parts.indexOf('0', 2)
   if (zeroIndex === -1) {
     throw new Error('Invalid blueprint header: missing zero marker')
   }
-  
+
   const timeValue = parseInt(parts[zeroIndex + 1], 10)
   const time = new Date(TIME_BASE + timeValue / 10000)
   const gameVersion = parts[zeroIndex + 2]
-  
+
   let shortDesc = ''
   let desc = ''
-  
+
   const restParts = parts.slice(zeroIndex + 3).join(',')
   const descMatch = restParts.match(/^(.*?),"(.*?)$/)
   if (descMatch) {
-    shortDesc = decodeURIComponent(descMatch[1])
-    desc = decodeURIComponent(descMatch[2] || '')
+    shortDesc = safeDecodeURIComponent(descMatch[1])
+    desc = safeDecodeURIComponent(descMatch[2] || '')
   } else {
-    shortDesc = decodeURIComponent(restParts)
+    shortDesc = safeDecodeURIComponent(restParts)
   }
-  
+
   return {
     layout,
     icons,
@@ -353,31 +368,30 @@ export function decodeBlueprint(blueprintStr: string): IBlueprintData {
   if (!blueprintStr.startsWith('BLUEPRINT:')) {
     throw new Error('Invalid blueprint string: must start with BLUEPRINT:')
   }
-  
+
   const content = blueprintStr.substring('BLUEPRINT:'.length)
-  
+
   const quoteIndex = content.indexOf('"')
   if (quoteIndex === -1) {
     throw new Error('Invalid blueprint string: missing data marker')
   }
-  
+
   const headerStr = content.substring(0, quoteIndex)
   const header = parseHeader(headerStr)
-  
+
   const afterFirstQuote = content.substring(quoteIndex + 1)
   const secondQuoteIndex = afterFirstQuote.indexOf('"')
   if (secondQuoteIndex === -1) {
     throw new Error('Invalid blueprint string: missing end marker')
   }
-  
+
   const base64Data = afterFirstQuote.substring(0, secondQuoteIndex)
-  
+
   const gzipped = binaryStringToUint8Array(atob(base64Data))
-  const pakoImpl = (pako as any).default ? (pako as any).default : pako
-  const decompressed = pakoImpl.ungzip(gzipped)
-  
+  const decompressed = getPakoImpl().ungzip(gzipped)
+
   const reader = new BinaryReader(decompressed.buffer as ArrayBuffer)
-  
+
   const version = reader.getInt32()
   const cursorOffset = {
     x: reader.getInt32(),
@@ -390,18 +404,18 @@ export function decodeBlueprint(blueprintStr: string): IBlueprintData {
   }
   const primaryAreaIdx = reader.getInt32()
   const numAreas = reader.getUint8()
-  
+
   const areas: IBlueprintArea[] = []
   for (let i = 0; i < numAreas; i++) {
     areas.push(readArea(reader))
   }
-  
+
   const numBuildings = reader.getInt32()
   const buildings: IBlueprintBuilding[] = []
   for (let i = 0; i < numBuildings; i++) {
     buildings.push(readBuilding(reader))
   }
-  
+
   return {
     version,
     cursorOffset,

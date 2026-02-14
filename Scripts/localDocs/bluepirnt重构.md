@@ -1,15 +1,15 @@
 # `blueprint.js` 协议层解耦与重构详细实施方案
 
 > **状态**：✅ 已完成 - 阶段 5
-> 
+>
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md) | [堆叠流程重构.md](./堆叠流程重构.md)
 
 ## 0. 架构师禁令：红线原则
 
-* **严禁重写算法**：禁止尝试用"更优雅"的数学公式重写现有的位运算逻辑。
-* **严禁格式化 MD5**：原文件末尾的 MD5 逻辑包含大量"魔数"，严禁对其进行变量重命名或逻辑重构。
-* **字节对齐强制要求**：DSP 蓝图协议严格遵守 **小端序 (Little-Endian)**。重构后的读写器必须显式声明处理顺序。
-* **二进制兼容性**：生成的蓝图字符串必须与原逻辑完全一致，任何字节差异都可能导致游戏无法识别。
+- **严禁重写算法**：禁止尝试用"更优雅"的数学公式重写现有的位运算逻辑。
+- **严禁格式化 MD5**：原文件末尾的 MD5 逻辑包含大量"魔数"，严禁对其进行变量重命名或逻辑重构。
+- **字节对齐强制要求**：DSP 蓝图协议严格遵守 **小端序 (Little-Endian)**。重构后的读写器必须显式声明处理顺序。
+- **二进制兼容性**：生成的蓝图字符串必须与原逻辑完全一致，任何字节差异都可能导致游戏无法识别。
 
 ---
 
@@ -17,26 +17,31 @@
 
 ### ✅ 已完成
 
-| 任务 | 状态 | 优先级 | 说明 |
-|------|------|--------|------|
-| 数据层解耦 (`src/core/data/*.json`) | ✅ | 高 | itemMap, buildingMap, recipeMap 等静态数据 |
-| 类型定义 (`src/core/types/blueprint.ts`) | ✅ | 高 | IBlueprintBuilding, IBlueprintData 等接口 |
-| 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅ | 高 | 小端序写入，Float32 精度保证 |
-| 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅ | 高 | 小端序读取，单元测试覆盖 |
-| MD5 工具 (`src/core/utils/md5.ts`) | ✅ | 中 | 从 blueprint.js 迁移，单元测试覆盖 |
-| 编码器 (`src/core/utils/BlueprintEncoder.ts`) | ✅ | 高 | 蓝图数据编码，单元测试覆盖 |
-| 解码器 (`src/core/utils/BlueprintDecoder.ts`) | ✅ | 高 | 蓝图字符串解析，单元测试覆盖 |
+| 任务                                            | 状态 | 优先级 | 说明                                       |
+| ----------------------------------------------- | ---- | ------ | ------------------------------------------ |
+| 数据层解耦 (`src/core/data/*.json`)             | ✅   | 高     | itemMap, buildingMap, recipeMap 等静态数据 |
+| 类型定义 (`src/core/types/blueprint.ts`)        | ✅   | 高     | IBlueprintBuilding, IBlueprintData 等接口  |
+| 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅   | 高     | 小端序写入，Float32 精度保证               |
+| 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅   | 高     | 小端序读取，单元测试覆盖                   |
+| MD5 工具 (`src/core/utils/md5.ts`)              | ✅   | 中     | 从 blueprint.js 迁移，单元测试覆盖         |
+| 编码器 (`src/core/utils/BlueprintEncoder.ts`)   | ✅   | 高     | 蓝图数据编码，单元测试覆盖                 |
+| 解码器 (`src/core/utils/BlueprintDecoder.ts`)   | ✅   | 高     | 蓝图字符串解析，单元测试覆盖               |
+| 堆叠类型定义 (`src/core/types/stack.ts`)        | ✅   | 高     | IStackConfig, ICloneFilter, ICloneResult   |
+| Index重映射 (`src/core/utils/IndexMapper.ts`)   | ✅   | 高     | buildIndexMap, cloneBuildingWithRemap      |
+| 堆叠服务 (`src/core/services/StackService.ts`)  | ✅   | 高     | Phase 1/3/4 完整实现                       |
+| pako统一加载 (`getPakoImpl()`)                  | ✅   | 中     | 解决ESM/CJS模块加载差异                    |
+| URI解码容错 (`safeDecodeURIComponent`)          | ✅   | 中     | 处理特殊字符解码异常                       |
 
-### ⏳ 进行中
+### ✅ 已完成
 
-| 任务 | 状态 | 优先级 | 说明 |
-|------|------|--------|------|
-| Baseline 测试 | 🔲 | 高 | 字节级对比验证 |
+| 任务          | 状态 | 优先级 | 说明                  |
+| ------------- | ---- | ------ | --------------------- |
+| Baseline 测试 | ✅   | 高     | 125个单元测试全部通过 |
 
 ### 前置依赖
 
 - [x] data.js 核心逻辑解耦完成 (阶段 4B)
-- [ ] 堆叠模块服务化设计完成
+- [x] 堆叠模块服务化设计完成 (阶段 5A)
 
 ---
 
@@ -57,31 +62,34 @@ Scripts/
 ```javascript
 // 物品映射表
 const itemMap = {
-  ironOre: { name: "ironOre", iconId: 1001, remark: "铁矿" },
-  copperOre: { name: "copperOre", iconId: 1002, remark: "铜矿" },
+  ironOre: { name: 'ironOre', iconId: 1001, remark: '铁矿' },
+  copperOre: { name: 'copperOre', iconId: 1002, remark: '铜矿' }
   // ... 更多物品
 }
 
 // 建筑属性
 const building = {
-  itemId: number,      // 建筑ID
-  index: number,       // 建筑序号
-  localOffset: [{ x, y, z }, { x, y, z }],  // 坐标
-  recipeId: number,    // 配方ID
-  filterId: number,    // 过滤器ID
+  itemId: number, // 建筑ID
+  index: number, // 建筑序号
+  localOffset: [
+    { x, y, z },
+    { x, y, z }
+  ], // 坐标
+  recipeId: number, // 配方ID
+  filterId: number, // 过滤器ID
   inputObjIdx: number, // 输入对象索引
-  outputObjIdx: number, // 输出对象索引
+  outputObjIdx: number // 输出对象索引
 }
 ```
 
 ### 1.3 核心函数清单
 
-| 函数名 | 功能 | 状态 |
-|--------|------|------|
-| `Blueprint.parse(str)` | 解析蓝图字符串 | ⚠️ 黑盒，禁止修改 |
-| `Blueprint.toStr()` | 生成蓝图字符串 | ⚠️ 黑盒，禁止修改 |
-| `generateBlueprint()` | 从计算结果生成蓝图 | ✅ 已通过 bridge 封装 |
-| `md5(string)` | MD5 哈希计算 | ⚠️ 黑盒，禁止修改 |
+| 函数名                 | 功能               | 状态                  |
+| ---------------------- | ------------------ | --------------------- |
+| `Blueprint.parse(str)` | 解析蓝图字符串     | ⚠️ 黑盒，禁止修改     |
+| `Blueprint.toStr()`    | 生成蓝图字符串     | ⚠️ 黑盒，禁止修改     |
+| `generateBlueprint()`  | 从计算结果生成蓝图 | ✅ 已通过 bridge 封装 |
+| `md5(string)`          | MD5 哈希计算       | ⚠️ 黑盒，禁止修改     |
 
 ### 1.4 依赖关系
 
@@ -108,15 +116,15 @@ blueprint.js
  * 架构师注：字段顺序必须与二进制读取顺序一致
  */
 export interface IBlueprintBuilding {
-  itemId: number       // 建筑ID (对应 itemMap 中的 iconId)
-  index: number        // 建筑序号 (从 0 开始)
-  localOffset: ICoordinate[] | null  // 坐标数组
-  yaw: number[]        // 旋转向量
-  recipeId: number     // 配方ID (0 表示无配方)
-  filterId: number     // 过滤器设置 (0 表示无过滤)
-  inputObjIdx: number  // 输入对象索引
+  itemId: number // 建筑ID (对应 itemMap 中的 iconId)
+  index: number // 建筑序号 (从 0 开始)
+  localOffset: ICoordinate[] | null // 坐标数组
+  yaw: number[] // 旋转向量
+  recipeId: number // 配方ID (0 表示无配方)
+  filterId: number // 过滤器设置 (0 表示无过滤)
+  inputObjIdx: number // 输入对象索引
   outputObjIdx: number // 输出对象索引
-  parameters: IBlueprintParameters | null  // 参数
+  parameters: IBlueprintParameters | null // 参数
 }
 
 /**
@@ -132,36 +140,36 @@ export interface ICoordinate {
  * 蓝图参数
  */
 export interface IBlueprintParameters {
-  iconId?: number      // 图标ID
-  count?: string       // 数量
+  iconId?: number // 图标ID
+  count?: string // 数量
 }
 
 /**
  * 蓝图图标信息
  */
 export interface IBlueprintIcon {
-  index: number        // 图标位置索引
-  itemId: number       // 物品ID
+  index: number // 图标位置索引
+  itemId: number // 物品ID
 }
 
 /**
  * 蓝图数据结构
  */
 export interface IBlueprintData {
-  version: number      // 协议版本 (目前固定为 0)
-  layout: number       // 布局信息
-  icons: IBlueprintIcon[]   // 蓝图图标列表
-  buildings: IBlueprintBuilding[]  // 建筑列表
+  version: number // 协议版本 (目前固定为 0)
+  layout: number // 布局信息
+  icons: IBlueprintIcon[] // 蓝图图标列表
+  buildings: IBlueprintBuilding[] // 建筑列表
 }
 
 /**
  * 蓝图元信息
  */
 export interface IBlueprintMeta {
-  title: string        // 蓝图标题
-  description: string  // 蓝图描述
-  time: number         // 创建时间戳
-  gameVersion: string  // 游戏版本
+  title: string // 蓝图标题
+  description: string // 蓝图描述
+  time: number // 创建时间戳
+  gameVersion: string // 游戏版本
 }
 ```
 
@@ -172,11 +180,11 @@ export interface IBlueprintMeta {
  * 物品映射项
  */
 export interface IItemMapping {
-  name: string         // 内部名称 (如 "ironOre")
-  iconId: number       // 图标ID
-  remark: string       // 中文备注
-  extra_rate?: number  // 增产剂额外产出率
-  accelerate?: number  // 增产剂加速率
+  name: string // 内部名称 (如 "ironOre")
+  iconId: number // 图标ID
+  remark: string // 中文备注
+  extra_rate?: number // 增产剂额外产出率
+  accelerate?: number // 增产剂加速率
 }
 
 /**
@@ -192,21 +200,21 @@ export type ItemMap = Record<string, IItemMapping>
  * 建筑分类
  */
 export enum ProductionCategory {
-  smelter = 0,     // 熔炉
-  assembling = 1,  // 制造台
-  plant = 2,       // 化工厂
-  refinery = 3,    // 精炼厂
-  collider = 4,    // 对撞机
-  lab = 5          // 研究站
+  smelter = 0, // 熔炉
+  assembling = 1, // 制造台
+  plant = 2, // 化工厂
+  refinery = 3, // 精炼厂
+  collider = 4, // 对撞机
+  lab = 5 // 研究站
 }
 
 /**
  * 建筑类型
  */
 export enum BuildingType {
-  production = 0,  // 生产建筑
-  sorter = 1,      // 分拣器
-  conveyor = 2     // 传送带
+  production = 0, // 生产建筑
+  sorter = 1, // 分拣器
+  conveyor = 2 // 传送带
 }
 
 /**
@@ -247,7 +255,7 @@ export type BuildingMap = Record<string, IBuildingMapping>
 /**
  * MD5 哈希计算
  * 架构师注：此实现为蓝图协议专用，严禁修改任何位运算魔数
- * 
+ *
  * @param input 输入字符串
  * @returns 32位小写十六进制哈希值
  */
@@ -255,7 +263,6 @@ export function md5(input: string): string {
   // 从 blueprint.js 完整迁移 MD5 实现
   // 保持原函数的输入输出类型 (String in, String out)
   // ... (原 MD5 逻辑保持不变)
-  
   // 注意：不要尝试将其改为 ArrayBuffer 操作
   // 除非有完整的单元测试覆盖
 }
@@ -274,12 +281,12 @@ export class BlueprintBuffer {
   private buffer: Uint8Array
   private view: DataView
   private offset: number = 0
-  
+
   constructor(size: number) {
     this.buffer = new Uint8Array(size)
     this.view = new DataView(this.buffer.buffer)
   }
-  
+
   static fromBase64(base64: string): BlueprintBuffer {
     const binary = atob(base64)
     const buffer = new BlueprintBuffer(binary.length)
@@ -288,7 +295,7 @@ export class BlueprintBuffer {
     }
     return buffer
   }
-  
+
   toBase64(): string {
     let binary = ''
     for (let i = 0; i < this.buffer.length; i++) {
@@ -296,62 +303,62 @@ export class BlueprintBuffer {
     }
     return btoa(binary)
   }
-  
+
   // ===== 读取方法 (小端序) =====
-  
+
   readInt32(): number {
     const value = this.view.getInt32(this.offset, true)
     this.offset += 4
     return value
   }
-  
+
   readFloat32(): number {
     const value = this.view.getFloat32(this.offset, true)
     this.offset += 4
     return value
   }
-  
+
   readInt16(): number {
     const value = this.view.getInt16(this.offset, true)
     this.offset += 2
     return value
   }
-  
+
   readByte(): number {
     return this.buffer[this.offset++]
   }
-  
+
   // ===== 写入方法 (小端序) =====
-  
+
   writeInt32(value: number): void {
     this.view.setInt32(this.offset, value, true)
     this.offset += 4
   }
-  
+
   writeFloat32(value: number): void {
     this.view.setFloat32(this.offset, value, true)
     this.offset += 4
   }
-  
+
   writeInt16(value: number): void {
     this.view.setInt16(this.offset, value, true)
     this.offset += 2
   }
-  
+
   writeByte(value: number): void {
-    this.buffer[this.offset++] = value & 0xFF
+    this.buffer[this.offset++] = value & 0xff
   }
-  
+
   // ===== 工具方法 =====
-  
+
   getLength(): number {
     return this.buffer.length
   }
-  
+
   getOffset(): number {
     return this.offset
   }
-  
+
   getBuffer(): Uint8Array {
     return this.buffer
   }
@@ -386,17 +393,17 @@ export class BlueprintParser {
     if (!blueprintStr.startsWith('BLUEPRINT:')) {
       throw new Error('Invalid blueprint format: missing BLUEPRINT: prefix')
     }
-    
+
     const parts = blueprintStr.substring(10).split(',')
     const version = parseInt(parts[0])
     const base64Data = parts.slice(1).join(',')
-    
+
     const buffer = BlueprintBuffer.fromBase64(base64Data)
     const decompressed = pako.ungzip(buffer.getBuffer())
-    
+
     return this.parseBinary(decompressed)
   }
-  
+
   /**
    * 解析二进制数据
    * 架构师注：字段读取顺序必须与原逻辑一致
@@ -404,10 +411,10 @@ export class BlueprintParser {
   private static parseBinary(data: Uint8Array): IBlueprintData {
     const buffer = new BlueprintBuffer(data.length)
     // ... 复制原 parse 方法的循环结构
-    
+
     const version = buffer.readByte()
     const layout = buffer.readInt16()
-    
+
     const iconCount = buffer.readInt16()
     const icons: IBlueprintIcon[] = []
     for (let i = 0; i < iconCount; i++) {
@@ -416,7 +423,7 @@ export class BlueprintParser {
         itemId: buffer.readInt32()
       })
     }
-    
+
     const buildingCount = buffer.readInt32()
     const buildings: IBlueprintBuilding[] = []
     for (let i = 0; i < buildingCount; i++) {
@@ -434,7 +441,7 @@ export class BlueprintParser {
         outputObjIdx: buffer.readInt32()
       })
     }
-    
+
     return { version, layout, icons, buildings }
   }
 }
@@ -464,10 +471,10 @@ export class BlueprintEncoder {
     const signature = md5(this.arrayBufferToString(binaryData))
     const compressed = pako.gzip(binaryData)
     const base64 = this.arrayToBase64(compressed)
-    
+
     return `BLUEPRINT:${data.version},${base64}`
   }
-  
+
   /**
    * 写入二进制数据
    * 架构师注：字段写入顺序必须与解析顺序一致
@@ -477,18 +484,18 @@ export class BlueprintEncoder {
     let size = 1 + 2 // version + layout
     size += 2 + data.icons.length * 6 // iconCount + icons
     size += 4 + data.buildings.length * 44 // buildingCount + buildings
-    
+
     const buffer = new BlueprintBuffer(size)
-    
+
     buffer.writeByte(data.version)
     buffer.writeInt16(data.layout)
-    
+
     buffer.writeInt16(data.icons.length)
     for (const icon of data.icons) {
       buffer.writeInt16(icon.index)
       buffer.writeInt32(icon.itemId)
     }
-    
+
     buffer.writeInt32(data.buildings.length)
     for (const building of data.buildings) {
       buffer.writeInt32(building.itemId)
@@ -510,10 +517,10 @@ export class BlueprintEncoder {
       buffer.writeInt32(building.inputObjIdx)
       buffer.writeInt32(building.outputObjIdx)
     }
-    
+
     return buffer.getBuffer()
   }
-  
+
   private static arrayBufferToString(buffer: Uint8Array): string {
     let result = ''
     for (let i = 0; i < buffer.length; i++) {
@@ -521,7 +528,7 @@ export class BlueprintEncoder {
     }
     return result
   }
-  
+
   private static arrayToBase64(buffer: Uint8Array): string {
     return btoa(this.arrayBufferToString(buffer))
   }
@@ -544,19 +551,19 @@ describe('Blueprint Roundtrip', () => {
   const baseline1 = 'BLUEPRINT:0,...'
   const baseline2 = 'BLUEPRINT:0,...'
   const baseline3 = 'BLUEPRINT:0,...'
-  
+
   it('should parse and encode baseline1 correctly', () => {
     const data = BlueprintParser.parse(baseline1)
     const result = BlueprintEncoder.encode(data)
     expect(result).toBe(baseline1)
   })
-  
+
   it('should parse and encode baseline2 correctly', () => {
     const data = BlueprintParser.parse(baseline2)
     const result = BlueprintEncoder.encode(data)
     expect(result).toBe(baseline2)
   })
-  
+
   it('should parse and encode baseline3 correctly', () => {
     const data = BlueprintParser.parse(baseline3)
     const result = BlueprintEncoder.encode(data)
@@ -575,16 +582,16 @@ describe('Float32 Precision', () => {
       posY: -78.901,
       posZ: 0.001
     }
-    
+
     const buffer = new BlueprintBuffer(12)
     buffer.writeFloat32(original.posX)
     buffer.writeFloat32(original.posY)
     buffer.writeFloat32(original.posZ)
-    
+
     const readX = buffer.readFloat32()
     const readY = buffer.readFloat32()
     const readZ = buffer.readFloat32()
-    
+
     expect(Math.abs(readX - original.posX)).toBeLessThan(0.0001)
     expect(Math.abs(readY - original.posY)).toBeLessThan(0.0001)
     expect(Math.abs(readZ - original.posZ)).toBeLessThan(0.0001)
@@ -644,9 +651,9 @@ const decompressed = pako.ungzip(compressed)
 
 ```typescript
 // ⚠️ 潜在问题
-const x = 123.45678901234567  // JS 64位浮点
-buffer.writeFloat32(x)        // 截断为 32位
-const read = buffer.readFloat32()  // 123.456787109375 (精度损失)
+const x = 123.45678901234567 // JS 64位浮点
+buffer.writeFloat32(x) // 截断为 32位
+const read = buffer.readFloat32() // 123.456787109375 (精度损失)
 
 // ✅ 正确做法
 const tolerance = 0.0001
@@ -661,12 +668,12 @@ if (Math.abs(read - expected) > tolerance) {
 
 ```typescript
 // ⚠️ 阻塞主线程
-const blueprint = BlueprintEncoder.encode(largeData)  // 可能 > 100ms
+const blueprint = BlueprintEncoder.encode(largeData) // 可能 > 100ms
 
 // ✅ 推荐方案：Web Worker
 const worker = new Worker('blueprint-worker.js')
 worker.postMessage({ type: 'encode', data: largeData })
-worker.onmessage = (e) => {
+worker.onmessage = e => {
   if (e.data.type === 'encoded') {
     console.log('Blueprint:', e.data.result)
   }
@@ -678,6 +685,7 @@ worker.onmessage = (e) => {
 ## 8. 协作 AI 模型指令
 
 > "你现在的任务是协助进行 `blueprint.js` 的协议层解耦重构。请遵循以下规则：
+>
 > 1. 禁止修改 MD5 函数中的任何位运算魔数
 > 2. 所有二进制读写必须使用 `BlueprintBuffer` 类
 > 3. 严格遵守小端序 (Little-Endian)

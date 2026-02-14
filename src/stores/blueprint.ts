@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { logger } from '../utils/logger'
+import type { IConsumptionItem, IResultItemOutput } from '../core/types/recipe'
 
 export interface DemandItem {
   name: string
@@ -15,6 +16,14 @@ export interface MachineSettings {
   accValue: string
   research: string
 }
+
+export interface IStateSnapshot {
+  demandVersion: number
+  demandList: DemandItem[]
+  excludeList: string[]
+}
+
+export type ResultItem = IConsumptionItem | IResultItemOutput
 
 const SETTINGS_STORAGE_KEY = 'machine_settings20240202'
 
@@ -41,9 +50,10 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   const demandList = ref<DemandItem[]>([])
   const excludeList = ref<string[]>([])
   const machineSettings = ref<MachineSettings>(loadPersistedSettings())
-  const resultItems = ref<any[]>([])
+  const resultItems = ref<ResultItem[]>([])
   const isCalculating = ref(false)
   const calculationError = ref<string | null>(null)
+  const demandVersion = ref(0)
 
   const hasDemand = computed(() => demandList.value.length > 0)
   const demandCount = computed(() => demandList.value.length)
@@ -55,27 +65,47 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     } else {
       demandList.value.push({ name, num })
     }
+    demandVersion.value++
   }
 
   function removeDemand(name: string) {
     demandList.value = demandList.value.filter(item => item.name !== name)
+    demandVersion.value++
   }
 
   function updateDemand(name: string, num: number) {
     const item = demandList.value.find(item => item.name === name)
     if (item) {
       item.num = Math.max(1, num)
+      demandVersion.value++
     }
   }
 
   function addExclude(name: string) {
     if (!excludeList.value.includes(name)) {
       excludeList.value.push(name)
+      demandVersion.value++
     }
   }
 
   function removeExclude(name: string) {
-    excludeList.value = excludeList.value.filter(n => n !== name)
+    const idx = excludeList.value.indexOf(name)
+    if (idx !== -1) {
+      excludeList.value.splice(idx, 1)
+      demandVersion.value++
+    }
+  }
+
+  function createSnapshot(): IStateSnapshot {
+    return {
+      demandVersion: demandVersion.value,
+      demandList: demandList.value.map(d => ({ ...d })),
+      excludeList: [...excludeList.value]
+    }
+  }
+
+  function validateSnapshot(snapshot: IStateSnapshot): boolean {
+    return snapshot.demandVersion === demandVersion.value
   }
 
   function setMachineSetting<K extends keyof MachineSettings>(key: K, value: MachineSettings[K]) {
@@ -100,7 +130,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     isCalculating.value = calculating
   }
 
-  function setResultItems(items: any[]) {
+  function setResultItems(items: ResultItem[]) {
     resultItems.value = items
   }
 
@@ -113,6 +143,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     excludeList.value = []
     resultItems.value = []
     calculationError.value = null
+    demandVersion.value++
   }
 
   return {
@@ -122,6 +153,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     resultItems,
     isCalculating,
     calculationError,
+    demandVersion,
     hasDemand,
     demandCount,
     addDemand,
@@ -129,6 +161,8 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     updateDemand,
     addExclude,
     removeExclude,
+    createSnapshot,
+    validateSnapshot,
     setMachineSetting,
     loadMachineSettings,
     setCalculating,

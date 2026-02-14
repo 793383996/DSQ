@@ -1,21 +1,17 @@
 <template>
   <div class="blueprint-generator">
-    <button
-      class="generate-btn"
-      :disabled="!canGenerate"
-      @click="generateBlueprint"
-    >
+    <button class="generate-btn" :disabled="!canGenerate" @click="generateBlueprint">
       <span class="btn-icon">📋</span>
-      生成蓝图
+      {{ $t('blueprintGenerator.generate') }}
     </button>
 
     <div v-if="generatedUrl" class="blueprint-result">
       <div class="result-success">
         <span class="success-icon">✓</span>
-        <span>蓝图已生成并复制到剪贴板</span>
+        <span>{{ $t('blueprintGenerator.generatedAndCopied') }}</span>
       </div>
       <a :href="generatedUrl" download="blueprint.txt" class="download-link">
-        下载蓝图文件
+        {{ $t('blueprintGenerator.downloadFile') }}
       </a>
     </div>
 
@@ -28,11 +24,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { legacyGenerateBlueprint, legacyGetConfigFromDOM } from '../../core/bridge'
 import { useToast } from '../../composables/useToast'
 import { logger } from '../../utils/logger'
 
+const { t } = useI18n()
 const store = useBlueprintStore()
 const toast = useToast()
 
@@ -51,10 +49,11 @@ function generateBlueprint(): void {
   try {
     legacyGenerateBlueprint()
 
-    toast.success('蓝图已生成并复制到剪贴板', 3000)
-  } catch (e: any) {
-    error.value = e?.message || '蓝图生成失败'
-    toast.error('蓝图生成失败: ' + error.value, 5000)
+    toast.success(t('blueprintGenerator.generatedAndCopied'), 3000)
+  } catch (e: unknown) {
+    const err = e as { message?: string }
+    error.value = err?.message || t('blueprintGenerator.generateFailed')
+    toast.error(t('blueprintGenerator.generateFailed') + ': ' + error.value, 5000)
   }
 }
 

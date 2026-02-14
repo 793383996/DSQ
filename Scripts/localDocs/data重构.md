@@ -1,15 +1,15 @@
 # `data.js` 核心数据与逻辑解耦重构指南
 
 > **状态**：✅ 已完成 - 阶段 4C
-> 
+>
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
 
 ## 0. 架构师准则：稳定性第一
 
-* **严禁全局搜索替换**：严禁直接将 `s` 替换为 `outputs`，这会破坏 `loadNumber` 的递归链。
-* **影子运行**：重构后的代码必须支持与旧逻辑并行运行，通过 Baseline 对比验证。
-* **接口隔离**：新 UI 组件只能通过 `RecipeProvider` 接口访问数据，不得触碰底层原始对象。
-* **黑盒保护**：`loadNumber` 递归逻辑视为黑盒，仅允许外围包装，禁止修改核心算法。
+- **严禁全局搜索替换**：严禁直接将 `s` 替换为 `outputs`，这会破坏 `loadNumber` 的递归链。
+- **影子运行**：重构后的代码必须支持与旧逻辑并行运行，通过 Baseline 对比验证。
+- **接口隔离**：新 UI 组件只能通过 `RecipeProvider` 接口访问数据，不得触碰底层原始对象。
+- **黑盒保护**：`loadNumber` 递归逻辑视为黑盒，仅允许外围包装，禁止修改核心算法。
 
 ---
 
@@ -17,34 +17,38 @@
 
 ### ✅ 已完成
 
-| 任务 | 状态 | 完成日期 | 说明 |
-|------|------|----------|------|
-| jQuery 依赖移除 | ✅ | 2026-02-14 | `$.ajax` → `fetch`, `$.extend` → `structuredClone` |
-| 遗留 UI 代码删除 | ✅ | 2026-02-14 | 删除 L4523-L6040 死代码 |
-| 废弃文件清理 | ✅ | 2026-02-14 | jquery-*.js 已删除 |
-| 构建配置优化 | ✅ | 2026-02-14 | Vite code splitting + esbuild |
-| App.vue 迁移至 CalculatorService | ✅ | 2026-02-14 | 主入口已切换至新服务层 |
-| 数据适配器 (`RecipeAdapter.ts`) | ✅ | 2026-02-14 | 语义化访问，索引预热 |
-| 计算服务 (`CalculatorService.ts`) | ✅ | 2026-02-14 | 封装 update_all，上下文管理 |
-| 计算上下文 (`CalculationContext.ts`) | ✅ | 2026-02-14 | 替代全局变量，填充 xh_list/out_list |
-| 类型定义 (`src/core/types/recipe.ts`) | ✅ | 2026-02-14 | IRecipe, IRecipeItem, ICalculationResult |
-| Baseline 测试 | ✅ | 2026-02-14 | 新旧实现对比验证 |
-| 图标缓存统一管理 | ✅ | 2026-02-14 | ResultTable 使用 useIconProvider |
-| v-memo 性能优化 | ✅ | 2026-02-14 | ResultTable 列表渲染优化 |
-| 日志环境控制 | ✅ | 2026-02-14 | 新增 logger.ts，生产环境静默 |
-| 搜索防抖优化 | ✅ | 2026-02-14 | AddItemDialog 搜索延迟 150ms |
-| addXH/addOut Map 优化 | ✅ | 2026-02-14 | O(n) → O(1) 查找 |
-| find() 空值检查 | ✅ | 2026-02-14 | 8处空值安全检查 |
-| loadNumber 递归深度限制 | ✅ | 2026-02-14 | max=200 防栈溢出 |
-| localStorage 异常保护 | ✅ | 2026-02-14 | 隐私模式兼容 |
-| settings 引用保持 | ✅ | 2026-02-14 | 避免 window.settings 断开 |
+| 任务                                  | 状态 | 完成日期   | 说明                                               |
+| ------------------------------------- | ---- | ---------- | -------------------------------------------------- |
+| jQuery 依赖移除                       | ✅   | 2026-02-14 | `$.ajax` → `fetch`, `$.extend` → `structuredClone` |
+| 遗留 UI 代码删除                      | ✅   | 2026-02-14 | 删除 L4523-L6040 死代码                            |
+| 废弃文件清理                          | ✅   | 2026-02-14 | jquery-\*.js 已删除                                |
+| 构建配置优化                          | ✅   | 2026-02-14 | Vite code splitting + esbuild                      |
+| App.vue 迁移至 CalculatorService      | ✅   | 2026-02-14 | 主入口已切换至新服务层                             |
+| 数据适配器 (`RecipeAdapter.ts`)       | ✅   | 2026-02-14 | 语义化访问，索引预热                               |
+| 计算服务 (`CalculatorService.ts`)     | ✅   | 2026-02-14 | 封装 update_all，上下文管理                        |
+| 计算上下文 (`CalculationContext.ts`)  | ✅   | 2026-02-14 | 替代全局变量，填充 xh_list/out_list                |
+| 类型定义 (`src/core/types/recipe.ts`) | ✅   | 2026-02-14 | IRecipe, IRecipeItem, ICalculationResult           |
+| Baseline 测试                         | ✅   | 2026-02-14 | 新旧实现对比验证                                   |
+| 图标缓存统一管理                      | ✅   | 2026-02-14 | ResultTable 使用 useIconProvider                   |
+| v-memo 性能优化                       | ✅   | 2026-02-14 | ResultTable 列表渲染优化                           |
+| 日志环境控制                          | ✅   | 2026-02-14 | 新增 logger.ts，生产环境静默                       |
+| 搜索防抖优化                          | ✅   | 2026-02-14 | AddItemDialog 搜索延迟 150ms                       |
+| addXH/addOut Map 优化                 | ✅   | 2026-02-14 | O(n) → O(1) 查找                                   |
+| find() 空值检查                       | ✅   | 2026-02-14 | 8处空值安全检查                                    |
+| loadNumber 递归深度限制               | ✅   | 2026-02-14 | max=200 防栈溢出                                   |
+| localStorage 异常保护                 | ✅   | 2026-02-14 | 隐私模式兼容                                       |
+| settings 引用保持                     | ✅   | 2026-02-14 | 避免 window.settings 断开                          |
+| 状态同步机制                          | ✅   | 2026-02-14 | demandVersion + 快照验证                           |
+| xhMap/outMap清理                      | ✅   | 2026-02-14 | CalculatorService.clearLegacyGlobalState           |
+| fetch超时机制                         | ✅   | 2026-02-14 | AbortController 30秒超时                           |
+| update_all异常重置                    | ✅   | 2026-02-14 | try-catch包裹，异常时重置全局状态                  |
 
 ### 🔲 待开始
 
-| 任务 | 状态 | 优先级 | 说明 |
-|------|------|--------|------|
-| 配方数据 JSON 化 | 🔲 | 中 | data.js → recipes.json |
-| JSON Schema 校验 | 🔲 | 低 | 数据格式验证 |
+| 任务             | 状态 | 优先级 | 说明                   |
+| ---------------- | ---- | ------ | ---------------------- |
+| 配方数据 JSON 化 | 🔲   | 中     | data.js → recipes.json |
+| JSON Schema 校验 | 🔲   | 低     | 数据格式验证           |
 
 ---
 
@@ -88,15 +92,15 @@ src/core/
 
 ### 1.3 核心函数清单
 
-| 函数名 | 功能 | 状态 |
-|--------|------|------|
-| `loadNumber(name, num)` | 递归计算需求 | ⚠️ 黑盒，禁止修改 |
-| `find(name, normalize_recipe)` | 查找配方 | ⚠️ 黑盒，禁止修改 |
-| `update_all()` | 更新全局状态 | ⚠️ 黑盒，禁止修改 |
-| `f_add()` | 添加需求 | ✅ 已迁移至 Vue |
-| `f_reset()` | 重置状态 | ✅ 已迁移至 Vue |
-| `f_ig()` | 排除物品 | ✅ 已迁移至 Vue |
-| `f_initIcons()` | 初始化图标 | ✅ 已迁移至 useIconProvider |
+| 函数名                         | 功能         | 状态                        |
+| ------------------------------ | ------------ | --------------------------- |
+| `loadNumber(name, num)`        | 递归计算需求 | ⚠️ 黑盒，禁止修改           |
+| `find(name, normalize_recipe)` | 查找配方     | ⚠️ 黑盒，禁止修改           |
+| `update_all()`                 | 更新全局状态 | ⚠️ 黑盒，禁止修改           |
+| `f_add()`                      | 添加需求     | ✅ 已迁移至 Vue             |
+| `f_reset()`                    | 重置状态     | ✅ 已迁移至 Vue             |
+| `f_ig()`                       | 排除物品     | ✅ 已迁移至 Vue             |
+| `f_initIcons()`                | 初始化图标   | ✅ 已迁移至 useIconProvider |
 
 ---
 
@@ -127,28 +131,29 @@ App.vue
 
 ### 已修复问题 (2026-02-14)
 
-| 问题 | 严重程度 | 修复方案 |
-|------|----------|----------|
-| `window.xqs` 格式读取错误 | 高 | App.vue 兼容 `{ item: { name }, number }` 格式 |
-| `isLegacyDataLoaded` 检查错误 | 致命 | 检查 `update_all/find/data` 而非 `isDataLoaded` |
+| 问题                          | 严重程度 | 修复方案                                        |
+| ----------------------------- | -------- | ----------------------------------------------- |
+| `window.xqs` 格式读取错误     | 高       | App.vue 兼容 `{ item: { name }, number }` 格式  |
+| `isLegacyDataLoaded` 检查错误 | 致命     | 检查 `update_all/find/data` 而非 `isDataLoaded` |
 
 **关键发现**：
+
 - `window.xqs` 格式为 `{ item: { name }, number }`，非 `{ name, number }`
 - `window.data` (配方数据) 与 `window.game_data` (图标资源) 是两套独立数据
 - `window.isDataLoaded` 仅表示图标加载完成，不代表计算引擎就绪
 
 ### 1.4 全局变量清单
 
-| 变量名 | 功能 | 迁移状态 |
-|--------|------|----------|
-| `xqs` | 需求列表 | ✅ → `store.demandList` |
-| `ig_names` | 排除列表 | ✅ → `store.excludeList` |
-| `xh_list` | 消耗列表 | ⏳ 待封装 |
-| `out_list` | 产出列表 | ⏳ 待封装 |
-| `items` | 计算结果 | ⏳ 待封装 |
-| `settings` | 设备设置 | ✅ → `store.machineSettings` |
-| `settings_time` | 速度设置 | ✅ → `bridge.legacyUpdateSpeedSettings` |
-| `settingsLocal` | 配方级设置 | ⏳ 待封装 |
+| 变量名          | 功能       | 迁移状态                                |
+| --------------- | ---------- | --------------------------------------- |
+| `xqs`           | 需求列表   | ✅ → `store.demandList`                 |
+| `ig_names`      | 排除列表   | ✅ → `store.excludeList`                |
+| `xh_list`       | 消耗列表   | ⏳ 待封装                               |
+| `out_list`      | 产出列表   | ⏳ 待封装                               |
+| `items`         | 计算结果   | ⏳ 待封装                               |
+| `settings`      | 设备设置   | ✅ → `store.machineSettings`            |
+| `settings_time` | 速度设置   | ✅ → `bridge.legacyUpdateSpeedSettings` |
+| `settingsLocal` | 配方级设置 | ⏳ 待封装                               |
 
 ---
 
@@ -165,43 +170,43 @@ App.vue
  * 配方产出/需求项
  */
 export interface IRecipeItem {
-  name: string    // 物品名称
-  n: number       // 数量
+  name: string // 物品名称
+  n: number // 数量
 }
 
 /**
  * 配方定义 (语义化)
  */
 export interface IRecipe {
-  id: string                      // 配方唯一标识
-  name: string                    // 配方显示名称
-  outputs: IRecipeItem[]          // 产物列表 (原 s)
-  inputs: IRecipeItem[]           // 原料列表 (原 q)
-  time: number                    // 生产时间/秒 (原 t)
-  machineType: string             // 设备类型 (原 m)
-  group?: string                  // 分组
-  noExtra?: boolean | null        // 增产剂效果限制
+  id: string // 配方唯一标识
+  name: string // 配方显示名称
+  outputs: IRecipeItem[] // 产物列表 (原 s)
+  inputs: IRecipeItem[] // 原料列表 (原 q)
+  time: number // 生产时间/秒 (原 t)
+  machineType: string // 设备类型 (原 m)
+  group?: string // 分组
+  noExtra?: boolean | null // 增产剂效果限制
 }
 
 /**
  * 配方索引接口
  */
 export interface IRecipeIndex {
-  byProduct: Map<string, IRecipe[]>    // 按产物索引
-  byInput: Map<string, IRecipe[]>      // 按原料索引
-  byId: Map<string, IRecipe>           // 按 ID 索引
+  byProduct: Map<string, IRecipe[]> // 按产物索引
+  byInput: Map<string, IRecipe[]> // 按原料索引
+  byId: Map<string, IRecipe> // 按 ID 索引
 }
 ```
 
 ### 2.2 字段映射表
 
-| 简写 | 语义名 | 类型 | 说明 |
-|------|--------|------|------|
-| `s` | `outputs` | `IRecipeItem[]` | 产物列表 |
-| `q` | `inputs` | `IRecipeItem[]` | 原料列表 |
-| `t` | `time` | `number` | 生产时间(秒) |
-| `m` | `machineType` | `string` | 设备类型 |
-| `n` | `amount` | `number` | 数量 |
+| 简写 | 语义名        | 类型            | 说明         |
+| ---- | ------------- | --------------- | ------------ |
+| `s`  | `outputs`     | `IRecipeItem[]` | 产物列表     |
+| `q`  | `inputs`      | `IRecipeItem[]` | 原料列表     |
+| `t`  | `time`        | `number`        | 生产时间(秒) |
+| `m`  | `machineType` | `string`        | 设备类型     |
+| `n`  | `amount`      | `number`        | 数量         |
 
 ---
 
@@ -227,7 +232,7 @@ export class RecipeAdapter {
     byInput: new Map(),
     byId: new Map()
   }
-  
+
   /**
    * 从原始数据加载配方
    * @param rawData 原始简写格式数据
@@ -236,7 +241,7 @@ export class RecipeAdapter {
     this.recipes = rawData.map((item, idx) => this.transformRecipe(item, idx))
     this.buildIndex()
   }
-  
+
   /**
    * 转换单个配方
    */
@@ -252,7 +257,7 @@ export class RecipeAdapter {
       noExtra: raw.noExtra
     }
   }
-  
+
   /**
    * 转换物品列表
    */
@@ -262,7 +267,7 @@ export class RecipeAdapter {
       n: item.n ?? 1
     }))
   }
-  
+
   /**
    * 构建索引 - 预热查询性能
    */
@@ -274,26 +279,26 @@ export class RecipeAdapter {
         list.push(recipe)
         this.index.byProduct.set(output.name, list)
       })
-      
+
       // 按原料索引
       recipe.inputs.forEach(input => {
         const list = this.index.byInput.get(input.name) || []
         list.push(input)
         this.index.byInput.set(input.name, list)
       })
-      
+
       // 按 ID 索引
       this.index.byId.set(recipe.id, recipe)
     })
   }
-  
+
   /**
    * 按产物名称查找配方
    */
   findByProductName(name: string): IRecipe[] {
     return this.index.byProduct.get(name) || []
   }
-  
+
   /**
    * 获取所有配方
    */
@@ -335,19 +340,19 @@ const recipes = recipeAdapter.findByProductName('电力感应塔')
 export class CalculationContext {
   /** 消耗列表 (替代 xh_list) */
   consumption: Map<string, number> = new Map()
-  
+
   /** 产出列表 (替代 out_list) */
   production: Map<string, number> = new Map()
-  
+
   /** 计算结果 (替代 items) */
   results: CalculationResult[] = []
-  
+
   /** 递归深度监控 */
   depth: number = 0
-  
+
   /** 最大递归深度 */
   maxDepth: number = 100
-  
+
   /**
    * 添加消耗
    */
@@ -355,7 +360,7 @@ export class CalculationContext {
     const current = this.consumption.get(name) || 0
     this.consumption.set(name, current + amount)
   }
-  
+
   /**
    * 添加产出
    */
@@ -363,7 +368,7 @@ export class CalculationContext {
     const current = this.production.get(name) || 0
     this.production.set(name, current + amount)
   }
-  
+
   /**
    * 重置上下文
    */
@@ -396,7 +401,7 @@ import { CalculationContext, CalculationResult } from './CalculationContext'
  */
 export class CalculationService {
   private context: CalculationContext = new CalculationContext()
-  
+
   /**
    * 执行计算
    * 注意：实际计算仍调用 window.loadNumber，此处仅做结果封装
@@ -406,17 +411,17 @@ export class CalculationService {
     excludes: string[]
   ): Promise<CalculationResult[]> {
     this.context.reset()
-    
+
     // 同步状态到遗留代码
     window.xqs = demands
     window.ig_names = excludes
-    
+
     try {
       // 调用遗留计算逻辑 (黑盒)
       if (typeof window.loadNumber === 'function') {
         window.loadNumber()
       }
-      
+
       // 从遗留变量提取结果
       return this.extractResults()
     } catch (error) {
@@ -424,7 +429,7 @@ export class CalculationService {
       throw error
     }
   }
-  
+
   /**
    * 从遗留变量提取计算结果
    */
@@ -437,7 +442,7 @@ export class CalculationService {
       recipe: item
     }))
   }
-  
+
   /**
    * 获取计算上下文
    */
@@ -468,20 +473,20 @@ import path from 'path'
 async function extractData() {
   const dataPath = path.resolve('src/core/legacy/data.js')
   const content = fs.readFileSync(dataPath, 'utf-8')
-  
+
   // 提取 data 数组
   const match = content.match(/var data = (\[[\s\S]*?\]);/)
   if (!match) {
     throw new Error('Failed to extract data array')
   }
-  
+
   const data = JSON.parse(match[1])
-  
+
   // 写入 JSON 文件
   const outputPath = path.resolve('src/core/data/recipes.json')
   fs.mkdirSync(path.dirname(outputPath), { recursive: true })
   fs.writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf-8')
-  
+
   console.log(`Extracted ${data.length} recipes to ${outputPath}`)
 }
 
@@ -572,8 +577,8 @@ extractData()
 const testCase = {
   input: { name: '电力感应塔', num: 60 },
   expected: {
-    consumption: { '铁块': 120, '铜块': 60 },
-    production: { '电力感应塔': 60 }
+    consumption: { 铁块: 120, 铜块: 60 },
+    production: { 电力感应塔: 60 }
   }
 }
 
@@ -595,6 +600,7 @@ assert.deepStrictEqual(legacyResult, newResult)
 ## 8. 协作 AI 模型指令
 
 > "你现在的任务是协助进行 `data.js` 的解耦重构。请遵循以下规则：
+>
 > 1. 禁止修改 `loadNumber` 函数内部的递归逻辑
 > 2. 所有对 `window.data` 的访问必须通过 `RecipeAdapter` 进行
 > 3. 新增代码必须包含完整的 TypeScript 类型注解

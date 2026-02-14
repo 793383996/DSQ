@@ -1,13 +1,22 @@
 import pako from 'pako'
 import { BinaryWriter } from './BinaryWriter'
 import { md5Hex } from './md5'
-import type { IBlueprintData, IBlueprintBuilding, IBlueprintArea, IBlueprintHeader } from '../types/blueprint'
+import type {
+  IBlueprintData,
+  IBlueprintBuilding,
+  IBlueprintArea,
+  IBlueprintHeader
+} from '../types/blueprint'
 
 const TIME_BASE = new Date(0).setUTCFullYear(1)
 
-const ALL_ASSEMBLERS = new Set([
-  2303, 2304, 2305, 2302, 2315, 2308, 2309, 2310, 2317, 2318, 2319
-])
+type PakoModule = typeof pako
+
+function getPakoImpl(): PakoModule {
+  return (pako as unknown as { default?: PakoModule }).default || pako
+}
+
+const ALL_ASSEMBLERS = new Set([2303, 2304, 2305, 2302, 2315, 2308, 2309, 2310, 2317, 2318, 2319])
 
 const STATION_DESC = { maxItemKind: 3, numSlots: 12 }
 const INTERSTELLAR_STATION_DESC = { maxItemKind: 5, numSlots: 12 }
@@ -133,19 +142,33 @@ interface IUnknownParams {
   parameters: Int32Array
 }
 
-type BuildingParams = IStationParams | ISplitterParams | ILabParams | IAssemblerParams | IBeltParams | IInserterParams | ITankParams | IStorageParams | IEjectorParams | IPowerGeneratorParams | IEnergyExchangerParams | IMonitorParams | IUnknownParams | null
+type BuildingParams =
+  | IStationParams
+  | ISplitterParams
+  | ILabParams
+  | IAssemblerParams
+  | IBeltParams
+  | IInserterParams
+  | ITankParams
+  | IStorageParams
+  | IEjectorParams
+  | IPowerGeneratorParams
+  | IEnergyExchangerParams
+  | IMonitorParams
+  | IUnknownParams
+  | null
 
 function getEncodedSize(params: BuildingParams): number {
   if (params === null) return 0
-  
+
   if ('parameters' in params && params.parameters instanceof Int32Array) {
     return params.parameters.length
   }
-  
+
   if ('storage' in params) {
     return 2048
   }
-  
+
   if ('priority' in params) return 4
   if ('researchMode' in params && 'acceleratorMode' in params) return 2
   if ('acceleratorMode' in params && !('researchMode' in params)) return 1
@@ -157,7 +180,7 @@ function getEncodedSize(params: BuildingParams): number {
   if ('productId' in params) return 1
   if ('mode' in params && !('researchMode' in params)) return 1
   if ('falloffRadius' in params) return 128
-  
+
   return 0
 }
 
@@ -172,7 +195,7 @@ function encodeStationParams(params: IStationParams, view: DataView, maxItemKind
   setParam(view, base + 6, params.deliveryAmountOfDrones)
   setParam(view, base + 7, params.deliveryAmountOfShips)
   setParam(view, base + 8, params.pilerCount)
-  
+
   const { base: storageBase, stride } = STATION_PARAMS_META.storage
   for (let i = 0; i < maxItemKind; i++) {
     const s = params.storage[i]
@@ -181,7 +204,7 @@ function encodeStationParams(params: IStationParams, view: DataView, maxItemKind
     setParam(view, storageBase + i * stride + 2, s.remoteRole)
     setParam(view, storageBase + i * stride + 3, s.max)
   }
-  
+
   const { base: slotsBase, stride: slotsStride } = STATION_PARAMS_META.slots
   for (let i = 0; i < 12; i++) {
     const s = params.slots[i]
@@ -270,7 +293,7 @@ function encodeUnknownParams(params: IUnknownParams, view: DataView): void {
 
 function encodeParams(itemId: number, params: BuildingParams, view: DataView): void {
   if (params === null) return
-  
+
   if (itemId === 2103) {
     encodeStationParams(params as IStationParams, view, STATION_DESC.maxItemKind)
   } else if (itemId === 2104) {
@@ -319,7 +342,7 @@ function exportBuilding(w: BinaryWriter, b: IBlueprintBuilding): void {
   if (!b.localOffset || b.localOffset.length < 2) {
     throw new Error('Building must have at least 2 local offsets')
   }
-  
+
   w.setInt32(b.index)
   w.setInt8(b.areaIndex ?? 0)
   w.setFloat32(b.localOffset[0].x)
@@ -342,7 +365,7 @@ function exportBuilding(w: BinaryWriter, b: IBlueprintBuilding): void {
   w.setInt8(b.inputOffset)
   w.setInt16(b.recipeId)
   w.setInt16(b.filterId)
-  
+
   if (b.parameters !== null) {
     const size = getEncodedSize(b.parameters as BuildingParams)
     w.setInt16(size)
@@ -361,13 +384,13 @@ function calculateEncodedSize(bp: IBlueprintData): number {
   result += 14 * bp.areas.length
   result += 4
   result += 61 * bp.buildings.length
-  
+
   for (const b of bp.buildings) {
     if (b.parameters === null) continue
     const size = getEncodedSize(b.parameters as BuildingParams)
     result += size * Int32Array.BYTES_PER_ELEMENT
   }
-  
+
   return result
 }
 
@@ -376,12 +399,12 @@ function encodeHeader(header: IBlueprintHeader): string {
   result += '0,'
   result += header.layout.toString()
   result += ','
-  
+
   for (const icon of header.icons) {
     result += icon.toString()
     result += ','
   }
-  
+
   result += '0,'
   result += ((header.time.getTime() - TIME_BASE) * 10000).toString()
   result += ','
@@ -391,17 +414,17 @@ function encodeHeader(header: IBlueprintHeader): string {
   result += ','
   result += encodeURIComponent(header.desc)
   result += '"'
-  
+
   return result
 }
 
 export function encodeBlueprint(data: IBlueprintData): string {
   let result = encodeHeader(data.header)
-  
+
   const size = calculateEncodedSize(data)
   const decoded = new Uint8Array(size)
   const writer = new BinaryWriter(decoded.buffer as ArrayBuffer)
-  
+
   writer.setInt32(data.version)
   writer.setInt32(data.cursorOffset.x)
   writer.setInt32(data.cursorOffset.y)
@@ -410,26 +433,26 @@ export function encodeBlueprint(data: IBlueprintData): string {
   writer.setInt32(data.dragBoxSize.y)
   writer.setInt32(data.primaryAreaIdx)
   writer.setUint8(data.areas.length)
-  
+
   for (const area of data.areas) {
     exportArea(writer, area)
   }
-  
+
   writer.setInt32(data.buildings.length)
-  
+
   for (const building of data.buildings) {
     exportBuilding(writer, building)
   }
-  
-  const gzipped = (pako as any).default ? (pako as any).default.gzip(decoded) : (pako as any).gzip(decoded)
+
+  const gzipped = getPakoImpl().gzip(decoded)
   const base64 = btoa(uint8ArrayToBinaryString(gzipped))
   result += base64
   result += '"'
-  
+
   const fullBytes = binaryStringToUint8Array(result)
   const hash = md5Hex(fullBytes.buffer as ArrayBuffer)
   result += hash
-  
+
   return result
 }
 

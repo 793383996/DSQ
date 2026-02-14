@@ -1,14 +1,28 @@
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
 import { logger } from '../utils/logger'
+import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 
-let dataModule: any = null
-let blueprintModule: any = null
-let pakoModule: any = null
+let dataModule: unknown = null
+let blueprintModule: unknown = null
+let pakoModule: unknown = null
 let isBridgeInitialized = false
+let legacyModulesPromise: Promise<unknown> | null = null
+
+function getWin(): LegacyWindow {
+  return window as unknown as LegacyWindow
+}
 
 async function loadLegacyModules() {
-  if (!dataModule) {
+  if (dataModule) {
+    return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
+  }
+
+  if (legacyModulesPromise) {
+    return legacyModulesPromise
+  }
+
+  legacyModulesPromise = (async () => {
     const [dataMod, blueprintMod, pakoMod] = await Promise.all([
       import('./legacy/data'),
       import('./legacy/blueprint'),
@@ -17,23 +31,32 @@ async function loadLegacyModules() {
     dataModule = dataMod
     blueprintModule = blueprintMod
     pakoModule = pakoMod
-    ;(window as any).pako = pakoMod
+    getWin().pako = pakoMod
 
-    if ((window as any).data && !recipeAdapter.isLoaded()) {
-      recipeAdapter.loadFromRawData((window as any).data)
+    const win = getWin()
+    if (win.data && !recipeAdapter.isLoaded()) {
+      recipeAdapter.loadFromRawData(win.data as Record<string, unknown>)
     }
-  }
-  return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
+
+    logger.log('[bridge] Legacy modules loaded successfully')
+    return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
+  })()
+
+  return legacyModulesPromise
+}
+
+function getLegacyModulesLoadPromise(): Promise<unknown> | null {
+  return legacyModulesPromise
 }
 
 export interface LegacyGlobals {
-  data: any
-  blueprint: any
-  pako: any
+  data: unknown
+  blueprint: unknown
+  pako: unknown
 }
 
 export interface StateSyncMap {
-  demandList: any[]
+  demandList: Array<{ name: string; num?: number; number?: number }>
   excludeList: string[]
   machineSettings: MachineSettings
 }
@@ -66,69 +89,13 @@ export interface BlueprintConfig {
 }
 
 export interface OutputRecipe {
-  subRecipes?: any[]
+  subRecipes?: unknown[]
 }
 
 export interface Recipe {
   blueprintTitle: string
   blueprintIcon: string[]
   blueprintDesc: string
-}
-
-declare global {
-  interface Window {
-    pako: any
-    xqs: any[]
-    ig_names: string[]
-    settings: Record<string, { m?: string; accType?: string; accValue?: string }>
-    cocoMessage: (msg: string, type?: string) => void
-    loadNumber: () => any
-    find: (name: string, normalize_recipe?: boolean) => any
-    generateBlueprint: () => void
-    icons: Record<string, string>
-    xh_list: any[]
-    out_list: any[]
-    items0: any[]
-    items: any[]
-    totalDisplay: any[]
-    f_initIcons: () => void
-    f_reset: () => void
-    f_reset_ig: () => void
-    f_remove_ig: (name: string) => void
-    removeItem: (index: number) => void
-    onClickNumber: (index: number) => void
-    onClickNumberItem: (index: number) => void
-    submitEditorNumber: () => void
-    submitEditorNumberItem: () => void
-    cancelEditorNumber: () => void
-    cancelEditorNumberItem: () => void
-    speedChange: (item: any) => void
-    txtnumber: HTMLInputElement
-    selmaince: HTMLInputElement
-    pointLength: HTMLInputElement
-    hideSource: HTMLInputElement
-    conveyorBeltStackLayer: HTMLInputElement
-    onlyConveyorBeltMk3: HTMLInputElement
-    onlySorterMk3: HTMLInputElement
-    useSorterMk4: HTMLInputElement
-    generateTeslaTower: HTMLInputElement
-    teslaTowerLineInterval: HTMLInputElement
-    stackLayers: HTMLInputElement
-    x_y_ratio: HTMLInputElement
-    maxLabLayers: HTMLInputElement
-    selfAcc: HTMLInputElement
-    isAddSelfAccP: HTMLInputElement
-    xps_editor_index: number
-    xps_editor_number: number
-    items_editor_index: number
-    items_editor_number: number
-    settings_time: Record<string, number>
-    saveSettingTime: () => void
-    settingsLocal: Record<string, { m?: string; accType?: string; accValue?: string }>
-    defaultAccType: string
-    defaultAccValue: string
-    update_all: () => void
-  }
 }
 
 export function initLegacyBridge(): void {
@@ -138,39 +105,40 @@ export function initLegacyBridge(): void {
   }
   isBridgeInitialized = true
 
-  window.xqs = []
-  window.ig_names = []
-  window.icons = {}
-  window.xh_list = []
-  window.out_list = []
-  window.items0 = []
-  window.items = []
-  window.totalDisplay = []
-  window.xps_editor_index = -1
-  window.items_editor_index = -1
-  window.settings_time = {}
+  const win = getWin()
+  win.xqs = []
+  win.ig_names = []
+  win.icons = {}
+  win.xh_list = []
+  win.out_list = []
+  win.items0 = []
+  win.items = []
+  win.totalDisplay = []
+  win.xps_editor_index = -1
+  win.items_editor_index = -1
+  win.settings_time = {}
 
-  window.onlyConveyorBeltMk3 = { checked: true } as HTMLInputElement
-  window.onlySorterMk3 = { checked: true } as HTMLInputElement
-  window.useSorterMk4 = { checked: false } as HTMLInputElement
-  window.selfAcc = { checked: false } as HTMLInputElement
-  window.isAddSelfAccP = { checked: false } as HTMLInputElement
-  window.generateTeslaTower = { checked: true } as HTMLInputElement
-  window.teslaTowerLineInterval = { value: '1' } as HTMLInputElement
-  window.conveyorBeltStackLayer = { value: '4' } as HTMLInputElement
-  window.stackLayers = { value: '1' } as HTMLInputElement
-  window.x_y_ratio = { value: '2' } as HTMLInputElement
-  window.maxLabLayers = { value: '15' } as HTMLInputElement
-  window.pointLength = { value: '1' } as HTMLInputElement
-  window.hideSource = { checked: false } as HTMLInputElement
-  window.txtnumber = { value: '60' } as HTMLInputElement
-  window.selmaince = { value: '1' } as HTMLInputElement
-  window.settingsLocal = {}
-  window.defaultAccType = '增产剂Mk.Ⅰ'
-  window.defaultAccValue = '无'
+  win.onlyConveyorBeltMk3 = { checked: true } as HTMLInputElement
+  win.onlySorterMk3 = { checked: true } as HTMLInputElement
+  win.useSorterMk4 = { checked: false } as HTMLInputElement
+  win.selfAcc = { checked: false } as HTMLInputElement
+  win.isAddSelfAccP = { checked: false } as HTMLInputElement
+  win.generateTeslaTower = { checked: true } as HTMLInputElement
+  win.teslaTowerLineInterval = { value: '1' } as HTMLInputElement
+  win.conveyorBeltStackLayer = { value: '4' } as HTMLInputElement
+  win.stackLayers = { value: '1' } as HTMLInputElement
+  win.x_y_ratio = { value: '2' } as HTMLInputElement
+  win.maxLabLayers = { value: '15' } as HTMLInputElement
+  win.pointLength = { value: '1' } as HTMLInputElement
+  win.hideSource = { checked: false } as HTMLInputElement
+  win.txtnumber = { value: '60' } as HTMLInputElement
+  win.selmaince = { value: '1' } as HTMLInputElement
+  win.settingsLocal = {}
+  win.defaultAccType = '增产剂Mk.Ⅰ'
+  win.defaultAccValue = '无'
 
-  window.cocoMessage = cocoMessageProxy
-  
+  win.cocoMessage = cocoMessageProxy
+
   logger.log('[bridge] Legacy bridge initialized')
 }
 
@@ -185,14 +153,15 @@ export interface MachineConfigSettings {
 }
 
 export function legacyUpdateMachineSettings(config: MachineConfigSettings): void {
-  const data = (window as any).data || []
-  const settingsLocal = (window as any).settingsLocal || {}
-  
-  data.forEach((item: any) => {
+  const win = getWin()
+  const data = win.data || []
+  const settingsLocal = win.settingsLocal || {}
+
+  data.forEach((item: ILegacyDataItem) => {
     if (!settingsLocal[item.id]) {
       settingsLocal[item.id] = {}
     }
-    
+
     if (item.mName === '制作台') {
       settingsLocal[item.id].m = config.modeIn
     }
@@ -205,61 +174,65 @@ export function legacyUpdateMachineSettings(config: MachineConfigSettings): void
     if (item.mName === '研究站') {
       settingsLocal[item.id].m = config.research
     }
-    
+
     settingsLocal[item.id].accType = config.accType
     settingsLocal[item.id].accValue = config.accValue
   })
-  
-  ;(window as any).settingsLocal = settingsLocal
-  ;(window as any).defaultAccType = config.accType
-  ;(window as any).defaultAccValue = config.accValue
-  
-  if (window.hideSource) {
-    window.hideSource.checked = config.hideSource
+
+  win.settingsLocal = settingsLocal
+  win.defaultAccType = config.accType
+  win.defaultAccValue = config.accValue
+
+  if (win.hideSource) {
+    win.hideSource.checked = config.hideSource
   }
-  
-  if (typeof (window as any).saveSetting === 'function') {
-    ;(window as any).saveSetting()
+
+  if (typeof win.saveSetting === 'function') {
+    win.saveSetting()
   }
-  
-  if (typeof (window as any).update_all === 'function') {
-    ;(window as any).update_all()
+
+  if (typeof win.update_all === 'function') {
+    win.update_all()
   }
 }
 
 export function legacyGetMachineSettings(): MachineConfigSettings {
+  const win = getWin()
   return {
     modeIn: '制作台Mk.Ⅰ',
     furnace: '电弧熔炉',
     chemical: '化工厂',
-    accType: (window as any).defaultAccType || '增产剂Mk.Ⅰ',
-    accValue: (window as any).defaultAccValue || '无',
+    accType: win.defaultAccType || '增产剂Mk.Ⅰ',
+    accValue: win.defaultAccValue || '无',
     research: '矩阵研究站',
-    hideSource: window.hideSource?.checked ?? false
+    hideSource: win.hideSource?.checked ?? false
   }
 }
 
 export function syncStateToLegacy(state: StateSyncMap): void {
-  window.xqs = state.demandList.map(d => ({
+  const win = getWin()
+  win.xqs = state.demandList.map(d => ({
     name: d.name,
     number: d.num || d.number || 1,
     item: { name: d.name }
   }))
-  window.ig_names = state.excludeList
+  win.ig_names = state.excludeList
 }
 
 export function clearLegacyState(): void {
-  window.xh_list = []
-  window.out_list = []
-  window.xqs = []
-  window.ig_names = []
+  const win = getWin()
+  win.xh_list = []
+  win.out_list = []
+  win.xqs = []
+  win.ig_names = []
 }
 
-export async function runCalculation(): Promise<any> {
+export async function runCalculation(): Promise<unknown> {
   try {
     clearLegacyState()
-    if (typeof window.loadNumber === 'function') {
-      return await window.loadNumber()
+    const win = getWin()
+    if (typeof win.loadNumber === 'function') {
+      return await win.loadNumber()
     }
     throw new Error('loadNumber function not found')
   } catch (error) {
@@ -269,69 +242,73 @@ export async function runCalculation(): Promise<any> {
   }
 }
 
-export function legacyFind(name: string, normalize_recipe?: boolean): any {
-  if (typeof window.find === 'function') {
-    return window.find(name, normalize_recipe)
+export function legacyFind(name: string, normalize_recipe?: boolean): ILegacyDataItem | null {
+  const win = getWin()
+  if (typeof win.find === 'function') {
+    return win.find(name, normalize_recipe)
   }
   return null
 }
 
 export function legacyGenerateBlueprint(): void {
-  if (typeof window.generateBlueprint === 'function') {
-    window.generateBlueprint()
+  const win = getWin()
+  if (typeof win.generateBlueprint === 'function') {
+    win.generateBlueprint()
   }
 }
 
 export function legacyGetConfigFromDOM(): BlueprintConfig {
+  const win = getWin()
   return {
     maxSorterNumOneBelt: 8,
-    conveyorBeltStackLayer: parseInt(window.conveyorBeltStackLayer?.value || '4'),
-    x_y_ratio: parseFloat(window.x_y_ratio?.value || '2'),
+    conveyorBeltStackLayer: parseInt(win.conveyorBeltStackLayer?.value || '4'),
+    x_y_ratio: parseFloat(win.x_y_ratio?.value || '2'),
     compactLayout: false,
     upgradeConveyorBelt: false,
-    onlyConveyorBeltMk3: window.onlyConveyorBeltMk3?.checked ?? true,
-    onlySorterMk3: window.onlySorterMk3?.checked ?? true,
-    useSorterMk4: window.useSorterMk4?.checked ?? false,
-    maxLabLayers: parseInt(window.maxLabLayers?.value || '15'),
-    selfSpray: window.selfAcc?.checked ?? true,
-    generateTeslaTower: window.generateTeslaTower?.checked ?? true,
+    onlyConveyorBeltMk3: win.onlyConveyorBeltMk3?.checked ?? true,
+    onlySorterMk3: win.onlySorterMk3?.checked ?? true,
+    useSorterMk4: win.useSorterMk4?.checked ?? false,
+    maxLabLayers: parseInt(win.maxLabLayers?.value || '15'),
+    selfSpray: win.selfAcc?.checked ?? true,
+    generateTeslaTower: win.generateTeslaTower?.checked ?? true,
     teslaTowerInterval: 10,
-    teslaTowerLineInterval: parseInt(window.teslaTowerLineInterval?.value || '1'),
+    teslaTowerLineInterval: parseInt(win.teslaTowerLineInterval?.value || '1'),
     onlyConveyorBeltMk3Downgrade: false,
-    stackLayers: parseInt(window.stackLayers?.value || '1')
+    stackLayers: parseInt(win.stackLayers?.value || '1')
   }
 }
 
 export function legacyUpdateConfig(config: Partial<BlueprintConfig>): void {
-  if (config.conveyorBeltStackLayer !== undefined && window.conveyorBeltStackLayer) {
-    window.conveyorBeltStackLayer.value = String(config.conveyorBeltStackLayer)
+  const win = getWin()
+  if (config.conveyorBeltStackLayer !== undefined && win.conveyorBeltStackLayer) {
+    win.conveyorBeltStackLayer.value = String(config.conveyorBeltStackLayer)
   }
-  if (config.onlyConveyorBeltMk3 !== undefined && window.onlyConveyorBeltMk3) {
-    window.onlyConveyorBeltMk3.checked = config.onlyConveyorBeltMk3
+  if (config.onlyConveyorBeltMk3 !== undefined && win.onlyConveyorBeltMk3) {
+    win.onlyConveyorBeltMk3.checked = config.onlyConveyorBeltMk3
   }
-  if (config.onlySorterMk3 !== undefined && window.onlySorterMk3) {
-    window.onlySorterMk3.checked = config.onlySorterMk3
+  if (config.onlySorterMk3 !== undefined && win.onlySorterMk3) {
+    win.onlySorterMk3.checked = config.onlySorterMk3
   }
-  if (config.useSorterMk4 !== undefined && window.useSorterMk4) {
-    window.useSorterMk4.checked = config.useSorterMk4
+  if (config.useSorterMk4 !== undefined && win.useSorterMk4) {
+    win.useSorterMk4.checked = config.useSorterMk4
   }
-  if (config.selfSpray !== undefined && window.selfAcc) {
-    window.selfAcc.checked = config.selfSpray
+  if (config.selfSpray !== undefined && win.selfAcc) {
+    win.selfAcc.checked = config.selfSpray
   }
-  if (config.generateTeslaTower !== undefined && window.generateTeslaTower) {
-    window.generateTeslaTower.checked = config.generateTeslaTower
+  if (config.generateTeslaTower !== undefined && win.generateTeslaTower) {
+    win.generateTeslaTower.checked = config.generateTeslaTower
   }
-  if (config.teslaTowerLineInterval !== undefined && window.teslaTowerLineInterval) {
-    window.teslaTowerLineInterval.value = String(config.teslaTowerLineInterval)
+  if (config.teslaTowerLineInterval !== undefined && win.teslaTowerLineInterval) {
+    win.teslaTowerLineInterval.value = String(config.teslaTowerLineInterval)
   }
-  if (config.stackLayers !== undefined && window.stackLayers) {
-    window.stackLayers.value = String(config.stackLayers)
+  if (config.stackLayers !== undefined && win.stackLayers) {
+    win.stackLayers.value = String(config.stackLayers)
   }
-  if (config.x_y_ratio !== undefined && window.x_y_ratio) {
-    window.x_y_ratio.value = String(config.x_y_ratio)
+  if (config.x_y_ratio !== undefined && win.x_y_ratio) {
+    win.x_y_ratio.value = String(config.x_y_ratio)
   }
-  if (config.maxLabLayers !== undefined && window.maxLabLayers) {
-    window.maxLabLayers.value = String(config.maxLabLayers)
+  if (config.maxLabLayers !== undefined && win.maxLabLayers) {
+    win.maxLabLayers.value = String(config.maxLabLayers)
   }
 }
 
@@ -354,51 +331,54 @@ export interface LogisticsSettings {
 }
 
 export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
-  const settingsTime = (window as any).settings_time || {}
-  
-  settingsTime['采矿机'] = speeds.oreSpeed / 100 * 0.5 * 6
-  settingsTime['大型采矿机'] = speeds.oreSpeed / 100 * 1 * 20
+  const win = getWin()
+  const settingsTime = win.settings_time || {}
+
+  settingsTime['采矿机'] = (speeds.oreSpeed / 100) * 0.5 * 6
+  settingsTime['大型采矿机'] = (speeds.oreSpeed / 100) * 1 * 20
   settingsTime['分馏塔'] = speeds.fractionatorSpeed
   settingsTime['原油萃取站'] = speeds.oilSpeed
   settingsTime['轨道采集器(气态)'] = speeds.orbitalHydrogenGas
   settingsTime['轨道采集器(巨冰)'] = speeds.orbitalHydrogenIce
   settingsTime['射线接收塔'] = speeds.criticalPhotonSpeed
-  
-  ;(window as any).settings_time = settingsTime
-  
-  if (typeof (window as any).saveSettingTime === 'function') {
-    ;(window as any).saveSettingTime()
+
+  win.settings_time = settingsTime
+
+  if (typeof win.saveSettingTime === 'function') {
+    win.saveSettingTime()
   }
-  
-  if (window.pointLength) {
-    window.pointLength.value = String(speeds.pointLength)
+
+  if (win.pointLength) {
+    win.pointLength.value = String(speeds.pointLength)
   }
-  
-  if (typeof (window as any).update_all === 'function') {
-    ;(window as any).update_all()
+
+  if (typeof win.update_all === 'function') {
+    win.update_all()
   }
 }
 
 export function legacyUpdateLogisticsSettings(logistics: LogisticsSettings): void {
-  ;(window as any).logisticsSettings = {
+  const win = getWin()
+  win.logisticsSettings = {
     beltType: logistics.beltType,
     logisticStack: logistics.logisticStack
   }
-  
+
   const beltSpeedMap: Record<string, number> = {
-    '传送带': 360,
-    '高速传送带': 720,
-    '极速传送带': 1800
+    传送带: 360,
+    高速传送带: 720,
+    极速传送带: 1800
   }
-  ;(window as any).beltSpeed = beltSpeedMap[logistics.beltType] || 1800
-  
-  if (typeof (window as any).update_all === 'function') {
-    ;(window as any).update_all()
+  win.beltSpeed = beltSpeedMap[logistics.beltType] || 1800
+
+  if (typeof win.update_all === 'function') {
+    win.update_all()
   }
 }
 
 export function legacyGetLogisticsSettings(): LogisticsSettings {
-  const settings = (window as any).logisticsSettings || {}
+  const win = getWin()
+  const settings = win.logisticsSettings || {}
   return {
     beltType: settings.beltType || '极速传送带',
     logisticStack: settings.logisticStack || 1
@@ -406,19 +386,20 @@ export function legacyGetLogisticsSettings(): LogisticsSettings {
 }
 
 export function legacyGetSpeedSettings(): SpeedSettings {
-  const settingsTime = (window as any).settings_time || {}
-  
+  const win = getWin()
+  const settingsTime = win.settings_time || {}
+
   return {
-    oreSpeed: Math.round((settingsTime['采矿机'] || 3) / 0.5 / 6 * 100),
+    oreSpeed: Math.round(((settingsTime['采矿机'] || 3) / 0.5 / 6) * 100),
     fractionatorSpeed: settingsTime['分馏塔'] || 18,
-    largeMinerSpeed: Math.round((settingsTime['大型采矿机'] || 20) / 1 / 20 * 100),
+    largeMinerSpeed: Math.round(((settingsTime['大型采矿机'] || 20) / 1 / 20) * 100),
     oilSpeed: settingsTime['原油萃取站'] || 4,
     orbitalDeuterium: 0.02,
     orbitalFireIce: 0.5,
     orbitalHydrogenIce: settingsTime['轨道采集器(巨冰)'] || 0.5,
     orbitalHydrogenGas: settingsTime['轨道采集器(气态)'] || 1,
     criticalPhotonSpeed: settingsTime['射线接收塔'] || 5,
-    pointLength: parseInt(window.pointLength?.value || '1')
+    pointLength: parseInt(win.pointLength?.value || '1')
   }
 }
 
@@ -426,30 +407,30 @@ export function legacyGetProductionSettings(): {
   productionPerMinute: number
   machineCount: number
 } {
+  const win = getWin()
   return {
-    productionPerMinute: parseFloat(window.txtnumber?.value || '60'),
-    machineCount: parseInt(window.selmaince?.value || '1')
+    productionPerMinute: parseFloat(win.txtnumber?.value || '60'),
+    machineCount: parseInt(win.selmaince?.value || '1')
   }
 }
 
-export function legacySetProductionSettings(
-  production: number,
-  machineCount?: number
-): void {
-  if (window.txtnumber) {
-    window.txtnumber.value = String(production)
+export function legacySetProductionSettings(production: number, machineCount?: number): void {
+  const win = getWin()
+  if (win.txtnumber) {
+    win.txtnumber.value = String(production)
   }
-  if (machineCount !== undefined && window.selmaince) {
-    window.selmaince.value = String(machineCount)
+  if (machineCount !== undefined && win.selmaince) {
+    win.selmaince.value = String(machineCount)
   }
 }
 
-export { loadLegacyModules }
+export { loadLegacyModules, getLegacyModulesLoadPromise }
 
 export function getSelectableItems(): string[] {
   const items: string[] = []
   const reg = /^(\d)-(\d{1,2})-(.+)$/
-  const gameData = (window as any).game_data
+  const win = getWin()
+  const gameData = win.game_data
   if (!gameData) return items
 
   const iconArrays = [gameData.icons1, gameData.icons2]
@@ -488,13 +469,14 @@ interface SelectableItemsResult {
 export function getSelectableItemsWithIcons(): SelectableItemsResult {
   const result: SelectableItemsResult = { icons1: [], icons2: [] }
   const reg = /^(\d)-(\d{1,2})-(.+)$/
-  const gameData = (window as any).game_data
+  const win = getWin()
+  const gameData = win.game_data
   if (!gameData) return result
 
   const seen1 = new Set<string>()
   const seen2 = new Set<string>()
 
-  function processIcons(icons: any[], target: ItemWithIcon[], seen: Set<string>) {
+  function processIcons(icons: ILegacyIcon[], target: ItemWithIcon[], seen: Set<string>) {
     if (!Array.isArray(icons)) return
     for (const icon of icons) {
       const name = icon.name
@@ -523,7 +505,8 @@ export function getSelectableItemsWithIcons(): SelectableItemsResult {
 export function getIconData(): { [key: string]: string } {
   const result: { [key: string]: string } = {}
   const reg = /^(\d)-(\d{1,2})-(.+)$/
-  const gameData = (window as any).game_data
+  const win = getWin()
+  const gameData = win.game_data
   if (!gameData) return result
 
   const iconArrays = [gameData.icons1, gameData.icons2]
@@ -545,17 +528,21 @@ export function getIconData(): { [key: string]: string } {
 }
 
 export function isLegacyDataLoaded(): boolean {
-  return typeof (window as any).update_all === 'function' &&
-         typeof (window as any).find === 'function' &&
-         Array.isArray((window as any).data)
+  const win = getWin()
+  return (
+    typeof win.update_all === 'function' &&
+    typeof win.find === 'function' &&
+    Array.isArray(win.data)
+  )
 }
 
 export function isGameDataLoaded(): boolean {
-  return (window as any).isDataLoaded === true
+  const win = getWin()
+  return win.isDataLoaded === true
 }
 
 export function waitForLegacyData(timeout: number = 10000): Promise<boolean> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     if (isLegacyDataLoaded()) {
       resolve(true)
       return

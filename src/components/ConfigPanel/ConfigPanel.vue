@@ -2,15 +2,15 @@
   <div v-if="visible" class="config-panel-overlay" @click.self="close">
     <div class="config-panel">
       <div class="config-header">
-        <h3>参数设置</h3>
+        <h3>{{ $t('configPanel.title') }}</h3>
         <button class="close-btn" @click="close">&times;</button>
       </div>
 
       <div class="config-content">
         <div class="config-section">
-          <h4>设备类型</h4>
+          <h4>{{ $t('configPanel.deviceType') }}</h4>
           <div class="config-row">
-            <label>制作台</label>
+            <label>{{ $t('configPanel.assembler') }}</label>
             <select v-model="settings.modeIn">
               <option value="制作台Mk.Ⅰ">制作台Mk.Ⅰ</option>
               <option value="制作台Mk.Ⅱ">制作台Mk.Ⅱ</option>
@@ -19,7 +19,7 @@
             </select>
           </div>
           <div class="config-row">
-            <label>熔炉</label>
+            <label>{{ $t('configPanel.smelter') }}</label>
             <select v-model="settings.furnace">
               <option value="电弧熔炉">电弧熔炉</option>
               <option value="位面熔炉">位面熔炉</option>
@@ -27,14 +27,14 @@
             </select>
           </div>
           <div class="config-row">
-            <label>化工厂</label>
+            <label>{{ $t('configPanel.chemicalPlant') }}</label>
             <select v-model="settings.chemical">
               <option value="化工厂">化工厂</option>
               <option value="量子化工厂">量子化工厂</option>
             </select>
           </div>
           <div class="config-row">
-            <label>研究站</label>
+            <label>{{ $t('configPanel.research') }}</label>
             <select v-model="settings.research">
               <option value="矩阵研究站">矩阵研究站</option>
               <option value="自演化研究站">自演化研究站</option>
@@ -43,9 +43,9 @@
         </div>
 
         <div class="config-section">
-          <h4>增产剂</h4>
+          <h4>{{ $t('configPanel.productivityAgent') }}</h4>
           <div class="config-row">
-            <label>增产剂类型</label>
+            <label>{{ $t('configPanel.productivityType') }}</label>
             <select v-model="settings.accType">
               <option value="增产剂Mk.Ⅰ">增产剂Mk.Ⅰ</option>
               <option value="增产剂Mk.Ⅱ">增产剂Mk.Ⅱ</option>
@@ -53,7 +53,7 @@
             </select>
           </div>
           <div class="config-row">
-            <label>增产效果</label>
+            <label>{{ $t('configPanel.productivityValue') }}</label>
             <select v-model="settings.accValue">
               <option value="无">无</option>
               <option value="加速">加速</option>
@@ -61,62 +61,126 @@
             </select>
           </div>
           <div class="config-row">
-            <label>自喷涂增产剂</label>
-            <input type="checkbox" v-model="settings.selfAcc" />
+            <label>{{ $t('configPanel.selfSpray') }}</label>
+            <input v-model="settings.selfAcc" type="checkbox" />
           </div>
         </div>
 
         <div class="config-section">
-          <h4>速度产量</h4>
+          <h4>{{ $t('configPanel.speedYield') }}</h4>
           <div class="config-row">
-            <label>采矿作业速度</label>
-            <input type="number" v-model.number="settings.oreSpeed" min="1" max="1000" class="textbox" />
+            <label>{{ $t('configPanel.miningSpeed') }}</label>
+            <input
+              v-model.number="settings.oreSpeed"
+              type="number"
+              min="1"
+              max="1000"
+              class="textbox"
+            />
             <span class="unit">%</span>
           </div>
           <div class="config-row">
-            <label>大型采矿机</label>
-            <input type="number" v-model.number="settings.largeMinerSpeed" min="1" max="1000" class="textbox" />
+            <label>{{ $t('configPanel.largeMinerSpeed') }}</label>
+            <input
+              v-model.number="settings.largeMinerSpeed"
+              type="number"
+              min="1"
+              max="1000"
+              class="textbox"
+            />
             <span class="unit">%</span>
           </div>
           <div class="config-row">
-            <label>分馏塔产量</label>
-            <input type="number" v-model.number="settings.fractionatorSpeed" min="1" max="100" class="textbox" />
+            <label>{{ $t('configPanel.fractionatorYield') }}</label>
+            <input
+              v-model.number="settings.fractionatorSpeed"
+              type="number"
+              min="1"
+              max="100"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>原油速度</label>
-            <input type="number" v-model.number="settings.oilSpeed" min="1" max="100" class="textbox" />
+            <label>{{ $t('configPanel.oilSpeedLabel') }}</label>
+            <input
+              v-model.number="settings.oilSpeed"
+              type="number"
+              min="1"
+              max="100"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>临界光子产量</label>
-            <input type="number" v-model.number="settings.criticalPhotonSpeed" min="1" max="100" class="textbox" />
+            <label>{{ $t('configPanel.criticalPhotonYield') }}</label>
+            <input
+              v-model.number="settings.criticalPhotonSpeed"
+              type="number"
+              min="1"
+              max="100"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>轨道采集-重氢</label>
-            <input type="number" v-model.number="settings.orbitalDeuterium" step="0.01" min="0" max="10" class="textbox" />
+            <label>{{ $t('configPanel.orbitalDeuterium') }}</label>
+            <input
+              v-model.number="settings.orbitalDeuterium"
+              type="number"
+              step="0.01"
+              min="0"
+              max="10"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>轨道采集-可燃冰</label>
-            <input type="number" v-model.number="settings.orbitalFireIce" step="0.1" min="0" max="10" class="textbox" />
+            <label>{{ $t('configPanel.orbitalFireIce') }}</label>
+            <input
+              v-model.number="settings.orbitalFireIce"
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>轨道采集-氢(巨冰)</label>
-            <input type="number" v-model.number="settings.orbitalHydrogenIce" step="0.1" min="0" max="10" class="textbox" />
+            <label>{{ $t('configPanel.orbitalHydrogenIce') }}</label>
+            <input
+              v-model.number="settings.orbitalHydrogenIce"
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>轨道采集-氢(气态)</label>
-            <input type="number" v-model.number="settings.orbitalHydrogenGas" step="0.1" min="0" max="10" class="textbox" />
+            <label>{{ $t('configPanel.orbitalHydrogenGas') }}</label>
+            <input
+              v-model.number="settings.orbitalHydrogenGas"
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>小数点保留</label>
-            <input type="number" v-model.number="settings.pointLength" min="0" max="10" class="textbox" />
-            <span class="unit">位</span>
+            <label>{{ $t('configPanel.decimalPlaces') }}</label>
+            <input
+              v-model.number="settings.pointLength"
+              type="number"
+              min="0"
+              max="10"
+              class="textbox"
+            />
+            <span class="unit">{{ $t('configPanel.decimalPlaces') }}</span>
           </div>
         </div>
 
         <div class="config-section">
-          <h4>物流配置</h4>
+          <h4>{{ $t('configPanel.logisticsConfig') }}</h4>
           <div class="config-row">
-            <label>传送带类型</label>
+            <label>{{ $t('configPanel.beltTypeLabel') }}</label>
             <select v-model="settings.beltType">
               <option value="传送带">传送带</option>
               <option value="高速传送带">高速传送带</option>
@@ -124,64 +188,109 @@
             </select>
           </div>
           <div class="config-row">
-            <label>集装物流堆叠</label>
-            <input type="number" v-model.number="settings.logisticStack" min="1" max="4" class="textbox" />
+            <label>{{ $t('configPanel.containerStacking') }}</label>
+            <input
+              v-model.number="settings.logisticStack"
+              type="number"
+              min="1"
+              max="4"
+              class="textbox"
+            />
             <span class="unit">层</span>
           </div>
         </div>
 
         <div class="config-section">
-          <h4>蓝图配置</h4>
+          <h4>{{ $t('configPanel.blueprintConfig') }}</h4>
           <div class="config-row">
-            <label>只使用三级传送带</label>
-            <input type="checkbox" v-model="settings.onlyConveyorBeltMk3" />
+            <label>{{ $t('configPanel.onlyMk3Belt') }}</label>
+            <input v-model="settings.onlyConveyorBeltMk3" type="checkbox" />
           </div>
           <div class="config-row">
-            <label>只使用三级分拣器</label>
-            <input type="checkbox" v-model="settings.onlySorterMk3" @change="onOnlySorterMk3Change" />
+            <label>{{ $t('configPanel.onlyMk3Sorter') }}</label>
+            <input
+              v-model="settings.onlySorterMk3"
+              type="checkbox"
+              @change="onOnlySorterMk3Change"
+            />
           </div>
           <div class="config-row">
-            <label>只使用四级分拣器</label>
-            <input type="checkbox" v-model="settings.useSorterMk4" @change="onUseSorterMk4Change" />
+            <label>{{ $t('configPanel.useMk4Sorter') }}</label>
+            <input v-model="settings.useSorterMk4" type="checkbox" @change="onUseSorterMk4Change" />
           </div>
           <div class="config-row">
-            <label>自动插入电力感应塔</label>
-            <input type="checkbox" v-model="settings.generateTeslaTower" />
+            <label>{{ $t('configPanel.autoTeslaTower') }}</label>
+            <input v-model="settings.generateTeslaTower" type="checkbox" />
           </div>
-          <div class="config-row" v-if="settings.generateTeslaTower">
-            <label>电力感应塔间隔</label>
-            <input type="number" v-model.number="settings.teslaTowerLineInterval" min="1" max="5" class="textbox" />
+          <div v-if="settings.generateTeslaTower" class="config-row">
+            <label>{{ $t('configPanel.teslaTowerInterval') }}</label>
+            <input
+              v-model.number="settings.teslaTowerLineInterval"
+              type="number"
+              min="1"
+              max="5"
+              class="textbox"
+            />
             <span class="unit">排</span>
           </div>
           <div class="config-row">
-            <label>传送带堆叠层数</label>
-            <input type="number" v-model.number="settings.conveyorBeltStackLayer" min="1" max="4" class="textbox" />
+            <label>{{ $t('configPanel.beltStackLayers') }}</label>
+            <input
+              v-model.number="settings.conveyorBeltStackLayer"
+              type="number"
+              min="1"
+              max="4"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>研究站层数</label>
-            <input type="number" v-model.number="settings.maxLabLayers" min="1" max="30" class="textbox" />
+            <label>{{ $t('configPanel.labLayers') }}</label>
+            <input
+              v-model.number="settings.maxLabLayers"
+              type="number"
+              min="1"
+              max="30"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>建筑堆叠层数</label>
-            <input type="number" v-model.number="settings.stackLayers" min="1" max="4" class="textbox" />
+            <label>{{ $t('configPanel.buildingStackLayers') }}</label>
+            <input
+              v-model.number="settings.stackLayers"
+              type="number"
+              min="1"
+              max="4"
+              class="textbox"
+            />
           </div>
           <div class="config-row">
-            <label>蓝图长宽比</label>
-            <input type="number" v-model.number="settings.xyRatio" step="0.1" min="0.1" max="10" class="textbox" />
+            <label>{{ $t('configPanel.blueprintRatio') }}</label>
+            <input
+              v-model.number="settings.xyRatio"
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10"
+              class="textbox"
+            />
           </div>
         </div>
 
         <div class="config-section">
-          <h4>显示设置</h4>
+          <h4>{{ $t('configPanel.displaySettings') }}</h4>
           <div class="config-row">
-            <label>隐藏原料</label>
-            <input type="checkbox" v-model="settings.hideSource" />
+            <label>{{ $t('configPanel.hideSourceLabel') }}</label>
+            <input v-model="settings.hideSource" type="checkbox" />
           </div>
         </div>
 
         <div class="config-actions">
-          <button class="btn-reset" @click="resetSettings">重置默认</button>
-          <button class="btn-save" @click="saveSettings">保存设置</button>
+          <button class="btn-reset" @click="resetSettings">
+            {{ $t('configPanel.resetDefault') }}
+          </button>
+          <button class="btn-save" @click="saveSettings">
+            {{ $t('configPanel.saveSettings') }}
+          </button>
         </div>
       </div>
     </div>
@@ -191,7 +300,13 @@
 <script setup lang="ts">
 import { ref, watch, reactive } from 'vue'
 import { useBlueprintStore, type MachineSettings } from '../../stores/blueprint'
-import { legacyUpdateMachineSettings, legacyGetMachineSettings, legacyUpdateConfig, legacyUpdateSpeedSettings, legacyUpdateLogisticsSettings } from '../../core/bridge'
+import {
+  legacyUpdateMachineSettings,
+  legacyGetMachineSettings,
+  legacyUpdateConfig,
+  legacyUpdateSpeedSettings,
+  legacyUpdateLogisticsSettings
+} from '../../core/bridge'
 import { logger } from '../../utils/logger'
 
 interface Props {
@@ -294,19 +409,22 @@ function saveSettingsToStorage() {
   }
 }
 
-watch(() => props.modelValue, (val) => {
-  visible.value = val
-  if (val) {
-    loadSettingsFromStorage()
-    const machineSettings = store.machineSettings
-    settings.modeIn = machineSettings.modeIn
-    settings.furnace = machineSettings.furnace
-    settings.chemical = machineSettings.chemical
-    settings.accType = machineSettings.accType
-    settings.accValue = machineSettings.accValue
-    settings.research = machineSettings.research
+watch(
+  () => props.modelValue,
+  val => {
+    visible.value = val
+    if (val) {
+      loadSettingsFromStorage()
+      const machineSettings = store.machineSettings
+      settings.modeIn = machineSettings.modeIn
+      settings.furnace = machineSettings.furnace
+      settings.chemical = machineSettings.chemical
+      settings.accType = machineSettings.accType
+      settings.accValue = machineSettings.accValue
+      settings.research = machineSettings.research
+    }
   }
-})
+)
 
 function onOnlySorterMk3Change() {
   if (settings.onlySorterMk3) {
@@ -577,7 +695,7 @@ function resetSettings() {
   border-color: #3498db;
 }
 
-.config-row input[type="checkbox"] {
+.config-row input[type='checkbox'] {
   width: 14px;
   height: 14px;
   cursor: pointer;
@@ -599,13 +717,13 @@ function resetSettings() {
   border-color: #3498db;
 }
 
-.config-row input[type="number"]::-webkit-inner-spin-button,
-.config-row input[type="number"]::-webkit-outer-spin-button {
+.config-row input[type='number']::-webkit-inner-spin-button,
+.config-row input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.config-row input[type="number"] {
+.config-row input[type='number'] {
   -moz-appearance: textfield;
 }
 

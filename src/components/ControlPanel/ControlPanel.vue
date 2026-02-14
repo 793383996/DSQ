@@ -1,32 +1,55 @@
 <template>
   <div class="control-bar">
-    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="color: #4a5568;">每分钟产量：</span>
+    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="color: #4a5568">{{ $t('controlPanel.productionPerMinute') }}：</span>
         <input
           type="text"
           :value="productionPerMinute"
-          @input="updateProductionPerMinute"
           :style="{ minWidth: '70px', width: productionWidth }"
+          @input="updateProductionPerMinute"
         />
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="color: #4a5568;">或生产设备数：</span>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="color: #4a5568">{{ $t('controlPanel.machineCount') }}：</span>
         <input
           type="number"
           :value="machineCount"
-          @input="updateMachineCount"
           min="1"
           max="1000"
           :style="{ minWidth: '70px', width: machineWidth, appearance: 'textfield' }"
+          @input="updateMachineCount"
         />
       </div>
-      <a href="javascript:void(0)" @click="handleAdd" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFDD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
+      <a
+        href="javascript:void(0)"
+        style="
+          display: flex;
+          align-items: center;
+          padding: 6px 12px;
+          background: linear-gradient(135deg, #ddefdd, #c3e2fb);
+          border-radius: 8px;
+          transition: all 0.3s ease;
+        "
+        :title="$t('common.add')"
+        @click="handleAdd"
+      >
+        <img
+          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg=="
+          style="width: 20px; height: 20px"
+        />
       </a>
       <div class="custom-dropdown">
-        <button id="btnSetting" @click="$emit('open-settings')">参数设置</button>
-        <button id="btnReset1" style="background: linear-gradient(135deg, #f97316, #ea580c);" @click="$emit('fix-calculation')">修复计算空白</button>
+        <button id="btnSetting" @click="$emit('open-settings')">
+          {{ $t('controlPanel.settings') }}
+        </button>
+        <button
+          id="btnReset1"
+          style="background: linear-gradient(135deg, #f97316, #ea580c)"
+          @click="$emit('fix-calculation')"
+        >
+          {{ $t('controlPanel.fixCalculation') }}
+        </button>
       </div>
     </div>
   </div>
@@ -34,6 +57,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { legacySetProductionSettings } from '../../core/bridge'
 
@@ -90,7 +114,7 @@ function handleAdd() {
   padding: 6px 12px;
   border: none;
   border-radius: 6px;
-  background: linear-gradient(135deg, #DDEFDD, #C3E2FB);
+  background: linear-gradient(135deg, #ddefdd, #c3e2fb);
   color: #1e40af;
   font-weight: 500;
   cursor: pointer;

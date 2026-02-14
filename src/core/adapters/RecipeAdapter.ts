@@ -11,7 +11,7 @@ declare global {
 
 /**
  * 配方适配器 - 将简写数据转换为语义化接口
- * 
+ *
  * 架构师注：
  * - 此类为只读适配器，不修改原始数据
  * - 复用 data.js 已构建的索引，避免双重索引
@@ -42,10 +42,10 @@ export class RecipeAdapter {
     }
 
     this.recipes = rawData.map((item, idx) => this.transformRecipe(item, idx))
-    
+
     // 复用 data.js 已构建的索引，避免双重索引
     this.reuseExistingIndex()
-    
+
     this.loaded = true
 
     logger.log(`[RecipeAdapter] Loaded ${this.recipes.length} recipes (reused existing index)`)
@@ -87,30 +87,30 @@ export class RecipeAdapter {
       return
     }
 
-    const productIndex = (window as any).recipeIndexByProduct
-    const materialIndex = (window as any).recipeIndexByMaterial
+    const productIndex = window.recipeIndexByProduct
+    const materialIndex = window.recipeIndexByMaterial
 
-    if (productIndex) {
+    if (productIndex && materialIndex) {
       Object.entries(productIndex).forEach(([name, indices]) => {
         const recipes = (indices as number[]).map(idx => this.recipes[idx]).filter(Boolean)
         if (recipes.length > 0) {
           this.index.byProduct.set(name, recipes)
         }
       })
-    }
 
-    if (materialIndex) {
       Object.entries(materialIndex).forEach(([name, indices]) => {
         const recipes = (indices as number[]).map(idx => this.recipes[idx]).filter(Boolean)
         if (recipes.length > 0) {
           this.index.byInput.set(name, recipes)
         }
       })
-    }
 
-    this.recipes.forEach(recipe => {
-      this.index.byId.set(recipe.id, recipe)
-    })
+      this.recipes.forEach(recipe => {
+        this.index.byId.set(recipe.id, recipe)
+      })
+    } else {
+      this.buildIndex()
+    }
   }
 
   /**

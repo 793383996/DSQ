@@ -3,7 +3,7 @@
     <div v-if="visible" class="dialog-overlay" @click.self="close">
       <div class="dialog">
         <div class="dialog-header">
-          <h3>添加需求</h3>
+          <h3>{{ $t('addItemDialog.title') }}</h3>
           <button class="close-btn" @click="close">&times;</button>
         </div>
 
@@ -11,41 +11,43 @@
           <div class="search-section">
             <input
               ref="searchInput"
-              type="text"
               v-model="searchKeyword"
-              placeholder="搜索物品名称..."
+              type="text"
+              :placeholder="$t('addItemDialog.searchPlaceholder')"
               class="search-input"
             />
           </div>
 
-          <div class="tab-section" v-if="!isLoading">
+          <div v-if="!isLoading" class="tab-section">
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'icons1' }"
               @click="activeTab = 'icons1'"
             >
-              组件
+              {{ $t('addItemDialog.components') }}
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'icons2' }"
               @click="activeTab = 'icons2'"
             >
-              建筑
+              {{ $t('addItemDialog.buildings') }}
             </button>
           </div>
 
-          <div class="items-grid" v-if="isLoading">
-            <div class="loading-hint">加载中...</div>
+          <div v-if="isLoading" class="items-grid">
+            <div class="loading-hint">
+              {{ $t('addItemDialog.loading') }}
+            </div>
           </div>
-          <div class="items-grid" v-else-if="filteredItems.length > 0">
+          <div v-else-if="filteredItems.length > 0" class="items-grid">
             <button
               v-for="item in filteredItems"
               :key="item.name"
               class="item-btn"
               :class="{ selected: selectedItem?.name === item.name }"
-              @click="selectItem(item)"
               :title="item.name"
+              @click="selectItem(item)"
             >
               <img
                 v-if="item.icon"
@@ -58,30 +60,28 @@
           </div>
 
           <div v-else class="no-results">
-            <span>未找到匹配物品</span>
+            <span>{{ $t('addItemDialog.noMatch') }}</span>
           </div>
 
           <div v-if="selectedItem" class="quantity-section">
-            <label>数量：</label>
+            <label>{{ $t('addItemDialog.quantity') }}：</label>
             <input
-              type="number"
               v-model.number="quantity"
+              type="number"
               min="1"
               max="9999"
               class="quantity-input"
             />
-            <span class="unit">个</span>
+            <span class="unit">{{ $t('addItemDialog.unit') }}</span>
           </div>
         </div>
 
         <div class="dialog-footer">
-          <button class="btn-cancel" @click="close">取消</button>
-          <button
-            class="btn-confirm"
-            :disabled="!selectedItem"
-            @click="confirm"
-          >
-            添加
+          <button class="btn-cancel" @click="close">
+            {{ $t('common.cancel') }}
+          </button>
+          <button class="btn-confirm" :disabled="!selectedItem" @click="confirm">
+            {{ $t('common.add') }}
           </button>
         </div>
       </div>
@@ -91,7 +91,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { getSelectableItemsWithIcons, waitForLegacyData, isLegacyDataLoaded } from '../../core/bridge'
+import {
+  getSelectableItemsWithIcons,
+  waitForLegacyData,
+  isLegacyDataLoaded
+} from '../../core/bridge'
 import { logger } from '../../utils/logger'
 
 interface ItemData {
@@ -149,14 +153,12 @@ const filteredItems = computed(() => {
     return items
   }
   const keyword = debouncedKeyword.value.toLowerCase()
-  return items.filter(item =>
-    item.name.toLowerCase().includes(keyword)
-  )
+  return items.filter(item => item.name.toLowerCase().includes(keyword))
 })
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-watch(searchKeyword, (val) => {
+watch(searchKeyword, val => {
   if (debounceTimer) {
     clearTimeout(debounceTimer)
   }
@@ -165,18 +167,21 @@ watch(searchKeyword, (val) => {
   }, 150)
 })
 
-watch(() => props.modelValue, (val) => {
-  visible.value = val
-  if (val) {
-    nextTick(() => {
-      searchInput.value?.focus()
-    })
-    searchKeyword.value = ''
-    debouncedKeyword.value = ''
-    selectedItem.value = null
-    quantity.value = 1
+watch(
+  () => props.modelValue,
+  val => {
+    visible.value = val
+    if (val) {
+      nextTick(() => {
+        searchInput.value?.focus()
+      })
+      searchKeyword.value = ''
+      debouncedKeyword.value = ''
+      selectedItem.value = null
+      quantity.value = 1
+    }
   }
-})
+)
 
 function selectItem(item: ItemData) {
   selectedItem.value = item

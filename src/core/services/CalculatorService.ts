@@ -1,138 +1,180 @@
-import type { ICalculationResult, IDemand } from '../types/recipe'
+import type {
+  ICalculationResult,
+  IDemand,
+  ILegacyCalculationResult,
+  ILegacyApp,
+  IConsumptionItem,
+  IResultItemOutput,
+  IResultItem,
+  ITotalItem,
+  IDemandItem
+} from '../types/recipe'
 import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { logger } from '../../utils/logger'
 
-interface LegacyCalculationResult {
-  items: any[]
-  items2: any[]
-  items0: any[]
-  total: any[]
-  totalEnergy: number
-  totalSpace: number
-  totalAcc: string
-  xqs: any[]
-  ig_names: string[]
+export interface CalculationOptions {
+  excludes?: string[]
+  onStateSnapshot?: () => IStateSnapshot
+  validateState?: (snapshot: IStateSnapshot) => boolean
 }
 
-interface LegacyApp {
-  items: any[]
-  items2: any[]
-  items0: any[]
-  total: any[]
-  totalEnergy: string
-  totalSpace: number
-  totalAcc: string
-  xqs: any[]
+export interface IStateSnapshot {
+  demandVersion: number
+  demandList: IDemand[]
+  excludeList: string[]
 }
 
 function clearLegacyGlobalState(): void {
-  const w = window as any
+  const w = window as unknown as Record<string, unknown>
   if (w.xh_list) w.xh_list = []
   if (w.out_list) w.out_list = []
   if (w.single_list) w.single_list = []
+  if (w.xhMap) w.xhMap = {}
+  if (w.outMap) w.outMap = {}
   if (w.total) w.total = []
   w.totalAcc = 0
 }
 
 /**
  * 计算服务 - 封装 update_all 逻辑
- * 
+ *
  * 架构师注：
  * - 核心算法保持不变，仅做外围包装
  * - update_all 函数视为黑盒，禁止修改内部递归逻辑
  * - 所有计算结果通过 CalculationContext 封装
  * - 输入输出格式与原 bridge.runCalculation 完全一致
+ *
+ * 状态同步机制：
+ * - 支持状态快照和验证，防止异步计算期间状态被修改
+ * - 调用方可通过 onStateSnapshot 获取计算前的状态快照
+ * - 调用方可通过 validateState 验证计算后状态是否一致
  */
 export class CalculatorService {
   private context: CalculationContext = new CalculationContext()
+  private calculationVersion: number = 0
 
   /**
-   * 执行计算
-   * 
-   * 流程：
-   * 1. 清理遗留全局状态
-   * 2. 设置 window.xqs 和 window.ig_names
-   * 3. 调用 window.update_all() 执行计算
-   * 4. 从 window.app 提取结果
-   * 5. 填充 CalculationContext
-   * 
-   * @param demands 需求列表
-   * @param excludes 排除列表
-   * @returns 计算结果 (与原 bridge.runCalculation 返回格式一致)
+   * 获取当前计算版本号
    */
-  async calculate(
+  getVersion(): number {
+    return this.calculationVersion
+  }
+
+  /**
+   * 执行计算（简化版本，向后兼容）
+   */
+  async calculate(demands: IDemand[], excludes: string[] = []): Promise<ILegacyCalculationResult> {
+    return this.calculateWithOptions(demands, { excludes })
+  }
+
+  /**
+   * 执行计算（带状态同步控制）
+   *
+   * 流程：
+   * 1. 递增计算版本号
+   * 2. 获取状态快照（如果提供了 onStateSnapshot）
+   * 3. 清理遗留全局状态
+   * 4. 设置 window.xqs 和 window.ig_names
+   * 5. 调用 window.update_all() 执行计算
+   * 6. 从 window.app 提取结果
+   * 7. 验证状态一致性（如果提供了 validateState）
+   * 8. 填充 CalculationContext
+   *
+   * @param demands 需求列表
+   * @param options 计算选项
+   * @returns 计算结果
+   */
+  async calculateWithOptions(
     demands: IDemand[],
-    excludes: string[] = []
-  ): Promise<LegacyCalculationResult> {
+    options: CalculationOptions
+  ): Promise<ILegacyCalculationResult> {
+    const version = ++this.calculationVersion
     this.context.reset()
     this.context.startTimer()
+
+    let snapshot: IStateSnapshot | undefined
+    if (options.onStateSnapshot) {
+      snapshot = options.onStateSnapshot()
+    }
 
     clearLegacyGlobalState()
 
     if (!recipeAdapter.isLoaded()) {
-      const rawData = (window as any).data
+      const rawData = (window as unknown as Record<string, unknown>).data
       if (rawData) {
-        recipeAdapter.loadFromRawData(rawData)
+        recipeAdapter.loadFromRawData(rawData as Record<string, unknown>)
       }
     }
 
-    ;(window as any).xqs = demands.map(d => ({
+    const excludes = options.excludes || []
+    const win = window as unknown as Record<string, unknown>
+    win.xqs = demands.map(d => ({
       name: d.name,
       number: d.num,
       item: { name: d.name }
     }))
-    ;(window as any).ig_names = [...excludes]
+    win.ig_names = [...excludes]
 
     try {
-      if (typeof (window as any).update_all === 'function') {
-        ;(window as any).update_all()
+      const updateAll = win.update_all
+      if (typeof updateAll === 'function') {
+        ;(updateAll as () => void)()
       } else {
         logger.error('[CalculatorService] update_all function not found')
         throw new Error('计算引擎未初始化')
       }
 
+      if (snapshot && options.validateState) {
+        if (!options.validateState(snapshot)) {
+          logger.warn(
+            `[CalculatorService] State changed during calculation (version ${version}), result may be stale`
+          )
+        }
+      }
+
       const result = this.extractResults()
+      result.xqs = demands.map(d => ({
+        name: d.name,
+        number: d.num,
+        item: { name: d.name }
+      }))
+      result.ig_names = [...excludes]
+
       this.fillContext()
       this.context.stopTimer()
 
-      logger.log(`[CalculatorService] Calculation completed in ${this.context.elapsedTime.toFixed(2)}ms`)
+      logger.log(
+        `[CalculatorService] Calculation v${version} completed in ${this.context.elapsedTime.toFixed(2)}ms`
+      )
 
       return result
     } catch (error) {
       this.context.stopTimer()
-      logger.error('[CalculatorService] Calculation failed:', error)
+      logger.error(`[CalculatorService] Calculation v${version} failed:`, error)
       throw error
     }
   }
 
   /**
    * 从 window.app 提取计算结果
-   * 
+   *
    * 注意：结果在 window.app 中，不是 window.items
    */
-  private extractResults(): LegacyCalculationResult {
-    const app: LegacyApp = (window as any).app || {
-      items: [],
-      items2: [],
-      items0: [],
-      total: [],
-      totalEnergy: '0',
-      totalSpace: 0,
-      totalAcc: '0',
-      xqs: []
-    }
+  private extractResults(): ILegacyCalculationResult {
+    const win = window as unknown as Record<string, unknown>
+    const app = (win.app || {}) as Partial<ILegacyApp>
 
     return {
       items: app.items || [],
       items2: app.items2 || [],
       items0: app.items0 || [],
       total: app.total || [],
-      totalEnergy: parseFloat(app.totalEnergy) || 0,
+      totalEnergy: app.totalEnergy || '0',
       totalSpace: app.totalSpace || 0,
       totalAcc: app.totalAcc || '0',
       xqs: app.xqs || [],
-      ig_names: (window as any).ig_names || []
+      ig_names: (win.ig_names || []) as string[]
     }
   }
 
@@ -140,16 +182,17 @@ export class CalculatorService {
    * 填充 CalculationContext 数据
    */
   private fillContext(): void {
-    const xhList = (window as any).xh_list || []
-    const outList = (window as any).out_list || []
+    const win = window as unknown as Record<string, unknown>
+    const xhList = (win.xh_list || []) as Array<{ name: string; value: number }>
+    const outList = (win.out_list || []) as Array<{ name: string; value: number }>
 
-    xhList.forEach((item: any) => {
+    xhList.forEach(item => {
       if (item.value && item.value > 0) {
         this.context.addConsumption(item.name, item.value)
       }
     })
 
-    outList.forEach((item: any) => {
+    outList.forEach(item => {
       if (item.value) {
         this.context.addProduction(item.name, item.value)
       }
