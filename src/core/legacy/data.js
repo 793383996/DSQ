@@ -4364,23 +4364,31 @@ window.settingsLocal = settingsLocal;
 var settings = {};
 window.settings = settings;
 function saveData(key, value) {
-  if (window.localStorage) {
-    localStorage.setItem(key, value);
-  } else {
-    document.cookie = key + "=" + encodeURIComponent(value) + ";path=/";
+  try {
+    if (window.localStorage) {
+      localStorage.setItem(key, value);
+    } else {
+      document.cookie = key + "=" + encodeURIComponent(value) + ";path=/";
+    }
+  } catch (e) {
+    // 隐私模式下 localStorage 不可用，静默失败
   }
 }
 function getData(key) {
-  if (window.localStorage) {
-    return localStorage.getItem(key);
-  } else {
-    var cookies = document.cookie.split(';');
-    for (var i = 0; i < cookies.length; i++) {
-      var cookie = cookies[i].trim();
-      if (cookie.indexOf(key + '=') === 0) {
-        return decodeURIComponent(cookie.substring(key.length + 1));
+  try {
+    if (window.localStorage) {
+      return localStorage.getItem(key);
+    } else {
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i].trim();
+        if (cookie.indexOf(key + '=') === 0) {
+          return decodeURIComponent(cookie.substring(key.length + 1));
+        }
       }
+      return null;
     }
+  } catch (e) {
     return null;
   }
 }
@@ -4391,7 +4399,13 @@ window.saveSetting = saveSetting;
 function loadSetting() {
   var json = getData("machine_settings" + version);
   if (json) {
-    eval("settings = " + json);
+    try {
+      var parsed = JSON.parse(json);
+      Object.keys(settings).forEach(function(key) { delete settings[key]; });
+      Object.keys(parsed).forEach(function(key) { settings[key] = parsed[key]; });
+    } catch (e) {
+      Object.keys(settings).forEach(function(key) { delete settings[key]; });
+    }
   }
   var el1 = document.getElementById("onlyConveyorBeltMk3");
   var el2 = document.getElementById("onlySorterMk3");
@@ -4407,8 +4421,13 @@ window.saveSettingTime = saveSettingTime;
 function loadSettingTime() {
   var json = getData("machine_settings_time" + version);
   if (json) {
-    eval("settings_time = " + json);
-    window.settings_time = settings_time;
+    try {
+      settings_time = JSON.parse(json);
+      window.settings_time = settings_time;
+    } catch (e) {
+      settings_time = {};
+      window.settings_time = settings_time;
+    }
   }
 }
 var settings_pf = {};
@@ -4418,7 +4437,11 @@ function saveSettingPf() {
 function loadSettingPf() {
   var json = getData("machine_settings_pf" + version);
   if (json) {
-    eval("settings_pf = " + json);
+    try {
+      settings_pf = JSON.parse(json);
+    } catch (e) {
+      settings_pf = {};
+    }
   }
 }
 var projects = [];
@@ -4428,7 +4451,11 @@ function saveSettingProjects() {
 function loadSettingProjects() {
   var json = getData("settings_projects" + version);
   if (json) {
-    eval("projects = " + json);
+    try {
+      projects = JSON.parse(json);
+    } catch (e) {
+      projects = [];
+    }
   }
 }
 //获取配方默认的机器
@@ -4742,6 +4769,7 @@ function find(name, normalize_recipe) {
   if (indices && indices.length > 0) {
     return get(data[indices[0]]);  // 返回第一个匹配的配方
   }
+  return null;
 }
 
 function f_add3(name) {
@@ -4929,50 +4957,53 @@ function f_init() {
 var single_list = []; //独立生产
 var xh_list = [];
 var out_list = [];
+var xhMap = {};
+var outMap = {};
 
 function addXH(name, value) {
-  for (var i = 0; i < xh_list.length; i++) {
-    var item = xh_list[i];
-    if (item.name == name) {
-      item.value += value; //需求
-      return;
-    }
+  var item = xhMap[name];
+  if (item) {
+    item.value += value;
+    return;
   }
-  xh_list.push({ name: name, value: value });
+  item = { name: name, value: value };
+  xh_list.push(item);
+  xhMap[name] = item;
 }
 function addAccTotal(name, value) {
-  for (var i = 0; i < xh_list.length; i++) {
-    var item = xh_list[i];
-    if (item.name == name) {
-      item.accTotal = (item.accTotal || 0) + value; //需求
-      return;
-    }
+  var item = xhMap[name];
+  if (item) {
+    item.accTotal = (item.accTotal || 0) + value;
   }
 }
 function addOut(name, value) {
-  for (var i = 0; i < out_list.length; i++) {
-    var item = out_list[i];
-    if (item.name == name) {
-      item.value += value; //需求
-      return;
-    }
+  var item = outMap[name];
+  if (item) {
+    item.value += value;
+    return;
   }
-  out_list.push({ name: name, value: value });
+  item = { name: name, value: value };
+  out_list.push(item);
+  outMap[name] = item;
 }
 function findOut(name) {
-  for (var i = 0; i < out_list.length; i++) {
-    var item = out_list[i];
-    if (item.name == name) {
-      return item.value;
-    }
-  }
-  return null;
+  var item = outMap[name];
+  return item ? item.value : null;
 }
 var ig_names = []; //排除的物品
+var loadNumberDepth = 0;
+var maxLoadNumberDepth = 200;
 //加载需求
 function loadNumber(itemName, n) {
+  loadNumberDepth++;
+  if (loadNumberDepth > maxLoadNumberDepth) {
+    loadNumberDepth--;
+    cocoMessage.warning("配方递归深度超限，可能存在循环依赖: " + itemName, 5000);
+    return;
+  }
   try {
     if (ig_names.indexOf(itemName) !== -1) {
+      loadNumberDepth--;
       return;
     }
     if (
@@ -4981,9 +5012,14 @@ function loadNumber(itemName, n) {
         itemName == "增产剂Mk.Ⅲ") &&
       n < 0.1
     ) {
+      loadNumberDepth--;
       return;
     }
     var item = find(itemName, true); // [normalize_recipe=true]
+    if (!item) {
+      loadNumberDepth--;
+      return;
+    }
     var info = getValue(itemName);
 
     addXH(itemName, n);
@@ -5047,6 +5083,7 @@ function loadNumber(itemName, n) {
     // console.log(itemName);
     throw e;
   }
+  loadNumberDepth--;
 }
 //处理多产出
 function getXhs(itemId) {
@@ -5056,7 +5093,7 @@ function getXhs(itemId) {
     if (!xh.value) continue;
     var itemName = xh.name;
     var item = find(itemName);
-    if (item.id == itemId) xhs.push(xh);
+    if (item && item.id == itemId) xhs.push(xh);
   }
   return xhs;
 }
@@ -5072,6 +5109,7 @@ function doMergeMul(xhs) {
       var number = xhs[i].value;
       xhs[i].value2 = 0;
       var item = find(xhs[i].name);
+      if (!item) continue;
       for (var j = 0; j < item.s.length; j++) {
         addOut(item.s[j].name, (number * (item.s[j].n || 1)) / (item.n || 1));
       }
@@ -5086,6 +5124,7 @@ function mergeMul() {
     if (!xh.value) continue;
     var itemName = xh.name;
     var item = find(itemName);
+    if (!item) continue;
     if (ids.indexOf(item.id) !== -1) continue;
     var xhs = getXhs(item.id);
 
@@ -5115,7 +5154,9 @@ function checkResult() {
   for (var i = 0; i < xh_list.length; i++) {
     var number = xh_list[i].value;
     var item = find(xh_list[i].name);
+    if (!item) continue;
     var info = getValue(item);
+    if (!info) continue;
     var nn = 1;
     if (xh_list[i].value2 < 1) {
       nn = xh_list[i].value2;
@@ -5190,6 +5231,9 @@ function update_all() {
   xh_list = [];
   out_list = [];
   single_list = [];
+  xhMap = {};
+  outMap = {};
+  loadNumberDepth = 0;
 
   fixGzSpeed();
   for (var m = 0; m < singleMake.length; m++) {
@@ -5237,7 +5281,9 @@ function update_all() {
     if (!xh.value) continue;
     var itemName = xh.name;
     var item = find(itemName);
+    if (!item) continue;
     var info = getValue(itemName);
+    if (!info) continue;
     if (xh.value > 0) {
       xh.value2 = xh.value / (1 / info.time) / 60 / (item.n || 1);
       var accType = (settings[item.id] || {}).accType || defaultAccType;
@@ -5287,6 +5333,7 @@ function update_all() {
     if (!xh.value) continue;
     var itemName = xh.name;
     var item = find(itemName);
+    if (!item) continue;
     var info = getValue(itemName);
     if (xh.value < 0) {
       xh.value2 = 0;
@@ -5331,7 +5378,9 @@ function update_all() {
     if (!xh_list[i].value) continue;
 
     var item = find(xh_list[i].name);
+    if (!item) continue;
     var info = getValue(xh_list[i].name);
+    if (!info) continue;
     if (window.hideSource?.checked) {
       if (!item.q || !item.q.length) {
         continue;
@@ -5462,7 +5511,9 @@ function update_all() {
   for (var i = 0; i < out_list.length; i++) {
     if (!out_list[i].value) continue;
     var item = find(out_list[i].name);
+    if (!item) continue;
     var info = getValue(out_list[i].name);
+    if (!info) continue;
     var outitem = {
       name: out_list[i].name,
       number1: out_list[i].value.toFixed(pointLength),

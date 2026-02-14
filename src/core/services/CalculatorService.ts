@@ -26,6 +26,15 @@ interface LegacyApp {
   xqs: any[]
 }
 
+function clearLegacyGlobalState(): void {
+  const w = window as any
+  if (w.xh_list) w.xh_list = []
+  if (w.out_list) w.out_list = []
+  if (w.single_list) w.single_list = []
+  if (w.total) w.total = []
+  w.totalAcc = 0
+}
+
 /**
  * 计算服务 - 封装 update_all 逻辑
  * 
@@ -42,10 +51,11 @@ export class CalculatorService {
    * 执行计算
    * 
    * 流程：
-   * 1. 设置 window.xqs 和 window.ig_names
-   * 2. 调用 window.update_all() 执行计算
-   * 3. 从 window.app 提取结果
-   * 4. 填充 CalculationContext
+   * 1. 清理遗留全局状态
+   * 2. 设置 window.xqs 和 window.ig_names
+   * 3. 调用 window.update_all() 执行计算
+   * 4. 从 window.app 提取结果
+   * 5. 填充 CalculationContext
    * 
    * @param demands 需求列表
    * @param excludes 排除列表
@@ -57,6 +67,8 @@ export class CalculatorService {
   ): Promise<LegacyCalculationResult> {
     this.context.reset()
     this.context.startTimer()
+
+    clearLegacyGlobalState()
 
     if (!recipeAdapter.isLoaded()) {
       const rawData = (window as any).data

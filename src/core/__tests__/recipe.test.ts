@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { calculatorService } from '../services/CalculatorService'
 import type { IDemand } from '../types/recipe'
+import { testRecipeData } from './test-data'
 
 declare global {
   interface Window {
@@ -18,8 +19,7 @@ declare global {
 describe('RecipeAdapter', () => {
   beforeAll(async () => {
     if (!recipeAdapter.isLoaded()) {
-      const data = (globalThis as any).data || []
-      recipeAdapter.loadFromRawData(data)
+      recipeAdapter.loadFromRawData(testRecipeData as any)
     }
   })
 
@@ -60,8 +60,7 @@ describe('CalculatorService', () => {
 
   beforeAll(async () => {
     if (!recipeAdapter.isLoaded()) {
-      const data = (globalThis as any).data || []
-      recipeAdapter.loadFromRawData(data)
+      recipeAdapter.loadFromRawData(testRecipeData as any)
     }
   })
 
@@ -107,15 +106,14 @@ describe('CalculatorService', () => {
 describe('Baseline Regression Tests', () => {
   const baselineResults: Record<string, any> = {
     '电力感应塔_60': {
-      expectedInputs: ['铁块', '铜块'],
+      expectedInputs: ['铁块', '磁线圈'],
       machineType: '制作台'
     }
   }
 
   beforeAll(async () => {
     if (!recipeAdapter.isLoaded()) {
-      const data = (globalThis as any).data || []
-      recipeAdapter.loadFromRawData(data)
+      recipeAdapter.loadFromRawData(testRecipeData as any)
     }
   })
 

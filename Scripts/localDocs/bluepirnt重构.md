@@ -24,13 +24,13 @@
 | 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅ | 高 | 小端序写入，Float32 精度保证 |
 | 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅ | 高 | 小端序读取，单元测试覆盖 |
 | MD5 工具 (`src/core/utils/md5.ts`) | ✅ | 中 | 从 blueprint.js 迁移，单元测试覆盖 |
+| 编码器 (`src/core/utils/BlueprintEncoder.ts`) | ✅ | 高 | 蓝图数据编码，单元测试覆盖 |
+| 解码器 (`src/core/utils/BlueprintDecoder.ts`) | ✅ | 高 | 蓝图字符串解析，单元测试覆盖 |
 
 ### ⏳ 进行中
 
 | 任务 | 状态 | 优先级 | 说明 |
 |------|------|--------|------|
-| 解析器 (`BlueprintParser.ts`) | 🔲 | 高 | 蓝图字符串解析 |
-| 编码器 (`BlueprintEncoder.ts`) | 🔲 | 高 | 蓝图数据编码 |
 | Baseline 测试 | 🔲 | 高 | 字节级对比验证 |
 
 ### 前置依赖

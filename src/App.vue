@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useBlueprintStore } from './stores/blueprint'
-import { initLegacyBridge, isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
+import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
 import { calculatorService } from './core/services/CalculatorService'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
@@ -53,8 +53,6 @@ const calculationError = ref<string | null>(null)
 const isDataReady = ref(false)
 
 onMounted(async () => {
-  initLegacyBridge()
-
   const dataLoaded = await waitForLegacyData(10000)
   isDataReady.value = dataLoaded
 
