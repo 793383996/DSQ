@@ -605,3 +605,471 @@ assert.deepStrictEqual(legacyResult, newResult)
 > 2. 所有对 `window.data` 的访问必须通过 `RecipeAdapter` 进行
 > 3. 新增代码必须包含完整的 TypeScript 类型注解
 > 4. 每个公共函数必须包含 JSDoc 注释说明其用途"
+
+---
+
+## 9. 详细拆分计划 (2026-02-14 更新)
+
+### 9.1 当前代码结构分析
+
+| 模块                 | 行数  | 职责                   | 复杂度     | 拆分优先级  |
+| -------------------- | ----- | ---------------------- | ---------- | ----------- |
+| `data` 数组          | ~3000 | 配方数据 (s/q/t/m结构) | 低(纯数据) | P0          |
+| `loadNumber()`       | ~200  | 递归计算核心           | 高(黑盒)   | P3          |
+| `find()`             | ~50   | 配方查找函数           | 中         | P2          |
+| `update_all()`       | ~300  | 全局状态更新           | 高(黑盒)   | P3          |
+| `f_add()`            | ~50   | 添加需求               | 低         | ✅已迁移Vue |
+| `f_reset()`          | ~30   | 重置状态               | 低         | ✅已迁移Vue |
+| `f_ig()`             | ~30   | 排除物品               | 低         | ✅已迁移Vue |
+| `settings` 对象      | ~50   | 设备设置               | 低         | P1          |
+| `settings_time` 对象 | ~30   | 速度设置               | 低         | P1          |
+| `settingsLocal` 对象 | ~30   | 配方级设置             | 低         | P1          |
+| `addXH()`            | ~50   | 添加消耗记录           | 中         | P2          |
+| `addOut()`           | ~50   | 添加产出记录           | 中         | P2          |
+| `xhMap/outMap`       | ~20   | Map索引                | 低         | ✅已优化    |
+| `saveData/getData`   | ~40   | localStorage操作       | 低         | P1          |
+| `loadSetting`        | ~30   | 设置加载               | 低         | P1          |
+| DOM操作代码          | ~1500 | UI渲染                 | 已删除     | -           |
+
+**总行数**: ~6000行 (重构后~2000行)
+
+### 9.2 拆分目标目录结构
+
+```
+src/core/recipe/
+├── types/                          # 类型定义层
+│   ├── recipe.ts                   # IRecipe, IRecipeItem, IRawRecipe
+│   ├── demand.ts                   # IDemand, IDemandItem
+│   ├── result.ts                   # ICalculationResult, IResultItem
+│   ├── settings.ts                 # ISettings, IMachineSettings, ISpeedSettings
+│   ├── exclude.ts                  # IExcludeItem
+│   └── index.ts                    # 统一导出
+│
+├── data/                           # 静态数据层
+│   ├── recipes.json                # 配方数据 (从data数组提取)
+│   ├── schema.json                 # JSON Schema校验
+│   └── migrations/                 # 数据迁移脚本
+│       └── v1-to-v2.ts             # 版本迁移
+│
+├── adapters/                       # 适配层
+│   ├── RecipeAdapter.ts            # 配方数据适配器 ✅
+│   ├── SettingsAdapter.ts          # 设置适配器
+│   └── index.ts                    # 适配器导出
+│
+├── services/                       # 服务层
+│   ├── CalculatorService.ts        # 计算服务 ✅
+│   ├── CalculationContext.ts       # 计算上下文 ✅
+│   ├── DemandService.ts            # 需求管理服务
+│   ├── ExcludeService.ts           # 排除管理服务
+│   ├── SettingsService.ts          # 设置管理服务
+│   ├── RecipeFinder.ts             # 配方查找服务
+│   └── index.ts                    # 服务导出
+│
+├── utils/                          # 工具层
+│   ├── unitConverter.ts            # 单位转换 (个/min ↔ 个/s)
+│   ├── validator.ts                # 数据校验
+│   ├── storage.ts                  # localStorage封装
+│   └── index.ts                    # 工具导出
+│
+├── legacy/                         # 遗留代码 (只读)
+│   ├── calculator.ts               # loadNumber/update_all封装 (黑盒)
+│   └── globals.d.ts                # 全局变量类型声明
+│
+├── __tests__/                      # 测试层
+│   ├── recipe.test.ts              # 配方测试 ✅
+│   ├── calculator.test.ts          # 计算服务测试 ✅
+│   ├── demand.test.ts              # 需求服务测试
+│   └── settings.test.ts            # 设置服务测试
+│
+└── index.ts                        # 模块主入口
+```
+
+### 9.3 拆分步骤详细计划
+
+#### Phase 1: 数据层提取
+
+| 步骤 | 任务                              | 状态 | 输出文件                            |
+| ---- | --------------------------------- | ---- | ----------------------------------- |
+| 1.1  | 提取 `data` 数组 → `recipes.json` | 🔲   | `src/core/recipe/data/recipes.json` |
+| 1.2  | 创建 JSON Schema                  | 🔲   | `src/core/recipe/data/schema.json`  |
+| 1.3  | 创建数据迁移脚本                  | 🔲   | `scripts/extract-recipes.ts`        |
+
+#### Phase 2: 类型定义层 (部分完成)
+
+| 步骤 | 任务          | 状态 | 输出文件                            |
+| ---- | ------------- | ---- | ----------------------------------- |
+| 2.1  | 配方类型定义  | ✅   | `src/core/types/recipe.ts`          |
+| 2.2  | 需求/排除类型 | 🔲   | `src/core/recipe/types/demand.ts`   |
+| 2.3  | 结果类型定义  | 🔲   | `src/core/recipe/types/result.ts`   |
+| 2.4  | 设置类型定义  | 🔲   | `src/core/recipe/types/settings.ts` |
+
+#### Phase 3: 适配层迁移 (部分完成)
+
+| 步骤 | 任务            | 状态 | 输出文件                                      |
+| ---- | --------------- | ---- | --------------------------------------------- |
+| 3.1  | RecipeAdapter   | ✅   | `src/core/adapters/RecipeAdapter.ts`          |
+| 3.2  | SettingsAdapter | 🔲   | `src/core/recipe/adapters/SettingsAdapter.ts` |
+
+#### Phase 4: 服务层迁移 (部分完成)
+
+| 步骤 | 任务               | 状态 | 输出文件                                      |
+| ---- | ------------------ | ---- | --------------------------------------------- |
+| 4.1  | CalculationContext | ✅   | `src/core/services/CalculationContext.ts`     |
+| 4.2  | CalculatorService  | ✅   | `src/core/services/CalculatorService.ts`      |
+| 4.3  | DemandService      | 🔲   | `src/core/recipe/services/DemandService.ts`   |
+| 4.4  | ExcludeService     | 🔲   | `src/core/recipe/services/ExcludeService.ts`  |
+| 4.5  | SettingsService    | 🔲   | `src/core/recipe/services/SettingsService.ts` |
+| 4.6  | RecipeFinder       | 🔲   | `src/core/recipe/services/RecipeFinder.ts`    |
+
+#### Phase 5: 工具层迁移
+
+| 步骤 | 任务             | 状态 | 输出文件                                 |
+| ---- | ---------------- | ---- | ---------------------------------------- |
+| 5.1  | 单位转换工具     | 🔲   | `src/core/recipe/utils/unitConverter.ts` |
+| 5.2  | 数据校验工具     | 🔲   | `src/core/recipe/utils/validator.ts`     |
+| 5.3  | localStorage封装 | 🔲   | `src/core/recipe/utils/storage.ts`       |
+
+#### Phase 6: 遗留代码封装
+
+| 步骤 | 任务           | 状态 | 输出文件                               |
+| ---- | -------------- | ---- | -------------------------------------- |
+| 6.1  | loadNumber封装 | 🔲   | `src/core/recipe/legacy/calculator.ts` |
+| 6.2  | 全局变量类型   | 🔲   | `src/core/recipe/legacy/globals.d.ts`  |
+
+#### Phase 7: 清理与验证
+
+| 步骤 | 任务           | 状态 |
+| ---- | -------------- | ---- |
+| 7.1  | 单元测试覆盖   | 🔲   |
+| 7.2  | 集成测试       | 🔲   |
+| 7.3  | 删除原 data.js | 🔲   |
+
+### 9.4 关键模块接口设计
+
+#### 9.4.1 RecipeAdapter (配方适配器) ✅
+
+```typescript
+// src/core/adapters/RecipeAdapter.ts
+
+export interface IRecipeIndex {
+  byProduct: Map<string, IRecipe[]>
+  byInput: Map<string, IRecipe[]>
+  byId: Map<string, IRecipe>
+  byMachineType: Map<string, IRecipe[]>
+}
+
+export class RecipeAdapter {
+  private recipes: IRecipe[] = []
+  private index: IRecipeIndex
+
+  loadFromRawData(rawData: IRawRecipe[]): void
+  loadFromJSON(jsonPath: string): Promise<void>
+
+  findByProductName(name: string): IRecipe[]
+  findByInputName(name: string): IRecipe[]
+  findById(id: string): IRecipe | null
+  findByMachineType(type: string): IRecipe[]
+
+  getAllRecipes(): IRecipe[]
+  getRecipeCount(): number
+  isLoaded(): boolean
+
+  getProductNames(): string[]
+  getInputNames(): string[]
+}
+```
+
+#### 9.4.2 DemandService (需求管理服务)
+
+```typescript
+// src/core/recipe/services/DemandService.ts
+
+import type { IDemand, IDemandItem } from '../types'
+
+export interface IDemandChangeEvent {
+  type: 'add' | 'remove' | 'update' | 'clear'
+  demand?: IDemand
+  demands: IDemand[]
+}
+
+export class DemandService {
+  private demands: IDemand[] = []
+  private listeners: Set<(event: IDemandChangeEvent) => void> = new Set()
+
+  addDemand(item: IDemandItem): IDemand
+  removeDemand(id: string): boolean
+  updateDemand(id: string, updates: Partial<IDemandItem>): boolean
+  clearDemands(): void
+
+  getDemands(): IDemand[]
+  getDemandById(id: string): IDemand | undefined
+  hasDemand(name: string): boolean
+  getTotalDemandCount(): number
+
+  subscribe(listener: (event: IDemandChangeEvent) => void): () => void
+}
+```
+
+#### 9.4.3 ExcludeService (排除管理服务)
+
+```typescript
+// src/core/recipe/services/ExcludeService.ts
+
+export interface IExcludeChangeEvent {
+  type: 'add' | 'remove' | 'clear'
+  name?: string
+  excludes: string[]
+}
+
+export class ExcludeService {
+  private excludes: Set<string> = new Set()
+  private listeners: Set<(event: IExcludeChangeEvent) => void> = new Set()
+
+  addExclude(name: string): boolean
+  removeExclude(name: string): boolean
+  clearExcludes(): void
+
+  getExcludes(): string[]
+  hasExclude(name: string): boolean
+  getExcludeCount(): number
+
+  subscribe(listener: (event: IExcludeChangeEvent) => void): () => void
+}
+```
+
+#### 9.4.4 SettingsService (设置管理服务)
+
+```typescript
+// src/core/recipe/services/SettingsService.ts
+
+import type { ISettings, IMachineSettings, ISpeedSettings } from '../types'
+
+export class SettingsService {
+  private settings: ISettings
+  private speedSettings: ISpeedSettings
+  private storageKey: string = 'dsp_settings'
+
+  getMachineSetting<K extends keyof IMachineSettings>(key: K): IMachineSettings[K]
+  setMachineSetting<K extends keyof IMachineSettings>(key: K, value: IMachineSettings[K]): void
+
+  getSpeedSetting(machineType: string): number
+  setSpeedSetting(machineType: string, speed: number): void
+
+  loadFromStorage(): void
+  saveToStorage(): void
+  reset(): void
+
+  getAllSettings(): ISettings
+  getAllSpeedSettings(): ISpeedSettings
+
+  subscribe(listener: () => void): () => void
+}
+```
+
+#### 9.4.5 RecipeFinder (配方查找服务)
+
+```typescript
+// src/core/recipe/services/RecipeFinder.ts
+
+import type { IRecipe, IRawRecipe } from '../types'
+import { RecipeAdapter } from '../adapters/RecipeAdapter'
+
+export interface IFindOptions {
+  preferMachineType?: string
+  allowFallback?: boolean
+}
+
+export class RecipeFinder {
+  private adapter: RecipeAdapter
+
+  constructor(adapter: RecipeAdapter)
+
+  findRecipeByProduct(productName: string, options?: IFindOptions): IRecipe | null
+  findAllRecipesByProduct(productName: string): IRecipe[]
+
+  normalizeRecipeName(name: string): string
+  isValidProductName(name: string): boolean
+
+  getMachineTypesForProduct(productName: string): string[]
+}
+```
+
+#### 9.4.6 CalculatorService (计算服务) ✅
+
+```typescript
+// src/core/services/CalculatorService.ts
+
+import type { IDemand, ICalculationResult } from '../types'
+
+export interface ICalculateOptions {
+  excludes?: string[]
+  timeout?: number
+}
+
+export class CalculatorService {
+  private context: CalculationContext
+  private version: number = 0
+
+  async calculate(demands: IDemand[], excludes?: string[]): Promise<ICalculationResult>
+  validate(demands: IDemand[]): IValidationResult
+
+  getContext(): CalculationContext
+  getVersion(): number
+  getLastResult(): ICalculationResult | null
+
+  reset(): void
+  clearLegacyGlobalState(): void
+
+  private syncToLegacy(demands: IDemand[], excludes: string[]): void
+  private extractResults(): ICalculationResult
+}
+```
+
+### 9.5 风险评估与缓解措施
+
+| 风险项                    | 级别 | 影响         | 缓解措施                    |
+| ------------------------- | ---- | ------------ | --------------------------- |
+| `loadNumber` 递归逻辑破坏 | 高   | 计算结果错误 | 黑盒保护，仅外围封装        |
+| 全局变量引用断开          | 高   | 设置无法保存 | 保持 `window.settings` 引用 |
+| 配方数据格式不一致        | 中   | 解析失败     | JSON Schema 校验            |
+| 计算结果格式变化          | 中   | UI显示错误   | Baseline 对比测试           |
+| 递归深度超限              | 中   | 栈溢出崩溃   | 深度限制 + 警告             |
+| 空值访问崩溃              | 中   | 运行时错误   | 8处关键位置空值检查         |
+
+### 9.6 测试策略
+
+```typescript
+// src/core/recipe/__tests__/recipe.test.ts
+
+describe('Recipe Module', () => {
+  describe('RecipeAdapter', () => {
+    it('should load recipes from raw data')
+    it('should find recipes by product name')
+    it('should build correct indexes')
+  })
+
+  describe('DemandService', () => {
+    it('should add and remove demands')
+    it('should notify listeners on change')
+  })
+
+  describe('ExcludeService', () => {
+    it('should manage exclude list')
+  })
+
+  describe('SettingsService', () => {
+    it('should persist settings to localStorage')
+    it('should handle storage quota exceeded')
+  })
+
+  describe('RecipeFinder', () => {
+    it('should find recipe with preferred machine type')
+    it('should fallback to alternative recipe')
+  })
+
+  describe('CalculatorService', () => {
+    it('should calculate simple demand')
+    it('should handle recursive dependencies')
+    it('should respect exclude list')
+    it('should match legacy calculation result')
+  })
+})
+```
+
+### 9.7 预估工作量
+
+| 阶段                  | 预估时间  | 依赖    |
+| --------------------- | --------- | ------- |
+| Phase 1: 数据层提取   | 0.5天     | 无      |
+| Phase 2: 类型定义层   | 0.5天     | Phase 1 |
+| Phase 3: 适配层迁移   | 1天       | Phase 2 |
+| Phase 4: 服务层迁移   | 2天       | Phase 3 |
+| Phase 5: 工具层迁移   | 0.5天     | Phase 2 |
+| Phase 6: 遗留代码封装 | 1天       | Phase 4 |
+| Phase 7: 测试与清理   | 1天       | Phase 6 |
+| **总计**              | **6.5天** | -       |
+
+### 9.8 数据迁移脚本示例
+
+```typescript
+// scripts/extract-recipes.ts
+
+import fs from 'fs'
+import path from 'path'
+
+interface IRawRecipe {
+  s: Array<{ name: string; n?: number }>
+  q: Array<{ name: string; n?: number }>
+  t: number
+  m: string
+  group?: string
+  noExtra?: boolean | null
+}
+
+async function extractRecipes() {
+  const dataPath = path.resolve('src/core/legacy/data.js')
+  const content = fs.readFileSync(dataPath, 'utf-8')
+
+  const match = content.match(/var data = (\[[\s\S]*?\]);/)
+  if (!match) {
+    throw new Error('Failed to extract data array')
+  }
+
+  const data: IRawRecipe[] = JSON.parse(match[1])
+
+  const outputPath = path.resolve('src/core/recipe/data/recipes.json')
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true })
+  fs.writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf-8')
+
+  console.log(`Extracted ${data.length} recipes to ${outputPath}`)
+}
+
+extractRecipes()
+```
+
+### 9.9 JSON Schema 定义
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DSP Recipe Data",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["s", "m"],
+    "properties": {
+      "s": {
+        "type": "array",
+        "description": "产物列表 (outputs)",
+        "items": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "description": "产物名称" },
+            "n": { "type": "number", "description": "产出数量", "default": 1 }
+          }
+        }
+      },
+      "q": {
+        "type": "array",
+        "description": "原料列表 (inputs)",
+        "items": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "description": "原料名称" },
+            "n": { "type": "number", "description": "需求数量", "default": 1 }
+          }
+        }
+      },
+      "t": { "type": "number", "description": "生产时间(秒)", "default": 1 },
+      "m": { "type": "string", "description": "设备类型" },
+      "group": { "type": "string", "description": "分组" },
+      "noExtra": {
+        "type": ["boolean", "null"],
+        "description": "增产剂效果限制"
+      }
+    }
+  }
+}
+```

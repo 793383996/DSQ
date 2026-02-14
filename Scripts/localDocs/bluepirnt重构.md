@@ -691,3 +691,349 @@ worker.onmessage = e => {
 > 3. 严格遵守小端序 (Little-Endian)
 > 4. 每次修改后必须运行 Baseline 测试确保二进制兼容性
 > 5. 新增代码必须包含完整的 TypeScript 类型注解"
+
+---
+
+## 9. 详细拆分计划 (2026-02-14 更新)
+
+### 9.1 当前代码结构分析
+
+| 模块                                              | 行数 | 职责                                      | 复杂度   | 拆分优先级           |
+| ------------------------------------------------- | ---- | ----------------------------------------- | -------- | -------------------- |
+| `itemMap`                                         | ~200 | 物品映射表 (name→iconId→remark)           | 低       | P0                   |
+| `buildingMap`                                     | ~150 | 建筑属性表 (itemId/modelIndex/speed)      | 低       | P0                   |
+| `productionCategory`                              | ~10  | 生产类别枚举 (smelter/assembling等)       | 低       | P0                   |
+| `buildingType`                                    | ~10  | 建筑类型枚举 (production/sorter/conveyor) | 低       | P0                   |
+| `Blueprint` 类构造函数                            | ~100 | 初始化蓝图元数据                          | 中       | P2                   |
+| `Blueprint.init()`                                | ~200 | 缩减设备数量                              | 中       | P2                   |
+| `Blueprint.generateBuildings()`                   | ~400 | 生成建筑布局                              | 高       | P3                   |
+| `Blueprint.generateConveyorBelts()`               | ~300 | 生成传送带连接                            | 高       | P3                   |
+| `Blueprint.generateConveyorBeltsForSprayCoater()` | ~100 | 喷涂机传送带                              | 中       | P3                   |
+| `Blueprint.cloneToStackLayers()`                  | ~150 | 堆叠层克隆                                | 中       | ✅已迁移StackService |
+| `Blueprint.toStr()`                               | ~300 | 编码为蓝图字符串                          | 高(黑盒) | ✅已迁移             |
+| `Blueprint.parse()`                               | ~300 | 解析蓝图字符串                            | 高(黑盒) | ✅已迁移             |
+| `generateBlueprint()`                             | ~200 | 蓝图生成入口函数                          | 中       | P2                   |
+| `getRecipe()`                                     | ~300 | 从DOM解析配方数据                         | 中       | P2                   |
+| MD5 实现                                          | ~300 | 哈希计算                                  | 高(黑盒) | ✅已迁移             |
+| 二进制读写                                        | ~400 | DataView操作                              | 高(黑盒) | ✅已迁移             |
+| 参数解析器                                        | ~400 | 各类建筑参数编解码                        | 中       | P1                   |
+
+**总行数**: ~4000行
+
+### 9.2 拆分目标目录结构
+
+```
+src/core/blueprint/
+├── types/                          # 类型定义层
+│   ├── item.ts                     # IItemMapping, ItemMap
+│   ├── building.ts                 # IBuildingMapping, BuildingType, ProductionCategory
+│   ├── blueprint.ts                # IBlueprintData, IBlueprintBuilding, IBlueprintHeader
+│   ├── recipe.ts                   # ISubRecipe, IRecipeItem, IRecipeConfig
+│   ├── coordinate.ts               # ICoordinate, IYaw
+│   ├── parameters.ts               # IBlueprintParameters 各类参数接口
+│   └── index.ts                    # 统一导出
+│
+├── data/                           # 静态数据层 ✅
+│   ├── itemMap.json                # 物品映射数据
+│   ├── buildingMap.json            # 建筑映射数据
+│   ├── productionCategory.json     # 生产类别
+│   └── buildingType.json           # 建筑类型
+│
+├── utils/                          # 工具层 ✅
+│   ├── BinaryReader.ts             # 二进制读取器
+│   ├── BinaryWriter.ts             # 二进制写入器
+│   ├── md5.ts                      # MD5 哈希计算
+│   ├── IndexMapper.ts              # 索引重映射工具
+│   └── pakoLoader.ts               # pako动态加载
+│
+├── parsers/                        # 解析层
+│   ├── BlueprintDecoder.ts         # 蓝图解码器 ✅
+│   ├── BlueprintEncoder.ts         # 蓝图编码器 ✅
+│   ├── ParameterParser.ts          # 建筑参数解析器
+│   ├── RecipeParser.ts             # 配方解析器 (从DOM提取)
+│   └── index.ts                    # 解析器导出
+│
+├── generators/                     # 生成层
+│   ├── BuildingGenerator.ts        # 建筑生成器
+│   ├── ConveyorGenerator.ts        # 传送带生成器
+│   ├── SorterGenerator.ts          # 分拣器生成器
+│   ├── TeslaTowerGenerator.ts      # 电力塔生成器
+│   ├── SprayCoaterGenerator.ts     # 喷涂机生成器
+│   └── index.ts                    # 生成器导出
+│
+├── services/                       # 服务层
+│   ├── BlueprintService.ts         # 蓝图生成服务 (整合层)
+│   ├── StackService.ts             # 堆叠服务 ✅
+│   └── index.ts                    # 服务导出
+│
+├── __tests__/                      # 测试层
+│   ├── blueprint.test.ts           # 编解码测试 ✅
+│   ├── parameterParser.test.ts     # 参数解析测试
+│   ├── buildingGenerator.test.ts   # 建筑生成测试
+│   └── conveyorGenerator.test.ts   # 传送带生成测试
+│
+└── index.ts                        # 模块主入口
+```
+
+### 9.3 拆分步骤详细计划
+
+#### Phase 1: 数据层提取 (已完成 ✅)
+
+| 步骤 | 任务                      | 状态 | 输出文件                                |
+| ---- | ------------------------- | ---- | --------------------------------------- |
+| 1.1  | 提取 `itemMap`            | ✅   | `src/core/data/itemMap.json`            |
+| 1.2  | 提取 `buildingMap`        | ✅   | `src/core/data/buildingMap.json`        |
+| 1.3  | 提取 `productionCategory` | ✅   | `src/core/data/productionCategory.json` |
+| 1.4  | 提取 `buildingType`       | ✅   | `src/core/data/buildingType.json`       |
+
+#### Phase 2: 类型定义层 (已完成 ✅)
+
+| 步骤 | 任务          | 状态 | 输出文件                      |
+| ---- | ------------- | ---- | ----------------------------- |
+| 2.1  | 物品/建筑类型 | ✅   | `src/core/types/blueprint.ts` |
+| 2.2  | 堆叠类型定义  | ✅   | `src/core/types/stack.ts`     |
+
+#### Phase 3: 工具层迁移 (已完成 ✅)
+
+| 步骤 | 任务         | 状态 | 输出文件                         |
+| ---- | ------------ | ---- | -------------------------------- |
+| 3.1  | MD5 迁移     | ✅   | `src/core/utils/md5.ts`          |
+| 3.2  | BinaryReader | ✅   | `src/core/utils/BinaryReader.ts` |
+| 3.3  | BinaryWriter | ✅   | `src/core/utils/BinaryWriter.ts` |
+| 3.4  | IndexMapper  | ✅   | `src/core/utils/IndexMapper.ts`  |
+
+#### Phase 4: 解析层迁移 (部分完成)
+
+| 步骤 | 任务             | 状态 | 输出文件                                        |
+| ---- | ---------------- | ---- | ----------------------------------------------- |
+| 4.1  | BlueprintDecoder | ✅   | `src/core/utils/BlueprintDecoder.ts`            |
+| 4.2  | BlueprintEncoder | ✅   | `src/core/utils/BlueprintEncoder.ts`            |
+| 4.3  | ParameterParser  | 🔲   | `src/core/blueprint/parsers/ParameterParser.ts` |
+| 4.4  | RecipeParser     | 🔲   | `src/core/blueprint/parsers/RecipeParser.ts`    |
+
+#### Phase 5: 服务层迁移 (部分完成)
+
+| 步骤 | 任务                 | 状态 | 输出文件                                                |
+| ---- | -------------------- | ---- | ------------------------------------------------------- |
+| 5.1  | StackService         | ✅   | `src/core/services/StackService.ts`                     |
+| 5.2  | BuildingGenerator    | 🔲   | `src/core/blueprint/generators/BuildingGenerator.ts`    |
+| 5.3  | ConveyorGenerator    | 🔲   | `src/core/blueprint/generators/ConveyorGenerator.ts`    |
+| 5.4  | SorterGenerator      | 🔲   | `src/core/blueprint/generators/SorterGenerator.ts`      |
+| 5.5  | TeslaTowerGenerator  | 🔲   | `src/core/blueprint/generators/TeslaTowerGenerator.ts`  |
+| 5.6  | SprayCoaterGenerator | 🔲   | `src/core/blueprint/generators/SprayCoaterGenerator.ts` |
+| 5.7  | BlueprintService     | 🔲   | `src/core/blueprint/services/BlueprintService.ts`       |
+
+#### Phase 6: 清理与验证
+
+| 步骤 | 任务                | 状态 |
+| ---- | ------------------- | ---- |
+| 6.1  | 单元测试覆盖        | 🔲   |
+| 6.2  | 集成测试            | 🔲   |
+| 6.3  | 删除原 blueprint.js | 🔲   |
+
+### 9.4 关键模块接口设计
+
+#### 9.4.1 ParameterParser (参数解析器)
+
+```typescript
+// src/core/blueprint/parsers/ParameterParser.ts
+
+export interface IParameterParser {
+  encodedSize(params: unknown): number
+  encode(params: unknown, buffer: DataView, offset: number): number
+  decode(buffer: DataView, offset: number, size: number): unknown
+}
+
+export interface IStationParameters {
+  itemId?: number[]
+  itemCount?: number[]
+  droneCount?: number
+  vesselCount?: number
+  warperCount?: number
+  includeOrbitCollector?: boolean
+}
+
+export interface ILabParameters {
+  matrixMode: number
+  productId: number
+}
+
+export interface ISplitterParameters {
+  splitterMode: number
+  filterId: number
+  filterSlotStart: number
+  filterSlotEnd: number
+}
+
+export interface IInserterParameters {
+  itemId: number
+  stackCount: number
+}
+
+export class ParameterParserRegistry {
+  private parsers: Map<number, IParameterParser> = new Map()
+
+  register(itemId: number, parser: IParameterParser): void
+  getParser(itemId: number): IParameterParser | undefined
+  hasParser(itemId: number): boolean
+}
+
+// 预注册解析器
+export function initParameterParsers(): ParameterParserRegistry
+```
+
+#### 9.4.2 BuildingGenerator (建筑生成器)
+
+```typescript
+// src/core/blueprint/generators/BuildingGenerator.ts
+
+import type { ISubRecipe, IBlueprintBuilding, ICoordinate } from '../types'
+
+export interface IBuildingGeneratorConfig {
+  conveyorBeltStackLayer: number
+  onlyConveyorBeltMk3: boolean
+  onlySorterMk3: boolean
+  useSorterMk4: boolean
+  selfSpray: boolean
+  generateTeslaTower: boolean
+  teslaTowerInterval: number
+  teslaTowerLineInterval: number
+}
+
+export class BuildingGenerator {
+  private buildings: IBlueprintBuilding[] = []
+  private config: IBuildingGeneratorConfig
+  private indexCounter: number = 0
+
+  constructor(config: IBuildingGeneratorConfig)
+
+  generateFromRecipe(recipe: ISubRecipe, position: ICoordinate): IBlueprintBuilding[]
+  generateAssemblingMachine(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
+  generateSmelter(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
+  generateLab(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
+  generateMiningMachine(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
+  generateRefinery(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
+
+  getBuildings(): IBlueprintBuilding[]
+  getNextIndex(): number
+  reset(): void
+}
+```
+
+#### 9.4.3 ConveyorGenerator (传送带生成器)
+
+```typescript
+// src/core/blueprint/generators/ConveyorGenerator.ts
+
+import type { IBlueprintBuilding, ICoordinate } from '../types'
+
+export interface IConveyorGeneratorConfig {
+  transportSpeed: number
+  stackLayer: number
+  maxSorterNumOneBelt: number
+  onlyConveyorBeltMk3: boolean
+}
+
+export interface IBeltSegment {
+  from: ICoordinate
+  to: ICoordinate
+  itemId: number
+}
+
+export class ConveyorGenerator {
+  private buildings: IBlueprintBuilding[] = []
+  private config: IConveyorGeneratorConfig
+
+  constructor(config: IConveyorGeneratorConfig)
+
+  generateBelt(segment: IBeltSegment): IBlueprintBuilding[]
+  connectBuildings(source: IBlueprintBuilding, target: IBlueprintBuilding): void
+  optimizeLayout(): void
+
+  getBuildings(): IBlueprintBuilding[]
+  reset(): void
+}
+```
+
+#### 9.4.4 BlueprintService (整合服务)
+
+```typescript
+// src/core/blueprint/services/BlueprintService.ts
+
+import type { ISubRecipe, IBlueprintData, IStackConfig } from '../types'
+
+export interface IBlueprintGenerateOptions {
+  title: string
+  icons: number[]
+  description?: string
+  stackConfig?: IStackConfig
+}
+
+export class BlueprintService {
+  private buildingGenerator: BuildingGenerator
+  private conveyorGenerator: ConveyorGenerator
+  private stackService: StackService
+
+  constructor()
+
+  generate(recipes: ISubRecipe[], options: IBlueprintGenerateOptions): string
+  parse(blueprintStr: string): IBlueprintData
+  validate(blueprintStr: string): boolean
+
+  private initFromRecipes(recipes: ISubRecipe[]): void
+  private generateBuildings(): void
+  private generateConveyors(): void
+  private applyStacking(config: IStackConfig): void
+  private encode(): string
+}
+```
+
+### 9.5 风险评估与缓解措施
+
+| 风险项           | 级别 | 影响                 | 缓解措施                            |
+| ---------------- | ---- | -------------------- | ----------------------------------- |
+| 二进制协议不兼容 | 高   | 蓝图无法在游戏中加载 | Baseline测试覆盖所有编解码场景      |
+| 参数解析遗漏     | 中   | 部分建筑无法正确生成 | 完整枚举所有itemId，添加unknown处理 |
+| 坐标计算偏差     | 中   | 建筑位置错误         | Float32精度测试，容差校验           |
+| 分拣器连接错误   | 中   | 物流无法正常工作     | 索引重映射单元测试                  |
+| 传送带布局错误   | 中   | 物流效率下降         | 布局算法单元测试                    |
+
+### 9.6 测试策略
+
+```typescript
+// src/core/blueprint/__tests__/blueprint.test.ts
+
+describe('Blueprint Module', () => {
+  describe('ParameterParser', () => {
+    it('should parse station parameters correctly')
+    it('should parse lab parameters correctly')
+    it('should handle unknown building types')
+  })
+
+  describe('BuildingGenerator', () => {
+    it('should generate assembling machine with correct recipe')
+    it('should generate smelter with correct position')
+    it('should generate lab with matrix mode')
+  })
+
+  describe('ConveyorGenerator', () => {
+    it('should connect two buildings correctly')
+    it('should optimize belt layout')
+  })
+
+  describe('BlueprintService', () => {
+    it('should generate valid blueprint string')
+    it('should parse and re-encode identically (round-trip)')
+    it('should handle stacking correctly')
+  })
+})
+```
+
+### 9.7 预估工作量
+
+| 阶段                | 预估时间 | 依赖      |
+| ------------------- | -------- | --------- |
+| Phase 4: 解析层迁移 | 2天      | Phase 1-3 |
+| Phase 5: 服务层迁移 | 3天      | Phase 4   |
+| Phase 6: 测试与清理 | 2天      | Phase 5   |
+| **总计**            | **7天**  | -         |
