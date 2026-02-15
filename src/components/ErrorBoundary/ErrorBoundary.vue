@@ -1,5 +1,5 @@
 <template>
-  <slot v-if="!hasError" />
+  <slot v-if="!hasError" :key="retryKey" />
   <div v-else class="error-boundary">
     <div class="error-content">
       <div class="error-icon">⚠️</div>
@@ -29,12 +29,14 @@
 import { ref, onErrorCaptured } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { logger } from '@/utils/logger'
+import { captureError } from '@/utils/errorReporter'
 
 const { t } = useI18n()
 
 const hasError = ref(false)
 const errorMessage = ref('')
 const errorDetails = ref('')
+const retryKey = ref(0)
 
 onErrorCaptured((error: Error, instance, info) => {
   hasError.value = true
@@ -42,6 +44,11 @@ onErrorCaptured((error: Error, instance, info) => {
   errorDetails.value = import.meta.env.DEV ? `${error.stack || ''}\n\nComponent: ${info}` : ''
 
   logger.error('[ErrorBoundary] Caught error:', error, info)
+  captureError(error, {
+    type: 'vue',
+    componentName: instance?.$options?.name,
+    info
+  })
 
   return false
 })
@@ -50,6 +57,7 @@ function resetError() {
   hasError.value = false
   errorMessage.value = ''
   errorDetails.value = ''
+  retryKey.value++
 }
 
 function refreshPage() {

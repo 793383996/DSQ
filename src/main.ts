@@ -6,7 +6,12 @@ import BlueprintGenerator from './components/BlueprintGenerator/BlueprintGenerat
 import { setToastInstance } from './composables/useToast'
 import { initLegacyBridge, loadLegacyModules } from './core/bridge'
 import { logger, initLogger } from './utils/logger'
-import { initErrorReporter, addBreadcrumb, destroyErrorReporter } from './utils/errorReporter'
+import {
+  initErrorReporter,
+  addBreadcrumb,
+  captureError,
+  destroyErrorReporter
+} from './utils/errorReporter'
 import { initWebVitals, onMetric, destroyWebVitals } from './utils/webVitals'
 import { i18n, destroyI18n } from './i18n'
 import '../Scripts/style.css'
@@ -77,19 +82,36 @@ app.config.errorHandler = (err, instance, info) => {
     message: `Vue Error: ${err}`,
     data: { info }
   })
+  captureError(err instanceof Error ? err : new Error(String(err)), {
+    info,
+    componentName: instance?.$options?.name
+  })
 }
 
 app.config.warnHandler = (msg, instance, trace) => {
   logger.warn('[Vue Warn]', msg, trace)
 }
 
-window.addEventListener('unhandledrejection', event => {
+const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
   logger.error('[Unhandled Rejection]', event.reason)
-})
+  captureError(event.reason instanceof Error ? event.reason : new Error(String(event.reason)), {
+    type: 'unhandledrejection'
+  })
+}
 
-window.addEventListener('error', event => {
+const handleGlobalError = (event: ErrorEvent) => {
   logger.error('[Global Error]', event.error)
-})
+  if (event.error) {
+    captureError(event.error, {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno
+    })
+  }
+}
+
+window.addEventListener('unhandledrejection', handleUnhandledRejection)
+window.addEventListener('error', handleGlobalError)
 
 app.component('BlueprintGenerator', BlueprintGenerator)
 
@@ -159,6 +181,9 @@ function cleanup(): void {
     visibilityHandler = null
   }
   visibilityChangeCallbacks.clear()
+
+  window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+  window.removeEventListener('error', handleGlobalError)
 
   destroyWebVitals()
   destroyErrorReporter()

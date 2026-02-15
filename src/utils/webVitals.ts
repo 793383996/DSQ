@@ -71,6 +71,8 @@ let callbacks: ((metric: PerformanceMetric) => void)[] = []
 let observers: PerformanceObserver[] = []
 let visibilityHandler: (() => void) | null = null
 let pageHideHandler: (() => void) | null = null
+let inpVisibilityHandler: (() => void) | null = null
+let inpPageHideHandler: (() => void) | null = null
 
 const isDev = import.meta.env.DEV
 
@@ -311,14 +313,14 @@ export function observeINP(): void {
     if (document.visibilityState === 'hidden') {
       reportINP()
     } else {
-      const inpVisibilityHandler = () => {
+      inpVisibilityHandler = () => {
         if (document.visibilityState === 'hidden') {
           reportINP()
         }
       }
       document.addEventListener('visibilitychange', inpVisibilityHandler)
 
-      const inpPageHideHandler = reportINP
+      inpPageHideHandler = reportINP
       window.addEventListener('pagehide', inpPageHideHandler)
     }
   } catch (e) {
@@ -377,6 +379,16 @@ export function destroyWebVitals(): void {
   if (pageHideHandler) {
     window.removeEventListener('pagehide', pageHideHandler)
     pageHideHandler = null
+  }
+
+  if (inpVisibilityHandler) {
+    document.removeEventListener('visibilitychange', inpVisibilityHandler)
+    inpVisibilityHandler = null
+  }
+
+  if (inpPageHideHandler) {
+    window.removeEventListener('pagehide', inpPageHideHandler)
+    inpPageHideHandler = null
   }
 
   callbacks = []

@@ -65,7 +65,10 @@ class ErrorReporter {
   private flushTimer: number | null = null
   private readonly FLUSH_INTERVAL = 5000
   private readonly MAX_QUEUE_SIZE = 10
+  private readonly MAX_RETRY_COUNT = 3
+  private readonly RETRY_DELAY = 1000
   private isCapturing = false
+  private retryCount = 0
 
   private boundErrorHandler: ErrorHandler | null = null
   private boundRejectionHandler: RejectionHandler | null = null
@@ -218,6 +221,11 @@ class ErrorReporter {
       return
     }
 
+    if (this.queue.length > this.MAX_QUEUE_SIZE * 2) {
+      devWarn('[ErrorReporter] Queue overflow, dropping oldest reports')
+      this.queue = this.queue.slice(-this.MAX_QUEUE_SIZE)
+    }
+
     const reports = [...this.queue]
     this.queue = []
 
@@ -225,7 +233,8 @@ class ErrorReporter {
       const response = await fetch(this.config.dsn, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reports })
+        body: JSON.stringify({ reports }),
+        keepalive: true
       })
 
       if (!response.ok) {
@@ -233,9 +242,20 @@ class ErrorReporter {
       }
 
       devLog(`[ErrorReporter] Flushed ${reports.length} reports`)
+      this.retryCount = 0
     } catch (e) {
       devError('[ErrorReporter] Failed to flush reports:', e)
       this.queue.unshift(...reports)
+
+      if (this.retryCount < this.MAX_RETRY_COUNT) {
+        this.retryCount++
+        devLog(`[ErrorReporter] Retrying flush (${this.retryCount}/${this.MAX_RETRY_COUNT})`)
+        setTimeout(() => this.flush(), this.RETRY_DELAY * this.retryCount)
+      } else {
+        devError('[ErrorReporter] Max retry count reached, dropping reports')
+        this.queue = []
+        this.retryCount = 0
+      }
     }
   }
 

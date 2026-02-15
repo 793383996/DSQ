@@ -651,9 +651,18 @@ export function waitForLegacyData(
 ): Promise<LegacyDataLoadResult> {
   return new Promise(resolve => {
     let retries = 0
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    function cleanup(): void {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
 
     function attempt(): void {
       if (isLegacyDataLoaded()) {
+        cleanup()
         resolve({ success: true, retries, timedOut: false })
         return
       }
@@ -661,12 +670,12 @@ export function waitForLegacyData(
       const startTime = Date.now()
       const checkInterval = 50
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         if (isLegacyDataLoaded()) {
-          clearInterval(interval)
+          cleanup()
           resolve({ success: true, retries, timedOut: false })
         } else if (Date.now() - startTime > timeout) {
-          clearInterval(interval)
+          cleanup()
           retries++
           if (retries < maxRetries) {
             logger.warn(`[bridge] Timeout, retrying (${retries}/${maxRetries})...`)
