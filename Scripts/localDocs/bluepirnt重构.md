@@ -37,17 +37,18 @@
 
 ### ⏳ 进行中
 
-| 任务                     | 状态 | 优先级 | 说明                                         |
-| ------------------------ | ---- | ------ | -------------------------------------------- |
-| Blueprint类生成逻辑迁移  | ⏳   | 高     | init/generateBuildings/generateConveyorBelts |
-| BuildingGenerator服务    | ⏳   | 中     | 建筑生成器独立服务                           |
-| ConveyorGenerator服务    | ⏳   | 中     | 传送带生成器独立服务                         |
-| BlueprintService整合服务 | ⏳   | 中     | 蓝图生成统一入口                             |
+| 任务                  | 状态 | 优先级 | 说明                                   |
+| --------------------- | ---- | ------ | -------------------------------------- |
+| Blueprint类深度拆分   | ⏳   | 高     | Phase 5C-5G: 按建筑类型/功能点细化拆分 |
+| BuildingGenerator细化 | 🔲   | 高     | Phase 5C: 按建筑类型拆分生成器         |
+| SorterGenerator细化   | 🔲   | 高     | Phase 5D: 按建筑类型拆分位置计算       |
+| ConveyorGenerator细化 | 🔲   | 高     | Phase 5E: 节点/连接/喷涂机分离         |
 
 ### 🔲 待开始
 
 | 任务                | 状态 | 优先级 | 说明           |
 | ------------------- | ---- | ------ | -------------- |
+| 集成测试与验证      | 🔲   | 高     | Phase 5G       |
 | ParameterParser迁移 | 🔲   | 低     | 建筑参数解析器 |
 | RecipeParser迁移    | 🔲   | 低     | 配方解析器     |
 | 删除原 blueprint.js | 🔲   | 低     | 验证完成后移除 |
@@ -575,38 +576,296 @@ describe('Blueprint Module', () => {
 - [x] 定义 `ISorterInfo` 分拣器信息接口
 - [x] 定义 `IBuildingGenerateResult` 生成结果接口
 
-**关键类型**:
+---
 
-```typescript
-interface IBuildingGeneratorConfig {
-  conveyorBeltStackLayer: number
-  onlyConveyorBeltMk3: boolean
-  onlySorterMk3: boolean
-  useSorterMk4: boolean
-  selfSpray: boolean
-  generateTeslaTower: boolean
-  teslaTowerInterval: number
-  teslaTowerLineInterval: number
-  compactLayout: boolean
-  maxLabLayers: number
-}
+## 11. Blueprint类深度拆分分析 (2026-02-16)
 
-interface IBuildingLayout {
-  x: number
-  y: number
-  centerPoint: [number, number, number, number]
-  yaw: number[]
-}
+> **背景**: 现有 `blueprint.js` (3967行) 职责过重，已迁移模块仍需进一步细化
+
+### 11.1 职责矩阵分析
+
+| 模块名称                        | 原始行数 | 当前状态  | 拆分目标                   |
+| ------------------------------- | -------- | --------- | -------------------------- |
+| itemMap/buildingMap/recipeMap   | ~600     | ✅ 已迁移 | JSON数据文件               |
+| Blueprint模板初始化             | ~100     | ⏳ 待迁移 | BlueprintTemplateService   |
+| mapRecipeID()                   | ~50      | ⏳ 待迁移 | RecipeMapper               |
+| 建筑生成(newProductionBuilding) | ~500     | ⏳ 待迁移 | BuildingGenerator          |
+| 建筑面积计算                    | ~100     | ⏳ 待迁移 | LayoutCalculator           |
+| 分拣器位置计算                  | ~400     | ⏳ 待迁移 | SorterPositionCalculator   |
+| 分拣器生成                      | ~200     | ⏳ 待迁移 | SorterGenerator            |
+| 传送带节点生成                  | ~200     | ⏳ 待迁移 | ConveyorNodeBuilder        |
+| 传送带连接生成                  | ~400     | ⏳ 待迁移 | ConveyorConnectionBuilder  |
+| 喷涂机传送带                    | ~200     | ⏳ 待迁移 | SprayCoaterConveyorBuilder |
+| 物料统计计算                    | ~200     | ⏳ 待迁移 | ItemSummaryCalculator      |
+| 堆叠克隆                        | ~200     | ✅ 已迁移 | StackService               |
+| 编解码(toStr/parse)             | ~800     | ✅ 已迁移 | Encoder/Decoder            |
+
+### 11.2 核心流程拆分
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Blueprint生成流程拆分图                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐                                                        │
+│  │ RecipeInput     │                                                        │
+│  │ (配方输入)       │                                                        │
+│  └────────┬────────┘                                                        │
+│           │                                                                 │
+│           ▼                                                                 │
+│  ┌─────────────────┐     ┌─────────────────┐                               │
+│  │ RecipeMapper    │────▶│ LayoutCalculator│                               │
+│  │ 配方ID映射       │     │ 布局面积计算     │                               │
+│  │ mapRecipeID()   │     │ calculateArea() │                               │
+│  └────────┬────────┘     └────────┬────────┘                               │
+│           │                       │                                         │
+│           └───────────┬───────────┘                                         │
+│                       ▼                                                     │
+│           ┌─────────────────────┐                                           │
+│           │ BuildingGenerator   │                                           │
+│           │ 建筑生成核心         │                                           │
+│           │ newProductionBuilding│                                          │
+│           └──────────┬──────────┘                                           │
+│                      │                                                      │
+│          ┌───────────┼───────────┐                                          │
+│          ▼           ▼           ▼                                          │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                               │
+│  │SmelterGen  │ │AssemblerGen│ │LabGen      │                               │
+│  │熔炉生成器   │ │制造台生成器 │ │研究站生成器 │                               │
+│  └────────────┘ └────────────┘ └────────────┘                               │
+│          │           │           │                                          │
+│          └───────────┼───────────┘                                          │
+│                      ▼                                                      │
+│           ┌─────────────────────┐                                           │
+│           │ SorterGenerator     │                                           │
+│           │ 分拣器生成           │                                           │
+│           │ calculateOffset+Yaw │                                           │
+│           └──────────┬──────────┘                                           │
+│                      │                                                      │
+│                      ▼                                                      │
+│           ┌─────────────────────┐                                           │
+│           │ ItemSummaryCalculator│                                          │
+│           │ 物料统计计算         │                                           │
+│           │ sortItemSummary     │                                           │
+│           └──────────┬──────────┘                                           │
+│                      │                                                      │
+│                      ▼                                                      │
+│           ┌─────────────────────┐                                           │
+│           │ ConveyorGenerator   │                                           │
+│           │ 传送带生成核心       │                                           │
+│           │ generateConveyorBelts│                                          │
+│           └──────────┬──────────┘                                           │
+│                      │                                                      │
+│          ┌───────────┼───────────┐                                          │
+│          ▼           ▼           ▼                                          │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                               │
+│  │NodeBuilder │ │Connection  │ │SprayCoater │                               │
+│  │节点生成器   │ │Builder     │ │Conveyor    │                               │
+│  │            │ │连接建立器   │ │喷涂机传送带 │                               │
+│  └────────────┘ └────────────┘ └────────────┘                               │
+│                      │                                                      │
+│                      ▼                                                      │
+│           ┌─────────────────────┐                                           │
+│           │ BlueprintEncoder    │                                           │
+│           │ 蓝图编码输出         │                                           │
+│           │ toStr()             │                                           │
+│           └─────────────────────┘                                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.3 详细拆分任务清单
+
+#### 11.3.1 Phase 5C: BuildingGenerator细化 (预估: 4h)
+
+**当前状态**: BuildingGenerator.ts (106行) - 职责过重
+
+**拆分目标**:
+
+```
+src/core/blueprint/generators/
+├── BuildingGenerator.ts      # 主入口，编排子生成器
+├── buildings/
+│   ├── SmelterGenerator.ts   # 熔炉生成器 (arcSmelter, planeSmelter, 负熵熔炉)
+│   ├── AssemblerGenerator.ts # 制造台生成器 (Mk1/2/3, 重组式)
+│   ├── LabGenerator.ts       # 研究站生成器 (lab, 自演化研究站) - 含堆叠逻辑
+│   ├── PlantGenerator.ts     # 化工厂生成器 (chemicalPlant, 量子化工厂)
+│   ├── RefineryGenerator.ts  # 精炼厂生成器 (oilRefinery)
+│   ├── ColliderGenerator.ts  # 对撞机生成器 (微型粒子对撞机)
+│   └── index.ts
+├── LayoutCalculator.ts       # 布局计算器 (calculateBuildingArea)
+├── TeslaTowerGenerator.ts    # 电力感应塔生成器
+└── index.ts
+```
+
+**关键代码映射**:
+
+| 原函数                                     | 目标模块               | 行数   |
+| ------------------------------------------ | ---------------------- | ------ |
+| `calculateBuildingArea()`                  | LayoutCalculator.ts    | ~100行 |
+| `calculateTeslaTowerOffset()`              | TeslaTowerGenerator.ts | ~50行  |
+| `newProductionBuilding()` - smelter分支    | SmelterGenerator.ts    | ~80行  |
+| `newProductionBuilding()` - assembling分支 | AssemblerGenerator.ts  | ~80行  |
+| `newProductionBuilding()` - lab分支        | LabGenerator.ts        | ~150行 |
+| `newProductionBuilding()` - plant分支      | PlantGenerator.ts      | ~80行  |
+| `newProductionBuilding()` - refinery分支   | RefineryGenerator.ts   | ~80行  |
+| `newProductionBuilding()` - collider分支   | ColliderGenerator.ts   | ~100行 |
+
+#### 11.3.2 Phase 5D: SorterGenerator细化 (预估: 3h)
+
+**当前状态**: SorterGenerator.ts (387行) - 位置计算逻辑复杂
+
+**拆分目标**:
+
+```
+src/core/blueprint/generators/
+├── SorterGenerator.ts           # 主入口，编排位置计算
+├── sorters/
+│   ├── SorterPositionCalculator.ts  # 分拣器位置计算核心
+│   ├── SmelterSorterPositions.ts    # 熔炉分拣器位置 (slot 3-8)
+│   ├── AssemblerSorterPositions.ts  # 制造台分拣器位置 (slot 3-8)
+│   ├── LabSorterPositions.ts        # 研究站分拣器位置 (slot 3-11)
+│   ├── PlantSorterPositions.ts      # 化工厂分拣器位置 (slot 0-6)
+│   ├── RefinerySorterPositions.ts   # 精炼厂分拣器位置 (slot 0-8)
+│   ├── ColliderSorterPositions.ts   # 对撞机分拣器位置 (slot 0-8)
+│   └── index.ts
+└── index.ts
+```
+
+**关键代码映射**:
+
+| 原函数                                                | 目标模块                    | 行数  |
+| ----------------------------------------------------- | --------------------------- | ----- |
+| `calculateSorterLocalOffsetAndYaw()` - smelter分支    | SmelterSorterPositions.ts   | ~60行 |
+| `calculateSorterLocalOffsetAndYaw()` - assembling分支 | AssemblerSorterPositions.ts | ~60行 |
+| `calculateSorterLocalOffsetAndYaw()` - lab分支        | LabSorterPositions.ts       | ~80行 |
+| `calculateSorterLocalOffsetAndYaw()` - plant分支      | PlantSorterPositions.ts     | ~70行 |
+| `calculateSorterLocalOffsetAndYaw()` - refinery分支   | RefinerySorterPositions.ts  | ~80行 |
+| `calculateSorterLocalOffsetAndYaw()` - collider分支   | ColliderSorterPositions.ts  | ~80行 |
+
+#### 11.3.3 Phase 5E: ConveyorGenerator细化 (预估: 3h)
+
+**当前状态**: ConveyorGenerator.ts (198行) - 连接逻辑复杂
+
+**拆分目标**:
+
+```
+src/core/blueprint/generators/
+├── ConveyorGenerator.ts          # 主入口，编排传送带生成
+├── conveyors/
+│   ├── ConveyorNodeBuilder.ts    # 传送带节点构建 (newConveyorNode)
+│   ├── ConveyorConnectionBuilder.ts # 连接关系建立 (outputObjIdx/inputObjIdx)
+│   ├── SprayCoaterConveyorBuilder.ts # 喷涂机传送带 (generateConveyorBeltsForSprayCoater)
+│   └── index.ts
+└── index.ts
+```
+
+**关键代码映射**:
+
+| 原函数                                  | 目标模块                      | 行数   |
+| --------------------------------------- | ----------------------------- | ------ |
+| `newConveyorNode()`                     | ConveyorNodeBuilder.ts        | ~30行  |
+| `newConveyor()`                         | ConveyorGenerator.ts          | ~150行 |
+| `generateConveyorBelts()`               | ConveyorGenerator.ts          | ~400行 |
+| `generateConveyorBeltsForSprayCoater()` | SprayCoaterConveyorBuilder.ts | ~200行 |
+
+#### 11.3.4 Phase 5F: ItemSummaryCalculator独立 (预估: 1h)
+
+**当前状态**: ItemSummaryCalculator.ts (157行) - 已实现
+
+**优化目标**:
+
+```
+src/core/blueprint/services/
+├── ItemSummaryCalculator.ts  # 物料统计计算
+│   ├── calculateSummary()    # 主计算逻辑
+│   ├── sortItemSummary()     # 排序逻辑
+│   └── applyStackMultiplier() # 堆叠倍率
+└── index.ts
+```
+
+### 11.4 拆分优先级与依赖关系
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    拆分依赖关系图                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Phase 5C (BuildingGenerator)                                   │
+│  ├── 依赖: LayoutCalculator                                     │
+│  ├── 依赖: buildingMap.json                                     │
+│  └── 产出: IBlueprintBuilding[]                                 │
+│           │                                                     │
+│           ▼                                                     │
+│  Phase 5D (SorterGenerator)                                     │
+│  ├── 依赖: Phase 5C 产出                                        │
+│  ├── 依赖: SorterPositionCalculator                             │
+│  └── 产出: IBlueprintBuilding[] (含分拣器)                      │
+│           │                                                     │
+│           ▼                                                     │
+│  Phase 5F (ItemSummaryCalculator)                               │
+│  ├── 依赖: Phase 5D 产出                                        │
+│  └── 产出: IItemSummary                                         │
+│           │                                                     │
+│           ▼                                                     │
+│  Phase 5E (ConveyorGenerator)                                   │
+│  ├── 依赖: Phase 5D 产出                                        │
+│  ├── 依赖: Phase 5F 产出                                        │
+│  └── 产出: IBlueprintBuilding[] (含传送带)                      │
+│           │                                                     │
+│           ▼                                                     │
+│  BlueprintService                                               │
+│  └── 整合所有Phase产出，生成最终蓝图                            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 11.5 测试覆盖要求
+
+| 模块                       | 测试文件                           | 最少用例数  |
+| -------------------------- | ---------------------------------- | ----------- |
+| LayoutCalculator           | layoutCalculator.test.ts           | 20          |
+| SmelterGenerator           | smelterGenerator.test.ts           | 15          |
+| AssemblerGenerator         | assemblerGenerator.test.ts         | 15          |
+| LabGenerator               | labGenerator.test.ts               | 20 (含堆叠) |
+| PlantGenerator             | plantGenerator.test.ts             | 10          |
+| RefineryGenerator          | refineryGenerator.test.ts          | 10          |
+| ColliderGenerator          | colliderGenerator.test.ts          | 10          |
+| SorterPositionCalculator   | sorterPositionCalculator.test.ts   | 30          |
+| ConveyorNodeBuilder        | conveyorNodeBuilder.test.ts        | 15          |
+| SprayCoaterConveyorBuilder | sprayCoaterConveyorBuilder.test.ts | 15          |
+
+### 11.6 迁移风险评估
+
+| 风险项         | 影响 | 缓解措施                    |
+| -------------- | ---- | --------------------------- |
+| 坐标精度丢失   | 高   | Float32精度测试，容差0.0001 |
+| 建筑索引错位   | 高   | IndexMapper单元测试覆盖     |
+| 分拣器槽位错误 | 中   | 每种建筑类型独立测试        |
+| 传送带连接断裂 | 高   | 连接完整性验证测试          |
+| 堆叠层数计算   | 中   | Lab堆叠专项测试             |
+
+### 11.7 预估工作量汇总
+
+| Phase    | 任务                      | 预估时间 | 状态      |
+| -------- | ------------------------- | -------- | --------- |
+| 5C       | BuildingGenerator细化     | 4h       | 🔲 待开始 |
+| 5D       | SorterGenerator细化       | 3h       | 🔲 待开始 |
+| 5E       | ConveyorGenerator细化     | 3h       | 🔲 待开始 |
+| 5F       | ItemSummaryCalculator独立 | 1h       | ✅ 已完成 |
+| 5G       | 集成测试与验证            | 2h       | 🔲 待开始 |
+| **总计** |                           | **13h**  | **8%**    |
 
 interface ISorterInfo {
-  index: number
-  rate: number
-  ownerObjIdx: number
-  ownerName: string
-  ownerOffset: ICoordinate
-  recipeID: number
+index: number
+rate: number
+ownerObjIdx: number
+ownerName: string
+ownerOffset: ICoordinate
+recipeID: number
 }
-```
+
+````
 
 #### 10.2.2 建筑模板生成器 (预估: 3h) ✅ 已完成
 
@@ -640,7 +899,7 @@ if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
   newBuilding.parameters.researchMode = 1
   // ... 堆叠层数循环
 }
-```
+````
 
 #### 10.2.3 布局计算器 (预估: 2h) ✅ 已完成
 
