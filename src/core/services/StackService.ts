@@ -9,20 +9,18 @@ import type {
 import { DEFAULT_STACK_CONFIG, BELT_ITEM_IDS, Z_STEP } from '../types/stack'
 import type { IBlueprintBuilding } from '../types/blueprint'
 import { buildIndexMap, cloneBuildingWithRemap } from '../utils/IndexMapper'
-import buildingMapData from '../data/buildingMap.json'
-import productionCategoryData from '../data/productionCategory.json'
+import { buildingMap, PRODUCTION_CATEGORY } from '../types/buildingMap'
 
-const LAB_CATEGORY = productionCategoryData.lab
+const LAB_CATEGORY = PRODUCTION_CATEGORY.lab
 const LAB_ITEM_IDS = new Set<number>()
 const SPRAY_COATER_ITEM_ID: number = (() => {
-  const buildings = buildingMapData as Record<string, any>
-  if (buildings.lab) LAB_ITEM_IDS.add(buildings.lab.itemId)
-  if (buildings['自演化研究站']) LAB_ITEM_IDS.add(buildings['自演化研究站'].itemId)
-  return buildings.sprayCoater?.itemId ?? 2313
+  if (buildingMap.lab) LAB_ITEM_IDS.add(buildingMap.lab.itemId)
+  if (buildingMap['自演化研究站']) LAB_ITEM_IDS.add(buildingMap['自演化研究站'].itemId)
+  return buildingMap.sprayCoater?.itemId ?? 2313
 })()
 
 function getBuildingCategory(buildingName: string): number | undefined {
-  const building = (buildingMapData as Record<string, any>)[buildingName]
+  const building = buildingMap[buildingName]
   return building?.category
 }
 

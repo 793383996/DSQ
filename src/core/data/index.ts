@@ -1,33 +1,28 @@
-import itemMap from './itemMap.json'
-import buildingMap from './buildingMap.json'
-import recipeMap from './recipeMap.json'
-import productionCategory from './productionCategory.json'
-import buildingType from './buildingType.json'
-import recipes from './recipes.json'
+import recipeMapData from './recipeMap.json'
+import recipesData from './recipes.json'
 
-import type {
-  IItemMap,
-  IBuildingMap,
-  IRecipeMap,
-  IProductionCategory,
-  IBuildingType
-} from '../types/blueprint'
+import type { IRecipeMap } from '../types/blueprint'
 import type { IRawRecipe } from '../types/settings'
+import { itemMap } from '../types/itemMap'
+import { buildingMap, PRODUCTION_CATEGORY, BUILDING_TYPE } from '../types/buildingMap'
 
-export const ItemMap: IItemMap = itemMap
-export const BuildingMap: IBuildingMap = buildingMap
-export const RecipeMap: IRecipeMap = recipeMap
-export const ProductionCategory: IProductionCategory = productionCategory
-export const BuildingType: IBuildingType = buildingType
-export const Recipes: IRawRecipe[] = recipes as IRawRecipe[]
+export { itemMap, buildingMap, PRODUCTION_CATEGORY, BUILDING_TYPE }
+export const RecipeMap: IRecipeMap = recipeMapData
+export const Recipes: IRawRecipe[] = recipesData as IRawRecipe[]
 
-export function getItemByName(name: string) {
-  return ItemMap[name]
-}
+export { getItemByName, getItemByRemark, getItemIconId, getItemRemark } from '../types/itemMap'
 
-export function getBuildingByName(name: string) {
-  return BuildingMap[name]
-}
+export {
+  getBuildingByName,
+  getBuildingByItemId,
+  getProductionSpeed,
+  isLabBuilding,
+  isSmelterBuilding,
+  PRODUCTION_CATEGORY,
+  BUILDING_TYPE
+} from '../types/buildingMap'
+
+export type { IItemInfo, IItemData, IBuildingInfo, IBuildingData } from '../types/blueprint'
 
 export function getRecipeIdByKey(key: string) {
   return RecipeMap[key]

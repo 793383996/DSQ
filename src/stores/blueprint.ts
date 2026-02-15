@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { logger } from '../utils/logger'
 import type { IConsumptionItem, IResultItemOutput } from '../core/types/recipe'
+import { APP_CONFIG } from '../core/config/app.config'
 
 export interface DemandItem {
   name: string
@@ -25,7 +26,7 @@ export interface IStateSnapshot {
 
 export type ResultItem = IConsumptionItem | IResultItemOutput
 
-const SETTINGS_STORAGE_KEY = 'machine_settings20240202'
+const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.MACHINE_SETTINGS + APP_CONFIG.VERSION
 
 function loadPersistedSettings(): MachineSettings {
   try {

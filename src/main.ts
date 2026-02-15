@@ -31,6 +31,7 @@ if (toastInstance) {
       info: (msg: string, dur?: number) => number
       loading: (msg?: string) => number
       hide: (id: number) => void
+      remove: (id: number) => void
     }
   )
   app.config.globalProperties.$toast = toastInstance

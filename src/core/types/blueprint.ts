@@ -6,6 +6,8 @@ export interface IItemData {
   accelerate?: number
 }
 
+export type IItemInfo = IItemData
+
 export interface IItemMap {
   [key: string]: IItemData
 }
@@ -30,6 +32,8 @@ export interface IBuildingData {
   height?: number
   slotMaxIndex?: number
 }
+
+export type IBuildingInfo = IBuildingData
 
 export interface IBuildingMap {
   [key: string]: IBuildingData

@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useBlueprintStore } from '../blueprint'
+import { APP_CONFIG } from '../../core/config/app.config'
 
-const SETTINGS_STORAGE_KEY = 'machine_settings20240202'
+const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.MACHINE_SETTINGS + APP_CONFIG.VERSION
 
 describe('BlueprintStore', () => {
   beforeEach(() => {

@@ -44,7 +44,11 @@ import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
 import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
 import type { LegacyWindow } from './core/types/legacy'
-import { calculatorService } from './core/services/CalculatorService'
+import {
+  calculatorService,
+  StateChangedDuringCalculationError
+} from './core/services/CalculatorService'
+import type { ResultItem } from './stores/blueprint'
 import { logger } from './utils/logger'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
@@ -59,7 +63,7 @@ const store = useBlueprintStore()
 const showSettings = ref(false)
 const showAddDialog = ref(false)
 const hideSource = ref(false)
-const resultItems = ref<Record<string, unknown>[]>([])
+const resultItems = ref<ResultItem[]>([])
 const isCalculating = ref(false)
 const calculationError = ref<string | null>(null)
 const isDataReady = ref(false)
@@ -100,7 +104,7 @@ onMounted(async () => {
 
 onUnmounted(() => {})
 
-async function runCalculation() {
+async function runCalculation(retryCount: number = 0) {
   if (store.demandList.length === 0) {
     calculationError.value = t('errors.noDemand')
     return
@@ -126,7 +130,8 @@ async function runCalculation() {
     const result = await calculatorService.calculateWithOptions(demands, {
       excludes,
       onStateSnapshot: () => snapshot,
-      validateState: s => store.validateSnapshot(s)
+      validateState: s => store.validateSnapshot(s),
+      throwOnStateChange: true
     })
 
     if (result && result.items) {
@@ -138,6 +143,13 @@ async function runCalculation() {
       store.setResultItems(resultItems.value)
     }
   } catch (error: unknown) {
+    if (error instanceof StateChangedDuringCalculationError && retryCount < 3) {
+      logger.log(`[App] State changed, retrying calculation (${retryCount + 1}/3)`)
+      isCalculating.value = false
+      store.setCalculating(false)
+      await new Promise(resolve => setTimeout(resolve, 10))
+      return runCalculation(retryCount + 1)
+    }
     const err = error as Error
     calculationError.value = err?.message || t('errors.calculationFailed')
     store.setError(err?.message || t('errors.calculationFailed'))

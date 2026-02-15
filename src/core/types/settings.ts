@@ -91,7 +91,7 @@ export interface IExcludeItem {
 export interface ICalculationContext {
   demands: Array<{ name: string; num: number }>
   excludes: string[]
-  settings: IMachineSettings
+  settings: IRecipeSettings
   speedSettings: ISpeedSettings
   productivitySettings: IProductivitySettings
 }

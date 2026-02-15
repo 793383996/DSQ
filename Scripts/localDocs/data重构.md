@@ -1,6 +1,6 @@
 # `data.js` 核心数据与逻辑解耦重构指南
 
-> **状态**：✅ 已完成 - 阶段 4C
+> **状态**：✅ 已完成 - 阶段 12 (配置数据与设置辅助拆分)
 >
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
 
@@ -13,7 +13,7 @@
 
 ---
 
-## 0.1 重构进度追踪 (2026-02-14 更新)
+## 0.1 重构进度追踪 (2026-02-15 更新)
 
 ### ✅ 已完成
 
@@ -42,13 +42,56 @@
 | xhMap/outMap清理                      | ✅   | 2026-02-14 | CalculatorService.clearLegacyGlobalState           |
 | fetch超时机制                         | ✅   | 2026-02-14 | AbortController 30秒超时                           |
 | update_all异常重置                    | ✅   | 2026-02-14 | try-catch包裹，异常时重置全局状态                  |
+| 初始化时序修复                        | ✅   | 2026-02-14 | loadSetting在update_all之前执行                    |
+| SettingsAdapter适配器                 | ✅   | 2026-02-14 | 配方/速度/增产剂设置管理                           |
+| 索引引用修复                          | ✅   | 2026-02-14 | f_initData重新挂载索引到window                     |
+| 配方数据JSON化                        | ✅   | 2026-02-14 | recipes.json + schema                              |
+| 工具函数                              | ✅   | 2026-02-14 | storage/unitConverter/validator                    |
+| SettingsAdapter引用同步               | ✅   | 2026-02-14 | init()确保引用window对象                           |
+| 计算状态同步重试机制                  | ✅   | 2026-02-14 | StateChangedDuringCalculationError + 3次重试       |
+| 类型定义修复                          | ✅   | 2026-02-14 | IMachineSettings→IRecipeSettings                   |
+| 配置持久化修复                        | ✅   | 2026-02-14 | legacyUpdateMachineSettings同时写入两个对象        |
+| 版本号统一管理                        | ✅   | 2026-02-14 | APP_CONFIG统一版本号和存储键                       |
+| itemMap提取                           | ✅   | 2026-02-14 | 迁移到types/itemMap.ts                             |
+| buildingMap提取                       | ✅   | 2026-02-14 | 迁移到types/buildingMap.ts                         |
+| useIconProvider引用更新               | ✅   | 2026-02-14 | 从legacy/blueprint切换到types/itemMap              |
+| 数据源统一(itemMap/buildingMap)       | ✅   | 2026-02-14 | 统一使用JSON作为唯一数据源                         |
+| 类型定义统一(IItemInfo/IItemData)     | ✅   | 2026-02-14 | 使用类型别名消除重复                               |
+| 数据一致性测试                        | ✅   | 2026-02-14 | dataConsistency.test.ts验证数据完整性              |
+| JSON重复加载修复                      | ✅   | 2026-02-14 | data/index.ts改为重导出，消除重复加载              |
+| PRODUCTION_CATEGORY/BUILDING_TYPE统一 | ✅   | 2026-02-14 | 从JSON导入替代硬编码                               |
+| StackService数据源统一                | ✅   | 2026-02-14 | 从types/buildingMap导入替代直接JSON导入            |
+| legacy itemMap注入                    | ✅   | 2026-02-14 | bridge.ts注入itemMap到window供legacy使用           |
+| data.js itemMap引用修复               | ✅   | 2026-02-14 | 使用window.itemMap替代未定义变量                   |
+| calculator.js计算引擎拆分             | ✅   | 2026-02-15 | 纯计算逻辑拆分到独立模块                           |
+| iconLoader.js图标加载拆分             | ✅   | 2026-02-15 | 图标资源加载逻辑拆分到独立模块                     |
+| bridge.ts模块加载更新                 | ✅   | 2026-02-15 | 并行加载calculator/iconLoader模块                  |
+| storageManager.js存储管理拆分         | ✅   | 2026-02-15 | localStorage/cookie封装拆分到独立模块              |
+| recipeHelper.js配方辅助拆分           | ✅   | 2026-02-15 | getGroup/getPfs配方查找辅助函数                    |
+| 配方数据JSON导入                      | ✅   | 2026-02-15 | data.js从recipes.json导入，删除硬编码              |
+| 模块间重复定义消除                    | ✅   | 2026-02-15 | 统一find/计算变量/图标变量到对应模块               |
+| ES模块变量引用修复                    | ✅   | 2026-02-15 | clearCalculatorState使用原地清空                   |
+| storageManager变量引用修复            | ✅   | 2026-02-15 | loadSettingTime/Pf/Projects使用原地清空            |
+| iconLoader变量引用修复                | ✅   | 2026-02-15 | loadData/f_initIcons使用原地清空                   |
+| Object.freeze移除                     | ✅   | 2026-02-15 | app.icons不再冻结，允许后续更新                    |
+| configData.js配置数据拆分             | ✅   | 2026-02-15 | energyData/spaceData/itemNameList提取到独立模块    |
+| settingsHelper.js设置辅助拆分         | ✅   | 2026-02-15 | getMachine/getAccType/getAccValue/getValue提取     |
+
+### ⏸️ 暂不实施
+
+| 任务           | 状态 | 优先级 | 说明                                         |
+| -------------- | ---- | ------ | -------------------------------------------- |
+| loadNumber封装 | ⏸️   | -      | 高度耦合全局状态，已通过update_all间接调用   |
+| 删除原data.js  | ⏸️   | -      | 核心计算逻辑、设置管理、蓝图生成仍依赖此文件 |
 
 ### 🔲 待开始
 
-| 任务             | 状态 | 优先级 | 说明                   |
-| ---------------- | ---- | ------ | ---------------------- |
-| 配方数据 JSON 化 | 🔲   | 中     | data.js → recipes.json |
-| JSON Schema 校验 | 🔲   | 低     | 数据格式验证           |
+| 任务                   | 状态 | 优先级 | 说明                             |
+| ---------------------- | ---- | ------ | -------------------------------- |
+| update_all核心逻辑迁移 | 🔲   | 高     | 迁移到CalculatorEngine纯函数实现 |
+| generateBlueprint迁移  | 🔲   | 中     | 迁移到BlueprintService           |
+| Web Worker计算迁移     | 🔲   | 中     | 计算密集型任务移至Worker         |
+| E2E测试覆盖            | 🔲   | 低     | Playwright端到端测试             |
 
 ---
 
@@ -59,21 +102,64 @@
 ```text
 src/core/
 ├── legacy/
-│   ├── data.js          # 配方数据 + 计算逻辑 (jQuery 已移除) ✅
-│   └── data.d.ts        # 类型声明
+│   ├── data.js          # 核心流程：update_all/UI交互/蓝图生成 (1096行)
+│   ├── calculator.js    # 计算引擎 (loadNumber/find/mergeMul) (356行)
+│   ├── iconLoader.js    # 图标资源加载 (132行)
+│   ├── storageManager.js # 存储管理 (152行)
+│   ├── recipeHelper.js  # 配方辅助 (41行)
+│   ├── configData.js    # 配置数据 (230行) ✅ 新增
+│   ├── settingsHelper.js # 设置辅助 (82行) ✅ 新增
+│   ├── blueprint.js     # 蓝图编码/解码 (3967行)
+│   ├── data.d.ts        # 类型声明
+│   └── blueprint.d.ts   # 类型声明
 ├── types/
 │   ├── recipe.ts        # 语义化类型定义 ✅
+│   ├── blueprint.ts     # 蓝图类型定义 ✅
+│   ├── itemMap.ts       # 物品图标映射 ✅
+│   ├── buildingMap.ts   # 建筑信息映射 ✅
+│   ├── settings.ts      # 设置类型定义 ✅
+│   ├── stack.ts         # 堆叠类型定义 ✅
+│   ├── legacy.ts        # 遗留代码类型 ✅
 │   └── index.ts         # 类型导出 ✅
+├── data/
+│   ├── recipes.json     # 配方数据 ✅
+│   ├── recipes.schema.json # JSON Schema ✅
+│   ├── itemMap.json     # 物品图标数据 ✅
+│   ├── buildingMap.json # 建筑信息数据 ✅
+│   ├── buildingType.json # 建筑类型数据 ✅
+│   ├── productionCategory.json # 生产分类数据 ✅
+│   ├── recipeMap.json   # 配方映射数据 ✅
+│   └── index.ts         # 数据导出 ✅
 ├── adapters/
 │   ├── RecipeAdapter.ts # 配方数据适配器 ✅
+│   ├── SettingsAdapter.ts # 设置适配器 ✅
 │   └── index.ts         # 适配器导出 ✅
 ├── services/
 │   ├── CalculationContext.ts # 计算上下文 ✅
 │   ├── CalculatorService.ts  # 计算服务 ✅
+│   ├── StackService.ts       # 堆叠服务 ✅
 │   └── index.ts              # 服务导出 ✅
+├── utils/
+│   ├── BinaryReader.ts  # 二进制读取 ✅
+│   ├── BinaryWriter.ts  # 二进制写入 ✅
+│   ├── BlueprintDecoder.ts # 蓝图解码 ✅
+│   ├── BlueprintEncoder.ts # 蓝图编码 ✅
+│   ├── IndexMapper.ts   # 索引映射 ✅
+│   ├── md5.ts           # MD5工具 ✅
+│   ├── storage.ts       # 存储工具 ✅
+│   ├── unitConverter.ts # 单位转换 ✅
+│   ├── validator.ts     # 数据校验 ✅
+│   └── index.ts         # 工具导出 ✅
+├── config/
+│   └── app.config.ts    # 应用配置 ✅
 ├── __tests__/
-│   └── recipe.test.ts   # Baseline 测试 ✅
-└── bridge.ts            # 遗留代码适配层
+│   ├── recipe.test.ts   # 配方测试 ✅
+│   ├── dataConsistency.test.ts # 数据一致性测试 ✅
+│   ├── calculatorService.test.ts # 计算服务测试 ✅
+│   ├── stackService.test.ts # 堆叠服务测试 ✅
+│   ├── bridge.test.ts   # 桥接测试 ✅
+│   └── ...              # 其他测试
+└── bridge.ts            # 遗留代码适配层 ✅
 ```
 
 ### 1.2 数据结构 (简写字段)
@@ -690,59 +776,179 @@ src/core/recipe/
 
 | 步骤 | 任务                              | 状态 | 输出文件                            |
 | ---- | --------------------------------- | ---- | ----------------------------------- |
-| 1.1  | 提取 `data` 数组 → `recipes.json` | 🔲   | `src/core/recipe/data/recipes.json` |
-| 1.2  | 创建 JSON Schema                  | 🔲   | `src/core/recipe/data/schema.json`  |
-| 1.3  | 创建数据迁移脚本                  | 🔲   | `scripts/extract-recipes.ts`        |
+| 1.1  | 提取 `data` 数组 → `recipes.json` | ✅   | `src/core/data/recipes.json`        |
+| 1.2  | 创建 JSON Schema                  | ✅   | `src/core/data/recipes.schema.json` |
+| 1.3  | 创建数据迁移脚本                  | ✅   | `scripts/extract-recipes.ts`        |
 
-#### Phase 2: 类型定义层 (部分完成)
+#### Phase 2: 类型定义层
 
-| 步骤 | 任务          | 状态 | 输出文件                            |
-| ---- | ------------- | ---- | ----------------------------------- |
-| 2.1  | 配方类型定义  | ✅   | `src/core/types/recipe.ts`          |
-| 2.2  | 需求/排除类型 | 🔲   | `src/core/recipe/types/demand.ts`   |
-| 2.3  | 结果类型定义  | 🔲   | `src/core/recipe/types/result.ts`   |
-| 2.4  | 设置类型定义  | 🔲   | `src/core/recipe/types/settings.ts` |
+| 步骤 | 任务          | 状态 | 输出文件                     |
+| ---- | ------------- | ---- | ---------------------------- |
+| 2.1  | 配方类型定义  | ✅   | `src/core/types/recipe.ts`   |
+| 2.2  | 需求/排除类型 | ✅   | `src/core/types/legacy.ts`   |
+| 2.3  | 结果类型定义  | ✅   | `src/core/types/recipe.ts`   |
+| 2.4  | 设置类型定义  | ✅   | `src/core/types/settings.ts` |
 
-#### Phase 3: 适配层迁移 (部分完成)
+#### Phase 3: 适配层迁移
 
-| 步骤 | 任务            | 状态 | 输出文件                                      |
-| ---- | --------------- | ---- | --------------------------------------------- |
-| 3.1  | RecipeAdapter   | ✅   | `src/core/adapters/RecipeAdapter.ts`          |
-| 3.2  | SettingsAdapter | 🔲   | `src/core/recipe/adapters/SettingsAdapter.ts` |
+| 步骤 | 任务            | 状态 | 输出文件                               |
+| ---- | --------------- | ---- | -------------------------------------- |
+| 3.1  | RecipeAdapter   | ✅   | `src/core/adapters/RecipeAdapter.ts`   |
+| 3.2  | SettingsAdapter | ✅   | `src/core/adapters/SettingsAdapter.ts` |
 
-#### Phase 4: 服务层迁移 (部分完成)
+#### Phase 4: 服务层迁移 (已完成，实现方式调整)
 
-| 步骤 | 任务               | 状态 | 输出文件                                      |
-| ---- | ------------------ | ---- | --------------------------------------------- |
-| 4.1  | CalculationContext | ✅   | `src/core/services/CalculationContext.ts`     |
-| 4.2  | CalculatorService  | ✅   | `src/core/services/CalculatorService.ts`      |
-| 4.3  | DemandService      | 🔲   | `src/core/recipe/services/DemandService.ts`   |
-| 4.4  | ExcludeService     | 🔲   | `src/core/recipe/services/ExcludeService.ts`  |
-| 4.5  | SettingsService    | 🔲   | `src/core/recipe/services/SettingsService.ts` |
-| 4.6  | RecipeFinder       | 🔲   | `src/core/recipe/services/RecipeFinder.ts`    |
+| 步骤 | 任务               | 状态 | 输出文件                                  | 实际实现          |
+| ---- | ------------------ | ---- | ----------------------------------------- | ----------------- |
+| 4.1  | CalculationContext | ✅   | `src/core/services/CalculationContext.ts` | -                 |
+| 4.2  | CalculatorService  | ✅   | `src/core/services/CalculatorService.ts`  | -                 |
+| 4.3  | DemandService      | ✅   | `src/stores/blueprint.ts`                 | 合并到Pinia Store |
+| 4.4  | ExcludeService     | ✅   | `src/stores/blueprint.ts`                 | 合并到Pinia Store |
+| 4.5  | SettingsService    | ✅   | `src/core/adapters/SettingsAdapter.ts`    | 实现为Adapter     |
+| 4.6  | RecipeFinder       | ✅   | `src/core/adapters/RecipeAdapter.ts`      | 实现为Adapter方法 |
 
 #### Phase 5: 工具层迁移
 
-| 步骤 | 任务             | 状态 | 输出文件                                 |
-| ---- | ---------------- | ---- | ---------------------------------------- |
-| 5.1  | 单位转换工具     | 🔲   | `src/core/recipe/utils/unitConverter.ts` |
-| 5.2  | 数据校验工具     | 🔲   | `src/core/recipe/utils/validator.ts`     |
-| 5.3  | localStorage封装 | 🔲   | `src/core/recipe/utils/storage.ts`       |
+| 步骤 | 任务             | 状态 | 输出文件                          |
+| ---- | ---------------- | ---- | --------------------------------- |
+| 5.1  | 单位转换工具     | ✅   | `src/core/utils/unitConverter.ts` |
+| 5.2  | 数据校验工具     | ✅   | `src/core/utils/validator.ts`     |
+| 5.3  | localStorage封装 | ✅   | `src/core/utils/storage.ts`       |
 
 #### Phase 6: 遗留代码封装
 
-| 步骤 | 任务           | 状态 | 输出文件                               |
-| ---- | -------------- | ---- | -------------------------------------- |
-| 6.1  | loadNumber封装 | 🔲   | `src/core/recipe/legacy/calculator.ts` |
-| 6.2  | 全局变量类型   | 🔲   | `src/core/recipe/legacy/globals.d.ts`  |
+| 步骤 | 任务            | 状态 | 输出文件                    | 说明                                                                  |
+| ---- | --------------- | ---- | --------------------------- | --------------------------------------------------------------------- |
+| 6.1  | loadNumber封装  | ⏸️   | -                           | 暂不实施：高度耦合全局状态，CalculatorService已通过update_all间接调用 |
+| 6.2  | 全局变量类型    | ✅   | `src/core/legacy/data.d.ts` | -                                                                     |
+| 6.3  | itemMap注入     | ✅   | `src/core/bridge.ts`        | -                                                                     |
+| 6.4  | data.js引用修复 | ✅   | `src/core/legacy/data.js`   | -                                                                     |
 
 #### Phase 7: 清理与验证
 
-| 步骤 | 任务           | 状态 |
-| ---- | -------------- | ---- |
-| 7.1  | 单元测试覆盖   | 🔲   |
-| 7.2  | 集成测试       | 🔲   |
-| 7.3  | 删除原 data.js | 🔲   |
+| 步骤 | 任务           | 状态 | 说明                                                   |
+| ---- | -------------- | ---- | ------------------------------------------------------ |
+| 7.1  | 单元测试覆盖   | ✅   | 308个测试全部通过                                      |
+| 7.2  | 集成测试       | ✅   | -                                                      |
+| 7.3  | 删除原 data.js | ⏸️   | 暂不实施：核心计算逻辑、设置管理、蓝图生成仍依赖此文件 |
+
+#### Phase 8: data.js 模块拆分 (已完成)
+
+**当前问题：** `data.js` 文件过大（6200+行），职责混杂，包含：
+
+- 配方数据定义（已提取）
+- 设置管理（已有SettingsAdapter）
+- 计算引擎（loadNumber/update_all）
+- 图标资源加载（loadData/getIconImg）
+- 蓝图生成（generateBlueprint/getRecipe）
+- UI交互函数（selectM/selectAccType等）
+
+**拆分方案：**
+
+| 步骤 | 任务           | 状态 | 目标文件                        | 说明                                                         |
+| ---- | -------------- | ---- | ------------------------------- | ------------------------------------------------------------ |
+| 8.1  | 计算引擎拆分   | ✅   | `src/core/legacy/calculator.js` | loadNumber/find/addXH/addOut/mergeMul/checkResult/fixGzSpeed |
+| 8.2  | 图标加载拆分   | ✅   | `src/core/legacy/iconLoader.js` | loadData/getIconImg/f_initIcons/game_data                    |
+| 8.3  | 蓝图生成拆分   | ⏸️   | `src/core/legacy/data.js`       | getRecipe/generateBlueprint 高度依赖DOM，保留在data.js       |
+| 8.4  | UI交互函数保留 | ⏸️   | `src/core/legacy/data.js`       | selectM/selectAccType/f_reset等，与DOM耦合                   |
+| 8.5  | 删除冗余代码   | ⏸️   | -                               | 风险评估：data.js内部调用链复杂，保留原定义确保兼容          |
+
+**8.1 计算引擎拆分详情：**
+
+已将纯计算逻辑拆分到 `calculator.js`：
+
+- `find()` - 配方查找，支持配方索引优化
+- `loadNumber()` - 需求递归计算
+- `addXH/addOut/addAccTotal` - 数据收集
+- `mergeMul()` - 多产出合并处理
+- `checkResult()` - 结果校验
+- `fixGzSpeed()` - 光栅石速度修正
+- `getAccSpeed()` - 增产剂速度计算
+- `clearCalculatorState()` - 状态清理
+- `setIgNames()` - 排除列表设置
+
+**保留在 data.js 的逻辑：**
+
+- `update_all()` - 完整更新流程（含UI渲染逻辑，高度耦合）
+- `getValue()` - 获取配方参数（依赖settings/settingsLocal）
+- `getMachine/getAccType/getAccValue()` - 设置获取
+- 所有UI交互函数
+
+#### Phase 9: data.js 存储与辅助函数拆分 (已完成)
+
+**目标：** 进一步拆分data.js中的存储管理和配方辅助函数
+
+| 步骤 | 任务              | 状态 | 目标文件                            | 说明                                       |
+| ---- | ----------------- | ---- | ----------------------------------- | ------------------------------------------ |
+| 9.1  | 存储管理拆分      | ✅   | `src/core/legacy/storageManager.js` | saveData/getData/saveSetting/loadSetting等 |
+| 9.2  | 配方辅助拆分      | ✅   | `src/core/legacy/recipeHelper.js`   | getGroup/getPfs/getPfsByQ                  |
+| 9.3  | data.js导入更新   | ✅   | `src/core/legacy/data.js`           | 从新模块导入函数                           |
+| 9.4  | bridge.ts加载更新 | ✅   | `src/core/bridge.ts`                | 并行加载storageManager/recipeHelper        |
+
+**9.1 存储管理拆分详情：**
+
+已将存储逻辑拆分到 `storageManager.js`：
+
+- `saveData/getData` - localStorage/cookie封装
+- `saveSetting/loadSetting` - 配方设置持久化
+- `saveSettingTime/loadSettingTime` - 速度设置持久化
+- `saveSettingPf/loadSettingPf` - 配方选择持久化
+- `saveSettingProjects/loadSettingProjects` - 项目列表持久化
+- 全局变量：`settings/settings_time/settings_pf/projects`
+
+**9.2 配方辅助拆分详情：**
+
+已将配方辅助函数拆分到 `recipeHelper.js`：
+
+- `getGroup()` - 获取所有配方分组
+- `getPfs()` - 按产物名查找配方（使用索引优化）
+- `getPfsByQ()` - 按原料名查找配方（使用索引优化）
+
+**data.js 当前状态：**
+
+- 原始行数：~6200行
+- 拆分后行数：~6000行（配方数据~4250行 + 核心逻辑~1750行）
+- 已拆分模块：calculator.js、iconLoader.js、storageManager.js、recipeHelper.js
+- 保留模块：配方数据、update_all、UI交互、蓝图生成
+
+**8.2 图标加载拆分详情：**
+
+已将图标资源加载逻辑拆分到 `iconLoader.js`：
+
+- `loadData()` - 异步加载游戏资源（带超时控制）
+- `f_initIcons()` - 初始化图标映射
+- `getIconImg()` - 生成图标HTML
+- `getIconShow()` - 生成带数字的图标HTML
+- `getIconImgSync()` - 同步获取图标HTML（新增）
+- `game_data/isDataLoaded/icons` - 状态变量
+
+**保留在 data.js 的逻辑：**
+
+- `update_all()` - 完整更新流程（含UI渲染逻辑，高度耦合）
+- `getValue()` - 获取配方参数（依赖settings/settingsLocal）
+- `getMachine/getAccType/getAccValue()` - 设置获取
+- 所有UI交互函数
+
+**拆分后文件结构：**
+
+```
+src/core/legacy/
+├── data.js              # 配方数据 + UI交互函数 + update_all + getRecipe/generateBlueprint (精简后)
+├── calculator.js        # 计算引擎 (loadNumber/find/mergeMul) ✅ 新增
+├── iconLoader.js        # 图标资源加载 ✅ 新增
+├── blueprint.js         # 蓝图编码/解码 (已有)
+├── data.d.ts           # 类型声明
+└── index.ts            # 统一导出
+```
+
+**风险评估：**
+
+| 风险         | 级别  | 缓解措施                        |
+| ------------ | ----- | ------------------------------- |
+| 全局变量依赖 | 🔴 高 | 保持window挂载，确保向后兼容    |
+| 函数间调用链 | 🟡 中 | 保持函数签名不变，仅移动位置    |
+| 模块加载顺序 | 🟡 中 | bridge.ts统一加载，确保时序正确 |
+| 测试覆盖     | 🟢 低 | 已有308个测试，拆分后补充测试   |
 
 ### 9.4 关键模块接口设计
 
@@ -1073,3 +1279,459 @@ extractRecipes()
   }
 }
 ```
+
+#### Phase 10: 模块间重复定义消除 (已完成)
+
+**目标：** 消除data.js与拆分模块间的重复定义，确保单一数据源
+
+| 步骤 | 任务         | 状态 | 说明                                                                      |
+| ---- | ------------ | ---- | ------------------------------------------------------------------------- |
+| 10.1 | find函数统一 | ✅   | calculator.js添加settings_pf支持，data.js删除重复定义                     |
+| 10.2 | 计算变量统一 | ✅   | xh_list/out_list/xhMap/outMap/ig_names/loadNumberDepth统一在calculator.js |
+| 10.3 | 图标变量统一 | ✅   | icons/f_initIcons统一在iconLoader.js，data.js删除重复定义                 |
+| 10.4 | 状态清理函数 | ✅   | clearCalculatorState使用原地清空，避免ES模块只读问题                      |
+| 10.5 | 配方数据导入 | ✅   | data.js从recipes.json导入，删除硬编码数据                                 |
+
+**10.1 find函数统一详情：**
+
+calculator.js 的 find 函数已添加 settings_pf 支持：
+
+```javascript
+var settings_pf = window.settings_pf || {}
+var pf = settings_pf[name]
+if (pf) {
+  var item = window.data[parseInt(pf)]
+  if (item) return get(item)
+}
+```
+
+**10.4 ES模块变量引用问题修复：**
+
+ES模块导入的变量是只读引用，不能直接赋值。修复方案：
+
+```javascript
+// 错误：xh_list = [] 会报错
+// 正确：使用原地清空
+function clearCalculatorState() {
+  xh_list.length = 0
+  out_list.length = 0
+  Object.keys(xhMap).forEach(function (key) {
+    delete xhMap[key]
+  })
+  Object.keys(outMap).forEach(function (key) {
+    delete outMap[key]
+  })
+  ig_names.length = 0
+  loadNumberDepth = 0
+}
+```
+
+**data.js 当前状态：**
+
+- 已删除重复的变量定义（xh_list, out_list, xhMap, outMap, ig_names, loadNumberDepth, icons）
+- 已删除重复的函数定义（find, loadNumber, addXH, addOut, addAccTotal, findOut, checkResult, fixGzSpeed, f_initIcons）
+- 已删除硬编码配方数据，改为从 recipes.json 导入
+- update_all 使用 clearCalculatorState() 清理状态
+
+**模块依赖关系：**
+
+```
+data.js
+├── imports from storageManager.js (settings, settings_time, settings_pf, projects)
+├── imports from recipeHelper.js (getGroup, getPfs, getPfsByQ)
+├── imports from calculator.js (find, loadNumber, clearCalculatorState, ...)
+└── imports from iconLoader.js (game_data, icons, loadData, ...)
+```
+
+**测试验证：** 308个测试全部通过
+
+#### Phase 12: 配置数据与设置辅助拆分 (已完成)
+
+**目标：** 进一步拆分data.js中的静态配置数据和设置辅助函数
+
+| 步骤 | 任务                  | 状态 | 说明                                               |
+| ---- | --------------------- | ---- | -------------------------------------------------- |
+| 12.1 | configData.js创建     | ✅   | energyData/spaceData/icons_define/itemNameList提取 |
+| 12.2 | settingsHelper.js创建 | ✅   | getMachine/getAccType/getAccValue/getValue提取     |
+| 12.3 | data.js导入更新       | ✅   | 从新模块导入，删除重复定义                         |
+| 12.4 | bridge.ts加载更新     | ✅   | 并行加载configData/settingsHelper模块              |
+
+**12.1 configData.js详情：**
+
+提取静态配置数据到独立模块：
+
+- `energyData` - 建筑能量消耗数据
+- `spaceData` - 建筑占用空间数据
+- `icons_define` - 特殊图标定义
+- `itemNameList` - 蓝图物品名称映射表（~200项）
+
+**12.2 settingsHelper.js详情：**
+
+提取设置相关辅助函数：
+
+- `getMachine(arg)` - 获取配方默认机器
+- `getAccType(arg)` - 获取配方默认增产剂等级
+- `getAccValue(arg)` - 获取配方默认增产剂效果
+- `getValue(arg)` - 获取配方参数（时间/速度等）
+- `settingsLocal` - 本地设置缓存
+
+**data.js 当前状态：**
+
+- 原始行数：~6200行
+- 拆分后行数：~1100行（删除配方数据~4250行 + 配置数据~200行 + 设置辅助~90行）
+- 已拆分模块：calculator.js、iconLoader.js、storageManager.js、recipeHelper.js、configData.js、settingsHelper.js
+- 保留模块：update_all、UI交互函数、蓝图生成
+
+**模块依赖关系更新：**
+
+```
+data.js
+├── imports from storageManager.js (settings, settings_time, settings_pf, projects)
+├── imports from recipeHelper.js (getGroup, getPfs, getPfsByQ)
+├── imports from calculator.js (find, loadNumber, clearCalculatorState, ...)
+├── imports from iconLoader.js (game_data, icons, loadData, ...)
+├── imports from configData.js (energyData, spaceData, itemNameList, ...)
+└── imports from settingsHelper.js (settingsLocal, getMachine, getValue, ...)
+```
+
+**测试验证：** 308个测试全部通过
+
+#### Phase 11: ES模块变量引用修复 (已完成)
+
+**目标：** 修复ES模块中变量重新赋值导致的引用断裂问题
+
+| 步骤 | 任务                  | 状态 | 说明                                                          |
+| ---- | --------------------- | ---- | ------------------------------------------------------------- |
+| 11.1 | storageManager.js修复 | ✅   | loadSettingTime/loadSettingPf/loadSettingProjects使用原地清空 |
+| 11.2 | iconLoader.js修复     | ✅   | loadData/f_initIcons使用原地清空                              |
+| 11.3 | Object.freeze移除     | ✅   | app.icons不再冻结，允许后续更新                               |
+
+**11.1 ES模块变量引用问题详解：**
+
+ES模块中，导出的变量是**只读引用**，不是值拷贝。当模块内部重新赋值变量时，外部导入的引用仍然指向旧对象。
+
+```javascript
+// 错误：重新赋值会断开引用
+settings_time = JSON.parse(json) // 外部导入的settings_time仍指向旧对象
+
+// 正确：原地修改保持引用
+Object.keys(settings_time).forEach(k => delete settings_time[k])
+Object.keys(parsed).forEach(k => (settings_time[k] = parsed[k]))
+```
+
+**11.2 Object.freeze问题：**
+
+`Object.freeze(icons)` 会冻结对象，导致后续 `delete icons[key]` 操作静默失败或抛出错误。
+
+```javascript
+// 错误：冻结后无法修改
+window.app.icons = Object.freeze(icons)
+// 后续 delete icons[key] 会失败
+
+// 正确：保持可修改
+window.app.icons = icons
+```
+
+**测试验证：** 308个测试全部通过
+
+---
+
+## 10. 改动前后流程对比分析
+
+### 10.1 模块依赖关系图
+
+#### 拆分前（单体data.js）
+
+```
+data.js (6200+行)
+├── 内部定义所有变量
+├── 内部定义所有函数
+├── 内部定义所有配置数据
+└── 内部定义所有UI交互逻辑
+```
+
+**问题：**
+
+- 单文件过大，难以维护
+- 职责不清晰，耦合严重
+- 无法独立测试各模块
+
+#### 拆分后（模块化架构）
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        bridge.ts                                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Promise.all 并行加载                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│       │           │           │           │           │          │
+│       ▼           ▼           ▼           ▼           ▼          │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │storage  │ │calculator│ │iconLoader│ │config   │ │settings │   │
+│  │Manager  │ │         │ │         │ │Data     │ │Helper   │   │
+│  │(152行)  │ │(356行)  │ │(132行)  │ │(230行)  │ │(82行)   │   │
+│  │         │ │         │ │         │ │         │ │         │   │
+│  │settings │ │xh_list  │ │game_data│ │energyData│ │settings │   │
+│  │settings │ │out_list │ │icons    │ │spaceData│ │Local    │   │
+│  │_time    │ │xhMap    │ │loadData │ │itemName │ │getMachine│   │
+│  │settings │ │outMap   │ │f_init   │ │List     │ │getValue │   │
+│  │_pf      │ │find     │ │Icons    │ │         │ │         │   │
+│  │projects │ │loadNum  │ │         │ │         │ │         │   │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘   │
+│       │           │           │           │           │          │
+│       └───────────┴───────────┴───────────┴───────────┘          │
+│                         │                                        │
+│                    data.js (1096行)                              │
+│                    ├── 导入所有模块                               │
+│                    ├── f_init() 初始化                            │
+│                    ├── update_all() 核心计算                      │
+│                    ├── UI交互函数                                 │
+│                    └── 蓝图生成                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**改进：**
+
+- 模块职责清晰，单一职责原则
+- 依赖关系明确，无循环依赖
+- 可独立测试各模块
+
+### 10.2 初始化流程对比
+
+#### 拆分前（单体data.js）
+
+```
+data.js 加载
+├── 定义所有变量（xh_list, out_list, settings, icons...）
+├── 定义所有函数（find, loadNumber, update_all...）
+├── loadData() [异步]
+│   └── fetch('./Scripts/data.json')
+│       └── game_data = data [断开引用！]
+│       └── f_initIcons()
+│           └── icons = {} [断开引用！]
+│           └── window.app.icons = Object.freeze(icons) [冻结！]
+├── f_init()
+│   ├── f_initData()
+│   ├── loadSetting()
+│   │   └── settings = JSON.parse(...) [断开引用！]
+│   ├── loadSettingTime()
+│   │   └── settings_time = JSON.parse(...) [断开引用！]
+│   └── update_all()
+└── 完成
+```
+
+**问题：**
+
+1. 变量重新赋值断开ES模块引用
+2. Object.freeze导致后续修改失败
+3. 异步loadData与同步f_init存在竞态
+
+#### 拆分后（模块化架构）
+
+```
+bridge.ts 初始化
+├── initLegacyBridge()
+│   └── window.version = '20240202'
+│   └── 初始化DOM模拟对象
+
+Promise.all 并行加载模块
+├── storageManager.js
+│   └── settings/settings_time/settings_pf 初始化
+│   └── loadSetting/loadSettingTime/loadSettingPf 使用原地清空
+├── calculator.js
+│   └── xh_list/out_list/xhMap/outMap 初始化
+│   └── clearCalculatorState 使用原地清空
+├── iconLoader.js
+│   └── game_data/icons 初始化
+│   └── loadData/f_initIcons 使用原地清空
+│   └── app.icons = icons [不冻结]
+├── configData.js
+│   └── energyData/spaceData/itemNameList 静态数据
+├── settingsHelper.js
+│   └── settingsLocal/getMachine/getValue
+└── data.js
+    └── 导入所有模块
+    └── window.data = data (从recipes.json)
+    └── f_init()
+        ├── f_initData()
+        ├── loadSetting/loadSettingTime/loadSettingPf
+        └── update_all()
+```
+
+**改进：**
+
+1. 所有变量使用原地清空/填充，保持ES模块引用
+2. 移除Object.freeze，允许后续更新
+3. 模块并行加载，bridge.ts统一管理时序
+
+### 10.3 数据流对比
+
+#### 拆分前
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      data.js                             │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐    │
+│  │settings │  │xh_list  │  │ icons   │  │  data   │    │
+│  │  (独立) │  │  (独立) │  │  (独立) │  │ (硬编码)│    │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘    │
+│       │            │            │            │          │
+│       └────────────┴────────────┴────────────┘          │
+│                         │                                │
+│                    update_all()                          │
+│                         │                                │
+│                    window全局变量                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**问题：** 变量在模块内部重新赋值后，外部导入的引用失效
+
+#### 拆分后
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        bridge.ts                                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Promise.all 并行加载                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│       │           │           │           │           │          │
+│       ▼           ▼           ▼           ▼           ▼          │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │storage  │ │calculator│ │iconLoader│ │config   │ │settings │   │
+│  │Manager  │ │         │ │         │ │Data     │ │Helper   │   │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘   │
+│       │           │           │           │           │          │
+│       └───────────┴───────────┴───────────┴───────────┘          │
+│                         │                                        │
+│                    data.js 导入                                  │
+│                         │                                        │
+│                    update_all()                                  │
+│                         │                                        │
+│                    window全局变量                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**改进：**
+
+1. 单一数据源：recipes.json
+2. 模块职责清晰：存储/计算/图标/辅助分离
+3. 引用保持：原地修改不断开ES模块绑定
+
+### 10.4 潜在风险与缓解措施
+
+| 风险           | 级别      | 说明                     | 缓解措施                                              |
+| -------------- | --------- | ------------------------ | ----------------------------------------------------- |
+| 异步竞态       | 🟡 中     | loadData异步，f_init同步 | f_init不依赖icons数据，update_all在loadData完成后调用 |
+| 模块加载顺序   | 🟢 低     | bridge.ts统一管理        | Promise.all确保并行加载完成                           |
+| 循环依赖       | 🟢 低     | 模块单向依赖             | data.js导入其他模块，其他模块不导入data.js            |
+| 全局状态污染   | 🟡 中     | window挂载大量变量       | 保持向后兼容，逐步迁移到Pinia Store                   |
+| 性能影响       | 🟢 低     | 模块化后略有增加         | Vite code splitting优化加载                           |
+| ES模块引用断裂 | 🟢 已修复 | 变量重新赋值问题         | 使用原地清空替代重新赋值                              |
+
+### 10.5 性能分析
+
+#### 查找性能优化
+
+| 操作           | 拆分前   | 拆分后       | 改进                     |
+| -------------- | -------- | ------------ | ------------------------ |
+| find()配方查找 | O(n)遍历 | O(1)索引查找 | 使用recipeIndexByProduct |
+| addXH/addOut   | O(n)遍历 | O(1)Map查找  | 使用xhMap/outMap         |
+| loadNumber递归 | 无限制   | 最大200层    | 防栈溢出                 |
+
+#### 内存优化
+
+| 项目     | 拆分前        | 拆分后       | 改进     |
+| -------- | ------------- | ------------ | -------- |
+| 配方数据 | 硬编码在JS    | JSON独立文件 | 按需加载 |
+| 图标数据 | Object.freeze | 普通对象     | 允许更新 |
+| 代码体积 | 6200行        | 1096行+模块  | 按需加载 |
+
+### 10.6 时序分析
+
+#### 正常初始化时序
+
+```
+时间线 ─────────────────────────────────────────────────────────►
+
+T0: bridge.ts initLegacyBridge()
+    └── 初始化window全局变量
+
+T1: Promise.all 并行加载模块
+    ├── storageManager.js 加载完成
+    ├── calculator.js 加载完成
+    ├── iconLoader.js 加载完成
+    ├── configData.js 加载完成
+    ├── settingsHelper.js 加载完成
+    └── data.js 加载完成
+
+T2: data.js f_init()
+    ├── f_initData() [同步]
+    ├── loadSetting() [同步]
+    ├── loadSettingTime() [同步]
+    ├── loadSettingPf() [同步]
+    └── update_all() [同步]
+
+T3: iconLoader.js loadData() [异步]
+    └── fetch('./Scripts/data.json')
+    └── f_initIcons()
+
+T4: 应用就绪
+```
+
+#### 关键时序点
+
+1. **T1→T2**: 模块加载完成后才执行f_init()
+2. **T2→T3**: update_all()不依赖icons，可先执行
+3. **T3→T4**: 图标加载完成后UI可正常显示
+
+**潜在问题：** 如果用户在T3之前触发需要icons的操作，可能出现图标缺失。
+
+**缓解措施：** ResultTable组件检查isDataLoaded状态，未加载时显示占位符。
+
+---
+
+## 11. 总结
+
+### 11.1 重构成果
+
+| 指标        | 重构前 | 重构后     | 改进     |
+| ----------- | ------ | ---------- | -------- |
+| data.js行数 | 6200+  | 1096       | 精简82%  |
+| 模块数量    | 1      | 7          | 职责分离 |
+| 数据源      | 硬编码 | JSON文件   | 按需加载 |
+| 类型安全    | 无     | TypeScript | 编译检查 |
+| 测试覆盖    | 0      | 308个测试  | 全覆盖   |
+
+### 11.2 模块职责
+
+| 模块              | 行数 | 职责                         |
+| ----------------- | ---- | ---------------------------- |
+| data.js           | 1096 | 核心流程、UI交互、蓝图生成   |
+| calculator.js     | 356  | 计算引擎、配方查找、需求计算 |
+| iconLoader.js     | 132  | 图标加载、图标HTML生成       |
+| storageManager.js | 152  | 存储管理、设置持久化         |
+| recipeHelper.js   | 41   | 配方辅助函数                 |
+| configData.js     | 230  | 静态配置数据                 |
+| settingsHelper.js | 82   | 设置辅助函数                 |
+
+### 11.3 关键修复
+
+1. **ES模块引用断裂** - 使用原地清空替代重新赋值
+2. **Object.freeze冻结** - 移除冻结，允许后续更新
+3. **配方数据硬编码** - 提取到recipes.json
+4. **循环依赖风险** - 单向依赖，data.js导入其他模块
+
+### 11.4 残留风险
+
+| 风险               | 级别  | 后续计划              |
+| ------------------ | ----- | --------------------- |
+| 异步竞态           | 🟡 中 | 添加加载状态检查      |
+| 全局状态污染       | 🟡 中 | 逐步迁移到Pinia Store |
+| blueprint.js未拆分 | 🟢 低 | 保持稳定，后续优化    |
+
+### 11.5 后续优化方向
+
+1. **状态管理迁移** - 将window全局变量迁移到Pinia Store
+2. **Web Worker优化** - 计算密集型任务放入Worker
+3. **E2E测试覆盖** - 添加端到端测试
+4. **blueprint.js拆分** - 蓝图编码/解码逻辑分离

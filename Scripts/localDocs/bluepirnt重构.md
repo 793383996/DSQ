@@ -1,6 +1,6 @@
 # `blueprint.js` 协议层解耦与重构详细实施方案
 
-> **状态**：✅ 已完成 - 阶段 5
+> **状态**：✅ 已完成 - 阶段 5 + 阶段 4F
 >
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md) | [堆叠流程重构.md](./堆叠流程重构.md)
 
@@ -17,26 +17,27 @@
 
 ### ✅ 已完成
 
-| 任务                                            | 状态 | 优先级 | 说明                                       |
-| ----------------------------------------------- | ---- | ------ | ------------------------------------------ |
-| 数据层解耦 (`src/core/data/*.json`)             | ✅   | 高     | itemMap, buildingMap, recipeMap 等静态数据 |
-| 类型定义 (`src/core/types/blueprint.ts`)        | ✅   | 高     | IBlueprintBuilding, IBlueprintData 等接口  |
-| 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅   | 高     | 小端序写入，Float32 精度保证               |
-| 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅   | 高     | 小端序读取，单元测试覆盖                   |
-| MD5 工具 (`src/core/utils/md5.ts`)              | ✅   | 中     | 从 blueprint.js 迁移，单元测试覆盖         |
-| 编码器 (`src/core/utils/BlueprintEncoder.ts`)   | ✅   | 高     | 蓝图数据编码，单元测试覆盖                 |
-| 解码器 (`src/core/utils/BlueprintDecoder.ts`)   | ✅   | 高     | 蓝图字符串解析，单元测试覆盖               |
-| 堆叠类型定义 (`src/core/types/stack.ts`)        | ✅   | 高     | IStackConfig, ICloneFilter, ICloneResult   |
-| Index重映射 (`src/core/utils/IndexMapper.ts`)   | ✅   | 高     | buildIndexMap, cloneBuildingWithRemap      |
-| 堆叠服务 (`src/core/services/StackService.ts`)  | ✅   | 高     | Phase 1/3/4 完整实现                       |
-| pako统一加载 (`getPakoImpl()`)                  | ✅   | 中     | 解决ESM/CJS模块加载差异                    |
-| URI解码容错 (`safeDecodeURIComponent`)          | ✅   | 中     | 处理特殊字符解码异常                       |
+| 任务                                            | 状态 | 优先级     | 说明                                       |
+| ----------------------------------------------- | ---- | ---------- | ------------------------------------------ |
+| 数据层解耦 (`src/core/data/*.json`)             | ✅   | 高         | itemMap, buildingMap, recipeMap 等静态数据 |
+| 类型定义 (`src/core/types/blueprint.ts`)        | ✅   | 高         | IBlueprintBuilding, IBlueprintData 等接口  |
+| 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅   | 高         | 小端序写入，Float32 精度保证               |
+| 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅   | 高         | 小端序读取，单元测试覆盖                   |
+| MD5 工具 (`src/core/utils/md5.ts`)              | ✅   | 中         | 从 blueprint.js 迁移，单元测试覆盖         |
+| 编码器 (`src/core/utils/BlueprintEncoder.ts`)   | ✅   | 高         | 蓝图数据编码，单元测试覆盖                 |
+| 解码器 (`src/core/utils/BlueprintDecoder.ts`)   | ✅   | 高         | 蓝图字符串解析，单元测试覆盖               |
+| 堆叠类型定义 (`src/core/types/stack.ts`)        | ✅   | 高         | IStackConfig, ICloneFilter, ICloneResult   |
+| Index重映射 (`src/core/utils/IndexMapper.ts`)   | ✅   | 高         | buildIndexMap, cloneBuildingWithRemap      |
+| 堆叠服务 (`src/core/services/StackService.ts`)  | ✅   | 高         | Phase 1/3/4 完整实现                       |
+| pako统一加载 (`getPakoImpl()`)                  | ✅   | 中         | 解决ESM/CJS模块加载差异                    |
+| URI解码容错 (`safeDecodeURIComponent`)          | ✅   | 中         | 处理特殊字符解码异常                       |
+| pako API兼容修复                                | ✅   | 2026-02-14 | 使用inflate/deflate替代ungzip/gzip         |
 
 ### ✅ 已完成
 
 | 任务          | 状态 | 优先级 | 说明                  |
 | ------------- | ---- | ------ | --------------------- |
-| Baseline 测试 | ✅   | 高     | 125个单元测试全部通过 |
+| Baseline 测试 | ✅   | 高     | 296个单元测试全部通过 |
 
 ### 前置依赖
 

@@ -1,5 +1,5 @@
 import { ref, shallowRef } from 'vue'
-import { itemMap } from '../core/legacy/blueprint'
+import { itemMap, getItemRemark } from '../core/data'
 import { logger } from '../utils/logger'
 
 interface IconCache {
@@ -23,7 +23,7 @@ function buildReverseIndex(): void {
   for (const key in itemMap) {
     const item = itemMap[key]
     if (item.iconId) {
-      itemMapReverseIndex[item.name] = { iconId: item.iconId, key }
+      itemMapReverseIndex[item.name] = { iconId: String(item.iconId), key }
     }
   }
 }
@@ -47,7 +47,7 @@ export function useIconProvider() {
 
   async function loadIconByName(name: string): Promise<string | null> {
     buildReverseIndex()
-    
+
     const cached = iconCache.value[name]
     if (cached) return cached
 
@@ -74,7 +74,7 @@ export function useIconProvider() {
     loadingPromises.value = { ...loadingPromises.value, [name]: promise }
 
     const result = await promise
-    
+
     const { [name]: _, ...rest } = loadingPromises.value
     loadingPromises.value = rest
 
@@ -96,24 +96,15 @@ export function useIconProvider() {
   }
 
   function getIconNames(): string[] {
-    return Object.keys(itemMap).map(key => itemMap[key].name)
+    return Object.keys(ItemMap).map(key => ItemMap[key].name)
   }
 
   function getIconByKey(key: string): string | null {
-    const item = itemMap[key]
+    const item = ItemMap[key]
     if (item && item.name) {
       return getIcon(item.name)
     }
     return null
-  }
-
-  function getItemRemark(name: string): string {
-    for (const key in itemMap) {
-      if (itemMap[key].name === name) {
-        return itemMap[key].remark || name
-      }
-    }
-    return name
   }
 
   async function preloadIcons(names: string[]): Promise<void> {

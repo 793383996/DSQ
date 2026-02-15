@@ -4,6 +4,7 @@ import { settingsAdapter } from './adapters/SettingsAdapter'
 import { logger } from '../utils/logger'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 import type { IRawRecipe } from './types/settings'
+import { itemMap } from './types/itemMap'
 
 let dataModule: unknown = null
 let blueprintModule: unknown = null
@@ -25,10 +26,26 @@ async function loadLegacyModules() {
   }
 
   legacyModulesPromise = (async () => {
-    const [dataMod, blueprintMod, pakoMod] = await Promise.all([
+    const [
+      dataMod,
+      blueprintMod,
+      pakoMod,
+      calculatorMod,
+      iconLoaderMod,
+      storageManagerMod,
+      recipeHelperMod,
+      configDataMod,
+      settingsHelperMod
+    ] = await Promise.all([
       import('./legacy/data'),
       import('./legacy/blueprint'),
-      import('pako')
+      import('pako'),
+      import('./legacy/calculator'),
+      import('./legacy/iconLoader'),
+      import('./legacy/storageManager'),
+      import('./legacy/recipeHelper'),
+      import('./legacy/configData'),
+      import('./legacy/settingsHelper')
     ])
     dataModule = dataMod
     blueprintModule = blueprintMod
@@ -36,6 +53,8 @@ async function loadLegacyModules() {
     getWin().pako = pakoMod
 
     const win = getWin()
+    ;(win as any).itemMap = itemMap
+
     if (win.data && !recipeAdapter.isLoaded()) {
       recipeAdapter.loadFromRawData(win.data as unknown as IRawRecipe[])
     }
@@ -110,6 +129,7 @@ export function initLegacyBridge(): void {
   isBridgeInitialized = true
 
   const win = getWin()
+  ;(win as any).version = '20240202'
   win.xqs = []
   win.ig_names = []
   win.icons = {}
@@ -156,30 +176,41 @@ export function legacyUpdateMachineSettings(config: MachineConfigSettings): void
   const win = getWin()
   const data = win.data || []
   const settingsLocal = win.settingsLocal || {}
+  const settings = win.settings || {}
 
   data.forEach((item: ILegacyDataItem) => {
     if (!settingsLocal[item.id]) {
       settingsLocal[item.id] = {}
     }
+    if (!settings[item.id]) {
+      settings[item.id] = {}
+    }
 
     if (item.mName === '制作台') {
       settingsLocal[item.id].m = config.modeIn
+      settings[item.id].m = config.modeIn
     }
     if (item.mName === '冶炼设备') {
       settingsLocal[item.id].m = config.furnace
+      settings[item.id].m = config.furnace
     }
     if (item.mName === '化工设备') {
       settingsLocal[item.id].m = config.chemical
+      settings[item.id].m = config.chemical
     }
     if (item.mName === '研究站') {
       settingsLocal[item.id].m = config.research
+      settings[item.id].m = config.research
     }
 
     settingsLocal[item.id].accType = config.accType
     settingsLocal[item.id].accValue = config.accValue
+    settings[item.id].accType = config.accType
+    settings[item.id].accValue = config.accValue
   })
 
   win.settingsLocal = settingsLocal
+  win.settings = settings
   win.defaultAccType = config.accType
   win.defaultAccValue = config.accValue
 

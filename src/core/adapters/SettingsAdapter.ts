@@ -5,6 +5,7 @@ import type {
   IRecipeSetting
 } from '../types/settings'
 import { logger } from '../../utils/logger'
+import { APP_CONFIG } from '../config/app.config'
 
 declare global {
   interface Window {
@@ -22,10 +23,7 @@ declare global {
   }
 }
 
-const STORAGE_KEY_MACHINE = 'machine_settings'
-const STORAGE_KEY_SPEED = 'machine_settings_time'
-const STORAGE_KEY_PF = 'machine_settings_pf'
-const VERSION = '20240202'
+const { VERSION, STORAGE_KEYS } = APP_CONFIG
 
 /**
  * 设置适配器 - 管理配方设置、速度设置、增产剂设置
@@ -45,19 +43,28 @@ export class SettingsAdapter {
 
   /**
    * 初始化设置 (从遗留代码加载)
+   *
+   * 架构师注：
+   * - 必须确保内部引用指向window对象上的同一个对象
+   * - 如果window对象上没有设置，从localStorage加载
+   * - 避免双重存储导致的状态不同步
    */
   init(): void {
     if (typeof window === 'undefined') return
 
-    if (window.settings) {
-      this.recipeSettings = window.settings
+    if (!window.settings) {
+      window.settings = {}
     }
-    if (window.settings_time) {
-      this.speedSettings = window.settings_time
+    if (!window.settings_time) {
+      window.settings_time = {}
     }
-    if (window.settings_pf) {
-      this.productivitySettings = window.settings_pf
+    if (!window.settings_pf) {
+      window.settings_pf = {}
     }
+
+    this.recipeSettings = window.settings
+    this.speedSettings = window.settings_time
+    this.productivitySettings = window.settings_pf
 
     logger.log('[SettingsAdapter] Initialized')
   }
@@ -234,17 +241,17 @@ export class SettingsAdapter {
    */
   loadFromStorage(): void {
     try {
-      const recipeJson = localStorage.getItem(STORAGE_KEY_MACHINE + VERSION)
+      const recipeJson = localStorage.getItem(STORAGE_KEYS.MACHINE_SETTINGS + VERSION)
       if (recipeJson) {
         this.recipeSettings = JSON.parse(recipeJson)
       }
 
-      const speedJson = localStorage.getItem(STORAGE_KEY_SPEED + VERSION)
+      const speedJson = localStorage.getItem(STORAGE_KEYS.SPEED_SETTINGS + VERSION)
       if (speedJson) {
         this.speedSettings = JSON.parse(speedJson)
       }
 
-      const pfJson = localStorage.getItem(STORAGE_KEY_PF + VERSION)
+      const pfJson = localStorage.getItem(STORAGE_KEYS.PF_SETTINGS + VERSION)
       if (pfJson) {
         this.productivitySettings = JSON.parse(pfJson)
       }
@@ -255,14 +262,20 @@ export class SettingsAdapter {
     }
   }
 
-  /**
-   * 保存到 localStorage (独立于遗留代码)
-   */
   saveToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEY_MACHINE + VERSION, JSON.stringify(this.recipeSettings))
-      localStorage.setItem(STORAGE_KEY_SPEED + VERSION, JSON.stringify(this.speedSettings))
-      localStorage.setItem(STORAGE_KEY_PF + VERSION, JSON.stringify(this.productivitySettings))
+      localStorage.setItem(
+        STORAGE_KEYS.MACHINE_SETTINGS + VERSION,
+        JSON.stringify(this.recipeSettings)
+      )
+      localStorage.setItem(
+        STORAGE_KEYS.SPEED_SETTINGS + VERSION,
+        JSON.stringify(this.speedSettings)
+      )
+      localStorage.setItem(
+        STORAGE_KEYS.PF_SETTINGS + VERSION,
+        JSON.stringify(this.productivitySettings)
+      )
       logger.log('[SettingsAdapter] Saved to storage')
     } catch (e) {
       logger.warn('[SettingsAdapter] Failed to save to storage:', e)

@@ -33,7 +33,11 @@ const TIME_BASE = new Date(0).setUTCFullYear(1)
 type PakoModule = typeof pako
 
 function getPakoImpl(): PakoModule {
-  return (pako as unknown as { default?: PakoModule }).default || pako
+  const pakoModule = (pako as unknown as { default?: PakoModule }).default || pako
+  return {
+    ...pakoModule,
+    ungzip: pakoModule.inflate
+  } as PakoModule
 }
 
 function safeDecodeURIComponent(str: string): string {
@@ -388,8 +392,8 @@ export function decodeBlueprint(blueprintStr: string): IBlueprintData {
   const base64Data = afterFirstQuote.substring(0, secondQuoteIndex)
 
   const gzipped = binaryStringToUint8Array(atob(base64Data))
-  const decompressed = getPakoImpl().ungzip(gzipped)
-
+  const pakoModule = (pako as unknown as { default?: typeof pako }).default || pako
+  const decompressed = pakoModule.inflate(gzipped) as Uint8Array
   const reader = new BinaryReader(decompressed.buffer as ArrayBuffer)
 
   const version = reader.getInt32()

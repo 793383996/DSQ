@@ -97,7 +97,6 @@ export interface ILegacyWindow {
   items_editor_index: number
   items_editor_number: number
   saveSettingTime: () => void
-  settingsLocal: Record<string, ILegacySettings>
   defaultAccType: string
   defaultAccValue: string
   update_all: () => void
@@ -105,6 +104,10 @@ export interface ILegacyWindow {
   data: ILegacyDataItem[]
   game_data: ILegacyGameData
   isDataLoaded: boolean
+  itemMap: Record<
+    string,
+    { name: string; iconId: number; remark: string; extra_rate?: number; accelerate?: number }
+  >
   logisticsSettings: {
     beltType: string
     logisticStack: number

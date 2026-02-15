@@ -17,12 +17,20 @@ export interface CalculationOptions {
   excludes?: string[]
   onStateSnapshot?: () => IStateSnapshot
   validateState?: (snapshot: IStateSnapshot) => boolean
+  throwOnStateChange?: boolean
 }
 
 export interface IStateSnapshot {
   demandVersion: number
   demandList: IDemand[]
   excludeList: string[]
+}
+
+export class StateChangedDuringCalculationError extends Error {
+  constructor(public readonly version: number) {
+    super(`State changed during calculation (version ${version})`)
+    this.name = 'StateChangedDuringCalculationError'
+  }
 }
 
 function clearLegacyGlobalState(): void {
@@ -125,9 +133,11 @@ export class CalculatorService {
 
       if (snapshot && options.validateState) {
         if (!options.validateState(snapshot)) {
-          logger.warn(
-            `[CalculatorService] State changed during calculation (version ${version}), result may be stale`
-          )
+          const msg = `[CalculatorService] State changed during calculation (version ${version}), result may be stale`
+          logger.warn(msg)
+          if (options.throwOnStateChange) {
+            throw new StateChangedDuringCalculationError(version)
+          }
         }
       }
 

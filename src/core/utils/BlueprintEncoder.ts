@@ -13,7 +13,11 @@ const TIME_BASE = new Date(0).setUTCFullYear(1)
 type PakoModule = typeof pako
 
 function getPakoImpl(): PakoModule {
-  return (pako as unknown as { default?: PakoModule }).default || pako
+  const pakoModule = (pako as unknown as { default?: PakoModule }).default || pako
+  return {
+    ...pakoModule,
+    gzip: pakoModule.deflate
+  } as PakoModule
 }
 
 const ALL_ASSEMBLERS = new Set([2303, 2304, 2305, 2302, 2315, 2308, 2309, 2310, 2317, 2318, 2319])
@@ -444,7 +448,8 @@ export function encodeBlueprint(data: IBlueprintData): string {
     exportBuilding(writer, building)
   }
 
-  const gzipped = getPakoImpl().gzip(decoded)
+  const pakoModule = (pako as unknown as { default?: typeof pako }).default || pako
+  const gzipped = pakoModule.deflate(decoded)
   const base64 = btoa(uint8ArrayToBinaryString(gzipped))
   result += base64
   result += '"'
