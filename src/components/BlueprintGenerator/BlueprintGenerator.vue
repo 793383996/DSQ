@@ -26,7 +26,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from '../../stores/blueprint'
-import { legacyGenerateBlueprint, legacyGetConfigFromDOM } from '../../core/bridge'
+import { legacyGenerateBlueprint, generateBlueprintWithAdapter } from '../../core/bridge'
 import { useToast } from '../../composables/useToast'
 import { logger } from '../../utils/logger'
 
@@ -47,7 +47,12 @@ function generateBlueprint(): void {
   generatedUrl.value = null
 
   try {
-    legacyGenerateBlueprint()
+    const result = generateBlueprintWithAdapter()
+    if (!result.success) {
+      error.value = result.error || t('blueprintGenerator.generateFailed')
+      toast.error(t('blueprintGenerator.generateFailed') + ': ' + error.value, 5000)
+      return
+    }
 
     toast.success(t('blueprintGenerator.generatedAndCopied'), 3000)
   } catch (e: unknown) {

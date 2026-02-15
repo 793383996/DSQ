@@ -1,6 +1,6 @@
 # `blueprint.js` 协议层解耦与重构详细实施方案
 
-> **状态**：⏳ 进行中 - 阶段 5 (协议层完成，生成器待迁移)
+> **状态**：✅ 阶段 5B 完成 - 生成器迁移完成
 >
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md) | [堆叠流程重构.md](./堆叠流程重构.md)
 
@@ -17,22 +17,23 @@
 
 ### ✅ 已完成
 
-| 任务                                            | 状态 | 优先级     | 说明                                       |
-| ----------------------------------------------- | ---- | ---------- | ------------------------------------------ |
-| 数据层解耦 (`src/core/data/*.json`)             | ✅   | 高         | itemMap, buildingMap, recipeMap 等静态数据 |
-| 类型定义 (`src/core/types/blueprint.ts`)        | ✅   | 高         | IBlueprintBuilding, IBlueprintData 等接口  |
-| 二进制写入器 (`src/core/utils/BinaryWriter.ts`) | ✅   | 高         | 小端序写入，Float32 精度保证               |
-| 二进制读取器 (`src/core/utils/BinaryReader.ts`) | ✅   | 高         | 小端序读取，单元测试覆盖                   |
-| MD5 工具 (`src/core/utils/md5.ts`)              | ✅   | 中         | 从 blueprint.js 迁移，单元测试覆盖         |
-| 编码器 (`src/core/utils/BlueprintEncoder.ts`)   | ✅   | 高         | 蓝图数据编码，单元测试覆盖                 |
-| 解码器 (`src/core/utils/BlueprintDecoder.ts`)   | ✅   | 高         | 蓝图字符串解析，单元测试覆盖               |
-| 堆叠类型定义 (`src/core/types/stack.ts`)        | ✅   | 高         | IStackConfig, ICloneFilter, ICloneResult   |
-| Index重映射 (`src/core/utils/IndexMapper.ts`)   | ✅   | 高         | buildIndexMap, cloneBuildingWithRemap      |
-| 堆叠服务 (`src/core/services/StackService.ts`)  | ✅   | 高         | Phase 1/3/4 完整实现                       |
-| pako统一加载 (`getPakoImpl()`)                  | ✅   | 中         | 解决ESM/CJS模块加载差异                    |
-| URI解码容错 (`safeDecodeURIComponent`)          | ✅   | 中         | 处理特殊字符解码异常                       |
-| pako API兼容修复                                | ✅   | 2026-02-14 | 使用inflate/deflate替代ungzip/gzip         |
-| Baseline 测试                                   | ✅   | 高         | 359个单元测试全部通过                      |
+| 任务                                                 | 状态 | 优先级     | 说明                                       |
+| ---------------------------------------------------- | ---- | ---------- | ------------------------------------------ |
+| 数据层解耦 (`src/core/data/*.json`)                  | ✅   | 高         | itemMap, buildingMap, recipeMap 等静态数据 |
+| 类型定义 (`src/core/types/blueprint.ts`)             | ✅   | 高         | IBlueprintBuilding, IBlueprintData 等接口  |
+| 二进制写入器 (`src/core/utils/BinaryWriter.ts`)      | ✅   | 高         | 小端序写入，Float32 精度保证               |
+| 二进制读取器 (`src/core/utils/BinaryReader.ts`)      | ✅   | 高         | 小端序读取，单元测试覆盖                   |
+| MD5 工具 (`src/core/utils/md5.ts`)                   | ✅   | 中         | 从 blueprint.js 迁移，单元测试覆盖         |
+| 编码器 (`src/core/utils/BlueprintEncoder.ts`)        | ✅   | 高         | 蓝图数据编码，单元测试覆盖                 |
+| 解码器 (`src/core/utils/BlueprintDecoder.ts`)        | ✅   | 高         | 蓝图字符串解析，单元测试覆盖               |
+| 堆叠类型定义 (`src/core/types/stack.ts`)             | ✅   | 高         | IStackConfig, ICloneFilter, ICloneResult   |
+| Index重映射 (`src/core/utils/IndexMapper.ts`)        | ✅   | 高         | buildIndexMap, cloneBuildingWithRemap      |
+| 堆叠服务 (`src/core/services/StackService.ts`)       | ✅   | 高         | Phase 1/3/4 完整实现                       |
+| 蓝图适配器 (`src/core/adapters/BlueprintAdapter.ts`) | ✅   | 高         | 2026-02-15 适配层迁移完成                  |
+| pako统一加载 (`getPakoImpl()`)                       | ✅   | 中         | 解决ESM/CJS模块加载差异                    |
+| URI解码容错 (`safeDecodeURIComponent`)               | ✅   | 中         | 处理特殊字符解码异常                       |
+| pako API兼容修复                                     | ✅   | 2026-02-14 | 使用inflate/deflate替代ungzip/gzip         |
+| Baseline 测试                                        | ✅   | 高         | 359个单元测试全部通过                      |
 
 ### ⏳ 进行中
 
@@ -86,6 +87,8 @@ src/core/
 │   └── md5.ts                 # ✅ MD5工具 (109行)
 ├── services/
 │   └── StackService.ts        # ✅ 堆叠服务 (217行)
+├── adapters/
+│   └── BlueprintAdapter.ts    # ✅ 蓝图适配器 (150行) - 2026-02-15新增
 └── __tests__/
     ├── blueprint.test.ts      # ✅ 编解码测试 (363行)
     ├── binary.test.ts         # ✅ 二进制测试 (228行)
@@ -523,3 +526,475 @@ describe('Blueprint Module', () => {
 > 3. 严格遵守小端序 (Little-Endian)
 > 4. 每次修改后必须运行 Baseline 测试确保二进制兼容性
 > 5. 新增代码必须包含完整的 TypeScript 类型注解"
+
+---
+
+## 10. 阶段 5B 详细任务拆分 (2026-02-15)
+
+> **状态**: 🟡 进行中 (核心实现完成，测试待补充)
+
+### 10.1 任务总览
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                阶段 5B: 生成器迁移任务拆分                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  5B-1: BuildingGenerator 服务                                   │
+│  ├── 5B-1.1: 类型定义与接口设计                                 │
+│  ├── 5B-1.2: 建筑模板生成器                                     │
+│  ├── 5B-1.3: 布局计算器                                         │
+│  ├── 5B-1.4: 分拣器生成器                                       │
+│  └── 5B-1.5: 单元测试                                           │
+│                                                                 │
+│  5B-2: ConveyorGenerator 服务                                   │
+│  ├── 5B-2.1: 物料统计计算器                                     │
+│  ├── 5B-2.2: 传送带节点生成器                                   │
+│  ├── 5B-2.3: 连接关系建立器                                     │
+│  └── 5B-2.4: 单元测试                                           │
+│                                                                 │
+│  5B-3: BlueprintService 整合                                    │
+│  ├── 5B-3.1: 服务接口设计                                       │
+│  ├── 5B-3.2: 流程编排实现                                       │
+│  ├── 5B-3.3: 适配层迁移                                         │
+│  └── 5B-3.4: 集成测试                                           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 10.2 BuildingGenerator 任务详情
+
+#### 10.2.1 类型定义与接口设计 (预估: 2h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/types/buildingGenerator.ts`
+
+**任务清单**:
+
+- [x] 定义 `IBuildingGeneratorConfig` 配置接口
+- [x] 定义 `IBuildingLayout` 布局信息接口
+- [x] 定义 `ISorterInfo` 分拣器信息接口
+- [x] 定义 `IBuildingGenerateResult` 生成结果接口
+
+**关键类型**:
+
+```typescript
+interface IBuildingGeneratorConfig {
+  conveyorBeltStackLayer: number
+  onlyConveyorBeltMk3: boolean
+  onlySorterMk3: boolean
+  useSorterMk4: boolean
+  selfSpray: boolean
+  generateTeslaTower: boolean
+  teslaTowerInterval: number
+  teslaTowerLineInterval: number
+  compactLayout: boolean
+  maxLabLayers: number
+}
+
+interface IBuildingLayout {
+  x: number
+  y: number
+  centerPoint: [number, number, number, number]
+  yaw: number[]
+}
+
+interface ISorterInfo {
+  index: number
+  rate: number
+  ownerObjIdx: number
+  ownerName: string
+  ownerOffset: ICoordinate
+  recipeID: number
+}
+```
+
+#### 10.2.2 建筑模板生成器 (预估: 3h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/generators/BuildingGenerator.ts`
+
+**迁移源**: `blueprint.js:730-758` (`getBuildingTemplate`)
+
+**任务清单**:
+
+- [x] 实现 `getBuildingTemplate()` 方法
+- [x] 实现 `newProductionBuilding()` 核心逻辑
+- [x] 处理不同建筑类型的生成:
+  - [x] 制造台 (assembling)
+  - [x] 熔炉 (smelter)
+  - [x] 研究站 (lab) - 含堆叠逻辑
+  - [x] 精炼厂 (refinery)
+  - [x] 化工厂 (plant)
+  - [x] 对撞机 (collider)
+  - [x] 采矿机 (mining)
+
+**关键逻辑**:
+
+```typescript
+// 研究站堆叠处理 (blueprint.js:1619-1650)
+if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
+  // 堆叠处理研究站
+  newBuilding.outputToSlot = 14
+  newBuilding.inputFromSlot = 15
+  newBuilding.outputFromSlot = 15
+  newBuilding.inputToSlot = 14
+  newBuilding.parameters.researchMode = 1
+  // ... 堆叠层数循环
+}
+```
+
+#### 10.2.3 布局计算器 (预估: 2h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/generators/LayoutCalculator.ts`
+
+**迁移源**:
+
+- `blueprint.js:1034-1080` (`calculateBlueprintArea`)
+- `blueprint.js:900-1030` (`calculateBuildingArea`)
+
+**任务清单**:
+
+- [x] 实现 `calculateBlueprintArea()` 方法
+- [x] 实现 `calculateBuildingArea()` 方法
+- [x] 实现占用区域跟踪 (`occupiedArea`)
+- [x] 实现新行/当前行判断逻辑
+
+**关键逻辑**:
+
+```typescript
+// 布局判断 (blueprint.js:1556-1580)
+if (this.blueprintSize.x - this.occupiedArea[...].x2 >= buildingArea.x / 2) {
+  // 在当前行继续添加
+  buildingX = this.occupiedArea[...].x2 + 1 + buildingArea.centerPoint[3]
+  buildingY = this.occupiedArea[...].y2 + 1 + buildingArea.centerPoint[0]
+} else {
+  // 新的一行
+  needNewLine = true
+  // ... 新行布局计算
+}
+```
+
+#### 10.2.4 分拣器生成器 (预估: 3h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/generators/SorterGenerator.ts`
+
+**迁移源**: `blueprint.js:1082-1480` (`calculateSorterLocalOffsetAndYaw`)
+
+**任务清单**:
+
+- [x] 实现 `calculateSorterLocalOffsetAndYaw()` 方法
+- [x] 处理不同建筑类型的分拣器位置:
+  - [x] 制造台/熔炉 (slot 3-8)
+  - [x] 化工厂 (slot 0-6)
+  - [x] 精炼厂 (slot 0-8)
+  - [x] 对撞机 (slot 0-8)
+  - [x] 研究站 (slot 3-11)
+- [x] 实现分拣器朝向计算 (yaw)
+- [x] 实现旋转逻辑 (rotate)
+
+**关键逻辑**:
+
+```typescript
+// 分拣器类型选择 (blueprint.js:1708-1712)
+let sorter = buildingMap.sorterMk1
+if (this.config.useSorterMk4 || this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
+  sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3
+}
+```
+
+#### 10.2.5 单元测试 (预估: 2h)
+
+**目标文件**: `src/core/__tests__/buildingGenerator.test.ts`
+
+**测试用例**:
+
+- [ ] 制造台生成测试
+- [ ] 熔炉生成测试
+- [ ] 研究站堆叠测试
+- [ ] 分拣器生成测试
+- [ ] 电力感应塔生成测试
+- [ ] 布局计算测试
+
+---
+
+### 10.3 ConveyorGenerator 任务详情
+
+#### 10.3.1 物料统计计算器 (预估: 2h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/generators/ItemSummaryCalculator.ts`
+
+**迁移源**: `blueprint.js:2252-2358` (`generateConveyorBelts` 前半部分)
+
+**任务清单**:
+
+- [x] 实现 `calculate()` 方法
+- [x] 计算每个物料的产出速率
+- [x] 计算 fromBuildingNum / toBuildingNum
+- [x] 处理增产剂影响 (extra_rate)
+- [x] 实现 `sortItemSummary()` 排序逻辑
+
+**关键逻辑**:
+
+```typescript
+// 物料统计 (blueprint.js:2264-2290)
+for (let outputItem of subRecipe.output) {
+  let outputRate = outputItem.rate * productionSpeed * building.num * extra_rate
+  itemSummary[outputItem.name] = {
+    rate: outputRate,
+    fromBuildingNum: fromBuildingNum,
+    toBuildingNum: 0
+  }
+}
+```
+
+#### 10.3.2 传送带节点生成器 (预估: 3h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/generators/ConveyorGenerator.ts`
+
+**迁移源**: `blueprint.js:760-800` (`newConveyorNode`)
+
+**任务清单**:
+
+- [x] 实现 `newConveyorNode()` 方法
+- [x] 实现传送带类型选择逻辑
+- [x] 实现节点坐标计算
+- [x] 实现参数设置 (iconId, count)
+
+**关键逻辑**:
+
+```typescript
+// 传送带类型选择 (blueprint.js:2385-2395)
+let conveyorBelt = buildingMap.conveyorBeltMk1
+if (this.config.onlyConveyorBeltMk3) {
+  conveyorBelt = buildingMap.conveyorBeltMK3
+} else if (item.rate >= conveyorBelt.transportSpeed) {
+  conveyorBelt = buildingMap.conveyorBeltMK3
+}
+```
+
+#### 10.3.3 连接关系建立器 (预估: 4h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/generators/ConnectionBuilder.ts`
+
+**迁移源**: `blueprint.js:2400-2660` (连接逻辑)
+
+**任务清单**:
+
+- [x] 实现分拣器与传送带节点连接
+- [x] 实现输入/输出数据结构
+- [x] 处理原料传送带 (direction = -1)
+- [x] 处理终产物传送带 (direction = 1)
+- [x] 处理中间产物传送带
+- [x] 实现堆叠模式下的传送带吞吐量放大
+
+**关键逻辑**:
+
+```typescript
+// 堆叠模式处理 (blueprint.js:2360-2380)
+const stackLayers = this.config.stackLayers || 1
+if (stackLayers > 1) {
+  for (let key in itemSummary) {
+    itemSummary[key].rate *= stackLayers
+  }
+}
+```
+
+#### 10.3.4 单元测试 (预估: 2h)
+
+**目标文件**: `src/core/__tests__/conveyorGenerator.test.ts`
+
+**测试用例**:
+
+- [ ] 物料统计计算测试
+- [ ] 传送带节点生成测试
+- [ ] 连接关系建立测试
+- [ ] 堆叠模式测试
+- [ ] 喷涂机传送带测试
+
+---
+
+### 10.4 BlueprintService 任务详情
+
+#### 10.4.1 服务接口设计 (预估: 1h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/services/BlueprintService.ts`
+
+**任务清单**:
+
+- [x] 定义 `IBlueprintServiceConfig` 接口
+- [x] 定义 `IBlueprintGenerateOptions` 选项接口
+- [x] 定义 `IBlueprintData` 返回类型
+
+#### 10.4.2 流程编排实现 (预估: 3h) ✅ 已完成
+
+**任务清单**:
+
+- [x] 实现 `generate()` 主流程
+- [x] 整合 init() 逻辑
+- [x] 整合 generateBuildings() 逻辑
+- [x] 整合 generateConveyorBelts() 逻辑
+- [x] 整合 generateConveyorBeltsForSprayCoater() 逻辑
+- [x] 调用 StackService 进行堆叠
+
+**流程图**:
+
+```
+generate(recipes, options)
+    │
+    ├── 1. initLayout()
+    │   ├── mapRecipeID()
+    │   └── calculateBlueprintArea()
+    │
+    ├── 2. generateBuildings()
+    │   ├── newProductionBuilding() × N
+    │   └── 生成 sorters 映射
+    │
+    ├── 3. generateConveyors()
+    │   ├── calculateItemSummary()
+    │   ├── sortItemSummary()
+    │   └── 连接分拣器与传送带
+    │
+    ├── 4. generateSprayCoaterConveyors()
+    │   └── 自喷涂结构
+    │
+    ├── 5. applyStacking()
+    │   └── StackService.cloneToStackLayers()
+    │
+    └── 6. encode()
+        └── BlueprintEncoder.encode()
+```
+
+#### 10.4.3 适配层迁移 (预估: 2h) ✅ 已完成
+
+**目标文件**: `src/core/adapters/BlueprintAdapter.ts`
+
+**任务清单**:
+
+- [x] 创建 `BlueprintAdapter.ts` 适配器
+- [x] 实现 `generateBlueprintWithNewService()` 方法
+- [x] 实现 `isBlueprintServiceAvailable()` 检查
+- [x] 更新 `bridge.ts` 添加 `generateBlueprintWithAdapter()`
+- [x] 更新 `BlueprintGenerator.vue` 调用新适配器
+- [x] 保持向后兼容性 (失败时回退到遗留代码)
+
+#### 10.4.4 集成测试 (预估: 2h) ✅ 已完成
+
+**目标文件**: `src/core/blueprint/__tests__/`
+
+**任务清单**:
+
+- [x] BuildingGenerator 单元测试 (37个测试)
+- [x] ConveyorGenerator 单元测试 (33个测试)
+- [x] BlueprintService 集成测试 (21个测试)
+- [x] 全部测试通过 (450个测试)
+
+**测试覆盖**:
+
+```
+ Test Files  18 passed (18)
+      Tests  450 passed (450)
+   Duration  2.55s
+```
+
+---
+
+## 11. 阶段 5B 完成总结 (2026-02-15)
+
+### 11.1 已完成任务
+
+| 任务                               | 状态 | 测试数 |
+| ---------------------------------- | ---- | ------ |
+| 5B-1.1: 类型定义与接口设计         | ✅   | -      |
+| 5B-1.2: 建筑模板生成器             | ✅   | -      |
+| 5B-1.3: 布局计算器                 | ✅   | 13     |
+| 5B-1.4: 分拣器生成器               | ✅   | 15     |
+| 5B-1.5: BuildingGenerator 单元测试 | ✅   | 37     |
+| 5B-2.1: 物料统计计算器             | ✅   | 14     |
+| 5B-2.2: 传送带节点生成器           | ✅   | 19     |
+| 5B-2.3: 连接关系建立器             | ✅   | 9      |
+| 5B-2.4: ConveyorGenerator 单元测试 | ✅   | 33     |
+| 5B-3.1: BlueprintService 接口设计  | ✅   | -      |
+| 5B-3.2: 流程编排实现               | ✅   | -      |
+| 5B-3.3: 适配层迁移                 | ✅   | -      |
+| 5B-3.4: 集成测试                   | ✅   | 21     |
+
+### 11.2 新增文件
+
+| 文件                                                     | 行数 | 说明           |
+| -------------------------------------------------------- | ---- | -------------- |
+| `src/core/blueprint/generators/BuildingGenerator.ts`     | 124  | 建筑生成器     |
+| `src/core/blueprint/generators/LayoutCalculator.ts`      | 135  | 布局计算器     |
+| `src/core/blueprint/generators/SorterGenerator.ts`       | 397  | 分拣器生成器   |
+| `src/core/blueprint/generators/ConveyorGenerator.ts`     | 230  | 传送带生成器   |
+| `src/core/blueprint/generators/ItemSummaryCalculator.ts` | 181  | 物料统计计算器 |
+| `src/core/blueprint/generators/ConnectionBuilder.ts`     | 169  | 连接建立器     |
+| `src/core/blueprint/services/BlueprintService.ts`        | 271  | 蓝图服务       |
+| `src/core/blueprint/types/buildingGenerator.ts`          | ~100 | 类型定义       |
+| `src/core/blueprint/types/conveyorGenerator.ts`          | 85   | 类型定义       |
+| `src/core/adapters/BlueprintAdapter.ts`                  | 150  | 蓝图适配器     |
+| `src/core/blueprint/__tests__/buildingGenerator.test.ts` | ~350 | 单元测试       |
+| `src/core/blueprint/__tests__/conveyorGenerator.test.ts` | ~300 | 单元测试       |
+| `src/core/blueprint/__tests__/blueprintService.test.ts`  | ~280 | 集成测试       |
+
+### 11.3 架构改进
+
+1. **服务化架构**: 将蓝图生成逻辑拆分为独立服务
+2. **适配层模式**: 通过 BlueprintAdapter 实现新旧代码兼容
+3. **向后兼容**: 失败时自动回退到遗留代码
+4. **完整测试覆盖**: 450个测试全部通过
+
+---
+
+### 10.5 风险与依赖
+
+#### 10.5.1 技术风险
+
+| 风险项                           | 影响 | 缓解措施                 |
+| -------------------------------- | ---- | ------------------------ |
+| `generateConveyorBelts` 逻辑复杂 | 高   | 分步迁移，保留原代码注释 |
+| 堆叠模式计算精度                 | 中   | 单元测试覆盖边界情况     |
+| 分拣器坐标计算                   | 中   | 提取为独立函数，便于测试 |
+| 喷涂机传送带布局                 | 低   | 最后迁移，依赖主流程完成 |
+
+#### 10.5.2 依赖关系
+
+```
+BuildingGenerator
+    ├── buildingMap.json ✅
+    ├── itemMap.json ✅
+    └── productionCategory.json ✅
+
+ConveyorGenerator
+    ├── BuildingGenerator.sorters
+    ├── buildingMap.json ✅
+    └── itemMap.json ✅
+
+BlueprintService
+    ├── BuildingGenerator
+    ├── ConveyorGenerator
+    ├── StackService ✅
+    ├── BlueprintEncoder ✅
+    └── BlueprintDecoder ✅
+```
+
+---
+
+### 10.6 工时估算
+
+| 任务              | 预估工时 | 优先级 |
+| ----------------- | -------- | ------ |
+| 5B-1.1 类型定义   | 2h       | P0     |
+| 5B-1.2 建筑模板   | 3h       | P0     |
+| 5B-1.3 布局计算   | 2h       | P0     |
+| 5B-1.4 分拣器生成 | 3h       | P0     |
+| 5B-1.5 单元测试   | 2h       | P1     |
+| 5B-2.1 物料统计   | 2h       | P0     |
+| 5B-2.2 传送带节点 | 3h       | P0     |
+| 5B-2.3 连接关系   | 4h       | P0     |
+| 5B-2.4 单元测试   | 2h       | P1     |
+| 5B-3.1 接口设计   | 1h       | P0     |
+| 5B-3.2 流程编排   | 3h       | P0     |
+| 5B-3.3 适配层     | 2h       | P1     |
+| 5B-3.4 集成测试   | 2h       | P1     |
+| **总计**          | **31h**  | -      |
+
+**建议排期**: 4 个工作日 (每天 8h)

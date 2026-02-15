@@ -59,6 +59,13 @@ export interface ILegacyWindow {
   loadNumber: () => unknown
   find: (name: string, normalize_recipe?: boolean) => ILegacyDataItem | null
   generateBlueprint: () => void
+  getRecipe: () => {
+    proliferator?: string
+    recipeList: unknown[]
+    blueprintTitle: string
+    blueprintIcon: string[]
+    blueprintDesc: string
+  }
   icons: Record<string, string>
   xh_list: ILegacyXhItem[]
   out_list: ILegacyOutItem[]

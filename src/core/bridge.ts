@@ -1,6 +1,13 @@
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
 import { settingsAdapter } from './adapters/SettingsAdapter'
+import {
+  generateBlueprintWithNewService,
+  isBlueprintServiceAvailable,
+  ILegacyRecipe,
+  ILegacyBlueprintConfig,
+  ILegacySubRecipe
+} from './adapters/BlueprintAdapter'
 import { logger } from '../utils/logger'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 import type { IRawRecipe } from './types/settings'
@@ -288,6 +295,63 @@ export function legacyGenerateBlueprint(): void {
   const win = getWin()
   if (typeof win.generateBlueprint === 'function') {
     win.generateBlueprint()
+  }
+}
+
+export function getLegacyRecipe(): ILegacyRecipe | null {
+  const win = getWin()
+  if (typeof win.getRecipe === 'function') {
+    const recipe = win.getRecipe()
+    return {
+      proliferator: recipe.proliferator,
+      subRecipes: recipe.recipeList as ILegacySubRecipe[]
+    }
+  }
+  return null
+}
+
+export function generateBlueprintWithAdapter(): { success: boolean; error?: string } {
+  const win = getWin()
+
+  if (!isBlueprintServiceAvailable()) {
+    logger.warn('[bridge] BlueprintService not available, falling back to legacy')
+    legacyGenerateBlueprint()
+    return { success: true }
+  }
+
+  try {
+    const recipe = getLegacyRecipe()
+    if (!recipe || !recipe.subRecipes) {
+      return { success: false, error: 'No recipe data available' }
+    }
+
+    const config: ILegacyBlueprintConfig = legacyGetConfigFromDOM()
+
+    const result = generateBlueprintWithNewService(recipe, config)
+
+    if (!result.success) {
+      logger.warn('[bridge] New service failed, falling back to legacy:', result.error)
+      legacyGenerateBlueprint()
+      return { success: true }
+    }
+
+    if (result.blueprintString) {
+      navigator.clipboard
+        .writeText(result.blueprintString)
+        .then(() => {
+          cocoMessageProxy('已复制到粘贴板', 'success')
+        })
+        .catch(err => {
+          logger.error('[bridge] Failed to copy to clipboard:', err)
+        })
+    }
+
+    return { success: true }
+  } catch (error) {
+    const err = error as Error
+    logger.error('[bridge] generateBlueprintWithAdapter error:', err)
+    legacyGenerateBlueprint()
+    return { success: true }
   }
 }
 
