@@ -42,6 +42,7 @@ export default {
     space: '占地面积',
     noResults: '请先添加需求并点击计算',
     calculating: '正在计算...',
+    iconsLoading: '图标加载中...',
     hideSource: '隐藏原料',
     icon: '图标',
     rate: '速率',

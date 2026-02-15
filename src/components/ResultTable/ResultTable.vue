@@ -13,6 +13,11 @@
       </button>
     </div>
 
+    <div v-else-if="items.length > 0 && !isIconsReady" class="icons-loading-state">
+      <div class="spinner-small" />
+      <span>{{ $t('resultTable.iconsLoading') }}</span>
+    </div>
+
     <table v-else-if="items.length > 0" class="result-table">
       <thead>
         <tr>
@@ -138,6 +143,8 @@ const emit = defineEmits<{
 const store = useBlueprintStore()
 const { getIcon } = useIconProvider()
 
+const isIconsReady = computed(() => store.isIconsLoaded)
+
 const visibleItems = computed(() => {
   if (!props.hideSource) return props.items
 
@@ -165,6 +172,7 @@ function isExcluded(name: string): boolean {
 }
 
 function getItemIcon(name: string): string | undefined {
+  if (!isIconsReady.value) return undefined
   const icon = getIcon(name)
   return icon || undefined
 }
@@ -314,7 +322,8 @@ function includeItem(item: TableItem) {
 
 .loading-state,
 .error-state,
-.empty-state {
+.empty-state,
+.icons-loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -324,10 +333,25 @@ function includeItem(item: TableItem) {
   gap: 12px;
 }
 
+.icons-loading-state {
+  padding: 30px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
 .spinner {
   width: 40px;
   height: 40px;
   border: 3px solid #e2e8f0;
+  border-top-color: #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e2e8f0;
   border-top-color: #3498db;
   border-radius: 50%;
   animation: spin 1s linear infinite;

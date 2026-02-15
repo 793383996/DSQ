@@ -42,7 +42,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
-import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
+import { isLegacyDataLoaded, waitForLegacyData, isGameDataLoaded } from './core/bridge'
 import type { LegacyWindow } from './core/types/legacy'
 import {
   calculatorService,
@@ -100,6 +100,16 @@ onMounted(async () => {
       store.addExclude(name)
     })
   }
+
+  const iconCheckInterval = setInterval(() => {
+    if (isGameDataLoaded()) {
+      store.checkIconsLoaded()
+      clearInterval(iconCheckInterval)
+      logger.log('[App] Game icons loaded')
+    }
+  }, 500)
+
+  setTimeout(() => clearInterval(iconCheckInterval), 30000)
 })
 
 onUnmounted(() => {})

@@ -42,6 +42,7 @@ export default {
     space: 'Space',
     noResults: 'Please add demands and click calculate',
     calculating: 'Calculating...',
+    iconsLoading: 'Loading icons...',
     hideSource: 'Hide Sources',
     icon: 'Icon',
     rate: 'Rate',

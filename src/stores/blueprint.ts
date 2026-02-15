@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { logger } from '../utils/logger'
 import type { IConsumptionItem, IResultItemOutput } from '../core/types/recipe'
 import { APP_CONFIG } from '../core/config/app.config'
+import { isGameDataLoaded } from '../core/bridge'
 
 export interface DemandItem {
   name: string
@@ -55,9 +56,15 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   const isCalculating = ref(false)
   const calculationError = ref<string | null>(null)
   const demandVersion = ref(0)
+  const isIconsLoaded = ref(false)
 
   const hasDemand = computed(() => demandList.value.length > 0)
   const demandCount = computed(() => demandList.value.length)
+
+  function checkIconsLoaded() {
+    isIconsLoaded.value = isGameDataLoaded()
+    return isIconsLoaded.value
+  }
 
   function addDemand(name: string, num: number = 1) {
     const existing = demandList.value.find(item => item.name === name)
@@ -155,6 +162,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     isCalculating,
     calculationError,
     demandVersion,
+    isIconsLoaded,
     hasDemand,
     demandCount,
     addDemand,
@@ -169,6 +177,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     setCalculating,
     setResultItems,
     setError,
-    clearAll
+    clearAll,
+    checkIconsLoaded
   }
 })

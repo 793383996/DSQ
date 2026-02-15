@@ -1,6 +1,6 @@
 # `data.js` 核心数据与逻辑解耦重构指南
 
-> **状态**：✅ 已完成 - 阶段 12 (配置数据与设置辅助拆分)
+> **状态**：✅ 已完成 - 阶段 13 (异步竞态修复)
 >
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
 
@@ -1723,11 +1723,11 @@ T4: 应用就绪
 
 ### 11.4 残留风险
 
-| 风险               | 级别  | 后续计划              |
-| ------------------ | ----- | --------------------- |
-| 异步竞态           | 🟡 中 | 添加加载状态检查      |
-| 全局状态污染       | 🟡 中 | 逐步迁移到Pinia Store |
-| blueprint.js未拆分 | 🟢 低 | 保持稳定，后续优化    |
+| 风险               | 级别      | 后续计划              |
+| ------------------ | --------- | --------------------- |
+| 异步竞态           | 🟢 已修复 | 添加加载状态检查      |
+| 全局状态污染       | 🟡 中     | 逐步迁移到Pinia Store |
+| blueprint.js未拆分 | 🟢 低     | 保持稳定，后续优化    |
 
 ### 11.5 后续优化方向
 
@@ -1735,3 +1735,54 @@ T4: 应用就绪
 2. **Web Worker优化** - 计算密集型任务放入Worker
 3. **E2E测试覆盖** - 添加端到端测试
 4. **blueprint.js拆分** - 蓝图编码/解码逻辑分离
+
+---
+
+## 12. Phase 13: 异步竞态修复 (已完成)
+
+**目标：** 解决图标加载与UI操作的时序问题
+
+| 步骤 | 任务                  | 状态 | 说明                               |
+| ---- | --------------------- | ---- | ---------------------------------- |
+| 13.1 | isIconsLoaded状态添加 | ✅   | blueprint store添加图标加载状态    |
+| 13.2 | 图标加载检查          | ✅   | App.vue轮询检查isGameDataLoaded    |
+| 13.3 | 图标占位符显示        | ✅   | ResultTable添加icons-loading-state |
+| 13.4 | i18n国际化            | ✅   | 添加iconsLoading翻译               |
+
+**13.1 blueprint store更新：**
+
+```typescript
+// 新增状态
+const isIconsLoaded = ref(false)
+
+// 新增方法
+function checkIconsLoaded() {
+  isIconsLoaded.value = isGameDataLoaded()
+  return isIconsLoaded.value
+}
+```
+
+**13.2 App.vue图标加载检查：**
+
+```typescript
+const iconCheckInterval = setInterval(() => {
+  if (isGameDataLoaded()) {
+    store.checkIconsLoaded()
+    clearInterval(iconCheckInterval)
+    logger.log('[App] Game icons loaded')
+  }
+}, 500)
+
+setTimeout(() => clearInterval(iconCheckInterval), 30000)
+```
+
+**13.3 ResultTable图标加载状态：**
+
+```vue
+<div v-else-if="items.length > 0 && !isIconsReady" class="icons-loading-state">
+  <div class="spinner-small" />
+  <span>{{ $t('resultTable.iconsLoading') }}</span>
+</div>
+```
+
+**测试验证：** 308个测试全部通过
