@@ -86,9 +86,9 @@ export interface IExcludeItem {
 }
 
 /**
- * 计算上下文
+ * 计算上下文配置
  */
-export interface ICalculationContext {
+export interface ICalculationContextConfig {
   demands: Array<{ name: string; num: number }>
   excludes: string[]
   settings: IRecipeSettings

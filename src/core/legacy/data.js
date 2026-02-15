@@ -10,7 +10,9 @@ import {
   settings,
   settings_time,
   settings_pf,
-  projects
+  projects,
+  saveSettingProjects,
+  loadSettingProjects
 } from './storageManager.js'
 import { getGroup, getPfs, getPfsByQ } from './recipeHelper.js'
 import {
@@ -31,7 +33,10 @@ import {
   clearCalculatorState,
   setIgNames,
   loadNumberDepth,
-  maxLoadNumberDepth
+  maxLoadNumberDepth,
+  getXhs,
+  doMergeMul,
+  mergeMul
 } from './calculator.js'
 import {
   game_data,
@@ -767,7 +772,12 @@ function selectPf(name, value) {
     settings_pf[name] = parseInt(value)
     update_all()
   } catch (e) {
-    settings_pf = old_settings_pf
+    Object.keys(settings_pf).forEach(function (key) {
+      delete settings_pf[key]
+    })
+    Object.keys(old_settings_pf).forEach(function (key) {
+      settings_pf[key] = old_settings_pf[key]
+    })
     update_all()
     if (e.name == 'RangeError') {
       cocoMessage.warning(
@@ -788,14 +798,15 @@ function f_reset() {
   update_all()
 }
 function f_reset_ig() {
-  ig_names = []
+  setIgNames([])
 
   update_all()
 }
 function f_remove_ig(name) {
-  ig_names = ig_names.filter(function (one) {
+  var filtered = ig_names.filter(function (one) {
     return one != name
   })
+  setIgNames(filtered)
   update_all()
 }
 

@@ -17,9 +17,7 @@ export {
   getBuildingByItemId,
   getProductionSpeed,
   isLabBuilding,
-  isSmelterBuilding,
-  PRODUCTION_CATEGORY,
-  BUILDING_TYPE
+  isSmelterBuilding
 } from '../types/buildingMap'
 
 export type { IItemInfo, IItemData, IBuildingInfo, IBuildingData } from '../types/blueprint'

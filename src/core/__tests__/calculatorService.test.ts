@@ -524,11 +524,17 @@ describe('CalculatorService', () => {
         totalAcc: '0',
         xqs: []
       }
+      window.xh_list = []
+      window.out_list = []
+      window.xhMap = {}
+      window.outMap = {}
 
       const result = await service.calculateWithEngine([{ name: '铁块', num: 60 }])
 
       expect(result).toBeDefined()
-      expect(result.items).toBeDefined()
+      expect(result.success).toBe(true)
+      expect(result.xh_list).toBeDefined()
+      expect(result.out_list).toBeDefined()
     })
 
     it('should pass excludes to calculator', async () => {

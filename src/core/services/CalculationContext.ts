@@ -2,11 +2,10 @@ import type {
   ICalculationContext,
   ICalculationConfig,
   IConsumptionEntry,
-  IProductionEntry,
-  IDemandItem
+  IProductionEntry
 } from '../types/calculator'
 import type { IRecipeSettings, ISpeedSettings, IProductivitySettings } from '../types/settings'
-import type { IRecipeItem } from '../types/recipe'
+import type { IRecipeItem, IDemandItem } from '../types/recipe'
 import { logger } from '../../utils/logger'
 
 const DEFAULT_CONFIG: ICalculationConfig = {

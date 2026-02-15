@@ -96,11 +96,11 @@ export function useIconProvider() {
   }
 
   function getIconNames(): string[] {
-    return Object.keys(ItemMap).map(key => ItemMap[key].name)
+    return Object.keys(itemMap).map(key => itemMap[key].name)
   }
 
   function getIconByKey(key: string): string | null {
-    const item = ItemMap[key]
+    const item = itemMap[key]
     if (item && item.name) {
       return getIcon(item.name)
     }

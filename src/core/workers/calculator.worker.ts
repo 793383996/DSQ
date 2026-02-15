@@ -1,4 +1,3 @@
-import type { IRecipe } from '../types/recipe'
 import type {
   IWorkerCalculateRequest,
   IWorkerCalculateResponse,
@@ -6,7 +5,22 @@ import type {
   IWorkerInitResponse
 } from './types'
 
-let recipes: IRecipe[] = []
+interface ILegacyRecipeItem {
+  name: string
+  n?: number
+}
+
+interface ILegacyRecipe {
+  id: number
+  s: ILegacyRecipeItem[]
+  q: ILegacyRecipeItem[]
+  t: number
+  m?: string | Array<{ name: string; speed: number }>
+  noExtra?: boolean | null
+  group?: string
+}
+
+let recipes: ILegacyRecipe[] = []
 let settings: Record<number, { accType?: string; accValue?: string; m?: string }> = {}
 let settingsPf: Record<string, number> = {}
 let settingsTime: Record<string, number> = {}
@@ -63,23 +77,18 @@ function findOut(name: string): number | null {
   return item ? item.value : null
 }
 
-interface IRecipeItem {
-  name: string
-  n: number
-}
-
 interface IInternalRecipe {
   id: number
-  s: IRecipeItem[]
-  q: IRecipeItem[]
+  s: Array<{ name: string; n: number }>
+  q: Array<{ name: string; n: number }>
   t: number
   n: number
   m?: string | Array<{ name: string; speed: number }>
-  noExtra?: boolean
+  noExtra?: boolean | null
 }
 
 function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
-  function get(item: IRecipe): IInternalRecipe | null {
+  function get(item: ILegacyRecipe): IInternalRecipe | null {
     const o: IInternalRecipe = {
       id: item.id,
       s: item.s.map(s => ({ name: s.name, n: s.n ?? 1 })),
@@ -87,7 +96,7 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
       t: item.t || 1,
       n: 1,
       m: item.m,
-      noExtra: item.noExtra
+      noExtra: item.noExtra ?? undefined
     }
 
     if (normalize_recipe) {
@@ -199,7 +208,7 @@ function loadNumber(itemName: string, n: number): void {
     }
 
     const accType = (settings[item.id] || {}).accType || defaultAccType
-    const accValue = (settings[item.id] || {}).accValue || defaultAccValue
+    let accValue = (settings[item.id] || {}).accValue || defaultAccValue
     let accTotal = 0
 
     for (let i = 0; item.q && i < item.q.length; i++) {
@@ -212,245 +221,56 @@ function loadNumber(itemName: string, n: number): void {
         let r = (n * (q.n || 1)) / (item.n || 1)
         let v = 1,
           tm = 0
-        if (accType === '增产剂Mk.Ⅰ') ((v = 1.125), (tm = 12))
-        else if (accType === '增产剂Mk.Ⅱ') ((v = 1.2), (tm = 24))
-        else if (accType === '增产剂Mk.Ⅲ') ((v = 1.25), (tm = 60))
-
-        if (accValue === '增产' && item.noExtra) accValue = '无'
-        if (item.q.length === 0 || item.noExtra === null) accValue = '无'
-
-        if (accValue === '加速') {
-          accTotal += r / tm
-        } else if (accValue === '增产') {
-          r /= v
-          accTotal += r / tm
+        if (accType === '增产剂Mk.Ⅰ') {
+          v = 1.125
+          tm = 12
+        } else if (accType === '增产剂Mk.Ⅱ') {
+          v = 1.2
+          tm = 24
+        } else if (accType === '增产剂Mk.Ⅲ') {
+          v = 1.25
+          tm = 60
         }
 
+        if (accValue === '增产' && item.noExtra) accValue = '无'
+
+        if (accValue === '增产') {
+          r = r / v
+        } else if (accValue === '加速') {
+          const extra = r * (v - 1)
+          addXH(itemName, extra)
+          accTotal += extra * tm
+        }
+
+        const outValue = findOut(q.name)
+        if (outValue !== null && outValue < 0) {
+          const abs_out = Math.abs(outValue)
+          if (abs_out > r) {
+            addOut(q.name, r)
+            loadNumberDepth--
+            return
+          } else {
+            addOut(q.name, abs_out)
+            r = r - abs_out
+          }
+        }
         loadNumber(q.name, r)
       }
     }
-    addAccTotal(itemName, accTotal)
-  } finally {
+
+    if (accTotal > 0) {
+      addAccTotal(itemName, accTotal)
+    }
     loadNumberDepth--
-  }
-}
-
-function getXhs(itemId: number): IInternalItem[] {
-  const xhs: IInternalItem[] = []
-  for (let i = 0; i < xh_list.length; i++) {
-    const xh = xh_list[i]
-    if (!xh.value) continue
-    const itemName = xh.name
-    const item = find(itemName, false)
-    if (item && item.id === itemId) xhs.push(xh)
-  }
-  return xhs
-}
-
-function doMergeMul(xhs: IInternalItem[]): void {
-  let maxValue2Index = -1
-  let max = 0
-  for (let i = 0; i < xhs.length; i++) {
-    if ((xhs[i].value2 || 0) > max) {
-      maxValue2Index = i
-      max = xhs[i].value2 || 0
-    }
-  }
-
-  for (let i = 0; i < xhs.length; i++) {
-    if (i !== maxValue2Index && (xhs[i].value2 || 0) > 0) {
-      const number = xhs[i].value
-      xhs[i].value2 = 0
-      const item = find(xhs[i].name, false)
-      if (!item) continue
-      for (let j = 0; j < item.s.length; j++) {
-        addOut(item.s[j].name, (number * (item.s[j].n || 1)) / (item.n || 1))
-      }
+  } finally {
+    if (loadNumberDepth > 0) {
+      loadNumberDepth--
     }
   }
 }
 
-function _mergeMul(): void {
-  const gs: IInternalItem[][] = []
-  const ids: number[] = []
-  for (let i = 0; i < xh_list.length; i++) {
-    const xh = xh_list[i]
-    if (!xh.value) continue
-    const itemName = xh.name
-    const item = find(itemName, false)
-    if (!item) continue
-    if (ids.indexOf(item.id) !== -1) continue
-    const xhs = getXhs(item.id)
-
-    if (xhs.length > 1) {
-      gs.push(xhs)
-      ids.push(item.id)
-    }
-  }
-  for (let i = 0; i < gs.length; i++) {
-    doMergeMul(gs[i])
-  }
-}
-
-function checkResult(): void {
-  function isOverflow(item: IInternalRecipe): boolean {
-    for (let j = 0; j < item.s.length; j++) {
-      const s = item.s[j]
-      const out = findOut(s.name)
-      if (out === null) continue
-      if (out < 0) {
-        return true
-      }
-    }
-    return false
-  }
-
-  for (let i = 0; i < xh_list.length; i++) {
-    const xh = xh_list[i]
-    if (!xh.value) continue
-    const itemName = xh.name
-    const item = find(itemName, false)
-    if (!item) continue
-
-    if (isOverflow(item)) {
-      const need = xh.value
-      let produce = 0
-      for (let j = 0; j < item.s.length; j++) {
-        const s = item.s[j]
-        if (s.name === itemName) {
-          produce = (xh.value * (s.n || 1)) / (item.n || 1)
-          break
-        }
-      }
-
-      const ratio = need / produce
-      if (ratio > 0 && ratio < 1) {
-        xh.value = produce
-        xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
-      }
-    }
-  }
-}
-
-function fixGzSpeed(): void {
-  let gzItem: IInternalItem | null = null
-  for (let i = 0; i < xh_list.length; i++) {
-    if (xh_list[i].name === '光栅石') {
-      gzItem = xh_list[i]
-      break
-    }
-  }
-  if (!gzItem) return
-
-  const gzRecipe = find('光栅石', false)
-  if (!gzRecipe) return
-
-  const machine = gzRecipe.m
-  if (typeof machine !== 'string' || machine !== '采矿机') return
-
-  const gzValue = gzItem.value
-  if (gzValue <= 0) return
-
-  const speed = settingsTime['采矿机'] || 1
-
-  gzItem.value = gzValue / speed
-}
-
-function clearState(): void {
-  xh_list = []
-  out_list = []
-  xhMap = {}
-  outMap = {}
-  ig_names = []
-  loadNumberDepth = 0
-}
-
-function setExcludes(names: string[]): void {
-  ig_names = names || []
-}
-
-function calculate(
-  demands: Array<{ name: string; num: number }>,
-  excludes: string[],
-  singleMakes?: Array<{ id: number; number: number }>
-): IWorkerCalculateResponse['result'] {
-  clearState()
-  setExcludes(excludes || [])
-
-  try {
-    fixGzSpeed()
-
-    if (singleMakes && singleMakes.length > 0) {
-      for (let m = 0; m < singleMakes.length; m++) {
-        const recipeId = singleMakes[m].id
-        const recipe = recipes[recipeId]
-        if (!recipe) continue
-
-        const recipeSettings = settings[recipeId] || {}
-        const machine =
-          recipeSettings.m ||
-          (recipe.m && typeof recipe.m === 'object' && recipe.m[0]?.name) ||
-          (typeof recipe.m === 'string' ? recipe.m : '')
-        let machineSpeed = 1
-
-        if (recipe.m && typeof recipe.m === 'object') {
-          for (let k = 0; k < recipe.m.length; k++) {
-            if (recipe.m[k].name === machine) {
-              machineSpeed = recipe.m[k].speed
-              break
-            }
-          }
-        }
-
-        const times = parseFloat(
-          ((60 * parseInt(String(singleMakes[m].number)) * machineSpeed) / (recipe.t || 1)).toFixed(
-            6
-          )
-        )
-
-        for (let i = 0; i < recipe.s.length; i++) {
-          loadNumber(recipe.s[i].name, -1 * times * (recipe.s[i].n || 1))
-        }
-        if (recipe.q) {
-          for (let j = 0; j < recipe.q.length; j++) {
-            loadNumber(recipe.q[j].name, times * (recipe.q[j].n || 1))
-          }
-        }
-      }
-    }
-
-    if (demands && demands.length > 0) {
-      for (let m = 0; m < demands.length; m++) {
-        const demand = demands[m]
-        const itemName = demand.name
-        const number = demand.num || 0
-        loadNumber(itemName, number)
-      }
-    }
-
-    checkResult()
-
-    return {
-      success: true,
-      xh_list: xh_list.slice(),
-      out_list: out_list.slice(),
-      xhMap: Object.assign({}, xhMap),
-      outMap: Object.assign({}, outMap)
-    }
-  } catch (e) {
-    clearState()
-    return {
-      success: false,
-      xh_list: [],
-      out_list: [],
-      xhMap: {},
-      outMap: {}
-    }
-  }
-}
-
-function handleInit(data: IWorkerInitRequest): IWorkerInitResponse {
-  recipes = data.recipes
+function init(data: IWorkerInitRequest): IWorkerInitResponse {
+  recipes = data.recipes as unknown as ILegacyRecipe[]
   settings = data.settings
   settingsPf = data.settingsPf
   settingsTime = data.settingsTime
@@ -462,16 +282,46 @@ function handleInit(data: IWorkerInitRequest): IWorkerInitResponse {
   }
 }
 
-function handleCalculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
-  if (data.defaultAccType) defaultAccType = data.defaultAccType
-  if (data.defaultAccValue) defaultAccValue = data.defaultAccValue
+function calculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
+  xh_list = []
+  out_list = []
+  xhMap = {}
+  outMap = {}
+  ig_names = data.excludes || []
+  loadNumberDepth = 0
 
-  const result = calculate(data.demands, data.excludes, data.singleMakes)
+  recipes = data.recipes as unknown as ILegacyRecipe[]
+  settings = data.settings
+  settingsPf = data.settingsPf
+  settingsTime = data.settingsTime
+  recipeIndexByProduct = data.recipeIndexByProduct
+  defaultAccType = data.defaultAccType
+  defaultAccValue = data.defaultAccValue
 
-  return {
-    type: 'result',
-    id: data.id,
-    result
+  try {
+    for (let i = 0; i < data.demands.length; i++) {
+      const d = data.demands[i]
+      loadNumber(d.name, d.num)
+    }
+
+    return {
+      type: 'result',
+      id: data.id,
+      result: {
+        success: true,
+        xh_list: xh_list,
+        out_list: out_list,
+        xhMap: xhMap,
+        outMap: outMap
+      }
+    }
+  } catch (e) {
+    const error = e as Error
+    return {
+      type: 'error',
+      id: data.id,
+      error: error.message
+    }
   }
 }
 
@@ -479,12 +329,12 @@ self.onmessage = function (e: MessageEvent) {
   const data = e.data
 
   if (data.type === 'init') {
-    const response = handleInit(data as IWorkerInitRequest)
+    const response = init(data as IWorkerInitRequest)
     self.postMessage(response)
   } else if (data.type === 'calculate') {
-    const response = handleCalculate(data as IWorkerCalculateRequest)
+    const response = calculate(data as IWorkerCalculateRequest)
     self.postMessage(response)
   }
 }
 
-export {}
+export { init, calculate, loadNumber, find, addXH, addOut, findOut }

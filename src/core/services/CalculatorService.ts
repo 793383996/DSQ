@@ -274,7 +274,20 @@ export class CalculatorService {
 
       if (typeof createCalculator !== 'function') {
         logger.warn('[CalculatorService] createCalculator not available, falling back to legacy')
-        return this.calculate(demands, excludes)
+        const legacyResult = await this.calculate(demands, excludes)
+        const win = window as unknown as Record<string, unknown>
+        return {
+          success: true,
+          xh_list: (win.xh_list || []) as Array<{
+            name: string
+            value: number
+            value2?: number
+            accTotal?: number
+          }>,
+          out_list: (win.out_list || []) as Array<{ name: string; value: number; value2?: number }>,
+          xhMap: (win.xhMap || {}) as Record<string, { name: string; value: number }>,
+          outMap: (win.outMap || {}) as Record<string, { name: string; value: number }>
+        }
       }
 
       const calculator = createCalculator({
@@ -290,7 +303,11 @@ export class CalculatorService {
         number: d.num
       }))
 
-      const result = calculator.calculate(formattedDemands, excludes, singleMakes)
+      const result = calculator.calculate(
+        formattedDemands,
+        excludes,
+        singleMakes
+      ) as IEngineCalculationResult
 
       if (result.success) {
         result.xh_list.forEach(item => {

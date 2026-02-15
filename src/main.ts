@@ -8,6 +8,21 @@ import { initLegacyBridge, loadLegacyModules } from './core/bridge'
 import { logger } from './utils/logger'
 import { i18n } from './i18n'
 import '../Scripts/style.css'
+import { registerSW } from 'virtual:pwa-register'
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('发现新版本，是否刷新页面？')) {
+      updateSW(true)
+    }
+  },
+  onOfflineReady() {
+    logger.log('[PWA] 应用已可离线使用')
+  },
+  onRegisterError(error) {
+    logger.error('[PWA] Service Worker 注册失败:', error)
+  }
+})
 
 initLegacyBridge()
 

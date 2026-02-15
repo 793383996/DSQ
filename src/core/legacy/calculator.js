@@ -400,5 +400,7 @@ export {
   fixGzSpeed,
   getAccSpeed,
   clearCalculatorState,
-  setIgNames
+  setIgNames,
+  loadNumberDepth,
+  maxLoadNumberDepth
 }
