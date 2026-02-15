@@ -1,4 +1,5 @@
 import type { IDemand, ILegacyCalculationResult, ILegacyApp } from '../types/recipe'
+import type { IRawRecipe } from '../types/settings'
 import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { logger } from '../../utils/logger'
@@ -108,13 +109,22 @@ export class CalculatorService {
 
     clearLegacyGlobalState()
 
+    const win = window as unknown as Record<string, unknown>
     if (!recipeAdapter.isLoaded()) {
-      logger.error('[CalculatorService] RecipeAdapter not initialized - bridge load failed')
-      throw new Error('配方数据未初始化，请刷新页面重试')
+      if (win.data && win.recipeIndexByProduct) {
+        recipeAdapter.loadFromRawData(win.data as IRawRecipe[])
+      } else {
+        logger.error('[CalculatorService] RecipeAdapter not initialized - bridge load failed')
+        throw new Error('配方数据未初始化，请刷新页面重试')
+      }
+    }
+
+    if (!win.app) {
+      logger.error('[CalculatorService] window.app not initialized')
+      throw new Error('应用状态未初始化，请刷新页面重试')
     }
 
     const excludes = options.excludes || []
-    const win = window as unknown as Record<string, unknown>
     win.xqs = demands.map(d => ({
       name: d.name,
       number: d.num,

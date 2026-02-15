@@ -726,6 +726,7 @@ describe('bridge', () => {
       window.data = undefined as unknown as typeof window.data
       window.update_all = undefined as unknown as typeof window.update_all
       window.find = undefined as unknown as typeof window.find
+      ;(window as any).recipeIndexByProduct = undefined
 
       expect(isLegacyDataLoaded()).toBe(false)
     })
@@ -734,22 +735,41 @@ describe('bridge', () => {
       window.data = []
       window.update_all = () => {}
       window.find = () => null
+      ;(window as any).recipeIndexByProduct = { test: [1, 2, 3] }
 
       expect(isLegacyDataLoaded()).toBe(true)
+    })
+
+    it('should return false when recipeIndexByProduct is empty', () => {
+      window.data = []
+      window.update_all = () => {}
+      window.find = () => null
+      ;(window as any).recipeIndexByProduct = {}
+
+      expect(isLegacyDataLoaded()).toBe(false)
     })
   })
 
   describe('isGameDataLoaded', () => {
     it('should return false when isDataLoaded is false', () => {
       window.isDataLoaded = false
+      ;(window as any).game_data = undefined
 
       expect(isGameDataLoaded()).toBe(false)
     })
 
-    it('should return true when isDataLoaded is true', () => {
+    it('should return true when isDataLoaded is true and game_data exists', () => {
       window.isDataLoaded = true
+      ;(window as any).game_data = { icons1: [] }
 
       expect(isGameDataLoaded()).toBe(true)
+    })
+
+    it('should return false when isDataLoaded is true but game_data is undefined', () => {
+      window.isDataLoaded = true
+      ;(window as any).game_data = undefined
+
+      expect(isGameDataLoaded()).toBe(false)
     })
   })
 })

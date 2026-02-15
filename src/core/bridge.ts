@@ -18,9 +18,26 @@ let blueprintModule: unknown = null
 let pakoModule: unknown = null
 let isBridgeInitialized = false
 let legacyModulesPromise: Promise<unknown> | null = null
+let recipeIndexReady: boolean = false
+let recipeIndexReadyResolve: (() => void) | null = null
+const recipeIndexReadyPromise = new Promise<void>(resolve => {
+  recipeIndexReadyResolve = resolve
+})
 
 function getWin(): LegacyWindow {
   return window as unknown as LegacyWindow
+}
+
+export function notifyRecipeIndexReady(): void {
+  recipeIndexReady = true
+  if (recipeIndexReadyResolve) {
+    recipeIndexReadyResolve()
+  }
+  logger.log('[bridge] Recipe index ready notification received')
+}
+
+export function isRecipeIndexReady(): boolean {
+  return recipeIndexReady
 }
 
 async function loadLegacyModules() {
@@ -64,7 +81,9 @@ async function loadLegacyModules() {
     const win = getWin()
     ;(win as any).itemMap = itemMap
 
-    if (win.data && !recipeAdapter.isLoaded()) {
+    await recipeIndexReadyPromise
+
+    if (win.data && win.recipeIndexByProduct && !recipeAdapter.isLoaded()) {
       recipeAdapter.loadFromRawData(win.data as unknown as IRawRecipe[])
     }
 
@@ -167,6 +186,7 @@ export function initLegacyBridge(): void {
   win.selmaince = { value: '1' } as HTMLInputElement
 
   win.cocoMessage = cocoMessageProxy
+  ;(win as any).notifyRecipeIndexReady = notifyRecipeIndexReady
 
   logger.log('[bridge] Legacy bridge initialized')
 }
@@ -630,13 +650,15 @@ export function isLegacyDataLoaded(): boolean {
   return (
     typeof win.update_all === 'function' &&
     typeof win.find === 'function' &&
-    Array.isArray(win.data)
+    Array.isArray(win.data) &&
+    win.recipeIndexByProduct !== undefined &&
+    Object.keys(win.recipeIndexByProduct || {}).length > 0
   )
 }
 
 export function isGameDataLoaded(): boolean {
   const win = getWin()
-  return win.isDataLoaded === true
+  return win.isDataLoaded === true && win.game_data !== undefined
 }
 
 export interface LegacyDataLoadResult {

@@ -70,6 +70,7 @@ const resultItems = ref<ResultItem[]>([])
 const isCalculating = ref(false)
 const calculationError = ref<string | null>(null)
 const isDataReady = ref(false)
+let iconCheckIntervalId: ReturnType<typeof setInterval> | null = null
 
 function getWin(): LegacyWindow {
   return window as unknown as LegacyWindow
@@ -104,15 +105,23 @@ onMounted(async () => {
     })
   }
 
-  const iconCheckInterval = setInterval(() => {
+  iconCheckIntervalId = setInterval(() => {
     if (isGameDataLoaded()) {
       store.checkIconsLoaded()
-      clearInterval(iconCheckInterval)
+      if (iconCheckIntervalId) {
+        clearInterval(iconCheckIntervalId)
+        iconCheckIntervalId = null
+      }
       logger.log('[App] Game icons loaded')
     }
   }, 500)
 
-  setTimeout(() => clearInterval(iconCheckInterval), 30000)
+  setTimeout(() => {
+    if (iconCheckIntervalId) {
+      clearInterval(iconCheckIntervalId)
+      iconCheckIntervalId = null
+    }
+  }, 30000)
 
   if (win.settings || win.settings_time || win.settings_pf) {
     store.syncAllSettings(win.settings || {}, win.settings_time || {}, win.settings_pf || {})
@@ -120,7 +129,12 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {})
+onUnmounted(() => {
+  if (iconCheckIntervalId) {
+    clearInterval(iconCheckIntervalId)
+    iconCheckIntervalId = null
+  }
+})
 
 async function runCalculation(retryCount: number = 0) {
   if (store.demandList.length === 0) {

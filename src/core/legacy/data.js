@@ -179,8 +179,41 @@ var singleMake = []
 
 var xqss = []
 
+var dataInitPromise = null
+var isDataInitialized = false
+
+async function ensureDataInitialized() {
+  if (isDataInitialized) return true
+  if (dataInitPromise) return dataInitPromise
+
+  dataInitPromise = (async function () {
+    await new Promise(function (resolve) {
+      var checkInterval = setInterval(function () {
+        if (window.isDataLoaded) {
+          clearInterval(checkInterval)
+          resolve(true)
+        }
+      }, 50)
+      setTimeout(function () {
+        clearInterval(checkInterval)
+        resolve(true)
+      }, 5000)
+    })()
+
+    f_init()
+    isDataInitialized = true
+
+    if (typeof window.notifyRecipeIndexReady === 'function') {
+      window.notifyRecipeIndexReady()
+    }
+    return true
+  })()
+
+  return dataInitPromise
+}
+
 loadData()
-f_init()
+ensureDataInitialized()
 
 function getPfTitle(item, info) {
   var title = []
@@ -1187,5 +1220,7 @@ export {
   icons,
   f_initIcons,
   getRecipe,
-  generateBlueprint
+  generateBlueprint,
+  ensureDataInitialized,
+  isDataInitialized
 }
