@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { logger } from '../utils/logger'
 import type { IConsumptionItem, IResultItemOutput } from '../core/types/recipe'
+import type { IRecipeSettings, ISpeedSettings, IProductivitySettings } from '../core/types/settings'
 import { APP_CONFIG } from '../core/config/app.config'
 import { isGameDataLoaded } from '../core/bridge'
 
@@ -58,12 +59,38 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   const demandVersion = ref(0)
   const isIconsLoaded = ref(false)
 
+  const recipeSettings = ref<IRecipeSettings>({})
+  const speedSettings = ref<ISpeedSettings>({})
+  const productivitySettings = ref<IProductivitySettings>({})
+
   const hasDemand = computed(() => demandList.value.length > 0)
   const demandCount = computed(() => demandList.value.length)
 
   function checkIconsLoaded() {
     isIconsLoaded.value = isGameDataLoaded()
     return isIconsLoaded.value
+  }
+
+  function syncRecipeSettings(settings: IRecipeSettings) {
+    recipeSettings.value = { ...settings }
+  }
+
+  function syncSpeedSettings(settings: ISpeedSettings) {
+    speedSettings.value = { ...settings }
+  }
+
+  function syncProductivitySettings(settings: IProductivitySettings) {
+    productivitySettings.value = { ...settings }
+  }
+
+  function syncAllSettings(
+    recipe: IRecipeSettings,
+    speed: ISpeedSettings,
+    prod: IProductivitySettings
+  ) {
+    recipeSettings.value = { ...recipe }
+    speedSettings.value = { ...speed }
+    productivitySettings.value = { ...prod }
   }
 
   function addDemand(name: string, num: number = 1) {
@@ -163,6 +190,9 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     calculationError,
     demandVersion,
     isIconsLoaded,
+    recipeSettings,
+    speedSettings,
+    productivitySettings,
     hasDemand,
     demandCount,
     addDemand,
@@ -178,6 +208,10 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     setResultItems,
     setError,
     clearAll,
-    checkIconsLoaded
+    checkIconsLoaded,
+    syncRecipeSettings,
+    syncSpeedSettings,
+    syncProductivitySettings,
+    syncAllSettings
   }
 })

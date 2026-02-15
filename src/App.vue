@@ -110,6 +110,11 @@ onMounted(async () => {
   }, 500)
 
   setTimeout(() => clearInterval(iconCheckInterval), 30000)
+
+  if (win.settings || win.settings_time || win.settings_pf) {
+    store.syncAllSettings(win.settings || {}, win.settings_time || {}, win.settings_pf || {})
+    logger.log('[App] Settings synced to store')
+  }
 })
 
 onUnmounted(() => {})

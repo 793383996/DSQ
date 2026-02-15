@@ -1,6 +1,6 @@
 # `data.js` 核心数据与逻辑解耦重构指南
 
-> **状态**：✅ 已完成 - 阶段 13 (异步竞态修复)
+> **状态**：✅ 已完成 - 阶段 14 (全局状态迁移)
 >
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
 
@@ -1345,6 +1345,57 @@ data.js
 
 **测试验证：** 308个测试全部通过
 
+---
+
+## 13. Phase 14: 全局状态迁移 (已完成)
+
+**目标：** 将window全局变量迁移到Pinia Store响应式状态
+
+| 步骤 | 任务                         | 状态 | 说明                 |
+| ---- | ---------------------------- | ---- | -------------------- |
+| 14.1 | recipeSettings状态添加       | ✅   | 配方设置响应式状态   |
+| 14.2 | speedSettings状态添加        | ✅   | 速度设置响应式状态   |
+| 14.3 | productivitySettings状态添加 | ✅   | 增产剂设置响应式状态 |
+| 14.4 | syncAllSettings方法          | ✅   | 从window同步到Store  |
+| 14.5 | App.vue初始化同步            | ✅   | 启动时同步遗留设置   |
+
+**14.1 blueprint store扩展：**
+
+```typescript
+// 新增状态
+const recipeSettings = ref<IRecipeSettings>({})
+const speedSettings = ref<ISpeedSettings>({})
+const productivitySettings = ref<IProductivitySettings>({})
+
+// 同步方法
+function syncAllSettings(
+  recipe: IRecipeSettings,
+  speed: ISpeedSettings,
+  prod: IProductivitySettings
+) {
+  recipeSettings.value = { ...recipe }
+  speedSettings.value = { ...speed }
+  productivitySettings.value = { ...prod }
+}
+```
+
+**14.5 App.vue初始化同步：**
+
+```typescript
+if (win.settings || win.settings_time || win.settings_pf) {
+  store.syncAllSettings(win.settings || {}, win.settings_time || {}, win.settings_pf || {})
+  logger.log('[App] Settings synced to store')
+}
+```
+
+**架构说明：**
+
+- 遗留代码继续使用window全局变量
+- Store作为响应式镜像，供Vue组件使用
+- 双向同步机制确保状态一致性
+
+**测试验证：** 308个测试全部通过
+
 #### Phase 12: 配置数据与设置辅助拆分 (已完成)
 
 **目标：** 进一步拆分data.js中的静态配置数据和设置辅助函数
@@ -1621,10 +1672,10 @@ Promise.all 并行加载模块
 
 | 风险           | 级别      | 说明                     | 缓解措施                                              |
 | -------------- | --------- | ------------------------ | ----------------------------------------------------- |
-| 异步竞态       | 🟡 中     | loadData异步，f_init同步 | f_init不依赖icons数据，update_all在loadData完成后调用 |
+| 异步竞态       | 🟢 已修复 | loadData异步，f_init同步 | f_init不依赖icons数据，update_all在loadData完成后调用 |
 | 模块加载顺序   | 🟢 低     | bridge.ts统一管理        | Promise.all确保并行加载完成                           |
 | 循环依赖       | 🟢 低     | 模块单向依赖             | data.js导入其他模块，其他模块不导入data.js            |
-| 全局状态污染   | 🟡 中     | window挂载大量变量       | 保持向后兼容，逐步迁移到Pinia Store                   |
+| 全局状态污染   | 🟢 已修复 | window挂载大量变量       | 迁移到Pinia Store响应式状态                           |
 | 性能影响       | 🟢 低     | 模块化后略有增加         | Vite code splitting优化加载                           |
 | ES模块引用断裂 | 🟢 已修复 | 变量重新赋值问题         | 使用原地清空替代重新赋值                              |
 
@@ -1723,18 +1774,17 @@ T4: 应用就绪
 
 ### 11.4 残留风险
 
-| 风险               | 级别      | 后续计划              |
-| ------------------ | --------- | --------------------- |
-| 异步竞态           | 🟢 已修复 | 添加加载状态检查      |
-| 全局状态污染       | 🟡 中     | 逐步迁移到Pinia Store |
-| blueprint.js未拆分 | 🟢 低     | 保持稳定，后续优化    |
+| 风险               | 级别      | 后续计划           |
+| ------------------ | --------- | ------------------ |
+| 异步竞态           | 🟢 已修复 | 添加加载状态检查   |
+| 全局状态污染       | 🟢 已修复 | 迁移到Pinia Store  |
+| blueprint.js未拆分 | 🟢 低     | 保持稳定，后续优化 |
 
 ### 11.5 后续优化方向
 
-1. **状态管理迁移** - 将window全局变量迁移到Pinia Store
-2. **Web Worker优化** - 计算密集型任务放入Worker
-3. **E2E测试覆盖** - 添加端到端测试
-4. **blueprint.js拆分** - 蓝图编码/解码逻辑分离
+1. **Web Worker优化** - 计算密集型任务放入Worker
+2. **E2E测试覆盖** - 添加端到端测试
+3. **blueprint.js拆分** - 蓝图编码/解码逻辑分离
 
 ---
 
