@@ -652,11 +652,16 @@ export function waitForLegacyData(
   return new Promise(resolve => {
     let retries = 0
     let interval: ReturnType<typeof setInterval> | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
 
     function cleanup(): void {
       if (interval) {
         clearInterval(interval)
         interval = null
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+        timeoutId = null
       }
     }
 

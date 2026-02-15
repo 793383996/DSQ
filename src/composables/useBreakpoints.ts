@@ -40,6 +40,10 @@ function setupResizeListener(): void {
 }
 
 function teardownResizeListener(): void {
+  if (listenerCount <= 0) {
+    listenerCount = 0
+    return
+  }
   listenerCount--
   if (listenerCount === 0 && resizeHandler) {
     window.removeEventListener('resize', resizeHandler)

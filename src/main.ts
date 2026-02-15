@@ -110,8 +110,10 @@ const handleGlobalError = (event: ErrorEvent) => {
   }
 }
 
-window.addEventListener('unhandledrejection', handleUnhandledRejection)
-window.addEventListener('error', handleGlobalError)
+if (!import.meta.env.PROD) {
+  window.addEventListener('unhandledrejection', handleUnhandledRejection)
+  window.addEventListener('error', handleGlobalError)
+}
 
 app.component('BlueprintGenerator', BlueprintGenerator)
 
@@ -182,8 +184,10 @@ function cleanup(): void {
   }
   visibilityChangeCallbacks.clear()
 
-  window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-  window.removeEventListener('error', handleGlobalError)
+  if (!import.meta.env.PROD) {
+    window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    window.removeEventListener('error', handleGlobalError)
+  }
 
   destroyWebVitals()
   destroyErrorReporter()

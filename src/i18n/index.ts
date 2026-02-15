@@ -371,8 +371,13 @@ export function destroyI18n(): void {
     storageEventHandler = null
   }
 
-  localeChangeCallbacks.clear()
+  const queue = initResolveQueue
   initResolveQueue = []
+  queue.forEach(({ reject }) => {
+    reject(new Error('[i18n] Instance destroyed during initialization'))
+  })
+
+  localeChangeCallbacks.clear()
 
   i18nInstance = null
   currentLocale = null

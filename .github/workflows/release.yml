@@ -5,9 +5,30 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
   release:
     runs-on: ubuntu-latest
+    needs: validate
     permissions:
       contents: write
     steps:
@@ -18,8 +39,11 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ needs.validate.outputs.version }}
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: dist/**
           generate_release_notes: true
+          tag_name: v${{ needs.validate.outputs.version }}

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dsq-calculator.example.com/sitemap.xml
+Sitemap: {{SITE_URL}}/sitemap.xml

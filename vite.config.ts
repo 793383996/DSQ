@@ -3,6 +3,25 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 
+const SITE_URL = process.env.VITE_SITE_URL || 'https://dsq-calculator.example.com'
+
+function replacePlaceholdersPlugin() {
+  return {
+    name: 'replace-placeholders',
+    enforce: 'post' as const,
+    generateBundle(_options: unknown, bundle: Record<string, { source?: string }>) {
+      for (const fileName of Object.keys(bundle)) {
+        if (fileName.endsWith('.html') || fileName.endsWith('.xml') || fileName.endsWith('.txt')) {
+          const file = bundle[fileName]
+          if (file && typeof file.source === 'string') {
+            file.source = file.source.replace(/\{\{SITE_URL\}\}/g, SITE_URL)
+          }
+        }
+      }
+    }
+  }
+}
+
 const cspDirectives = {
   'default-src': ["'self'"],
   'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
@@ -26,6 +45,7 @@ const cspHeader = Object.entries(cspDirectives)
 export default defineConfig({
   plugins: [
     vue(),
+    replacePlaceholdersPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
