@@ -26,8 +26,9 @@ export function perMinuteToPerSecond(value: number): number {
  */
 export function formatNumber(value: number, decimals: number = 3): string {
   if (value === 0) return '0'
-  if (value < 0.001) return value.toExponential(2)
-  if (value >= 1000000) return value.toExponential(2)
+  const absValue = Math.abs(value)
+  if (absValue < 0.001 && absValue > 0) return value.toExponential(2)
+  if (absValue >= 1000000) return value.toExponential(2)
   return value.toFixed(decimals)
 }
 
