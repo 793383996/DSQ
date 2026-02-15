@@ -373,7 +373,12 @@ function createCalculator(options) {
   }
 
   function setExcludes(names) {
-    ig_names = names || []
+    ig_names.length = 0
+    if (names && names.length) {
+      for (var i = 0; i < names.length; i++) {
+        ig_names.push(names[i])
+      }
+    }
   }
 
   function getState() {

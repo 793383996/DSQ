@@ -13,6 +13,8 @@ export interface IWorkerCalculateRequest {
   defaultAccType: string
   defaultAccValue: string
   singleMakes?: Array<{ id: number; number: number }>
+  selfAcc?: boolean
+  isAddSelfAccP?: boolean
 }
 
 export interface IWorkerCalculateResponse {

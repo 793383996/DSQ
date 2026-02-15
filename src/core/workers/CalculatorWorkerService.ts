@@ -35,6 +35,8 @@ export class CalculatorWorkerService {
   private timeoutId: ReturnType<typeof setTimeout> | null = null
   private initResolve: (() => void) | null = null
   private initReject: ((error: Error) => void) | null = null
+  private initPromise: Promise<void> | null = null
+  private lastInitData: string = ''
 
   constructor() {
     this.initWorker()
@@ -145,7 +147,21 @@ export class CalculatorWorkerService {
       throw new Error('Worker not initialized')
     }
 
-    return new Promise((resolve, reject) => {
+    const initDataKey = JSON.stringify({
+      recipeCount: options.recipes.length,
+      settingsPfKeys: Object.keys(options.settingsPf).length,
+      settingsTimeKeys: Object.keys(options.settingsTime).length
+    })
+
+    if (this.lastInitData === initDataKey && this.initPromise) {
+      return this.initPromise
+    }
+
+    if (this.initPromise) {
+      return this.initPromise
+    }
+
+    this.initPromise = new Promise((resolve, reject) => {
       this.initResolve = resolve
       this.initReject = reject
 
@@ -165,9 +181,18 @@ export class CalculatorWorkerService {
           reject(new Error('Worker init timeout'))
           this.initResolve = null
           this.initReject = null
+          this.initPromise = null
         }
       }, 5000)
     })
+
+    try {
+      await this.initPromise
+      this.lastInitData = initDataKey
+    } catch (e) {
+      this.initPromise = null
+      throw e
+    }
   }
 
   async calculate(options: IWorkerCalculateOptions): Promise<IWorkerResult> {
@@ -225,7 +250,9 @@ export class CalculatorWorkerService {
         recipeIndexByProduct,
         defaultAccType: (win.defaultAccType as string) || '增产剂Mk.Ⅰ',
         defaultAccValue: (win.defaultAccValue as string) || '无',
-        singleMakes: options.singleMakes
+        singleMakes: options.singleMakes,
+        selfAcc: (win.selfAcc as { checked: boolean })?.checked ?? false,
+        isAddSelfAccP: (win.isAddSelfAccP as { checked: boolean })?.checked ?? false
       }
 
       this.worker!.postMessage(request)
@@ -261,6 +288,8 @@ export class CalculatorWorkerService {
     }
     this.status = 'idle'
     this.clearTimeout()
+    this.initPromise = null
+    this.lastInitData = ''
   }
 }
 

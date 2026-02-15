@@ -274,10 +274,10 @@ export function legacyGetMachineSettings(): MachineConfigSettings {
 export function syncStateToLegacy(state: StateSyncMap): void {
   const win = getWin()
 
-  if (!win.xqs) win.xqs = []
+  win.xqs = win.xqs || []
   win.xqs.length = 0
   state.demandList.forEach(d => {
-    win.xqs.push({
+    win.xqs!.push({
       name: d.name,
       value: d.num || d.number || 1,
       number: d.num || d.number || 1,
@@ -285,10 +285,10 @@ export function syncStateToLegacy(state: StateSyncMap): void {
     })
   })
 
-  if (!win.ig_names) win.ig_names = []
+  win.ig_names = win.ig_names || []
   win.ig_names.length = 0
   state.excludeList.forEach(name => {
-    win.ig_names.push(name)
+    win.ig_names!.push(name)
   })
 }
 

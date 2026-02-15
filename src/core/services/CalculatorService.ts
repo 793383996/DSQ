@@ -1,5 +1,6 @@
 import type { IDemand, ILegacyCalculationResult, ILegacyApp } from '../types/recipe'
 import type { IRawRecipe } from '../types/settings'
+import type { LegacyWindow } from '../types/legacy'
 import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { logger } from '../../utils/logger'
@@ -39,6 +40,7 @@ function clearLegacyGlobalState(): void {
   if (w.xh_list && Array.isArray(w.xh_list)) w.xh_list.length = 0
   if (w.out_list && Array.isArray(w.out_list)) w.out_list.length = 0
   if (w.single_list && Array.isArray(w.single_list)) w.single_list.length = 0
+  if (w.ig_names && Array.isArray(w.ig_names)) w.ig_names.length = 0
   if (w.xhMap && typeof w.xhMap === 'object') {
     Object.keys(w.xhMap).forEach(key => {
       delete (w.xhMap as Record<string, unknown>)[key]
@@ -117,10 +119,11 @@ export class CalculatorService {
 
     clearLegacyGlobalState()
 
-    const win = window as unknown as Record<string, unknown>
+    const win = window as unknown as LegacyWindow
+    const winRaw = window as unknown as Record<string, unknown>
     if (!recipeAdapter.isLoaded()) {
-      if (win.data && win.recipeIndexByProduct) {
-        recipeAdapter.loadFromRawData(win.data as IRawRecipe[])
+      if (winRaw.data && winRaw.recipeIndexByProduct) {
+        recipeAdapter.loadFromRawData(winRaw.data as IRawRecipe[])
       } else {
         logger.error('[CalculatorService] RecipeAdapter not initialized - bridge load failed')
         throw new Error('配方数据未初始化，请刷新页面重试')
@@ -134,20 +137,21 @@ export class CalculatorService {
 
     const excludes = options.excludes || []
 
-    if (!win.xqs) win.xqs = []
+    win.xqs = win.xqs || []
     win.xqs.length = 0
     demands.forEach(d => {
-      win.xqs.push({
+      win.xqs!.push({
         name: d.name,
+        value: d.num,
         number: d.num,
         item: { name: d.name }
       })
     })
 
-    if (!win.ig_names) win.ig_names = []
+    win.ig_names = win.ig_names || []
     win.ig_names.length = 0
     excludes.forEach(name => {
-      win.ig_names.push(name)
+      win.ig_names!.push(name)
     })
 
     try {

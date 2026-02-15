@@ -27,6 +27,8 @@ let settingsTime: Record<string, number> = {}
 let recipeIndexByProduct: Record<string, number[]> = {}
 let defaultAccType = '增产剂Mk.Ⅰ'
 let defaultAccValue = '无'
+let selfAcc = false
+let isAddSelfAccP = false
 const maxDepth = 200
 
 interface IInternalItem {
@@ -75,6 +77,69 @@ function addOut(name: string, value: number): void {
 function findOut(name: string): number | null {
   const item = outMap[name]
   return item ? item.value : null
+}
+
+function checkResult(): void {
+  for (let i = 0; i < xh_list.length; i++) {
+    const xh = xh_list[i]
+    if (!xh.value) continue
+    const itemName = xh.name
+    const item = find(itemName, false)
+    if (!item) continue
+
+    let isOverflow = false
+    for (let j = 0; j < item.s.length; j++) {
+      const s = item.s[j]
+      const out = findOut(s.name)
+      if (out === null) continue
+      if (out < 0) {
+        isOverflow = true
+        break
+      }
+    }
+
+    if (isOverflow) {
+      let produce = 0
+      for (let j = 0; j < item.s.length; j++) {
+        const s = item.s[j]
+        if (s.name === itemName) {
+          produce = (xh.value * (s.n || 1)) / (item.n || 1)
+          break
+        }
+      }
+
+      if (produce > 0) {
+        const ratio = xh.value / produce
+        if (ratio > 0 && ratio < 1) {
+          xh.value = produce
+          xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
+        }
+      }
+    }
+  }
+}
+
+function fixGzSpeed(): void {
+  let gzItem: IInternalItem | null = null
+  for (let i = 0; i < xh_list.length; i++) {
+    if (xh_list[i].name === '光栅石') {
+      gzItem = xh_list[i]
+      break
+    }
+  }
+  if (!gzItem) return
+
+  const gzRecipe = find('光栅石', false)
+  if (!gzRecipe) return
+
+  const machine = gzRecipe.m
+  if (typeof machine !== 'string' || machine !== '采矿机') return
+
+  const gzValue = gzItem.value
+  if (gzValue <= 0) return
+
+  const speed = settingsTime['采矿机'] || 1
+  gzItem.value = gzValue / speed
 }
 
 interface IInternalRecipe {
@@ -232,14 +297,21 @@ function loadNumber(itemName: string, n: number): void {
           tm = 60
         }
 
+        if (selfAcc) tm = tm * v - 1
         if (accValue === '增产' && item.noExtra) accValue = '无'
+        if (item.q.length === 0 || item.noExtra === null) accValue = '无'
 
-        if (accValue === '增产') {
+        if (accValue === '加速') {
+          accTotal += r / tm
+          if (!isAddSelfAccP) {
+            loadNumber(accType, r / tm)
+          }
+        } else if (accValue === '增产') {
           r = r / v
-        } else if (accValue === '加速') {
-          const extra = r * (v - 1)
-          addXH(itemName, extra)
-          accTotal += extra * tm
+          accTotal += r / tm
+          if (!isAddSelfAccP) {
+            loadNumber(accType, r / tm)
+          }
         }
 
         const outValue = findOut(q.name)
@@ -297,12 +369,18 @@ function calculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
   recipeIndexByProduct = data.recipeIndexByProduct
   defaultAccType = data.defaultAccType
   defaultAccValue = data.defaultAccValue
+  selfAcc = data.selfAcc ?? false
+  isAddSelfAccP = data.isAddSelfAccP ?? false
 
   try {
+    fixGzSpeed()
+
     for (let i = 0; i < data.demands.length; i++) {
       const d = data.demands[i]
       loadNumber(d.name, d.num)
     }
+
+    checkResult()
 
     return {
       type: 'result',

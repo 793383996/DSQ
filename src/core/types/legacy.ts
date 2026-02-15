@@ -49,8 +49,8 @@ export interface ILegacySettings {
 
 export interface ILegacyWindow {
   pako: unknown
-  xqs: ILegacyXhItem[]
-  ig_names: string[]
+  xqs?: ILegacyXhItem[]
+  ig_names?: string[]
   settings: Record<string, ILegacySettings>
   settings_time: Record<string, number>
   settings_pf: Record<string, number>

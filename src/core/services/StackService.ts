@@ -12,12 +12,25 @@ import { buildIndexMap, cloneBuildingWithRemap } from '../utils/IndexMapper'
 import { buildingMap, PRODUCTION_CATEGORY } from '../types/buildingMap'
 
 const LAB_CATEGORY = PRODUCTION_CATEGORY.lab
-const LAB_ITEM_IDS = new Set<number>()
-const SPRAY_COATER_ITEM_ID: number = (() => {
-  if (buildingMap.lab) LAB_ITEM_IDS.add(buildingMap.lab.itemId)
-  if (buildingMap['自演化研究站']) LAB_ITEM_IDS.add(buildingMap['自演化研究站'].itemId)
-  return buildingMap.sprayCoater?.itemId ?? 2313
-})()
+
+let labItemIdsCache: Set<number> | null = null
+let sprayCoaterItemIdCache: number | null = null
+
+function getLabItemIds(): Set<number> {
+  if (labItemIdsCache === null) {
+    labItemIdsCache = new Set<number>()
+    if (buildingMap.lab) labItemIdsCache.add(buildingMap.lab.itemId)
+    if (buildingMap['自演化研究站']) labItemIdsCache.add(buildingMap['自演化研究站'].itemId)
+  }
+  return labItemIdsCache
+}
+
+function getSprayCoaterItemId(): number {
+  if (sprayCoaterItemIdCache === null) {
+    sprayCoaterItemIdCache = buildingMap.sprayCoater?.itemId ?? 2313
+  }
+  return sprayCoaterItemIdCache
+}
 
 function getBuildingCategory(buildingName: string): number | undefined {
   const building = buildingMap[buildingName]
@@ -131,17 +144,18 @@ export class StackService {
   }
 
   createCloneFilter(baseBuildings: IBlueprintBuilding[]): ICloneFilter {
+    const labItemIds = getLabItemIds()
     const labIndices = new Set<number>()
     for (const b of baseBuildings) {
-      if (LAB_ITEM_IDS.has(b.itemId)) {
+      if (labItemIds.has(b.itemId)) {
         labIndices.add(b.index)
       }
     }
 
     return {
-      labItemIds: LAB_ITEM_IDS,
+      labItemIds,
       beltItemIds: BELT_ITEM_IDS,
-      sprayCoaterItemId: SPRAY_COATER_ITEM_ID,
+      sprayCoaterItemId: getSprayCoaterItemId(),
       labIndices
     }
   }

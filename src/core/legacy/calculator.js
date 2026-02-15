@@ -381,7 +381,12 @@ function clearAllState() {
 }
 
 function setIgNames(names) {
-  ig_names = names || []
+  ig_names.length = 0
+  if (names && names.length) {
+    for (var i = 0; i < names.length; i++) {
+      ig_names.push(names[i])
+    }
+  }
 }
 
 window.xh_list = xh_list
