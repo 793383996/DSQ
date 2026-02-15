@@ -174,8 +174,11 @@ var pointLength = 3
 
 var currentItem = null
 
-var xqs = []
-var singleMake = []
+var xqs = window.xqs || []
+var singleMake = window.singleMake || []
+
+window.xqs = xqs
+window.singleMake = singleMake
 
 var xqss = []
 

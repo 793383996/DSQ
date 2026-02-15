@@ -36,12 +36,20 @@ export class StateChangedDuringCalculationError extends Error {
 
 function clearLegacyGlobalState(): void {
   const w = window as unknown as Record<string, unknown>
-  if (w.xh_list) w.xh_list = []
-  if (w.out_list) w.out_list = []
-  if (w.single_list) w.single_list = []
-  if (w.xhMap) w.xhMap = {}
-  if (w.outMap) w.outMap = {}
-  if (w.total) w.total = []
+  if (w.xh_list && Array.isArray(w.xh_list)) w.xh_list.length = 0
+  if (w.out_list && Array.isArray(w.out_list)) w.out_list.length = 0
+  if (w.single_list && Array.isArray(w.single_list)) w.single_list.length = 0
+  if (w.xhMap && typeof w.xhMap === 'object') {
+    Object.keys(w.xhMap).forEach(key => {
+      delete (w.xhMap as Record<string, unknown>)[key]
+    })
+  }
+  if (w.outMap && typeof w.outMap === 'object') {
+    Object.keys(w.outMap).forEach(key => {
+      delete (w.outMap as Record<string, unknown>)[key]
+    })
+  }
+  if (w.total && Array.isArray(w.total)) w.total.length = 0
   w.totalAcc = 0
 }
 
@@ -125,12 +133,22 @@ export class CalculatorService {
     }
 
     const excludes = options.excludes || []
-    win.xqs = demands.map(d => ({
-      name: d.name,
-      number: d.num,
-      item: { name: d.name }
-    }))
-    win.ig_names = [...excludes]
+
+    if (!win.xqs) win.xqs = []
+    win.xqs.length = 0
+    demands.forEach(d => {
+      win.xqs.push({
+        name: d.name,
+        number: d.num,
+        item: { name: d.name }
+      })
+    })
+
+    if (!win.ig_names) win.ig_names = []
+    win.ig_names.length = 0
+    excludes.forEach(name => {
+      win.ig_names.push(name)
+    })
 
     try {
       const updateAll = win.update_all

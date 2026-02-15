@@ -204,8 +204,12 @@ export interface MachineConfigSettings {
 export function legacyUpdateMachineSettings(config: MachineConfigSettings): void {
   const win = getWin()
   const data = win.data || []
-  const settingsLocal = win.settingsLocal || {}
-  const settings = win.settings || {}
+
+  if (!win.settingsLocal) win.settingsLocal = {}
+  if (!win.settings) win.settings = {}
+
+  const settingsLocal = win.settingsLocal
+  const settings = win.settings
 
   data.forEach((item: ILegacyDataItem) => {
     if (!settingsLocal[item.id]) {
@@ -238,8 +242,6 @@ export function legacyUpdateMachineSettings(config: MachineConfigSettings): void
     settings[item.id].accValue = config.accValue
   })
 
-  win.settingsLocal = settingsLocal
-  win.settings = settings
   win.defaultAccType = config.accType
   win.defaultAccValue = config.accValue
 
@@ -271,21 +273,31 @@ export function legacyGetMachineSettings(): MachineConfigSettings {
 
 export function syncStateToLegacy(state: StateSyncMap): void {
   const win = getWin()
-  win.xqs = state.demandList.map(d => ({
-    name: d.name,
-    value: d.num || d.number || 1,
-    number: d.num || d.number || 1,
-    item: { name: d.name }
-  }))
-  win.ig_names = state.excludeList
+
+  if (!win.xqs) win.xqs = []
+  win.xqs.length = 0
+  state.demandList.forEach(d => {
+    win.xqs.push({
+      name: d.name,
+      value: d.num || d.number || 1,
+      number: d.num || d.number || 1,
+      item: { name: d.name }
+    })
+  })
+
+  if (!win.ig_names) win.ig_names = []
+  win.ig_names.length = 0
+  state.excludeList.forEach(name => {
+    win.ig_names.push(name)
+  })
 }
 
 export function clearLegacyState(): void {
   const win = getWin()
-  win.xh_list = []
-  win.out_list = []
-  win.xqs = []
-  win.ig_names = []
+  if (win.xh_list) win.xh_list.length = 0
+  if (win.out_list) win.out_list.length = 0
+  if (win.xqs) win.xqs.length = 0
+  if (win.ig_names) win.ig_names.length = 0
 }
 
 export async function runCalculation(): Promise<unknown> {
@@ -450,7 +462,9 @@ export interface LogisticsSettings {
 
 export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
   const win = getWin()
-  const settingsTime = win.settings_time || {}
+
+  if (!win.settings_time) win.settings_time = {}
+  const settingsTime = win.settings_time
 
   settingsTime['采矿机'] = (speeds.oreSpeed / 100) * 0.5 * 6
   settingsTime['大型采矿机'] = (speeds.oreSpeed / 100) * 1 * 20
@@ -459,8 +473,6 @@ export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
   settingsTime['轨道采集器(气态)'] = speeds.orbitalHydrogenGas
   settingsTime['轨道采集器(巨冰)'] = speeds.orbitalHydrogenIce
   settingsTime['射线接收塔'] = speeds.criticalPhotonSpeed
-
-  win.settings_time = settingsTime
 
   if (typeof win.saveSettingTime === 'function') {
     win.saveSettingTime()

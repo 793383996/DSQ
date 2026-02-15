@@ -10,17 +10,24 @@
  * - 此模块仅包含纯计算逻辑，不包含UI渲染
  * - data.js 中的 update_all 仍保留完整逻辑，但调用此模块的核心函数
  * - 保持全局变量挂载到window，确保向后兼容
+ * - 关键修复：所有状态变量直接使用window对象，避免引用断裂
  *
  * @deprecated 此模块已迁移到 calculatorEngine.js 闭包封装版本
  * 新代码请使用 createCalculator() 工厂函数创建独立计算器实例
  * 此模块仅为向后兼容保留
  */
 
-var xh_list = []
-var out_list = []
-var xhMap = {}
-var outMap = {}
-var ig_names = []
+var xh_list = window.xh_list || []
+var out_list = window.out_list || []
+var xhMap = window.xhMap || {}
+var outMap = window.outMap || {}
+var ig_names = window.ig_names || []
+
+window.xh_list = xh_list
+window.out_list = out_list
+window.xhMap = xhMap
+window.outMap = outMap
+window.ig_names = ig_names
 
 var loadNumberDepth = 0
 var maxLoadNumberDepth = 200
@@ -365,8 +372,12 @@ function clearCalculatorState() {
   Object.keys(outMap).forEach(function (key) {
     delete outMap[key]
   })
-  ig_names.length = 0
   loadNumberDepth = 0
+}
+
+function clearAllState() {
+  clearCalculatorState()
+  ig_names.length = 0
 }
 
 function setIgNames(names) {
@@ -400,6 +411,7 @@ export {
   fixGzSpeed,
   getAccSpeed,
   clearCalculatorState,
+  clearAllState,
   setIgNames,
   loadNumberDepth,
   maxLoadNumberDepth
