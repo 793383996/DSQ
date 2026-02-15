@@ -26,6 +26,26 @@ declare global {
     outMap: Record<string, unknown>
     total: unknown[]
     totalAcc: number
+    createCalculator: (options?: {
+      maxDepth?: number
+      defaultAccType?: string
+      defaultAccValue?: string
+    }) => {
+      calculate: (
+        demands: Array<{ name: string; num?: number; item?: { name: string }; number?: number }>,
+        excludes: string[],
+        singleMakes: Array<{ id: number; number: number }>
+      ) => {
+        success: boolean
+        xh_list: Array<{ name: string; value: number }>
+        out_list: Array<{ name: string; value: number }>
+        xhMap: Record<string, { name: string; value: number }>
+        outMap: Record<string, { name: string; value: number }>
+        error?: unknown
+      }
+    }
+    defaultAccType?: string
+    defaultAccValue?: string
   }
 }
 
@@ -312,8 +332,8 @@ describe('CalculatorService', () => {
       const context = service.getContext()
 
       expect(context).toBeDefined()
-      expect(context.consumption).toBeInstanceOf(Map)
-      expect(context.production).toBeInstanceOf(Map)
+      expect(context.consumptionMap).toBeInstanceOf(Map)
+      expect(context.productionMap).toBeInstanceOf(Map)
     })
   })
 
@@ -467,6 +487,152 @@ describe('CalculatorService', () => {
 
       await service.calculate([])
       expect(service.getConsumption().size).toBe(0)
+    })
+  })
+
+  describe('calculateWithEngine', () => {
+    it('should return success result when createCalculator is available', async () => {
+      const mockCalculator = {
+        calculate: vi.fn().mockReturnValue({
+          success: true,
+          xh_list: [{ name: '铁矿', value: 60 }],
+          out_list: [{ name: '铁块', value: 60 }],
+          xhMap: { 铁矿: { name: '铁矿', value: 60 } },
+          outMap: { 铁块: { name: '铁块', value: 60 } }
+        })
+      }
+
+      window.createCalculator = vi.fn().mockReturnValue(mockCalculator)
+
+      const result = await service.calculateWithEngine([{ name: '铁块', num: 60 }])
+
+      expect(result.success).toBe(true)
+      expect(result.xh_list).toHaveLength(1)
+      expect(result.out_list).toHaveLength(1)
+    })
+
+    it('should fallback to legacy when createCalculator not available', async () => {
+      window.createCalculator = undefined as unknown as typeof window.createCalculator
+      window.update_all = vi.fn()
+      window.app = {
+        items: [],
+        items2: [],
+        items0: [],
+        total: [],
+        totalEnergy: '0',
+        totalSpace: 0,
+        totalAcc: '0',
+        xqs: []
+      }
+
+      const result = await service.calculateWithEngine([{ name: '铁块', num: 60 }])
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should pass excludes to calculator', async () => {
+      const mockCalculator = {
+        calculate: vi.fn().mockReturnValue({
+          success: true,
+          xh_list: [],
+          out_list: [],
+          xhMap: {},
+          outMap: {}
+        })
+      }
+
+      window.createCalculator = vi.fn().mockReturnValue(mockCalculator)
+
+      await service.calculateWithEngine([{ name: '铁块', num: 60 }], ['铜矿'])
+
+      expect(mockCalculator.calculate).toHaveBeenCalledWith(expect.any(Array), ['铜矿'], [])
+    })
+
+    it('should pass singleMakes to calculator', async () => {
+      const mockCalculator = {
+        calculate: vi.fn().mockReturnValue({
+          success: true,
+          xh_list: [],
+          out_list: [],
+          xhMap: {},
+          outMap: {}
+        })
+      }
+
+      window.createCalculator = vi.fn().mockReturnValue(mockCalculator)
+
+      await service.calculateWithEngine([], [], [{ id: 0, number: 60 }])
+
+      expect(mockCalculator.calculate).toHaveBeenCalledWith(
+        expect.any(Array),
+        [],
+        [{ id: 0, number: 60 }]
+      )
+    })
+
+    it('should fill context with consumption and production', async () => {
+      const mockCalculator = {
+        calculate: vi.fn().mockReturnValue({
+          success: true,
+          xh_list: [
+            { name: '铁矿', value: 60 },
+            { name: '铜矿', value: 30 }
+          ],
+          out_list: [{ name: '铁块', value: 60 }],
+          xhMap: {},
+          outMap: {}
+        })
+      }
+
+      window.createCalculator = vi.fn().mockReturnValue(mockCalculator)
+
+      await service.calculateWithEngine([{ name: '铁块', num: 60 }])
+
+      const consumption = service.getConsumption()
+      const production = service.getProduction()
+
+      expect(consumption.get('铁矿')).toBe(60)
+      expect(consumption.get('铜矿')).toBe(30)
+      expect(production.get('铁块')).toBe(60)
+    })
+
+    it('should return failure result when calculation fails', async () => {
+      const mockCalculator = {
+        calculate: vi.fn().mockReturnValue({
+          success: false,
+          xh_list: [],
+          out_list: [],
+          xhMap: {},
+          outMap: {},
+          error: new Error('计算失败')
+        })
+      }
+
+      window.createCalculator = vi.fn().mockReturnValue(mockCalculator)
+
+      const result = await service.calculateWithEngine([{ name: '铁块', num: 60 }])
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+    })
+
+    it('should increment version after calculation', async () => {
+      const mockCalculator = {
+        calculate: vi.fn().mockReturnValue({
+          success: true,
+          xh_list: [],
+          out_list: [],
+          xhMap: {},
+          outMap: {}
+        })
+      }
+
+      window.createCalculator = vi.fn().mockReturnValue(mockCalculator)
+
+      const initialVersion = service.getVersion()
+      await service.calculateWithEngine([{ name: '铁块', num: 60 }])
+
+      expect(service.getVersion()).toBe(initialVersion + 1)
     })
   })
 })

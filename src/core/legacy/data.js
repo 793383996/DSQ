@@ -722,8 +722,23 @@ function update_all() {
   app.totalSpace = space
   app.totalAcc = totalAcc.toFixed(2)
 }
+/**
+ * @deprecated 已迁移到 calculatorEngine.js
+ * 新代码请使用 createCalculator().loadNumber() 或 window.createCalculator().loadNumber()
+ * 此函数仅为向后兼容保留
+ */
 window.update_all = update_all
+/**
+ * @deprecated 已迁移到 calculatorEngine.js
+ * 新代码请使用 createCalculator().loadNumber() 或 window.createCalculator().loadNumber()
+ * 此函数仅为向后兼容保留
+ */
 window.loadNumber = loadNumber
+/**
+ * @deprecated 已迁移到 calculatorEngine.js
+ * 新代码请使用 createCalculator().find() 或 window.createCalculator().find()
+ * 此函数仅为向后兼容保留
+ */
 window.find = find
 window.generateBlueprint = generateBlueprint
 window.recipeIndexByProduct = recipeIndexByProduct

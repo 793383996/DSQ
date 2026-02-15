@@ -10,6 +10,10 @@
  * - 此模块仅包含纯计算逻辑，不包含UI渲染
  * - data.js 中的 update_all 仍保留完整逻辑，但调用此模块的核心函数
  * - 保持全局变量挂载到window，确保向后兼容
+ *
+ * @deprecated 此模块已迁移到 calculatorEngine.js 闭包封装版本
+ * 新代码请使用 createCalculator() 工厂函数创建独立计算器实例
+ * 此模块仅为向后兼容保留
  */
 
 var xh_list = []

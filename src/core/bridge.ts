@@ -35,7 +35,8 @@ async function loadLegacyModules() {
       storageManagerMod,
       recipeHelperMod,
       configDataMod,
-      settingsHelperMod
+      settingsHelperMod,
+      calculatorEngineMod
     ] = await Promise.all([
       import('./legacy/data'),
       import('./legacy/blueprint'),
@@ -45,7 +46,8 @@ async function loadLegacyModules() {
       import('./legacy/storageManager'),
       import('./legacy/recipeHelper'),
       import('./legacy/configData'),
-      import('./legacy/settingsHelper')
+      import('./legacy/settingsHelper'),
+      import('./legacy/calculatorEngine')
     ])
     dataModule = dataMod
     blueprintModule = blueprintMod

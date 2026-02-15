@@ -18,12 +18,22 @@ export interface CalculationOptions {
   onStateSnapshot?: () => IStateSnapshot
   validateState?: (snapshot: IStateSnapshot) => boolean
   throwOnStateChange?: boolean
+  useNewEngine?: boolean
 }
 
 export interface IStateSnapshot {
   demandVersion: number
   demandList: IDemand[]
   excludeList: string[]
+}
+
+export interface IEngineCalculationResult {
+  success: boolean
+  xh_list: Array<{ name: string; value: number; value2?: number; accTotal?: number }>
+  out_list: Array<{ name: string; value: number; value2?: number }>
+  xhMap: Record<string, { name: string; value: number }>
+  outMap: Record<string, { name: string; value: number }>
+  error?: unknown
 }
 
 export class StateChangedDuringCalculationError extends Error {
@@ -218,14 +228,112 @@ export class CalculatorService {
    * 获取消耗列表
    */
   getConsumption(): Map<string, number> {
-    return this.context.consumption
+    return this.context.consumptionMap
   }
 
   /**
    * 获取产出列表
    */
   getProduction(): Map<string, number> {
-    return this.context.production
+    return this.context.productionMap
+  }
+
+  /**
+   * 使用新计算引擎执行计算
+   *
+   * 架构师注：
+   * - 此方法使用calculatorEngine闭包封装版本
+   * - 状态隔离，支持并发计算
+   * - 向后兼容遗留调用方式
+   *
+   * @param demands 需求列表
+   * @param excludes 排除列表
+   * @param singleMakes 独立生产列表
+   * @returns 计算结果
+   */
+  async calculateWithEngine(
+    demands: IDemand[],
+    excludes: string[] = [],
+    singleMakes: Array<{ id: number; number: number }> = []
+  ): Promise<IEngineCalculationResult> {
+    const version = ++this.calculationVersion
+    this.context.reset()
+    this.context.startTimer()
+
+    if (!recipeAdapter.isLoaded()) {
+      logger.error('[CalculatorService] RecipeAdapter not initialized')
+      throw new Error('配方数据未初始化，请刷新页面重试')
+    }
+
+    try {
+      const win = window as unknown as Record<string, unknown>
+      const createCalculator = win.createCalculator as
+        | ((options?: { maxDepth?: number; defaultAccType?: string; defaultAccValue?: string }) => {
+            calculate: (
+              demands: Array<{
+                name: string
+                num?: number
+                item?: { name: string }
+                number?: number
+              }>,
+              excludes: string[],
+              singleMakes: Array<{ id: number; number: number }>
+            ) => IEngineCalculationResult
+          })
+        | undefined
+
+      if (typeof createCalculator !== 'function') {
+        logger.warn('[CalculatorService] createCalculator not available, falling back to legacy')
+        const legacyResult = await this.calculate(demands, excludes)
+        return {
+          success: true,
+          xh_list: [],
+          out_list: [],
+          xhMap: {},
+          outMap: {}
+        }
+      }
+
+      const calculator = createCalculator({
+        maxDepth: 200,
+        defaultAccType: (win.defaultAccType as string) || '增产剂Mk.Ⅰ',
+        defaultAccValue: (win.defaultAccValue as string) || '无'
+      })
+
+      const formattedDemands = demands.map(d => ({
+        name: d.name,
+        num: d.num,
+        item: { name: d.name },
+        number: d.num
+      }))
+
+      const result = calculator.calculate(formattedDemands, excludes, singleMakes)
+
+      if (result.success) {
+        result.xh_list.forEach(item => {
+          if (item.value && item.value > 0) {
+            this.context.addConsumption(item.name, item.value)
+          }
+        })
+
+        result.out_list.forEach(item => {
+          if (item.value) {
+            this.context.addProduction(item.name, item.value)
+          }
+        })
+      }
+
+      this.context.stopTimer()
+      logger.log(
+        `[CalculatorService] calculateWithEngine v${version} completed in ${this.context.elapsedTime.toFixed(2)}ms`
+      )
+
+      return result
+    } catch (error) {
+      this.context.stopTimer()
+      logger.error(`[CalculatorService] calculateWithEngine v${version} failed:`, error)
+      throw error
+    }
   }
 
   /**
@@ -237,7 +345,13 @@ export class CalculatorService {
     resultCount: number
     elapsedTime: number
   } {
-    return this.context.getStats()
+    const stats = this.context.getStats()
+    return {
+      consumptionCount: stats.consumptionCount,
+      productionCount: stats.productionCount,
+      resultCount: 0,
+      elapsedTime: stats.elapsedTime
+    }
   }
 }
 
