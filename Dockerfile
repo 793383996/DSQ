@@ -35,26 +35,7 @@ RUN npm run build && \
     fi && \
     echo "Build successful: $(ls -la dist/ | wc -l) files generated"
 
-RUN set -e; \
-    npm run test -- --run > test-output.log 2>&1 || true; \
-    test_exit_code=$?; \
-    if [ $test_exit_code -ne 0 ]; then \
-      echo "Tests failed with exit code $test_exit_code, retrying..."; \
-      npm run test -- --run > test-retry.log 2>&1; \
-      retry_exit_code=$?; \
-      if [ $retry_exit_code -ne 0 ]; then \
-        echo "Tests failed again with exit code $retry_exit_code"; \
-        echo "Last 50 lines of test output:"; \
-        tail -50 test-retry.log; \
-        rm -f test-output.log test-retry.log; \
-        exit $retry_exit_code; \
-      else \
-        echo "Tests passed on retry"; \
-      fi; \
-    else \
-      echo "Tests passed"; \
-    fi; \
-    rm -f test-output.log test-retry.log
+RUN npm run test -- --run
 
 FROM nginx:${NGINX_VERSION} AS production
 

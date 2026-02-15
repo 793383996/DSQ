@@ -286,8 +286,13 @@ export function initErrorReporter(config?: Partial<ErrorReporterConfig>): void {
   errorReporter.init(config)
 }
 
-export function captureError(error: Error, context?: Record<string, unknown>): void {
-  errorReporter.captureError(error, { context })
+export interface CaptureErrorOptions {
+  type?: ErrorReport['type']
+  context?: Record<string, unknown>
+}
+
+export function captureError(error: Error, options?: CaptureErrorOptions): void {
+  errorReporter.captureError(error, options)
 }
 
 export function captureMessage(

@@ -46,8 +46,10 @@ onErrorCaptured((error: Error, instance, info) => {
   logger.error('[ErrorBoundary] Caught error:', error, info)
   captureError(error, {
     type: 'vue',
-    componentName: instance?.$options?.name,
-    info
+    context: {
+      componentName: instance?.$options?.name,
+      info
+    }
   })
 
   return false

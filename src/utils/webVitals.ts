@@ -73,6 +73,7 @@ let visibilityHandler: (() => void) | null = null
 let pageHideHandler: (() => void) | null = null
 let inpVisibilityHandler: (() => void) | null = null
 let inpPageHideHandler: (() => void) | null = null
+let isInitialized = false
 
 const isDev = import.meta.env.DEV
 
@@ -393,10 +394,16 @@ export function destroyWebVitals(): void {
 
   callbacks = []
   metricsBuffer = []
+  isInitialized = false
 }
 
 export function initWebVitals(): void {
   if (typeof window === 'undefined') return
+  if (isInitialized) {
+    devWarn('[WebVitals] Already initialized, skipping')
+    return
+  }
+  isInitialized = true
 
   observeLCP()
   observeFID()

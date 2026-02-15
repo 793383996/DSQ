@@ -26,12 +26,13 @@ const preview: Preview = {
     }
   },
   decorators: [
-    (story, { parameters }) => ({
+    story => ({
       components: { story },
       setup() {
         return {}
       },
-      template: '<story />'
+      template: '<story />',
+      i18n
     })
   ],
   initialGlobals: {

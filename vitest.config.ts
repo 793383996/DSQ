@@ -23,10 +23,10 @@ export default defineConfig({
         'src/shims.d.ts'
       ],
       thresholds: {
-        lines: 60,
-        functions: 60,
-        branches: 50,
-        statements: 60
+        lines: 70,
+        functions: 70,
+        branches: 60,
+        statements: 70
       }
     }
   },

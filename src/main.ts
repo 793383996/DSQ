@@ -83,8 +83,11 @@ app.config.errorHandler = (err, instance, info) => {
     data: { info }
   })
   captureError(err instanceof Error ? err : new Error(String(err)), {
-    info,
-    componentName: instance?.$options?.name
+    type: 'vue',
+    context: {
+      info,
+      componentName: instance?.$options?.name
+    }
   })
 }
 
@@ -103,17 +106,18 @@ const handleGlobalError = (event: ErrorEvent) => {
   logger.error('[Global Error]', event.error)
   if (event.error) {
     captureError(event.error, {
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno
+      type: 'error',
+      context: {
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+      }
     })
   }
 }
 
-if (!import.meta.env.PROD) {
-  window.addEventListener('unhandledrejection', handleUnhandledRejection)
-  window.addEventListener('error', handleGlobalError)
-}
+window.addEventListener('unhandledrejection', handleUnhandledRejection)
+window.addEventListener('error', handleGlobalError)
 
 app.component('BlueprintGenerator', BlueprintGenerator)
 
@@ -184,10 +188,8 @@ function cleanup(): void {
   }
   visibilityChangeCallbacks.clear()
 
-  if (!import.meta.env.PROD) {
-    window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-    window.removeEventListener('error', handleGlobalError)
-  }
+  window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+  window.removeEventListener('error', handleGlobalError)
 
   destroyWebVitals()
   destroyErrorReporter()
