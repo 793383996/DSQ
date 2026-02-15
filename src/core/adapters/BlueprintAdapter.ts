@@ -75,7 +75,7 @@ function getItemMap(): Record<string, { iconId: number; name: string }> {
   return win.itemMap
 }
 
-function convertLegacyRecipe(legacyRecipe: ILegacyRecipe): ISubRecipe[] {
+export function convertLegacyRecipe(legacyRecipe: ILegacyRecipe): ISubRecipe[] {
   if (!legacyRecipe.subRecipes) {
     return []
   }
@@ -89,7 +89,7 @@ function convertLegacyRecipe(legacyRecipe: ILegacyRecipe): ISubRecipe[] {
   })) as ISubRecipe[]
 }
 
-function convertLegacyConfig(
+export function convertLegacyConfig(
   legacyConfig: ILegacyBlueprintConfig
 ): Partial<IBlueprintServiceConfig> {
   return {
