@@ -1,10 +1,10 @@
 # `index.html` 现代化解耦重构详细实施方案
 
-## 0. 重构进度追踪 (2026-02-14 更新)
+## 0. 重构进度追踪 (2026-02-15 更新)
 
 > **状态**：✅ 已完成 - 所有核心重构任务已完成
 >
-> **关联文档**：[架构迁移方案.md](./架构迁移方案.md)
+> **关联文档**：[架构迁移方案.md](./架构迁移方案.md) | [data重构.md](./data重构.md) | [bluepirnt重构.md](./bluepirnt重构.md)
 
 ### ✅ 第一阶段：遗留代码适配器 (Bridge Pattern) - 已完成
 
@@ -41,6 +41,8 @@
 | `AddItemDialog.vue`      | ✅   | 添加需求对话框，支持搜索和分类                      |
 | `Toast.vue`              | ✅   | 消息提示组件                                        |
 | `BlueprintGenerator.vue` | ✅   | 蓝图生成组件                                        |
+| `ErrorBoundary.vue`      | ✅   | 全局错误边界组件                                    |
+| `LocaleSwitcher.vue`     | ✅   | 语言切换组件                                        |
 | `useIconProvider.ts`     | ✅   | 图标加载与缓存，替代 jQuery `f_initIcons`           |
 | `useToast.ts`            | ✅   | Toast 代理，替代 `cocoMessage.js`                   |
 
@@ -61,7 +63,7 @@
 | `$.ajax` → `fetch()`             | ✅   | 高     | 数据加载已替换                |
 | `$.extend` → `structuredClone()` | ✅   | 高     | 深拷贝已替换                  |
 | `$.cookie` → `localStorage`      | ✅   | 高     | Cookie 操作已替换             |
-| 废弃文件清理                     | ✅   | 中     | jquery-\*.js 已删除           |
+| 废弃文件清理                     | ✅   | 中     | jquery-\*.js 已删除 (~96KB)   |
 | 构建配置优化                     | ✅   | 中     | Vite code splitting + esbuild |
 
 ### ✅ 第六阶段：性能优化 - 已完成 (2026-02-14)
@@ -75,12 +77,36 @@
 | 状态同步机制     | ✅   | 高     | demandVersion + 快照验证         |
 | 异常处理增强     | ✅   | 高     | xhMap/outMap清理、边界校验       |
 
-### ⏳ 后续优化 - 待进行
+### ✅ 第七阶段：数据与服务层重构 - 已完成 (2026-02-15)
 
-| 任务             | 状态 | 优先级 | 备注                              |
-| ---------------- | ---- | ------ | --------------------------------- |
-| 配方数据 JSON 化 | ⏳   | 中     | 详见 [data重构.md](./data重构.md) |
-| Tooltip 组件化   | ⏳   | 低     | 替代 `jquery.tips.js`             |
+| 任务                      | 状态 | 优先级 | 备注                         |
+| ------------------------- | ---- | ------ | ---------------------------- |
+| 配方数据 JSON 化          | ✅   | 高     | recipes.json + schema        |
+| itemMap/buildingMap 提取  | ✅   | 高     | 迁移到 types/ 和 data/       |
+| CalculatorService 服务    | ✅   | 高     | 计算逻辑封装                 |
+| CalculationContext 上下文 | ✅   | 高     | 替代全局变量                 |
+| SettingsAdapter 适配器    | ✅   | 中     | 配方/速度/增产剂设置管理     |
+| 闭包封装计算引擎          | ✅   | 高     | calculatorEngine.js 状态隔离 |
+| 双引擎支持                | ✅   | 中     | 遗留+新计算引擎并存          |
+
+### ✅ 第八阶段：质量保证 - 已完成 (2026-02-15)
+
+| 任务             | 状态 | 优先级 | 备注               |
+| ---------------- | ---- | ------ | ------------------ |
+| 单元测试覆盖     | ✅   | 高     | 359个测试全部通过  |
+| ESLint/Prettier  | ✅   | 中     | 代码规范工具       |
+| husky pre-commit | ✅   | 中     | Git 提交前检查     |
+| CI/CD 流水线     | ✅   | 中     | GitHub Actions     |
+| 全局错误边界     | ✅   | 中     | ErrorBoundary 组件 |
+
+### 🔲 后续优化 - 待进行
+
+| 任务                | 状态 | 优先级 | 备注                      |
+| ------------------- | ---- | ------ | ------------------------- |
+| Web Worker 计算迁移 | 🔲   | 中     | 计算密集型任务移至 Worker |
+| E2E 测试覆盖        | 🔲   | 低     | Playwright 端到端测试     |
+| PWA 支持            | 🔲   | 低     | 离线可用性                |
+| Tooltip 组件化      | 🔲   | 低     | 替代 `jquery.tips.js`     |
 
 ---
 
@@ -88,27 +114,52 @@
 
 ```text
 src/
-├── core/                      # 遗留逻辑层 (黑盒)
-│   ├── legacy/                # 存放原 data.js, blueprint.js
-│   │   ├── data.js            # 配方数据 + 计算逻辑 (jQuery 已移除) ✅
-│   │   ├── data.d.ts          # 类型声明
-│   │   ├── blueprint.js       # 蓝图生成逻辑
-│   │   └── blueprint.d.ts     # 类型声明
-│   └── bridge.ts              # 核心：遗留代码与 Vue 3 的适配层 ✅
-├── stores/                    # 状态管理层
-│   └── blueprint.ts           # 托管 demandList, excludeList, settings ✅
-├── components/                # UI 组件层
-│   ├── ControlPanel/          # 顶部控制栏组件 ✅
-│   ├── ConfigPanel/           # 参数设置面板 ✅
-│   ├── ResultTable/           # 核心计算表格组件 ✅
-│   ├── AddItemDialog/         # 添加需求对话框 ✅
-│   ├── Toast/                 # 消息提示组件 ✅
-│   └── BlueprintGenerator/    # 蓝图生成组件 ✅
-├── composables/               # 组合式函数
-│   ├── useIconProvider.ts     # 图标提供者 ✅
-│   └── useToast.ts            # Toast 代理 ✅
-├── App.vue                    # 根组件：负责生命周期管理 ✅
-└── main.ts                    # 入口：挂载全局插件 ✅
+├── core/                          # 核心业务逻辑
+│   ├── legacy/                    # 遗留代码 (只读)
+│   │   ├── data.js                # 核心流程 (1111行)
+│   │   ├── calculator.js          # 计算引擎导出层 (358行)
+│   │   ├── calculatorEngine.js    # 闭包封装计算引擎 (444行) ✅ 新增
+│   │   ├── iconLoader.js          # 图标加载 (134行)
+│   │   ├── storageManager.js      # 存储管理 (152行)
+│   │   ├── recipeHelper.js        # 配方辅助 (41行)
+│   │   ├── configData.js          # 配置数据 (230行)
+│   │   ├── settingsHelper.js      # 设置辅助 (82行)
+│   │   ├── blueprint.js           # 蓝图编码/解码 (3967行)
+│   │   ├── data.d.ts              # 类型声明
+│   │   └── blueprint.d.ts         # 类型声明
+│   ├── types/                     # 类型定义 ✅ (714行)
+│   ├── data/                      # 数据文件 ✅ (7个JSON)
+│   ├── adapters/                  # 适配器 ✅ (411行)
+│   ├── services/                  # 业务服务 ✅ (683行)
+│   ├── utils/                     # 工具函数 ✅ (1427行)
+│   ├── config/                    # 配置 ✅
+│   ├── __tests__/                 # 测试 ✅ (3108行)
+│   └── bridge.ts                  # 遗留代码适配层 ✅
+│
+├── stores/                        # Pinia 状态管理 ✅
+│   ├── blueprint.ts               # 托管 demandList, excludeList, settings
+│   └── __tests__/                 # Store 测试
+│
+├── components/                    # Vue 组件 ✅
+│   ├── ControlPanel/              # 顶部控制栏组件
+│   ├── ConfigPanel/               # 参数设置面板
+│   ├── ResultTable/               # 核心计算表格组件
+│   ├── AddItemDialog/             # 添加需求对话框
+│   ├── BlueprintGenerator/        # 蓝图生成组件
+│   ├── Toast/                     # 消息提示组件
+│   ├── ErrorBoundary/             # 全局错误边界组件 ✅ 新增
+│   ├── LocaleSwitcher/            # 语言切换组件 ✅ 新增
+│   └── __tests__/                 # 组件测试
+│
+├── composables/                   # 组合式函数 ✅
+│   ├── useIconProvider.ts         # 图标提供者
+│   └── useToast.ts                # Toast 代理
+│
+├── workers/                       # Web Workers 🔲 待实现
+│   └── calculator.worker.ts
+│
+├── App.vue                        # 根组件：负责生命周期管理 ✅
+└── main.ts                        # 入口：挂载全局插件 ✅
 ```
 
 ### 1.1 pako 依赖说明 (2026-02-14 更新)
@@ -206,58 +257,103 @@ function clearAll(): void
 | **速度产量配置** | DOM 直接操作            | `ConfigPanel.vue` + bridge     | ✅   |
 | **物流配置**     | DOM 直接操作            | `ConfigPanel.vue` + bridge     | ✅   |
 | **蓝图配置**     | DOM 直接操作            | `ConfigPanel.vue` + bridge     | ✅   |
-| **Tooltip 提示** | `jquery.tips.js`        | 待引入 Vue Tooltip             | ⏳   |
-| **性能优化**     | 无                      | 待添加 `v-memo`                | ⏳   |
+| **错误处理**     | 无全局处理              | `ErrorBoundary.vue` 组件       | ✅   |
+| **多语言支持**   | 无                      | `LocaleSwitcher.vue` + i18n    | ✅   |
+| **性能优化**     | 无                      | `v-memo` + 图标缓存            | ✅   |
+| **单元测试**     | 无                      | Vitest (359个测试)             | ✅   |
+| **代码规范**     | 无                      | ESLint/Prettier/husky          | ✅   |
+| **CI/CD**        | 无                      | GitHub Actions                 | ✅   |
+| **Tooltip 提示** | `jquery.tips.js`        | 待引入 Vue Tooltip             | 🔲   |
+| **Web Worker**   | 无                      | 计算密集型任务迁移             | 🔲   |
+| **E2E 测试**     | 无                      | Playwright                     | 🔲   |
+| **PWA 支持**     | 无                      | vite-plugin-pwa                | 🔲   |
 
 ---
 
-## 4. 下一阶段重构计划
+## 4. 重构成果总结
 
-### 4.1 移除 jQuery 依赖 (高优先级)
+### 4.1 已完成的核心重构
 
-**目标**：彻底移除 `data.js` 对 jQuery 的依赖。
+| 阶段   | 内容                            | 完成日期   |
+| ------ | ------------------------------- | ---------- |
+| 阶段 1 | 遗留代码适配器 (Bridge Pattern) | 2026-02-14 |
+| 阶段 2 | 状态中心化 (Pinia Store)        | 2026-02-14 |
+| 阶段 3 | UI 组件化拆分                   | 2026-02-14 |
+| 阶段 4 | 指令化与事件解耦                | 2026-02-14 |
+| 阶段 5 | jQuery 移除                     | 2026-02-14 |
+| 阶段 6 | 性能优化                        | 2026-02-14 |
+| 阶段 7 | 数据与服务层重构                | 2026-02-15 |
+| 阶段 8 | 质量保证                        | 2026-02-15 |
 
-**当前问题**：
+### 4.2 代码统计
 
-- `data.js` 顶部 `import $ from 'jquery'`
-- 部分遗留函数仍使用 `$()` 选择器
+| 指标        | 数值              |
+| ----------- | ----------------- |
+| 遗留代码    | 6519行 (9个文件)  |
+| 新架构代码  | 6343行 (38个文件) |
+| 测试代码    | 3108行 (12个文件) |
+| 测试用例    | 359个 ✅          |
+| Vue 组件    | 8个               |
+| Composables | 2个               |
+| Services    | 4个               |
+| Utils       | 10个              |
 
-**实施方案**：
+### 4.3 技术栈升级
 
-1. 审计 `data.js` 中所有 `$()` 调用
-2. 将 DOM 操作迁移至 Vue 组件
-3. 将事件监听迁移至 `@click` 等指令
-4. 移除 jQuery import
-
-### 4.2 配方数据 JSON 化 (高优先级)
-
-**目标**：将 `data.js` 中的配方数据提取为纯 JSON。
-
-**实施方案**：
-
-1. 提取 `data` 数组为 `data.json`
-2. 创建 `RecipeProvider` 类加载 JSON
-3. 保持 `loadNumber` 逻辑不变，仅替换数据源
-4. 添加 JSON Schema 校验
-
-### 4.3 计算逻辑服务化 (高优先级)
-
-**目标**：将 `loadNumber` 及相关函数封装为独立服务。
-
-**实施方案**：
-
-1. 创建 `CalculationService` 类
-2. 封装 `xh_list`, `out_list` 为 `CalculationContext`
-3. 提供异步计算接口
-4. 添加计算进度回调
+| 层级     | 旧技术           | 新技术             |
+| -------- | ---------------- | ------------------ |
+| 运行时   | 原生 JS + jQuery | Vue 3 + TypeScript |
+| 状态管理 | 全局变量         | Pinia Store        |
+| UI 组件  | HTML 字符串拼接  | Vue SFC            |
+| 构建工具 | 无               | Vite               |
+| 类型安全 | 无               | TypeScript strict  |
+| 测试框架 | 无               | Vitest             |
+| 代码规范 | 无               | ESLint/Prettier    |
+| CI/CD    | 无               | GitHub Actions     |
 
 ---
 
-## 5. 协作 AI 模型指令 (Instruction for Models)
+## 5. 后续优化计划
+
+### 5.1 性能优化 (中优先级)
+
+**目标**：将计算密集型任务迁移至 Web Worker。
+
+**实施方案**：
+
+1. 创建 `calculator.worker.ts`
+2. 封装 `CalculatorService` 为 Worker 兼容接口
+3. 主线程与 Worker 通信协议设计
+4. 计算进度回调实现
+
+### 5.2 测试覆盖 (低优先级)
+
+**目标**：添加 E2E 测试覆盖。
+
+**实施方案**：
+
+1. 引入 Playwright
+2. 编写核心流程 E2E 测试
+3. CI 集成 E2E 测试
+
+### 5.3 用户体验 (低优先级)
+
+**目标**：PWA 支持与离线可用性。
+
+**实施方案**：
+
+1. 引入 `vite-plugin-pwa`
+2. 配置 Service Worker
+3. 添加离线缓存策略
+
+---
+
+## 6. 协作 AI 模型指令 (Instruction for Models)
 
 > "你现在的任务是协助进行遗留代码解耦。在修改 `data.js` 或 `blueprint.js` 时，请确保：
 >
 > 1. 所有对全局变量的访问都通过 `bridge.ts` 提供的接口进行
 > 2. 禁止尝试优化 `loadNumber` 中的递归算法
 > 3. 仅负责将 DOM 操作替换为 Vue 响应式状态
-> 4. 保持蓝图生成的二进制兼容性"
+> 4. 保持蓝图生成的二进制兼容性
+> 5. 新增代码必须包含完整的 TypeScript 类型注解"

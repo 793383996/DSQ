@@ -1,6 +1,6 @@
 # `blueprint.js` 协议层解耦与重构详细实施方案
 
-> **状态**：✅ 已完成 - 阶段 5 + 阶段 4F
+> **状态**：⏳ 进行中 - 阶段 5 (协议层完成，生成器待迁移)
 >
 > **关联文档**：[架构迁移方案.md](./架构迁移方案.md) | [堆叠流程重构.md](./堆叠流程重构.md)
 
@@ -13,7 +13,7 @@
 
 ---
 
-## 0.1 重构进度追踪 (2026-02-14 更新)
+## 0.1 重构进度追踪 (2026-02-15 更新)
 
 ### ✅ 已完成
 
@@ -32,12 +32,24 @@
 | pako统一加载 (`getPakoImpl()`)                  | ✅   | 中         | 解决ESM/CJS模块加载差异                    |
 | URI解码容错 (`safeDecodeURIComponent`)          | ✅   | 中         | 处理特殊字符解码异常                       |
 | pako API兼容修复                                | ✅   | 2026-02-14 | 使用inflate/deflate替代ungzip/gzip         |
+| Baseline 测试                                   | ✅   | 高         | 359个单元测试全部通过                      |
 
-### ✅ 已完成
+### ⏳ 进行中
 
-| 任务          | 状态 | 优先级 | 说明                  |
-| ------------- | ---- | ------ | --------------------- |
-| Baseline 测试 | ✅   | 高     | 296个单元测试全部通过 |
+| 任务                     | 状态 | 优先级 | 说明                                         |
+| ------------------------ | ---- | ------ | -------------------------------------------- |
+| Blueprint类生成逻辑迁移  | ⏳   | 高     | init/generateBuildings/generateConveyorBelts |
+| BuildingGenerator服务    | ⏳   | 中     | 建筑生成器独立服务                           |
+| ConveyorGenerator服务    | ⏳   | 中     | 传送带生成器独立服务                         |
+| BlueprintService整合服务 | ⏳   | 中     | 蓝图生成统一入口                             |
+
+### 🔲 待开始
+
+| 任务                | 状态 | 优先级 | 说明           |
+| ------------------- | ---- | ------ | -------------- |
+| ParameterParser迁移 | 🔲   | 低     | 建筑参数解析器 |
+| RecipeParser迁移    | 🔲   | 低     | 配方解析器     |
+| 删除原 blueprint.js | 🔲   | 低     | 验证完成后移除 |
 
 ### 前置依赖
 
@@ -46,849 +58,244 @@
 
 ---
 
-## 1. 当前状态分析 (2026-02-14 更新)
+## 1. 当前状态分析 (2026-02-15 更新)
 
 ### 1.1 文件结构
 
 ```text
-Scripts/
-├── blueprint.js       # 蓝图生成逻辑 (~4000 行)
-├── localDocs/
-│   ├── 堆叠模块说明.md  # 堆叠功能文档
-│   └── 堆叠流程重构.md  # 堆叠模块重构方案
+src/core/
+├── legacy/
+│   └── blueprint.js           # 蓝图生成逻辑 (3967行) - 待迁移
+├── types/
+│   ├── blueprint.ts           # ✅ 蓝图类型定义 (93行)
+│   ├── stack.ts               # ✅ 堆叠类型定义 (54行)
+│   ├── itemMap.ts             # ✅ 物品映射 (28行)
+│   └── buildingMap.ts         # ✅ 建筑映射 (52行)
+├── data/
+│   ├── itemMap.json           # ✅ 物品映射数据
+│   ├── buildingMap.json       # ✅ 建筑映射数据
+│   ├── recipeMap.json         # ✅ 配方映射数据
+│   ├── buildingType.json      # ✅ 建筑类型
+│   └── productionCategory.json # ✅ 生产分类
+├── utils/
+│   ├── BinaryReader.ts        # ✅ 二进制读取器 (82行)
+│   ├── BinaryWriter.ts        # ✅ 二进制写入器 (68行)
+│   ├── BlueprintDecoder.ts    # ✅ 蓝图解码器 (384行)
+│   ├── BlueprintEncoder.ts    # ✅ 蓝图编码器 (414行)
+│   ├── IndexMapper.ts         # ✅ 索引重映射 (78行)
+│   └── md5.ts                 # ✅ MD5工具 (109行)
+├── services/
+│   └── StackService.ts        # ✅ 堆叠服务 (217行)
+└── __tests__/
+    ├── blueprint.test.ts      # ✅ 编解码测试 (363行)
+    ├── binary.test.ts         # ✅ 二进制测试 (228行)
+    ├── md5.test.ts            # ✅ MD5测试 (128行)
+    ├── indexMapper.test.ts    # ✅ 索引映射测试 (159行)
+    └── stackService.test.ts   # ✅ 堆叠服务测试 (384行)
 ```
 
-### 1.2 核心数据结构
+### 1.2 遗留代码分析 (blueprint.js)
 
-```javascript
-// 物品映射表
-const itemMap = {
-  ironOre: { name: 'ironOre', iconId: 1001, remark: '铁矿' },
-  copperOre: { name: 'copperOre', iconId: 1002, remark: '铜矿' }
-  // ... 更多物品
-}
+| 模块                                              | 行数  | 状态      | 说明                                         |
+| ------------------------------------------------- | ----- | --------- | -------------------------------------------- |
+| `itemMap`                                         | ~200  | ✅ 已迁移 | → `src/core/data/itemMap.json`               |
+| `buildingMap`                                     | ~150  | ✅ 已迁移 | → `src/core/data/buildingMap.json`           |
+| `productionCategory`                              | ~10   | ✅ 已迁移 | → `src/core/data/productionCategory.json`    |
+| `buildingType`                                    | ~10   | ✅ 已迁移 | → `src/core/data/buildingType.json`          |
+| `recipeMap`                                       | ~200  | ✅ 已迁移 | → `src/core/data/recipeMap.json`             |
+| `Blueprint` 类                                    | ~1500 | ⏳ 待迁移 | init/generateBuildings/generateConveyorBelts |
+| `Blueprint.init()`                                | ~200  | ⏳ 待迁移 | 缩减设备数量                                 |
+| `Blueprint.generateBuildings()`                   | ~400  | ⏳ 待迁移 | 生成建筑布局                                 |
+| `Blueprint.generateConveyorBelts()`               | ~400  | ⏳ 待迁移 | 生成传送带连接                               |
+| `Blueprint.generateConveyorBeltsForSprayCoater()` | ~100  | ⏳ 待迁移 | 喷涂机传送带                                 |
+| `Blueprint.cloneToStackLayers()`                  | ~150  | ✅ 已迁移 | → `StackService.cloneToStackLayers`          |
+| `Blueprint.toStr()`                               | ~300  | ✅ 已迁移 | → `BlueprintEncoder.encode`                  |
+| `Blueprint.parse()`                               | ~300  | ✅ 已迁移 | → `BlueprintDecoder.decode`                  |
+| MD5 实现                                          | ~300  | ✅ 已迁移 | → `src/core/utils/md5.ts`                    |
+| 二进制读写                                        | ~400  | ✅ 已迁移 | → `BinaryReader/BinaryWriter`                |
 
-// 建筑属性
-const building = {
-  itemId: number, // 建筑ID
-  index: number, // 建筑序号
-  localOffset: [
-    { x, y, z },
-    { x, y, z }
-  ], // 坐标
-  recipeId: number, // 配方ID
-  filterId: number, // 过滤器ID
-  inputObjIdx: number, // 输入对象索引
-  outputObjIdx: number // 输出对象索引
-}
-```
+**总行数**: 3967行
 
 ### 1.3 核心函数清单
 
-| 函数名                 | 功能               | 状态                  |
-| ---------------------- | ------------------ | --------------------- |
-| `Blueprint.parse(str)` | 解析蓝图字符串     | ⚠️ 黑盒，禁止修改     |
-| `Blueprint.toStr()`    | 生成蓝图字符串     | ⚠️ 黑盒，禁止修改     |
-| `generateBlueprint()`  | 从计算结果生成蓝图 | ✅ 已通过 bridge 封装 |
-| `md5(string)`          | MD5 哈希计算       | ⚠️ 黑盒，禁止修改     |
+| 函数名                              | 功能               | 状态                  |
+| ----------------------------------- | ------------------ | --------------------- |
+| `Blueprint.parse(str)`              | 解析蓝图字符串     | ✅ → BlueprintDecoder |
+| `Blueprint.toStr()`                 | 生成蓝图字符串     | ✅ → BlueprintEncoder |
+| `Blueprint.init()`                  | 初始化蓝图布局     | ⏳ 待迁移             |
+| `Blueprint.generateBuildings()`     | 生成建筑布局       | ⏳ 待迁移             |
+| `Blueprint.generateConveyorBelts()` | 生成传送带         | ⏳ 待迁移             |
+| `Blueprint.cloneToStackLayers()`    | 堆叠克隆           | ✅ → StackService     |
+| `generateBlueprint()`               | 从计算结果生成蓝图 | ⏳ 待迁移             |
+| `md5(string)`                       | MD5 哈希计算       | ✅ → md5.ts           |
 
 ### 1.4 依赖关系
 
 ```
 blueprint.js
-    ├── pako.js (Gzip 压缩/解压)
-    ├── md5() (内置 MD5 实现)
-    └── window.data (配方数据)
+    ├── pako.js (Gzip 压缩/解压) ✅ 已封装
+    ├── md5() (内置 MD5 实现) ✅ 已迁移
+    └── window.data (配方数据) ✅ 已迁移
 ```
 
 ---
 
-## 2. 第一阶段：协议数据模型化 (Type Modeling)
+## 2. 已完成模块详解
 
-**目标**：将二进制流中的偏移量转化为语义化的 TypeScript 接口。
+### 2.1 二进制读写器
 
-### 2.1 蓝图元数据接口
-
-创建 `src/core/blueprint/types.ts`：
+**文件**: `src/core/utils/BinaryReader.ts` / `BinaryWriter.ts`
 
 ```typescript
-/**
- * 蓝图建筑属性映射
- * 架构师注：字段顺序必须与二进制读取顺序一致
- */
-export interface IBlueprintBuilding {
-  itemId: number // 建筑ID (对应 itemMap 中的 iconId)
-  index: number // 建筑序号 (从 0 开始)
-  localOffset: ICoordinate[] | null // 坐标数组
-  yaw: number[] // 旋转向量
-  recipeId: number // 配方ID (0 表示无配方)
-  filterId: number // 过滤器设置 (0 表示无过滤)
-  inputObjIdx: number // 输入对象索引
-  outputObjIdx: number // 输出对象索引
-  parameters: IBlueprintParameters | null // 参数
+// BinaryWriter - 小端序写入
+export class BinaryWriter {
+  writeByte(value: number): void
+  writeInt16(value: number): void
+  writeInt32(value: number): void
+  writeFloat32(value: number): void
+  writeString(str: string): void
+  getBuffer(): Uint8Array
 }
 
-/**
- * 坐标接口
- */
-export interface ICoordinate {
-  x: number
-  y: number
-  z: number
-}
-
-/**
- * 蓝图参数
- */
-export interface IBlueprintParameters {
-  iconId?: number // 图标ID
-  count?: string // 数量
-}
-
-/**
- * 蓝图图标信息
- */
-export interface IBlueprintIcon {
-  index: number // 图标位置索引
-  itemId: number // 物品ID
-}
-
-/**
- * 蓝图数据结构
- */
-export interface IBlueprintData {
-  version: number // 协议版本 (目前固定为 0)
-  layout: number // 布局信息
-  icons: IBlueprintIcon[] // 蓝图图标列表
-  buildings: IBlueprintBuilding[] // 建筑列表
-}
-
-/**
- * 蓝图元信息
- */
-export interface IBlueprintMeta {
-  title: string // 蓝图标题
-  description: string // 蓝图描述
-  time: number // 创建时间戳
-  gameVersion: string // 游戏版本
+// BinaryReader - 小端序读取
+export class BinaryReader {
+  readByte(): number
+  readInt16(): number
+  readInt32(): number
+  readFloat32(): number
+  readString(length: number): string
 }
 ```
 
-### 2.2 物品映射接口
+### 2.2 蓝图编解码器
+
+**文件**: `src/core/utils/BlueprintEncoder.ts` / `BlueprintDecoder.ts`
 
 ```typescript
-/**
- * 物品映射项
- */
-export interface IItemMapping {
-  name: string // 内部名称 (如 "ironOre")
-  iconId: number // 图标ID
-  remark: string // 中文备注
-  extra_rate?: number // 增产剂额外产出率
-  accelerate?: number // 增产剂加速率
+// BlueprintEncoder - 编码为蓝图字符串
+export function encodeBlueprint(data: IBlueprintData): string {
+  // 1. 写入二进制数据
+  // 2. 计算 MD5 签名
+  // 3. Gzip 压缩
+  // 4. Base64 编码
+  // 5. 添加 BLUEPRINT: 前缀
 }
 
-/**
- * 物品映射表
- */
-export type ItemMap = Record<string, IItemMapping>
+// BlueprintDecoder - 解析蓝图字符串
+export function decodeBlueprint(blueprintStr: string): IBlueprintData {
+  // 1. 移除 BLUEPRINT: 前缀
+  // 2. Base64 解码
+  // 3. Gzip 解压
+  // 4. 验证 MD5 签名
+  // 5. 解析二进制数据
+}
 ```
 
-### 2.3 建筑映射接口
+### 2.3 堆叠服务
+
+**文件**: `src/core/services/StackService.ts`
 
 ```typescript
-/**
- * 建筑分类
- */
-export enum ProductionCategory {
-  smelter = 0, // 熔炉
-  assembling = 1, // 制造台
-  plant = 2, // 化工厂
-  refinery = 3, // 精炼厂
-  collider = 4, // 对撞机
-  lab = 5 // 研究站
-}
+export class StackService {
+  constructor(config: Partial<IStackConfig>)
 
-/**
- * 建筑类型
- */
-export enum BuildingType {
-  production = 0, // 生产建筑
-  sorter = 1, // 分拣器
-  conveyor = 2 // 传送带
-}
+  // 核心方法
+  cloneToStackLayers(buildings: IBlueprintBuilding[], layers: number): ICloneResult
+  createFoundationBuildings(zOffset: number, count: number): IBlueprintBuilding[]
 
-/**
- * 建筑映射项
- */
-export interface IBuildingMapping {
-  name: string
-  itemId: number
-  modelIndex: number
-  remark: string
-  productionSpeed?: number
-  sortingSpeed?: number
-  transportSpeed?: number
-  size?: { x: number; y: number }
-  type: BuildingType
-  category?: ProductionCategory
-  slotMaxIndex?: number
-  height?: number
+  // 辅助方法
+  getItemSummary(buildings: IBlueprintBuilding[]): IItemSummary
+  getSorterMap(buildings: IBlueprintBuilding[]): ISorterMap
 }
+```
 
-/**
- * 建筑映射表
- */
-export type BuildingMap = Record<string, IBuildingMapping>
+### 2.4 索引重映射
+
+**文件**: `src/core/utils/IndexMapper.ts`
+
+```typescript
+// 构建建筑索引映射
+export function buildIndexMap(buildings: IBlueprintBuilding[]): Map<number, number>
+
+// 克隆建筑并重映射索引
+export function cloneBuildingWithRemap(
+  building: IBlueprintBuilding,
+  indexMap: Map<number, number>,
+  indexOffset: number,
+  zOffset: number
+): IBlueprintBuilding
 ```
 
 ---
 
-## 3. 第二阶段：核心依赖提取 (Dependency Isolation)
+## 3. 待迁移模块详解
 
-**目标**：将 MD5 和二进制工具类从业务逻辑中抽离。
+### 3.1 Blueprint 类核心方法
 
-### 3.1 MD5 算法静态化
+#### 3.1.1 `init()` - 初始化蓝图布局
 
-创建 `src/core/utils/Crypto.ts`：
-
-```typescript
-/**
- * MD5 哈希计算
- * 架构师注：此实现为蓝图协议专用，严禁修改任何位运算魔数
- *
- * @param input 输入字符串
- * @returns 32位小写十六进制哈希值
- */
-export function md5(input: string): string {
-  // 从 blueprint.js 完整迁移 MD5 实现
-  // 保持原函数的输入输出类型 (String in, String out)
-  // ... (原 MD5 逻辑保持不变)
-  // 注意：不要尝试将其改为 ArrayBuffer 操作
-  // 除非有完整的单元测试覆盖
+```javascript
+// blueprint.js:2048
+init() {
+  // 1. 遍历 recipe.subRecipes
+  // 2. 调用 mapRecipeID() 映射配方ID
+  // 3. 计算建筑数量
+  // 4. 初始化布局参数
 }
 ```
 
-### 3.2 二进制读写器封装
+**迁移目标**: `BuildingGenerator.initLayout()`
 
-创建 `src/core/blueprint/BlueprintBuffer.ts`：
+#### 3.1.2 `generateBuildings()` - 生成建筑布局
 
-```typescript
-/**
- * 蓝图二进制缓冲区
- * 架构师注：严格遵守小端序 (Little-Endian)
- */
-export class BlueprintBuffer {
-  private buffer: Uint8Array
-  private view: DataView
-  private offset: number = 0
-
-  constructor(size: number) {
-    this.buffer = new Uint8Array(size)
-    this.view = new DataView(this.buffer.buffer)
-  }
-
-  static fromBase64(base64: string): BlueprintBuffer {
-    const binary = atob(base64)
-    const buffer = new BlueprintBuffer(binary.length)
-    for (let i = 0; i < binary.length; i++) {
-      buffer.buffer[i] = binary.charCodeAt(i)
-    }
-    return buffer
-  }
-
-  toBase64(): string {
-    let binary = ''
-    for (let i = 0; i < this.buffer.length; i++) {
-      binary += String.fromCharCode(this.buffer[i])
-    }
-    return btoa(binary)
-  }
-
-  // ===== 读取方法 (小端序) =====
-
-  readInt32(): number {
-    const value = this.view.getInt32(this.offset, true)
-    this.offset += 4
-    return value
-  }
-
-  readFloat32(): number {
-    const value = this.view.getFloat32(this.offset, true)
-    this.offset += 4
-    return value
-  }
-
-  readInt16(): number {
-    const value = this.view.getInt16(this.offset, true)
-    this.offset += 2
-    return value
-  }
-
-  readByte(): number {
-    return this.buffer[this.offset++]
-  }
-
-  // ===== 写入方法 (小端序) =====
-
-  writeInt32(value: number): void {
-    this.view.setInt32(this.offset, value, true)
-    this.offset += 4
-  }
-
-  writeFloat32(value: number): void {
-    this.view.setFloat32(this.offset, value, true)
-    this.offset += 4
-  }
-
-  writeInt16(value: number): void {
-    this.view.setInt16(this.offset, value, true)
-    this.offset += 2
-  }
-
-  writeByte(value: number): void {
-    this.buffer[this.offset++] = value & 0xff
-  }
-
-  // ===== 工具方法 =====
-
-  getLength(): number {
-    return this.buffer.length
-  }
-
-  getOffset(): number {
-    return this.offset
-  }
-
-  getBuffer(): Uint8Array {
-    return this.buffer
-  }
+```javascript
+// blueprint.js:2662
+generateBuildings() {
+  // 1. 遍历 subRecipes
+  // 2. 根据建筑类型生成对应建筑
+  // 3. 设置坐标、配方ID、参数
+  // 4. 添加到 buildings 数组
 }
 ```
 
----
+**迁移目标**: `BuildingGenerator.generate()`
 
-## 4. 第三阶段：解析与生成逻辑重构 (Service Wrapping)
+#### 3.1.3 `generateConveyorBelts()` - 生成传送带连接
 
-**目标**：将全局 `Blueprint` 对象转化为无状态的服务类。
-
-### 4.1 蓝图解析器
-
-创建 `src/core/blueprint/BlueprintParser.ts`：
-
-```typescript
-import pako from 'pako'
-import { BlueprintBuffer } from './BlueprintBuffer'
-import type { IBlueprintData, IBlueprintBuilding, IBlueprintIcon } from './types'
-
-/**
- * 蓝图解析器
- * 架构师注：解析逻辑必须与原 blueprint.js 完全一致
- */
-export class BlueprintParser {
-  /**
-   * 解析蓝图字符串
-   * @param blueprintStr 蓝图字符串 (以 "BLUEPRINT:" 开头)
-   */
-  static parse(blueprintStr: string): IBlueprintData {
-    if (!blueprintStr.startsWith('BLUEPRINT:')) {
-      throw new Error('Invalid blueprint format: missing BLUEPRINT: prefix')
-    }
-
-    const parts = blueprintStr.substring(10).split(',')
-    const version = parseInt(parts[0])
-    const base64Data = parts.slice(1).join(',')
-
-    const buffer = BlueprintBuffer.fromBase64(base64Data)
-    const decompressed = pako.ungzip(buffer.getBuffer())
-
-    return this.parseBinary(decompressed)
-  }
-
-  /**
-   * 解析二进制数据
-   * 架构师注：字段读取顺序必须与原逻辑一致
-   */
-  private static parseBinary(data: Uint8Array): IBlueprintData {
-    const buffer = new BlueprintBuffer(data.length)
-    // ... 复制原 parse 方法的循环结构
-
-    const version = buffer.readByte()
-    const layout = buffer.readInt16()
-
-    const iconCount = buffer.readInt16()
-    const icons: IBlueprintIcon[] = []
-    for (let i = 0; i < iconCount; i++) {
-      icons.push({
-        index: buffer.readInt16(),
-        itemId: buffer.readInt32()
-      })
-    }
-
-    const buildingCount = buffer.readInt32()
-    const buildings: IBlueprintBuilding[] = []
-    for (let i = 0; i < buildingCount; i++) {
-      buildings.push({
-        itemId: buffer.readInt32(),
-        index: buffer.readInt32(),
-        localOffset: [
-          { x: buffer.readFloat32(), y: buffer.readFloat32(), z: buffer.readFloat32() },
-          { x: buffer.readFloat32(), y: buffer.readFloat32(), z: buffer.readFloat32() }
-        ],
-        yaw: [buffer.readInt16(), buffer.readInt16()],
-        recipeId: buffer.readInt32(),
-        filterId: buffer.readInt32(),
-        inputObjIdx: buffer.readInt32(),
-        outputObjIdx: buffer.readInt32()
-      })
-    }
-
-    return { version, layout, icons, buildings }
-  }
+```javascript
+// blueprint.js:2252
+generateConveyorBelts() {
+  // 1. 分析建筑间的物料流向
+  // 2. 生成传送带连接
+  // 3. 生成分拣器连接
+  // 4. 设置输入输出索引
 }
 ```
 
-### 4.2 蓝图编码器
+**迁移目标**: `ConveyorGenerator.generate()`
 
-创建 `src/core/blueprint/BlueprintEncoder.ts`：
-
-```typescript
-import pako from 'pako'
-import { md5 } from '../utils/Crypto'
-import { BlueprintBuffer } from './BlueprintBuffer'
-import type { IBlueprintData } from './types'
-
-/**
- * 蓝图编码器
- * 架构师注：MD5 签名必须在 Gzip 压缩之前计算
- */
-export class BlueprintEncoder {
-  /**
-   * 生成蓝图字符串
-   * @param data 蓝图数据
-   */
-  static encode(data: IBlueprintData): string {
-    const binaryData = this.writeBinary(data)
-    const signature = md5(this.arrayBufferToString(binaryData))
-    const compressed = pako.gzip(binaryData)
-    const base64 = this.arrayToBase64(compressed)
-
-    return `BLUEPRINT:${data.version},${base64}`
-  }
-
-  /**
-   * 写入二进制数据
-   * 架构师注：字段写入顺序必须与解析顺序一致
-   */
-  private static writeBinary(data: IBlueprintData): Uint8Array {
-    // 计算所需缓冲区大小
-    let size = 1 + 2 // version + layout
-    size += 2 + data.icons.length * 6 // iconCount + icons
-    size += 4 + data.buildings.length * 44 // buildingCount + buildings
-
-    const buffer = new BlueprintBuffer(size)
-
-    buffer.writeByte(data.version)
-    buffer.writeInt16(data.layout)
-
-    buffer.writeInt16(data.icons.length)
-    for (const icon of data.icons) {
-      buffer.writeInt16(icon.index)
-      buffer.writeInt32(icon.itemId)
-    }
-
-    buffer.writeInt32(data.buildings.length)
-    for (const building of data.buildings) {
-      buffer.writeInt32(building.itemId)
-      buffer.writeInt32(building.index)
-      // localOffset[0]
-      buffer.writeFloat32(building.localOffset[0].x)
-      buffer.writeFloat32(building.localOffset[0].y)
-      buffer.writeFloat32(building.localOffset[0].z)
-      // localOffset[1]
-      buffer.writeFloat32(building.localOffset[1].x)
-      buffer.writeFloat32(building.localOffset[1].y)
-      buffer.writeFloat32(building.localOffset[1].z)
-      // yaw
-      buffer.writeInt16(building.yaw[0])
-      buffer.writeInt16(building.yaw[1])
-      // 其他字段
-      buffer.writeInt32(building.recipeId)
-      buffer.writeInt32(building.filterId)
-      buffer.writeInt32(building.inputObjIdx)
-      buffer.writeInt32(building.outputObjIdx)
-    }
-
-    return buffer.getBuffer()
-  }
-
-  private static arrayBufferToString(buffer: Uint8Array): string {
-    let result = ''
-    for (let i = 0; i < buffer.length; i++) {
-      result += String.fromCharCode(buffer[i])
-    }
-    return result
-  }
-
-  private static arrayToBase64(buffer: Uint8Array): string {
-    return btoa(this.arrayBufferToString(buffer))
-  }
-}
-```
-
----
-
-## 5. 第四阶段：稳定性回归体系 (Baseline Testing)
-
-**目标**：确保"重构前后，字节不差"。
-
-### 5.1 Baseline 测试用例
-
-```typescript
-import { BlueprintParser } from './BlueprintParser'
-import { BlueprintEncoder } from './BlueprintEncoder'
-
-describe('Blueprint Roundtrip', () => {
-  const baseline1 = 'BLUEPRINT:0,...'
-  const baseline2 = 'BLUEPRINT:0,...'
-  const baseline3 = 'BLUEPRINT:0,...'
-
-  it('should parse and encode baseline1 correctly', () => {
-    const data = BlueprintParser.parse(baseline1)
-    const result = BlueprintEncoder.encode(data)
-    expect(result).toBe(baseline1)
-  })
-
-  it('should parse and encode baseline2 correctly', () => {
-    const data = BlueprintParser.parse(baseline2)
-    const result = BlueprintEncoder.encode(data)
-    expect(result).toBe(baseline2)
-  })
-
-  it('should parse and encode baseline3 correctly', () => {
-    const data = BlueprintParser.parse(baseline3)
-    const result = BlueprintEncoder.encode(data)
-    expect(result).toBe(baseline3)
-  })
-})
-```
-
-### 5.2 浮点精度测试
-
-```typescript
-describe('Float32 Precision', () => {
-  it('should maintain coordinate precision', () => {
-    const original = {
-      posX: 123.456,
-      posY: -78.901,
-      posZ: 0.001
-    }
-
-    const buffer = new BlueprintBuffer(12)
-    buffer.writeFloat32(original.posX)
-    buffer.writeFloat32(original.posY)
-    buffer.writeFloat32(original.posZ)
-
-    const readX = buffer.readFloat32()
-    const readY = buffer.readFloat32()
-    const readZ = buffer.readFloat32()
-
-    expect(Math.abs(readX - original.posX)).toBeLessThan(0.0001)
-    expect(Math.abs(readY - original.posY)).toBeLessThan(0.0001)
-    expect(Math.abs(readZ - original.posZ)).toBeLessThan(0.0001)
-  })
-})
-```
-
----
-
-## 6. 重构执行流程图
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  blueprint.js 重构路线图                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │ 阶段 1      │    │ 阶段 2      │    │ 阶段 3      │     │
-│  │ 类型定义    │───▶│ 依赖提取    │───▶│ 服务封装    │     │
-│  │ types.ts    │    │ Crypto.ts   │    │ Parser/Enc  │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│         │                  │                  │             │
-│         ▼                  ▼                  ▼             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │ IBlueprint  │    │ MD5 静态化  │    │ 无状态服务  │     │
-│  │ IBuilding   │    │ Buffer 封装 │    │ 小端序保证  │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │ 阶段 4      │    │ 阶段 5      │    │ 阶段 6      │     │
-│  │ 回归测试    │───▶│ 性能优化    │───▶│ 完全解耦    │     │
-│  │ Baseline    │    │ Web Worker  │    │ 独立模块    │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 7. 风险预警：架构师的最后提醒
-
-### 7.1 Pako 兼容性
-
-```typescript
-// ✅ 正确的 ESM 引入方式
-import pako from 'pako'
-const compressed = pako.gzip(data)
-const decompressed = pako.ungzip(compressed)
-
-// ❌ 错误的引入方式
-// import { gzip } from 'pako' // 不支持
-```
-
-### 7.2 浮点数精度
-
-蓝图中的坐标 (X, Y, Z) 是 `Float32`。在 JS 中处理时要小心 64 位浮点数转换导致的微小误差：
-
-```typescript
-// ⚠️ 潜在问题
-const x = 123.45678901234567 // JS 64位浮点
-buffer.writeFloat32(x) // 截断为 32位
-const read = buffer.readFloat32() // 123.456787109375 (精度损失)
-
-// ✅ 正确做法
-const tolerance = 0.0001
-if (Math.abs(read - expected) > tolerance) {
-  console.warn('Float32 precision loss detected')
-}
-```
-
-### 7.3 性能瓶颈
-
-大型蓝图 (几千个建筑) 的 `toStr` 过程非常耗时：
-
-```typescript
-// ⚠️ 阻塞主线程
-const blueprint = BlueprintEncoder.encode(largeData) // 可能 > 100ms
-
-// ✅ 推荐方案：Web Worker
-const worker = new Worker('blueprint-worker.js')
-worker.postMessage({ type: 'encode', data: largeData })
-worker.onmessage = e => {
-  if (e.data.type === 'encoded') {
-    console.log('Blueprint:', e.data.result)
-  }
-}
-```
-
----
-
-## 8. 协作 AI 模型指令
-
-> "你现在的任务是协助进行 `blueprint.js` 的协议层解耦重构。请遵循以下规则：
->
-> 1. 禁止修改 MD5 函数中的任何位运算魔数
-> 2. 所有二进制读写必须使用 `BlueprintBuffer` 类
-> 3. 严格遵守小端序 (Little-Endian)
-> 4. 每次修改后必须运行 Baseline 测试确保二进制兼容性
-> 5. 新增代码必须包含完整的 TypeScript 类型注解"
-
----
-
-## 9. 详细拆分计划 (2026-02-14 更新)
-
-### 9.1 当前代码结构分析
-
-| 模块                                              | 行数 | 职责                                      | 复杂度   | 拆分优先级           |
-| ------------------------------------------------- | ---- | ----------------------------------------- | -------- | -------------------- |
-| `itemMap`                                         | ~200 | 物品映射表 (name→iconId→remark)           | 低       | P0                   |
-| `buildingMap`                                     | ~150 | 建筑属性表 (itemId/modelIndex/speed)      | 低       | P0                   |
-| `productionCategory`                              | ~10  | 生产类别枚举 (smelter/assembling等)       | 低       | P0                   |
-| `buildingType`                                    | ~10  | 建筑类型枚举 (production/sorter/conveyor) | 低       | P0                   |
-| `Blueprint` 类构造函数                            | ~100 | 初始化蓝图元数据                          | 中       | P2                   |
-| `Blueprint.init()`                                | ~200 | 缩减设备数量                              | 中       | P2                   |
-| `Blueprint.generateBuildings()`                   | ~400 | 生成建筑布局                              | 高       | P3                   |
-| `Blueprint.generateConveyorBelts()`               | ~300 | 生成传送带连接                            | 高       | P3                   |
-| `Blueprint.generateConveyorBeltsForSprayCoater()` | ~100 | 喷涂机传送带                              | 中       | P3                   |
-| `Blueprint.cloneToStackLayers()`                  | ~150 | 堆叠层克隆                                | 中       | ✅已迁移StackService |
-| `Blueprint.toStr()`                               | ~300 | 编码为蓝图字符串                          | 高(黑盒) | ✅已迁移             |
-| `Blueprint.parse()`                               | ~300 | 解析蓝图字符串                            | 高(黑盒) | ✅已迁移             |
-| `generateBlueprint()`                             | ~200 | 蓝图生成入口函数                          | 中       | P2                   |
-| `getRecipe()`                                     | ~300 | 从DOM解析配方数据                         | 中       | P2                   |
-| MD5 实现                                          | ~300 | 哈希计算                                  | 高(黑盒) | ✅已迁移             |
-| 二进制读写                                        | ~400 | DataView操作                              | 高(黑盒) | ✅已迁移             |
-| 参数解析器                                        | ~400 | 各类建筑参数编解码                        | 中       | P1                   |
-
-**总行数**: ~4000行
-
-### 9.2 拆分目标目录结构
+### 3.2 迁移目标结构
 
 ```
 src/core/blueprint/
-├── types/                          # 类型定义层
-│   ├── item.ts                     # IItemMapping, ItemMap
-│   ├── building.ts                 # IBuildingMapping, BuildingType, ProductionCategory
-│   ├── blueprint.ts                # IBlueprintData, IBlueprintBuilding, IBlueprintHeader
-│   ├── recipe.ts                   # ISubRecipe, IRecipeItem, IRecipeConfig
-│   ├── coordinate.ts               # ICoordinate, IYaw
-│   ├── parameters.ts               # IBlueprintParameters 各类参数接口
-│   └── index.ts                    # 统一导出
-│
-├── data/                           # 静态数据层 ✅
-│   ├── itemMap.json                # 物品映射数据
-│   ├── buildingMap.json            # 建筑映射数据
-│   ├── productionCategory.json     # 生产类别
-│   └── buildingType.json           # 建筑类型
-│
-├── utils/                          # 工具层 ✅
-│   ├── BinaryReader.ts             # 二进制读取器
-│   ├── BinaryWriter.ts             # 二进制写入器
-│   ├── md5.ts                      # MD5 哈希计算
-│   ├── IndexMapper.ts              # 索引重映射工具
-│   └── pakoLoader.ts               # pako动态加载
-│
-├── parsers/                        # 解析层
-│   ├── BlueprintDecoder.ts         # 蓝图解码器 ✅
-│   ├── BlueprintEncoder.ts         # 蓝图编码器 ✅
-│   ├── ParameterParser.ts          # 建筑参数解析器
-│   ├── RecipeParser.ts             # 配方解析器 (从DOM提取)
-│   └── index.ts                    # 解析器导出
-│
-├── generators/                     # 生成层
-│   ├── BuildingGenerator.ts        # 建筑生成器
-│   ├── ConveyorGenerator.ts        # 传送带生成器
-│   ├── SorterGenerator.ts          # 分拣器生成器
-│   ├── TeslaTowerGenerator.ts      # 电力塔生成器
-│   ├── SprayCoaterGenerator.ts     # 喷涂机生成器
-│   └── index.ts                    # 生成器导出
-│
-├── services/                       # 服务层
-│   ├── BlueprintService.ts         # 蓝图生成服务 (整合层)
-│   ├── StackService.ts             # 堆叠服务 ✅
-│   └── index.ts                    # 服务导出
-│
-├── __tests__/                      # 测试层
-│   ├── blueprint.test.ts           # 编解码测试 ✅
-│   ├── parameterParser.test.ts     # 参数解析测试
-│   ├── buildingGenerator.test.ts   # 建筑生成测试
-│   └── conveyorGenerator.test.ts   # 传送带生成测试
-│
-└── index.ts                        # 模块主入口
+├── generators/
+│   ├── BuildingGenerator.ts    # ⏳ 待实现
+│   ├── ConveyorGenerator.ts    # ⏳ 待实现
+│   └── index.ts
+├── services/
+│   ├── BlueprintService.ts     # ⏳ 待实现
+│   └── index.ts
+└── index.ts
 ```
 
-### 9.3 拆分步骤详细计划
+---
 
-#### Phase 1: 数据层提取 (已完成 ✅)
+## 4. 接口设计
 
-| 步骤 | 任务                      | 状态 | 输出文件                                |
-| ---- | ------------------------- | ---- | --------------------------------------- |
-| 1.1  | 提取 `itemMap`            | ✅   | `src/core/data/itemMap.json`            |
-| 1.2  | 提取 `buildingMap`        | ✅   | `src/core/data/buildingMap.json`        |
-| 1.3  | 提取 `productionCategory` | ✅   | `src/core/data/productionCategory.json` |
-| 1.4  | 提取 `buildingType`       | ✅   | `src/core/data/buildingType.json`       |
-
-#### Phase 2: 类型定义层 (已完成 ✅)
-
-| 步骤 | 任务          | 状态 | 输出文件                      |
-| ---- | ------------- | ---- | ----------------------------- |
-| 2.1  | 物品/建筑类型 | ✅   | `src/core/types/blueprint.ts` |
-| 2.2  | 堆叠类型定义  | ✅   | `src/core/types/stack.ts`     |
-
-#### Phase 3: 工具层迁移 (已完成 ✅)
-
-| 步骤 | 任务         | 状态 | 输出文件                         |
-| ---- | ------------ | ---- | -------------------------------- |
-| 3.1  | MD5 迁移     | ✅   | `src/core/utils/md5.ts`          |
-| 3.2  | BinaryReader | ✅   | `src/core/utils/BinaryReader.ts` |
-| 3.3  | BinaryWriter | ✅   | `src/core/utils/BinaryWriter.ts` |
-| 3.4  | IndexMapper  | ✅   | `src/core/utils/IndexMapper.ts`  |
-
-#### Phase 4: 解析层迁移 (部分完成)
-
-| 步骤 | 任务             | 状态 | 输出文件                                        |
-| ---- | ---------------- | ---- | ----------------------------------------------- |
-| 4.1  | BlueprintDecoder | ✅   | `src/core/utils/BlueprintDecoder.ts`            |
-| 4.2  | BlueprintEncoder | ✅   | `src/core/utils/BlueprintEncoder.ts`            |
-| 4.3  | ParameterParser  | 🔲   | `src/core/blueprint/parsers/ParameterParser.ts` |
-| 4.4  | RecipeParser     | 🔲   | `src/core/blueprint/parsers/RecipeParser.ts`    |
-
-#### Phase 5: 服务层迁移 (部分完成)
-
-| 步骤 | 任务                 | 状态 | 输出文件                                                |
-| ---- | -------------------- | ---- | ------------------------------------------------------- |
-| 5.1  | StackService         | ✅   | `src/core/services/StackService.ts`                     |
-| 5.2  | BuildingGenerator    | 🔲   | `src/core/blueprint/generators/BuildingGenerator.ts`    |
-| 5.3  | ConveyorGenerator    | 🔲   | `src/core/blueprint/generators/ConveyorGenerator.ts`    |
-| 5.4  | SorterGenerator      | 🔲   | `src/core/blueprint/generators/SorterGenerator.ts`      |
-| 5.5  | TeslaTowerGenerator  | 🔲   | `src/core/blueprint/generators/TeslaTowerGenerator.ts`  |
-| 5.6  | SprayCoaterGenerator | 🔲   | `src/core/blueprint/generators/SprayCoaterGenerator.ts` |
-| 5.7  | BlueprintService     | 🔲   | `src/core/blueprint/services/BlueprintService.ts`       |
-
-#### Phase 6: 清理与验证
-
-| 步骤 | 任务                | 状态 |
-| ---- | ------------------- | ---- |
-| 6.1  | 单元测试覆盖        | 🔲   |
-| 6.2  | 集成测试            | 🔲   |
-| 6.3  | 删除原 blueprint.js | 🔲   |
-
-### 9.4 关键模块接口设计
-
-#### 9.4.1 ParameterParser (参数解析器)
-
-```typescript
-// src/core/blueprint/parsers/ParameterParser.ts
-
-export interface IParameterParser {
-  encodedSize(params: unknown): number
-  encode(params: unknown, buffer: DataView, offset: number): number
-  decode(buffer: DataView, offset: number, size: number): unknown
-}
-
-export interface IStationParameters {
-  itemId?: number[]
-  itemCount?: number[]
-  droneCount?: number
-  vesselCount?: number
-  warperCount?: number
-  includeOrbitCollector?: boolean
-}
-
-export interface ILabParameters {
-  matrixMode: number
-  productId: number
-}
-
-export interface ISplitterParameters {
-  splitterMode: number
-  filterId: number
-  filterSlotStart: number
-  filterSlotEnd: number
-}
-
-export interface IInserterParameters {
-  itemId: number
-  stackCount: number
-}
-
-export class ParameterParserRegistry {
-  private parsers: Map<number, IParameterParser> = new Map()
-
-  register(itemId: number, parser: IParameterParser): void
-  getParser(itemId: number): IParameterParser | undefined
-  hasParser(itemId: number): boolean
-}
-
-// 预注册解析器
-export function initParameterParsers(): ParameterParserRegistry
-```
-
-#### 9.4.2 BuildingGenerator (建筑生成器)
+### 4.1 BuildingGenerator
 
 ```typescript
 // src/core/blueprint/generators/BuildingGenerator.ts
-
-import type { ISubRecipe, IBlueprintBuilding, ICoordinate } from '../types'
 
 export interface IBuildingGeneratorConfig {
   conveyorBeltStackLayer: number
@@ -908,6 +315,7 @@ export class BuildingGenerator {
 
   constructor(config: IBuildingGeneratorConfig)
 
+  initLayout(recipes: ISubRecipe[]): void
   generateFromRecipe(recipe: ISubRecipe, position: ICoordinate): IBlueprintBuilding[]
   generateAssemblingMachine(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
   generateSmelter(recipe: ISubRecipe, pos: ICoordinate): IBlueprintBuilding
@@ -921,24 +329,16 @@ export class BuildingGenerator {
 }
 ```
 
-#### 9.4.3 ConveyorGenerator (传送带生成器)
+### 4.2 ConveyorGenerator
 
 ```typescript
 // src/core/blueprint/generators/ConveyorGenerator.ts
-
-import type { IBlueprintBuilding, ICoordinate } from '../types'
 
 export interface IConveyorGeneratorConfig {
   transportSpeed: number
   stackLayer: number
   maxSorterNumOneBelt: number
   onlyConveyorBeltMk3: boolean
-}
-
-export interface IBeltSegment {
-  from: ICoordinate
-  to: ICoordinate
-  itemId: number
 }
 
 export class ConveyorGenerator {
@@ -956,12 +356,10 @@ export class ConveyorGenerator {
 }
 ```
 
-#### 9.4.4 BlueprintService (整合服务)
+### 4.3 BlueprintService
 
 ```typescript
 // src/core/blueprint/services/BlueprintService.ts
-
-import type { ISubRecipe, IBlueprintData, IStackConfig } from '../types'
 
 export interface IBlueprintGenerateOptions {
   title: string
@@ -989,52 +387,139 @@ export class BlueprintService {
 }
 ```
 
-### 9.5 风险评估与缓解措施
+---
 
-| 风险项           | 级别 | 影响                 | 缓解措施                            |
-| ---------------- | ---- | -------------------- | ----------------------------------- |
-| 二进制协议不兼容 | 高   | 蓝图无法在游戏中加载 | Baseline测试覆盖所有编解码场景      |
-| 参数解析遗漏     | 中   | 部分建筑无法正确生成 | 完整枚举所有itemId，添加unknown处理 |
-| 坐标计算偏差     | 中   | 建筑位置错误         | Float32精度测试，容差校验           |
-| 分拣器连接错误   | 中   | 物流无法正常工作     | 索引重映射单元测试                  |
-| 传送带布局错误   | 中   | 物流效率下降         | 布局算法单元测试                    |
+## 5. 重构执行流程图
 
-### 9.6 测试策略
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  blueprint.js 重构路线图                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │ 阶段 1      │    │ 阶段 2      │    │ 阶段 3      │     │
+│  │ 类型定义    │───▶│ 依赖提取    │───▶│ 编解码封装  │     │
+│  │ types.ts    │    │ md5.ts      │    │ Encoder/Dec │     │
+│  │ ✅ 已完成   │    │ ✅ 已完成   │    │ ✅ 已完成   │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │ 阶段 4      │    │ 阶段 5      │    │ 阶段 6      │     │
+│  │ 堆叠服务    │───▶│ 生成器迁移  │───▶│ 完全解耦    │     │
+│  │ StackService│    │ BuildingGen │    │ 独立模块    │     │
+│  │ ✅ 已完成   │    │ ⏳ 进行中   │    │ 🔲 待开始   │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. 风险预警
+
+### 6.1 Pako 兼容性
 
 ```typescript
-// src/core/blueprint/__tests__/blueprint.test.ts
+// ✅ 正确的 ESM 引入方式 (已在 Encoder/Decoder 中实现)
+function getPakoImpl(): PakoModule {
+  const pakoModule = (pako as unknown as { default?: PakoModule }).default || pako
+  return {
+    ...pakoModule,
+    gzip: pakoModule.deflate, // 兼容性封装
+    ungzip: pakoModule.inflate // 兼容性封装
+  } as PakoModule
+}
+```
+
+### 6.2 浮点数精度
+
+蓝图中的坐标 (X, Y, Z) 是 `Float32`。在 JS 中处理时要小心 64 位浮点数转换导致的微小误差：
+
+```typescript
+// ⚠️ 潜在问题
+const x = 123.45678901234567 // JS 64位浮点
+buffer.writeFloat32(x) // 截断为 32位
+const read = buffer.readFloat32() // 123.456787109375 (精度损失)
+
+// ✅ 正确做法
+const tolerance = 0.0001
+if (Math.abs(read - expected) > tolerance) {
+  console.warn('Float32 precision loss detected')
+}
+```
+
+### 6.3 性能瓶颈
+
+大型蓝图 (几千个建筑) 的生成过程非常耗时：
+
+```typescript
+// ⚠️ 阻塞主线程
+const blueprint = generateBlueprint(largeData) // 可能 > 100ms
+
+// ✅ 推荐方案：Web Worker (待实现)
+const worker = new Worker('blueprint-worker.js')
+worker.postMessage({ type: 'generate', data: largeData })
+worker.onmessage = e => {
+  if (e.data.type === 'generated') {
+    console.log('Blueprint:', e.data.result)
+  }
+}
+```
+
+---
+
+## 7. 测试策略
+
+```typescript
+// src/core/__tests__/blueprint.test.ts
 
 describe('Blueprint Module', () => {
-  describe('ParameterParser', () => {
-    it('should parse station parameters correctly')
-    it('should parse lab parameters correctly')
-    it('should handle unknown building types')
+  describe('BlueprintEncoder', () => {
+    it('should encode blueprint data correctly')
+    it('should handle empty buildings')
+    it('should handle large blueprints')
   })
 
-  describe('BuildingGenerator', () => {
-    it('should generate assembling machine with correct recipe')
-    it('should generate smelter with correct position')
-    it('should generate lab with matrix mode')
+  describe('BlueprintDecoder', () => {
+    it('should decode blueprint string correctly')
+    it('should handle invalid input')
+    it('should validate MD5 signature')
   })
 
-  describe('ConveyorGenerator', () => {
-    it('should connect two buildings correctly')
-    it('should optimize belt layout')
+  describe('Round-trip', () => {
+    it('should parse and encode identically')
+    it('should preserve all building properties')
+    it('should preserve coordinates precision')
   })
 
-  describe('BlueprintService', () => {
-    it('should generate valid blueprint string')
-    it('should parse and re-encode identically (round-trip)')
-    it('should handle stacking correctly')
+  describe('StackService', () => {
+    it('should clone buildings to multiple layers')
+    it('should remap indices correctly')
+    it('should create foundation buildings')
   })
 })
 ```
 
-### 9.7 预估工作量
+---
 
-| 阶段                | 预估时间 | 依赖      |
+## 8. 预估工作量
+
+| 阶段                | 预估时间 | 状态      |
 | ------------------- | -------- | --------- |
-| Phase 4: 解析层迁移 | 2天      | Phase 1-3 |
-| Phase 5: 服务层迁移 | 3天      | Phase 4   |
-| Phase 6: 测试与清理 | 2天      | Phase 5   |
-| **总计**            | **7天**  | -         |
+| Phase 1-3: 协议层   | 3天      | ✅ 已完成 |
+| Phase 4: 堆叠服务   | 1天      | ✅ 已完成 |
+| Phase 5: 生成器迁移 | 3天      | ⏳ 进行中 |
+| Phase 6: 测试与清理 | 2天      | 🔲 待开始 |
+| **总计**            | **9天**  | **56%**   |
+
+---
+
+## 9. 协作 AI 模型指令
+
+> "你现在的任务是协助进行 `blueprint.js` 的协议层解耦重构。请遵循以下规则：
+>
+> 1. 禁止修改 MD5 函数中的任何位运算魔数
+> 2. 所有二进制读写必须使用 `BinaryReader/BinaryWriter` 类
+> 3. 严格遵守小端序 (Little-Endian)
+> 4. 每次修改后必须运行 Baseline 测试确保二进制兼容性
+> 5. 新增代码必须包含完整的 TypeScript 类型注解"
