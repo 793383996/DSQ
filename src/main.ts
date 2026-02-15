@@ -5,22 +5,37 @@ import Toast from './components/Toast/Toast.vue'
 import BlueprintGenerator from './components/BlueprintGenerator/BlueprintGenerator.vue'
 import { setToastInstance } from './composables/useToast'
 import { initLegacyBridge, loadLegacyModules } from './core/bridge'
-import { logger } from './utils/logger'
-import { i18n } from './i18n'
+import { logger, initLogger } from './utils/logger'
+import { initErrorReporter, addBreadcrumb, destroyErrorReporter } from './utils/errorReporter'
+import { initWebVitals, onMetric, destroyWebVitals } from './utils/webVitals'
+import { i18n, destroyI18n } from './i18n'
 import '../Scripts/style.css'
-import { registerSW } from 'virtual:pwa-register'
 
-const updateSW = registerSW({
-  onNeedRefresh() {
-    if (confirm('发现新版本，是否刷新页面？')) {
-      updateSW(true)
-    }
-  },
-  onOfflineReady() {
-    logger.log('[PWA] 应用已可离线使用')
-  },
-  onRegisterError(error) {
-    logger.error('[PWA] Service Worker 注册失败:', error)
+initLogger({
+  minLevel: import.meta.env.PROD ? 'info' : 'debug',
+  enableConsole: true,
+  enableRemote: import.meta.env.PROD,
+  remoteUrl: import.meta.env.VITE_LOG_URL
+})
+
+initErrorReporter({
+  dsn: import.meta.env.VITE_ERROR_DSN,
+  environment: import.meta.env.MODE,
+  release: import.meta.env.VITE_APP_VERSION,
+  enabled: import.meta.env.PROD
+})
+
+initWebVitals()
+
+onMetric(metric => {
+  addBreadcrumb({
+    type: 'info',
+    message: `Performance: ${metric.name}=${metric.value}ms (${metric.rating})`,
+    data: { metric }
+  })
+
+  if (metric.rating === 'poor') {
+    logger.warn(`[Performance] Poor ${metric.name}:`, metric.value)
   }
 })
 
@@ -32,9 +47,12 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(i18n)
 
+const toastContainer = document.createElement('div')
+toastContainer.id = 'toast-container'
+document.body.appendChild(toastContainer)
+
 const toastApp = createApp(Toast)
-toastApp.use(i18n)
-toastApp.mount(document.createElement('div'))
+toastApp.mount(toastContainer)
 
 const toastInstance = toastApp.component(Toast.name || 'Toast')
 if (toastInstance) {
@@ -54,6 +72,11 @@ if (toastInstance) {
 
 app.config.errorHandler = (err, instance, info) => {
   logger.error('[Vue Error]', err, info)
+  addBreadcrumb({
+    type: 'error',
+    message: `Vue Error: ${err}`,
+    data: { info }
+  })
 }
 
 app.config.warnHandler = (msg, instance, trace) => {
@@ -77,6 +100,79 @@ legacyLoadPromise.catch(e => logger.error('Failed to load legacy modules:', e))
 
 if (import.meta.env.DEV) {
   legacyLoadPromise.then(() => {
-    logger.log('[main] Legacy modules ready')
+    logger.debug('[main] Legacy modules ready')
   })
 }
+
+let isPageVisible = true
+const MAX_VISIBILITY_CALLBACKS = 20
+const visibilityChangeCallbacks: Set<(visible: boolean) => void> = new Set()
+let visibilityHandler: (() => void) | null = null
+let isCleanedUp = false
+
+visibilityHandler = () => {
+  isPageVisible = document.visibilityState === 'visible'
+  const callbacks = Array.from(visibilityChangeCallbacks)
+  callbacks.forEach(cb => {
+    try {
+      cb(isPageVisible)
+    } catch (e) {
+      logger.error('[Visibility] Callback error:', e)
+    }
+  })
+
+  if (!isPageVisible) {
+    logger.debug('[Visibility] Page hidden, pausing non-critical operations')
+  } else {
+    logger.debug('[Visibility] Page visible, resuming operations')
+  }
+}
+
+document.addEventListener('visibilitychange', visibilityHandler)
+
+export function onVisibilityChange(callback: (visible: boolean) => void): () => void {
+  if (visibilityChangeCallbacks.size >= MAX_VISIBILITY_CALLBACKS) {
+    logger.warn('[Visibility] Max callbacks reached, removing oldest')
+    const oldest = visibilityChangeCallbacks.values().next().value
+    if (oldest) {
+      visibilityChangeCallbacks.delete(oldest)
+    }
+  }
+  visibilityChangeCallbacks.add(callback)
+  return () => {
+    visibilityChangeCallbacks.delete(callback)
+  }
+}
+
+export function getPageVisibility(): boolean {
+  return isPageVisible
+}
+
+function cleanup(): void {
+  if (isCleanedUp) {
+    return
+  }
+  isCleanedUp = true
+
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler)
+    visibilityHandler = null
+  }
+  visibilityChangeCallbacks.clear()
+
+  destroyWebVitals()
+  destroyErrorReporter()
+  destroyI18n()
+
+  logger.debug('[main] Cleanup completed')
+}
+
+window.addEventListener('beforeunload', cleanup)
+
+window.addEventListener('pagehide', event => {
+  if (event.persisted) {
+    logger.debug('[main] Page persisted in bfcache')
+  } else {
+    cleanup()
+  }
+})

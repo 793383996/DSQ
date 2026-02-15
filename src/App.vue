@@ -34,6 +34,8 @@
       <ConfigPanel v-model="showSettings" />
 
       <AddItemDialog v-model="showAddDialog" @confirm="handleAddItem" />
+
+      <PWAUpdateBanner />
     </div>
   </ErrorBoundary>
 </template>
@@ -56,6 +58,7 @@ import ResultTable from './components/ResultTable/ResultTable.vue'
 import AddItemDialog from './components/AddItemDialog/AddItemDialog.vue'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.vue'
 import LocaleSwitcher from './components/LocaleSwitcher/LocaleSwitcher.vue'
+import PWAUpdateBanner from './components/PWAUpdateBanner/PWAUpdateBanner.vue'
 
 const { t } = useI18n()
 const store = useBlueprintStore()

@@ -1,170 +1,116 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { logger } from '../logger'
+import { logger, initLogger, structuredLogger } from '../logger'
 
 describe('logger', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    structuredLogger.destroy()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    structuredLogger.destroy()
   })
 
-  describe('log', () => {
-    it('calls console.log in dev mode', () => {
-      vi.stubEnv('DEV', true)
-
-      const devLogger = {
-        log: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.log(...args)
-        }
-      }
-
-      devLogger.log('test message')
-
-      expect(console.log).toHaveBeenCalledWith('test message')
-    })
-
-    it('does not call console.log in production', () => {
-      vi.stubEnv('DEV', false)
-
-      const prodLogger = {
-        log: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.log(...args)
-        }
-      }
-
-      prodLogger.log('test message')
-
-      expect(console.log).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('warn', () => {
-    it('calls console.warn in dev mode', () => {
-      vi.stubEnv('DEV', true)
-
-      const devLogger = {
-        warn: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.warn(...args)
-        }
-      }
-
-      devLogger.warn('warning message')
-
-      expect(console.warn).toHaveBeenCalledWith('warning message')
-    })
-
-    it('does not call console.warn in production', () => {
-      vi.stubEnv('DEV', false)
-
-      const prodLogger = {
-        warn: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.warn(...args)
-        }
-      }
-
-      prodLogger.warn('warning message')
-
-      expect(console.warn).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('error', () => {
-    it('always calls console.error', () => {
-      vi.stubEnv('DEV', false)
-
-      logger.error('error message')
-
-      expect(console.error).toHaveBeenCalledWith('error message')
-    })
-
-    it('calls console.error with multiple arguments', () => {
-      const error = new Error('test')
-      logger.error('error occurred', error)
-
-      expect(console.error).toHaveBeenCalledWith('error occurred', error)
-    })
-
-    it('calls console.error in dev mode', () => {
-      vi.stubEnv('DEV', true)
-
-      logger.error('error message')
-
-      expect(console.error).toHaveBeenCalledWith('error message')
+  describe('init', () => {
+    it('should initialize with config', () => {
+      initLogger({
+        minLevel: 'debug',
+        enableConsole: true
+      })
     })
   })
 
   describe('debug', () => {
-    it('calls console.log with [DEBUG] prefix in dev mode', () => {
-      vi.stubEnv('DEV', true)
+    it('should log debug messages in dev mode', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
 
-      const devLogger = {
-        debug: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.log('[DEBUG]', ...args)
-        }
-      }
+      logger.debug('debug message')
 
-      devLogger.debug('debug message')
-
-      expect(console.log).toHaveBeenCalledWith('[DEBUG]', 'debug message')
+      expect(console.log).toHaveBeenCalled()
     })
 
-    it('does not call console.log in production', () => {
-      vi.stubEnv('DEV', false)
+    it('should not log debug when minLevel is info', () => {
+      initLogger({ minLevel: 'info', enableConsole: true })
 
-      const prodLogger = {
-        debug: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.log('[DEBUG]', ...args)
-        }
-      }
-
-      prodLogger.debug('debug message')
+      logger.debug('debug message')
 
       expect(console.log).not.toHaveBeenCalled()
     })
   })
 
-  describe('multiple arguments', () => {
-    it('passes all arguments to console methods', () => {
-      vi.stubEnv('DEV', true)
+  describe('info', () => {
+    it('should log info messages', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
 
-      const devLogger = {
-        log: (...args: unknown[]) => {
-          if (import.meta.env.DEV) console.log(...args)
-        }
-      }
+      logger.info('info message')
 
-      const obj = { key: 'value' }
-      const arr = [1, 2, 3]
-
-      devLogger.log('message', obj, arr)
-
-      expect(console.log).toHaveBeenCalledWith('message', obj, arr)
+      expect(console.info).toHaveBeenCalled()
     })
   })
 
-  describe('logger object structure', () => {
-    it('has log method', () => {
-      expect(logger.log).toBeDefined()
-      expect(typeof logger.log).toBe('function')
+  describe('warn', () => {
+    it('should log warn messages', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
+
+      logger.warn('warn message')
+
+      expect(console.warn).toHaveBeenCalled()
+    })
+  })
+
+  describe('error', () => {
+    it('should log error messages', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
+
+      logger.error('error message')
+
+      expect(console.error).toHaveBeenCalled()
     })
 
-    it('has warn method', () => {
-      expect(logger.warn).toBeDefined()
-      expect(typeof logger.warn).toBe('function')
-    })
+    it('should log error with Error object', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
 
-    it('has error method', () => {
-      expect(logger.error).toBeDefined()
-      expect(typeof logger.error).toBe('function')
-    })
+      const error = new Error('test error')
+      logger.error('error occurred', error)
 
-    it('has debug method', () => {
-      expect(logger.debug).toBeDefined()
-      expect(typeof logger.debug).toBe('function')
+      expect(console.error).toHaveBeenCalled()
+    })
+  })
+
+  describe('log', () => {
+    it('should alias to info', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
+
+      logger.log('log message')
+
+      expect(console.info).toHaveBeenCalled()
+    })
+  })
+
+  describe('withContext', () => {
+    it('should create contextual logger', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
+
+      const contextLogger = logger.withContext({ module: 'test' })
+      contextLogger.info('context message')
+
+      expect(console.info).toHaveBeenCalled()
+    })
+  })
+
+  describe('getBuffer', () => {
+    it('should return log buffer', () => {
+      initLogger({ minLevel: 'debug', enableConsole: true })
+
+      logger.info('test message')
+      const buffer = logger.getBuffer()
+
+      expect(buffer.length).toBe(1)
+      expect(buffer[0].message).toContain('test message')
     })
   })
 })

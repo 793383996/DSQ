@@ -14,7 +14,9 @@ export default {
     add: 'Add',
     remove: 'Remove',
     search: 'Search',
-    noData: 'No data'
+    noData: 'No data',
+    later: 'Later',
+    refresh: 'Refresh'
   },
   controlPanel: {
     settings: 'Settings',
@@ -139,5 +141,20 @@ export default {
     generatedAndCopied: 'Blueprint generated and copied to clipboard',
     downloadFile: 'Download Blueprint File',
     generateFailed: 'Blueprint generation failed'
+  },
+  pwa: {
+    updateAvailable: 'New version available. Refresh?',
+    offlineReady: 'App is ready for offline use',
+    registerFailed: 'Service Worker registration failed'
+  },
+  toast: {
+    loading: 'Loading...',
+    success: 'Success',
+    error: 'Error',
+    warning: 'Warning',
+    info: 'Info'
+  },
+  performance: {
+    poorMetric: 'Poor performance metric'
   }
 }

@@ -8,10 +8,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { setLocale, getLocale } from '../../i18n'
+import { useCurrentLocale, setLocale } from '../../i18n'
 
-const currentLocale = computed(() => getLocale())
+const currentLocale = useCurrentLocale()
 
 function handleChange(event: Event) {
   const target = event.target as HTMLSelectElement

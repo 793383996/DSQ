@@ -21,8 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref } from 'vue'
 
 interface ToastItem {
   id: number
@@ -31,8 +30,6 @@ interface ToastItem {
   duration?: number
   showClose?: boolean
 }
-
-const { t } = useI18n()
 
 const toasts = ref<ToastItem[]>([])
 let toastId = 0
@@ -80,7 +77,7 @@ function info(message: string, duration?: number) {
 
 function loading(message?: string) {
   return addToast({
-    message: message || t('common.loading'),
+    message: message || 'Loading...',
     type: 'loading',
     duration: 0,
     showClose: true

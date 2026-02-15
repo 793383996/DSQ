@@ -1,0 +1,376 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dsq-calculator
+  labels:
+    name: dsq-calculator
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: dsq-calculator-critical
+value: 100000
+globalDefault: false
+description: "Critical priority for DSQ Calculator pods"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dsq-calculator
+  namespace: dsq-calculator
+  labels:
+    app: dsq-calculator
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dsq-calculator-quota
+  namespace: dsq-calculator
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: "1Gi"
+    limits.cpu: "4"
+    limits.memory: "2Gi"
+    pods: "10"
+    services: "5"
+    secrets: "10"
+    configmaps: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dsq-calculator-limits
+  namespace: dsq-calculator
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "256Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "2"
+        memory: "1Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+    - type: PersistentVolumeClaim
+      max:
+        storage: "10Gi"
+      min:
+        storage: "1Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dsq-calculator
+  namespace: dsq-calculator
+  labels:
+    app: dsq-calculator
+    version: v1
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: dsq-calculator
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: dsq-calculator
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        container.apparmor.security.beta.kubernetes.io/app: runtime/default
+    spec:
+      serviceAccountName: dsq-calculator
+      automountServiceAccountToken: false
+      priorityClassName: dsq-calculator-critical
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        readOnlyRootFilesystem: true
+        seccompProfile:
+          type: RuntimeDefault
+        fsGroup: 1001
+        supplementalGroups:
+          - 1001
+      containers:
+        - name: app
+          image: dsq-calculator:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /health.json
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready.json
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health.json
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Asia/Shanghai"
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 10Mi
+        - name: cache
+          emptyDir:
+            sizeLimit: 10Mi
+        - name: run
+          emptyDir:
+            sizeLimit: 1Mi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: dsq-calculator
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: dsq-calculator
+      tolerations:
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300
+        - key: "node.kubernetes.io/memory-pressure"
+          operator: "Exists"
+          effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dsq-calculator
+  namespace: dsq-calculator
+  labels:
+    app: dsq-calculator
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: dsq-calculator
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dsq-calculator
+  namespace: dsq-calculator
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dsq-calculator.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dsq-calculator
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - dsq-calculator.example.com
+      secretName: dsq-calculator-tls
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dsq-calculator-hpa
+  namespace: dsq-calculator
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dsq-calculator
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dsq-calculator-pdb
+  namespace: dsq-calculator
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: dsq-calculator
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dsq-calculator-netpol
+  namespace: dsq-calculator
+spec:
+  podSelector:
+    matchLabels:
+      app: dsq-calculator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# ServiceMonitor requires Prometheus Operator
+# Apply only if prometheus-operator is installed
+# kubectl apply -f <(yq eval 'select(.kind == "ServiceMonitor")' deployment.yaml)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dsq-calculator
+  namespace: dsq-calculator
+  labels:
+    app: dsq-calculator
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: dsq-calculator
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

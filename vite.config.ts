@@ -3,6 +3,26 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 
+const cspDirectives = {
+  'default-src': ["'self'"],
+  'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+  'style-src': ["'self'", "'unsafe-inline'"],
+  'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+  'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
+  'connect-src': ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+  'worker-src': ["'self'", 'blob:'],
+  'manifest-src': ["'self'"],
+  'object-src': ["'none'"],
+  'base-uri': ["'self'"],
+  'form-action': ["'self'"],
+  'frame-ancestors': ["'none'"],
+  'upgrade-insecure-requests': []
+}
+
+const cspHeader = Object.entries(cspDirectives)
+  .map(([key, values]) => `${key} ${values.join(' ')}`)
+  .join('; ')
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -21,19 +41,19 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'pwa-192x192.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512.svg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512.svg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ]
@@ -94,7 +114,15 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true
+    host: true,
+    headers: {
+      'Content-Security-Policy': cspHeader,
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+    }
   },
   build: {
     target: 'esnext',
@@ -117,3 +145,5 @@ export default defineConfig({
     include: ['vue', 'pinia']
   }
 })
+
+export { cspDirectives, cspHeader }

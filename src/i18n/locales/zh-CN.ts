@@ -14,7 +14,9 @@ export default {
     add: '添加',
     remove: '删除',
     search: '搜索',
-    noData: '暂无数据'
+    noData: '暂无数据',
+    later: '稍后',
+    refresh: '刷新'
   },
   controlPanel: {
     settings: '参数设置',
@@ -139,5 +141,20 @@ export default {
     generatedAndCopied: '蓝图已生成并复制到剪贴板',
     downloadFile: '下载蓝图文件',
     generateFailed: '蓝图生成失败'
+  },
+  pwa: {
+    updateAvailable: '发现新版本，是否刷新页面？',
+    offlineReady: '应用已可离线使用',
+    registerFailed: 'Service Worker 注册失败'
+  },
+  toast: {
+    loading: '加载中...',
+    success: '成功',
+    error: '错误',
+    warning: '警告',
+    info: '提示'
+  },
+  performance: {
+    poorMetric: '性能指标较差'
   }
 }
