@@ -27,3 +27,7 @@ Thumbs.db
 # 临时文件
 *.tmp
 *.log
+node_modules
+
+# 构建产物
+dist/
