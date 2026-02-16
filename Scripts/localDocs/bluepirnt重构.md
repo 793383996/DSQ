@@ -43,12 +43,12 @@
 | BuildingGenerator细化 | 🔲   | 高     | Phase 5C: 按建筑类型拆分生成器         |
 | SorterGenerator细化   | 🔲   | 高     | Phase 5D: 按建筑类型拆分位置计算       |
 | ConveyorGenerator细化 | 🔲   | 高     | Phase 5E: 节点/连接/喷涂机分离         |
+| 集成测试与验证        | 🔲   | 高     | Phase 5G                               |
 
 ### 🔲 待开始
 
 | 任务                | 状态 | 优先级 | 说明           |
 | ------------------- | ---- | ------ | -------------- |
-| 集成测试与验证      | 🔲   | 高     | Phase 5G       |
 | ParameterParser迁移 | 🔲   | 低     | 建筑参数解析器 |
 | RecipeParser迁移    | 🔲   | 低     | 配方解析器     |
 | 删除原 blueprint.js | 🔲   | 低     | 验证完成后移除 |
@@ -808,16 +808,335 @@ src/core/blueprint/services/
 │  └── 产出: IItemSummary                                         │
 │           │                                                     │
 │           ▼                                                     │
-│  Phase 5E (ConveyorGenerator)                                   │
-│  ├── 依赖: Phase 5D 产出                                        │
-│  ├── 依赖: Phase 5F 产出                                        │
-│  └── 产出: IBlueprintBuilding[] (含传送带)                      │
-│           │                                                     │
-│           ▼                                                     │
-│  BlueprintService                                               │
-│  └── 整合所有Phase产出，生成最终蓝图                            │
+
+---
+
+## 12. Blueprint类深度拆分详细方案 (2026-02-16)
+
+> **目标**: 将3967行的blueprint.js拆分为单一职责的小模块
+
+### 12.1 当前架构问题
+
+| 问题类型       | 具体表现                                         | 影响           |
+| -------------- | ------------------------------------------------ | -------------- |
+| 单一职责违反   | Blueprint类承担建筑生成、传送带生成、编码等职责   | 难以维护和测试 |
+| 代码重复       | 各建筑类型的分拣器位置计算有大量重复模式         | 修改风险高     |
+| 隐式依赖       | sorters/itemSummary通过this传递，难以追踪        | 调试困难       |
+| 魔法数字       | slotIndex、yaw角度等硬编码                       | 可读性差       |
+
+### 12.2 拆分后目标架构
+
+```
+
+src/core/blueprint/
+├── types/ # 类型定义
+│ ├── buildingGenerator.ts # 建筑生成器类型
+│ ├── conveyorGenerator.ts # 传送带生成器类型
+│ ├── sorterGenerator.ts # 分拣器生成器类型 (新增)
+│ └── index.ts
+│
+├── generators/ # 生成器服务
+│ ├── buildings/ # 按建筑类型拆分 (新增目录)
+│ │ ├── BaseBuildingGenerator.ts # 建筑生成基类
+│ │ ├── SmelterGenerator.ts # 熔炉生成器
+│ │ ├── AssemblerGenerator.ts # 制造台生成器
+│ │ ├── LabGenerator.ts # 研究站生成器 (含堆叠)
+│ │ ├── PlantGenerator.ts # 化工厂生成器
+│ │ ├── RefineryGenerator.ts # 精炼厂生成器
+│ │ ├── ColliderGenerator.ts # 对撞机生成器
+│ │ └── index.ts
+│ │
+│ ├── sorters/ # 分拣器位置计算 (新增目录)
+│ │ ├── SorterPositionCalculator.ts # 位置计算核心
+│ │ ├── SmelterSorterPositions.ts # 熔炉分拣器位置
+│ │ ├── AssemblerSorterPositions.ts # 制造台分拣器位置
+│ │ ├── LabSorterPositions.ts # 研究站分拣器位置
+│ │ ├── PlantSorterPositions.ts # 化工厂分拣器位置
+│ │ ├── RefinerySorterPositions.ts # 精炼厂分拣器位置
+│ │ ├── ColliderSorterPositions.ts # 对撞机分拣器位置
+│ │ └── index.ts
+│ │
+│ ├── conveyors/ # 传送带生成 (新增目录)
+│ │ ├── ConveyorNodeBuilder.ts # 节点构建器
+│ │ ├── ConveyorConnectionBuilder.ts # 连接关系建立
+│ │ ├── SprayCoaterConveyorBuilder.ts # 喷涂机传送带
+│ │ └── index.ts
+│ │
+│ ├── BuildingGenerator.ts # 建筑生成编排器
+│ ├── SorterGenerator.ts # 分拣器生成编排器
+│ ├── ConveyorGenerator.ts # 传送带生成编排器
+│ ├── LayoutCalculator.ts # 布局计算器
+│ ├── ItemSummaryCalculator.ts # 物料统计计算器
+│ ├── ConnectionBuilder.ts # 连接建立器
+│ └── index.ts
+│
+├── services/ # 服务层
+│ ├── BlueprintService.ts # 蓝图服务主入口
+│ ├── RecipeMapper.ts # 配方ID映射服务 (新增)
+│ ├── BlueprintTemplateService.ts # 蓝图模板服务 (新增)
+│ └── index.ts
+│
+└── **tests**/ # 测试文件
+└── ...
+
+````
+
+### 12.3 Phase 5C: BuildingGenerator细化拆分
+
+#### 12.3.1 基类设计
+
+```typescript
+// src/core/blueprint/generators/buildings/BaseBuildingGenerator.ts
+export abstract class BaseBuildingGenerator {
+  protected config: IBuildingGeneratorConfig
+  protected buildingIndex: number
+
+  constructor(config: IBuildingGeneratorConfig) {
+    this.config = config
+  }
+
+  abstract generate(subRecipe: ISubRecipe, position: ICoordinate): IBlueprintBuilding[]
+  abstract getBuildingArea(subRecipe: ISubRecipe): IBuildingLayout
+
+  protected getBuildingTemplate(): IBlueprintBuilding {
+    this.buildingIndex++
+    return {
+      index: this.buildingIndex,
+      areaIndex: 0,
+      localOffset: null,
+      yaw: [0, 0],
+      // ...
+    }
+  }
+}
+````
+
+#### 12.3.2 各建筑类型生成器
+
+| 生成器类           | 原始代码位置           | 核心方法                      | 行数估算 |
+| ------------------ | ---------------------- | ----------------------------- | -------- |
+| SmelterGenerator   | blueprint.js:1000-1100 | generate(), getBuildingArea() | ~80行    |
+| AssemblerGenerator | blueprint.js:1100-1200 | generate(), getBuildingArea() | ~80行    |
+| LabGenerator       | blueprint.js:1500-1800 | generate() + 堆叠逻辑         | ~150行   |
+| PlantGenerator     | blueprint.js:1200-1300 | generate(), getBuildingArea() | ~80行    |
+| RefineryGenerator  | blueprint.js:1300-1400 | generate(), getBuildingArea() | ~80行    |
+| ColliderGenerator  | blueprint.js:1400-1500 | generate(), getBuildingArea() | ~100行   |
+
+#### 12.3.3 研究站特殊处理
+
+研究站(Lab)有独特的堆叠逻辑，需要单独处理：
+
+```typescript
+// src/core/blueprint/generators/buildings/LabGenerator.ts
+export class LabGenerator extends BaseBuildingGenerator {
+  generate(subRecipe: ISubRecipe, position: ICoordinate): IBlueprintBuilding[] {
+    const buildings: IBlueprintBuilding[] = []
+    const baseBuilding = this.createBaseLab(subRecipe, position)
+    buildings.push(baseBuilding)
+
+    if (this.config.maxLabLayers > 1) {
+      const stackedLabs = this.generateStackedLabs(subRecipe, position, baseBuilding)
+      buildings.push(...stackedLabs)
+    }
+
+    return buildings
+  }
+
+  private generateStackedLabs(
+    subRecipe: ISubRecipe,
+    position: ICoordinate,
+    baseBuilding: IBlueprintBuilding
+  ): IBlueprintBuilding[] {
+    // 原始代码: blueprint.js:1650-1750
+    // 堆叠逻辑实现
+  }
+}
+```
+
+### 12.4 Phase 5D: SorterGenerator位置计算拆分
+
+#### 12.4.1 位置计算核心
+
+```typescript
+// src/core/blueprint/generators/sorters/SorterPositionCalculator.ts
+export interface ISorterPosition {
+  offset: ICoordinate[]
+  yaw: number[]
+}
+
+export class SorterPositionCalculator {
+  calculate(
+    buildingOffset: ICoordinate,
+    buildingType: ProductionCategory,
+    slotIndex: number,
+    isInput: boolean
+  ): ISorterPosition {
+    const calculator = this.getCalculator(buildingType)
+    return calculator.calculate(buildingOffset, slotIndex, isInput)
+  }
+
+  private getCalculator(type: ProductionCategory): ISorterPositionStrategy {
+    switch (type) {
+      case ProductionCategory.smelter:
+        return new SmelterSorterPositions()
+      case ProductionCategory.assembling:
+        return new AssemblerSorterPositions()
+      // ...
+    }
+  }
+}
+```
+
+#### 12.4.2 各建筑类型位置策略
+
+| 策略类                   | 原始代码位置           | slot范围 | 行数估算 |
+| ------------------------ | ---------------------- | -------- | -------- |
+| SmelterSorterPositions   | blueprint.js:1000-1060 | 3-8      | ~60行    |
+| AssemblerSorterPositions | blueprint.js:1000-1060 | 3-8      | ~60行    |
+| LabSorterPositions       | blueprint.js:1060-1150 | 3-11     | ~80行    |
+| PlantSorterPositions     | blueprint.js:1150-1230 | 0-6      | ~70行    |
+| RefinerySorterPositions  | blueprint.js:1230-1320 | 0-8      | ~80行    |
+| ColliderSorterPositions  | blueprint.js:1320-1420 | 0-8      | ~80行    |
+
+### 12.5 Phase 5E: ConveyorGenerator传送带拆分
+
+#### 12.5.1 节点构建器
+
+```typescript
+// src/core/blueprint/generators/conveyors/ConveyorNodeBuilder.ts
+export class ConveyorNodeBuilder {
+  build(
+    offset: ICoordinate,
+    yaw: number[],
+    conveyor: IConveyorInfo,
+    outputObjIdx: number,
+    outputToSlot: number,
+    parameters: IConveyorParameters | null
+  ): IBlueprintBuilding {
+    return {
+      index: this.buildingIndex++,
+      areaIndex: 0,
+      localOffset: [offset, offset],
+      yaw,
+      itemId: conveyor.itemId,
+      modelIndex: conveyor.modelIndex,
+      outputObjIdx,
+      inputObjIdx: -1,
+      outputToSlot
+      // ...
+    }
+  }
+}
+```
+
+#### 12.5.2 喷涂机传送带生成器
+
+```typescript
+// src/core/blueprint/generators/conveyors/SprayCoaterConveyorBuilder.ts
+export class SprayCoaterConveyorBuilder {
+  generate(
+    sprayCoaterOffsets: ICoordinate[],
+    proliferator: string,
+    config: IConveyorConfig
+  ): IBlueprintBuilding[] {
+    // 原始代码: blueprint.js:2500-3000
+    // 喷涂机传送带布局逻辑
+  }
+
+  private generateSelfSprayStructure(
+    startOffset: ICoordinate,
+    proliferator: string
+  ): IBlueprintBuilding[] {
+    // 自喷涂结构生成
+  }
+}
+```
+
+### 12.6 Phase 5F: ItemSummaryCalculator独立
+
+```typescript
+// src/core/blueprint/services/ItemSummaryCalculator.ts
+export class ItemSummaryCalculator {
+  calculate(recipes: ISubRecipe[], config: ICalculationConfig): IItemSummary {
+    const summary: IItemSummary = {}
+
+    for (const subRecipe of recipes) {
+      this.processOutputs(subRecipe, summary)
+      this.processInputs(subRecipe, summary)
+    }
+
+    return this.sortSummary(summary)
+  }
+
+  private sortSummary(summary: IItemSummary): IItemSummary {
+    // 原始代码: blueprint.js:2200-2250
+    // 排序逻辑: 增产剂 -> 原料 -> 终产物 -> 多余产物 -> 中间产物
+  }
+}
+```
+
+### 12.7 迁移执行计划
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Phase 5C-5G 执行计划                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Week 1: Phase 5C - BuildingGenerator细化                       │
+│  ├── Day 1: BaseBuildingGenerator基类 + SmelterGenerator        │
+│  ├── Day 2: AssemblerGenerator + LabGenerator                   │
+│  ├── Day 3: PlantGenerator + RefineryGenerator + ColliderGen    │
+│  └── Day 4: 单元测试 + 集成验证                                  │
+│                                                                 │
+│  Week 2: Phase 5D - SorterGenerator细化                         │
+│  ├── Day 1: SorterPositionCalculator核心                        │
+│  ├── Day 2: Smelter/Assembler/Lab位置策略                       │
+│  ├── Day 3: Plant/Refinery/Collider位置策略                     │
+│  └── Day 4: 单元测试 + 集成验证                                  │
+│                                                                 │
+│  Week 3: Phase 5E - ConveyorGenerator细化                       │
+│  ├── Day 1: ConveyorNodeBuilder                                 │
+│  ├── Day 2: ConveyorConnectionBuilder                           │
+│  ├── Day 3: SprayCoaterConveyorBuilder                          │
+│  └── Day 4: 单元测试 + 集成验证                                  │
+│                                                                 │
+│  Week 4: Phase 5F/5G - 服务整合与测试                           │
+│  ├── Day 1: ItemSummaryCalculator独立                           │
+│  ├── Day 2: RecipeMapper + BlueprintTemplateService             │
+│  ├── Day 3: BlueprintService整合                                │
+│  └── Day 4: 全量测试 + 回归验证                                  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+### 12.8 风险控制
+
+| 风险项               | 概率 | 影响 | 缓解措施                           |
+| -------------------- | ---- | ---- | ---------------------------------- |
+| 建筑生成逻辑遗漏     | 中   | 高   | 逐行对比原始代码，保留原注释       |
+| 分拣器位置计算错误   | 高   | 高   | 先写测试用例，使用快照测试验证坐标 |
+| 堆叠模式兼容性       | 中   | 中   | 保留原始cloneToStackLayers作为对照 |
+| 喷涂机传送带布局异常 | 中   | 低   | 最后迁移，依赖主流程稳定后验证     |
+| 性能回归             | 低   | 中   | 基准测试对比新旧实现耗时           |
+
+### 12.9 验收标准
+
+1. **功能完整性**: 所有原始功能在新架构中正常工作
+2. **测试覆盖率**: 新模块测试覆盖率 ≥ 80%
+3. **性能要求**: 蓝图生成耗时不超过原实现的 110%
+4. **代码质量**: ESLint/Prettier 检查全部通过
+5. **文档完整**: 每个新模块有清晰的接口文档
+   │ Phase 5E (ConveyorGenerator) │
+   │ ├── 依赖: Phase 5D 产出 │
+   │ ├── 依赖: Phase 5F 产出 │
+   │ └── 产出: IBlueprintBuilding[] (含传送带) │
+   │ │ │
+   │ ▼ │
+   │ BlueprintService │
+   │ └── 整合所有Phase产出，生成最终蓝图 │
+   │ │
+   └─────────────────────────────────────────────────────────────────┘
+
 ```
 
 ### 11.5 测试覆盖要求
@@ -865,7 +1184,7 @@ ownerOffset: ICoordinate
 recipeID: number
 }
 
-````
+```
 
 #### 10.2.2 建筑模板生成器 (预估: 3h) ✅ 已完成
 
@@ -899,7 +1218,7 @@ if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
   newBuilding.parameters.researchMode = 1
   // ... 堆叠层数循环
 }
-````
+```
 
 #### 10.2.3 布局计算器 (预估: 2h) ✅ 已完成
 
