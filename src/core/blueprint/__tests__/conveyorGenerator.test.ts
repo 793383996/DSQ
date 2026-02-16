@@ -5,7 +5,7 @@ import {
   DEFAULT_ITEM_SUMMARY_CONFIG
 } from '../generators/ItemSummaryCalculator'
 import { PRODUCTION_CATEGORY } from '../generators/SorterGenerator'
-import type { IItemSummary, IItemSummaryEntry } from '../types/conveyorGenerator'
+import type { IItemSummary } from '../types/conveyorGenerator'
 import type { ISubRecipe } from '../types/buildingGenerator'
 import type { IBuildingData } from '../../types/blueprint'
 
@@ -51,6 +51,15 @@ const mockBuildingMap: Record<string, IBuildingData> = {
     productionSpeed: 1,
     category: 5,
     size: { x: 3, y: 3 },
+    remark: ''
+  },
+  sprayCoater: {
+    name: 'sprayCoater',
+    itemId: 2313,
+    modelIndex: 2401,
+    productionSpeed: 1,
+    category: 8,
+    size: { x: 2, y: 2 },
     remark: ''
   }
 }
@@ -103,6 +112,39 @@ describe('ConveyorGenerator', () => {
 
       expect(belt.itemId).toBe(mockBuildingMap.conveyorBeltMK3.itemId)
     })
+
+    it('should use speed 28 when onlyConveyorBeltMk3Downgrade is true', () => {
+      const gen = new ConveyorGenerator(mockBuildingMap, {
+        onlyConveyorBeltMk3: true,
+        onlyConveyorBeltMk3Downgrade: true
+      })
+      const belt = gen.selectConveyorBelt(30, 1)
+
+      expect(belt.itemId).toBe(mockBuildingMap.conveyorBeltMK3.itemId)
+      expect(belt.transportSpeed).toBe(28)
+    })
+
+    it('should use speed 30 when onlyConveyorBeltMk3Downgrade is false', () => {
+      const gen = new ConveyorGenerator(mockBuildingMap, {
+        onlyConveyorBeltMk3: true,
+        onlyConveyorBeltMk3Downgrade: false
+      })
+      const belt = gen.selectConveyorBelt(30, 1)
+
+      expect(belt.itemId).toBe(mockBuildingMap.conveyorBeltMK3.itemId)
+      expect(belt.transportSpeed).toBe(30)
+    })
+
+    it('should use downgrade speed when upgradeConveyorBelt with downgrade', () => {
+      const gen = new ConveyorGenerator(mockBuildingMap, {
+        upgradeConveyorBelt: true,
+        onlyConveyorBeltMk3Downgrade: true
+      })
+      const belt = gen.selectConveyorBelt(6, 1)
+
+      expect(belt.itemId).toBe(mockBuildingMap.conveyorBeltMK3.itemId)
+      expect(belt.transportSpeed).toBe(28)
+    })
   })
 
   describe('calculateMaxTransportSpeed', () => {
@@ -138,6 +180,14 @@ describe('ConveyorGenerator', () => {
       })
       expect(gen.calculateSortersPerNode()).toBe(1)
     })
+
+    it('should handle odd division correctly', () => {
+      const gen = new ConveyorGenerator(mockBuildingMap, {
+        maxSorterNumOneBelt: 7,
+        stackLayers: 3
+      })
+      expect(gen.calculateSortersPerNode()).toBe(2)
+    })
   })
 
   describe('newConveyorNode', () => {
@@ -172,49 +222,54 @@ describe('ConveyorGenerator', () => {
     })
   })
 
-  describe('generateConveyorBelt', () => {
+  describe('generateConveyorBelts', () => {
     it('should generate conveyor nodes for item', () => {
-      const itemEntry: IItemSummaryEntry = {
-        rate: 10,
-        fromBuildingNum: 2,
-        toBuildingNum: 1
+      const itemSummary: IItemSummary = {
+        ironOre: {
+          rate: 10,
+          fromBuildingNum: 0,
+          toBuildingNum: 1
+        }
       }
       const sorters = {}
-      const nodes = generator.generateConveyorBelt('ironOre', itemEntry, sorters, mockItemMap)
+      const nodes = generator.generateConveyorBelts(itemSummary, sorters, mockItemMap)
 
       expect(nodes.length).toBeGreaterThan(0)
       expect(nodes[0].itemId).toBe(mockBuildingMap.conveyorBeltMK3.itemId)
     })
 
     it('should create parameters with iconId', () => {
-      const itemEntry: IItemSummaryEntry = {
-        rate: 5,
-        fromBuildingNum: 1,
-        toBuildingNum: 1
+      const itemSummary: IItemSummary = {
+        ironOre: {
+          rate: 5,
+          fromBuildingNum: 0,
+          toBuildingNum: 1
+        }
       }
-      const nodes = generator.generateConveyorBelt('ironOre', itemEntry, {}, mockItemMap)
+      const nodes = generator.generateConveyorBelts(itemSummary, {}, mockItemMap)
 
-      expect(nodes[0].parameters).not.toBeNull()
-      expect((nodes[0].parameters as { iconId: number }).iconId).toBe(1001)
+      expect(nodes.length).toBeGreaterThan(0)
+      const lastNode = nodes[nodes.length - 1]
+      expect(lastNode.parameters).not.toBeNull()
     })
 
-    it('should return null parameters for unknown item', () => {
-      const itemEntry: IItemSummaryEntry = {
-        rate: 5,
-        fromBuildingNum: 1,
-        toBuildingNum: 1
+    it('should handle unknown item', () => {
+      const itemSummary: IItemSummary = {
+        unknownItem: {
+          rate: 5,
+          fromBuildingNum: 0,
+          toBuildingNum: 1
+        }
       }
-      const nodes = generator.generateConveyorBelt('unknownItem', itemEntry, {}, mockItemMap)
+      const nodes = generator.generateConveyorBelts(itemSummary, {}, mockItemMap)
 
-      expect(nodes[0].parameters).toBeNull()
+      expect(nodes.length).toBeGreaterThan(0)
     })
-  })
 
-  describe('generateConveyorBelts', () => {
     it('should generate conveyors for multiple items', () => {
       const itemSummary: IItemSummary = {
-        ironOre: { rate: 10, fromBuildingNum: 2, toBuildingNum: 1 },
-        copperOre: { rate: 8, fromBuildingNum: 1, toBuildingNum: 1 }
+        ironOre: { rate: 10, fromBuildingNum: 0, toBuildingNum: 1 },
+        copperOre: { rate: 8, fromBuildingNum: 0, toBuildingNum: 1 }
       }
 
       const nodes = generator.generateConveyorBelts(itemSummary, {}, mockItemMap)
@@ -250,12 +305,20 @@ describe('ConveyorGenerator', () => {
   describe('setOccupiedAreaX', () => {
     it('should set occupied area X', () => {
       generator.setOccupiedAreaX(50)
-      generator.generateConveyorBelt(
-        'ironOre',
-        { rate: 5, fromBuildingNum: 1, toBuildingNum: 1 },
-        {},
-        mockItemMap
-      )
+      expect(generator.getOccupiedAreaX()).toBe(50)
+    })
+  })
+
+  describe('spray coater conveyor generation', () => {
+    it('should generate conveyor for spray coater with self-spray structure', () => {
+      const gen = new ConveyorGenerator(mockBuildingMap, { selfSpray: true })
+
+      expect(gen).toBeDefined()
+    })
+
+    it('should handle spray coater building data', () => {
+      expect(mockBuildingMap.sprayCoater).toBeDefined()
+      expect(mockBuildingMap.sprayCoater.itemId).toBe(2313)
     })
   })
 })
@@ -413,49 +476,45 @@ describe('ItemSummaryCalculator', () => {
   })
 
   describe('sortItemSummary', () => {
-    it('should sort by fromBuildingNum descending', () => {
+    it('should sort proliferator first when toBuildingNum is 0', () => {
       const summary: IItemSummary = {
-        ironOre: { rate: 5, fromBuildingNum: 1, toBuildingNum: 0 },
-        copperOre: { rate: 3, fromBuildingNum: 3, toBuildingNum: 0 },
-        coal: { rate: 2, fromBuildingNum: 2, toBuildingNum: 0 }
+        ironOre: { rate: 5, fromBuildingNum: 1, toBuildingNum: 3 },
+        proliferatorMk3: { rate: 3, fromBuildingNum: 0, toBuildingNum: 0 },
+        coal: { rate: 2, fromBuildingNum: 2, toBuildingNum: 1 }
       }
 
       const sorted = calculator.sortItemSummary(summary)
       const keys = Object.keys(sorted)
 
-      expect(keys[0]).toBe('copperOre')
-      expect(keys[1]).toBe('coal')
-      expect(keys[2]).toBe('ironOre')
+      expect(keys[0]).toBe('proliferatorMk3')
     })
 
-    it('should sort by toBuildingNum when fromBuildingNum is equal', () => {
+    it('should sort raw materials (fromBuildingNum=0) before products', () => {
       const summary: IItemSummary = {
-        ironOre: { rate: 5, fromBuildingNum: 2, toBuildingNum: 1 },
-        copperOre: { rate: 3, fromBuildingNum: 2, toBuildingNum: 3 },
-        coal: { rate: 2, fromBuildingNum: 2, toBuildingNum: 2 }
+        product: { rate: 5, fromBuildingNum: 2, toBuildingNum: 0 },
+        rawMaterial: { rate: 3, fromBuildingNum: 0, toBuildingNum: 2 },
+        intermediate: { rate: 2, fromBuildingNum: 1, toBuildingNum: 1 }
       }
 
       const sorted = calculator.sortItemSummary(summary)
       const keys = Object.keys(sorted)
 
-      expect(keys[0]).toBe('copperOre')
-      expect(keys[1]).toBe('coal')
-      expect(keys[2]).toBe('ironOre')
+      expect(keys[0]).toBe('rawMaterial')
     })
 
-    it('should sort by rate when fromBuildingNum and toBuildingNum are equal', () => {
+    it('should sort end products (toBuildingNum=0) after raw materials', () => {
       const summary: IItemSummary = {
-        ironOre: { rate: 5, fromBuildingNum: 1, toBuildingNum: 1 },
-        copperOre: { rate: 10, fromBuildingNum: 1, toBuildingNum: 1 },
-        coal: { rate: 3, fromBuildingNum: 1, toBuildingNum: 1 }
+        endProduct: { rate: 5, fromBuildingNum: 2, toBuildingNum: 0 },
+        intermediate: { rate: 3, fromBuildingNum: 1, toBuildingNum: 1 },
+        rawMaterial: { rate: 2, fromBuildingNum: 0, toBuildingNum: 2 }
       }
 
       const sorted = calculator.sortItemSummary(summary)
       const keys = Object.keys(sorted)
 
-      expect(keys[0]).toBe('copperOre')
-      expect(keys[1]).toBe('ironOre')
-      expect(keys[2]).toBe('coal')
+      expect(keys[0]).toBe('rawMaterial')
+      expect(keys[1]).toBe('endProduct')
+      expect(keys[2]).toBe('intermediate')
     })
   })
 

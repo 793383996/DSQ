@@ -34,6 +34,34 @@ const mockBuildingMap = {
     transportSpeed: 6,
     type: 5,
     remark: ''
+  },
+  conveyorBeltMK3: {
+    name: 'conveyorBeltMK3',
+    itemId: 2003,
+    modelIndex: 2102,
+    transportSpeed: 30,
+    type: 5,
+    remark: ''
+  },
+  sprayCoater: {
+    name: 'sprayCoater',
+    itemId: 2313,
+    modelIndex: 481,
+    remark: ''
+  },
+  sorterMk1: {
+    name: 'sorterMk1',
+    itemId: 2011,
+    modelIndex: 2110,
+    sortingSpeed: 6,
+    remark: ''
+  },
+  sorterMk3: {
+    name: 'sorterMk3',
+    itemId: 2013,
+    modelIndex: 2112,
+    sortingSpeed: 30,
+    remark: ''
   }
 }
 

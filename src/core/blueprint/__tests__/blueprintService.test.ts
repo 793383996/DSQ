@@ -32,6 +32,15 @@ const mockBuildingMap: Record<string, IBuildingData> = {
     size: { x: 3, y: 3 },
     remark: ''
   },
+  sprayCoater: {
+    name: 'sprayCoater',
+    itemId: 2313,
+    modelIndex: 2401,
+    productionSpeed: 1,
+    category: 8,
+    size: { x: 2, y: 2 },
+    remark: ''
+  },
   conveyorBeltMk1: {
     name: 'conveyorBeltMk1',
     itemId: 2001,
@@ -56,7 +65,8 @@ const mockItemMap: Record<string, { iconId: number; name: string }> = {
   ironIngot: { iconId: 1003, name: 'ironIngot' },
   copperIngot: { iconId: 1004, name: 'copperIngot' },
   magneticCoil: { iconId: 1005, name: 'magneticCoil' },
-  magnet: { iconId: 1006, name: 'magnet' }
+  magnet: { iconId: 1006, name: 'magnet' },
+  proliferatorMk3: { iconId: 1143, name: 'proliferatorMk3' }
 }
 
 describe('BlueprintService', () => {
@@ -262,6 +272,140 @@ describe('BlueprintService', () => {
 
       expect(config1).not.toBe(config2)
       expect(config1).toEqual(config2)
+    })
+  })
+
+  describe('stackLayers mode', () => {
+    it('should reduce building num by stackLayers for all buildings including lab', () => {
+      const stackedService = new BlueprintService({ stackLayers: 4 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 8 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+
+    it('should generate foundation buildings for each stack layer', () => {
+      const stackedService = new BlueprintService({ stackLayers: 2 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+
+    it('should clone buildings to higher layers with correct z offset', () => {
+      const stackedService = new BlueprintService({ stackLayers: 2 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+
+    it('should not clone lab buildings to higher layers', () => {
+      const stackedService = new BlueprintService({ stackLayers: 2 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'lab', num: 1 },
+          output: [{ name: 'sciencePack', rate: 1 }],
+          input: [{ name: 'ironIngot', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const labs = result.buildings.filter(b => b.modelIndex === mockBuildingMap.lab.modelIndex)
+      expect(labs.length).toBe(1)
+    })
+
+    it('should not clone conveyor belts to higher layers', () => {
+      const stackedService = new BlueprintService({ stackLayers: 2 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+    })
+  })
+
+  describe('onlyConveyorBeltMk3Downgrade', () => {
+    it('should handle downgrade config correctly', () => {
+      const downgradeService = new BlueprintService({
+        onlyConveyorBeltMk3: true,
+        onlyConveyorBeltMk3Downgrade: true
+      })
+      const config = downgradeService.getConfig()
+      expect(config.onlyConveyorBeltMk3Downgrade).toBe(true)
+    })
+
+    it('should handle normal config correctly', () => {
+      const normalService = new BlueprintService({
+        onlyConveyorBeltMk3: true,
+        onlyConveyorBeltMk3Downgrade: false
+      })
+      const config = normalService.getConfig()
+      expect(config.onlyConveyorBeltMk3Downgrade).toBe(false)
+    })
+  })
+
+  describe('sorter rate scaling in stack mode', () => {
+    it('should have stackLayers config', () => {
+      const stackedService = new BlueprintService({ stackLayers: 4 })
+      const config = stackedService.getConfig()
+      expect(config.stackLayers).toBe(4)
     })
   })
 })

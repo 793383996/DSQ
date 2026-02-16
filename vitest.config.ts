@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,ts}'],
     exclude: ['node_modules', 'dist', 'src/core/legacy'],
+    pool: 'forks',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

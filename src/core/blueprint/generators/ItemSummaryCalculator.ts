@@ -42,7 +42,14 @@ export class ItemSummaryCalculator {
       const productionSpeed = building.productionSpeed || 1
       const category = building.category ?? 0
 
-      this.processOutputs(subRecipe, building, productionSpeed, itemSummary)
+      this.processOutputs(
+        subRecipe,
+        building,
+        productionSpeed,
+        category,
+        productionCategory,
+        itemSummary
+      )
       this.processInputs(
         subRecipe,
         building,
@@ -55,24 +62,32 @@ export class ItemSummaryCalculator {
 
     this.normalizeItemSummary(itemSummary)
     this.applyStackLayers(itemSummary)
+    const sortedSummary = this.sortItemSummary(itemSummary)
 
-    return itemSummary
+    return sortedSummary
   }
 
   private processOutputs(
     subRecipe: ISubRecipe,
     building: IBuildingData,
     productionSpeed: number,
+    category: number,
+    productionCategory: typeof PRODUCTION_CATEGORY,
     itemSummary: IItemSummary
   ): void {
     if (!subRecipe.output) {
       return
     }
 
-    const fromBuildingNum = subRecipe.building?.num || 0
+    const buildingNum = subRecipe.building?.num || 0
+    let fromBuildingNum = buildingNum
+
+    if (category === productionCategory.lab) {
+      fromBuildingNum = Math.ceil(buildingNum / this.config.maxLabLayers)
+    }
 
     for (const outputItem of subRecipe.output) {
-      let outputRate = outputItem.rate * productionSpeed * fromBuildingNum
+      let outputRate = outputItem.rate * productionSpeed * buildingNum
 
       if (subRecipe.acceleratorMode === 1) {
         outputRate *= this.config.extraRate
@@ -161,27 +176,42 @@ export class ItemSummaryCalculator {
   }
 
   sortItemSummary(itemSummary: IItemSummary): IItemSummary {
-    const entries = Object.entries(itemSummary)
-
-    entries.sort((a, b) => {
-      const aFrom = a[1].fromBuildingNum
-      const bFrom = b[1].fromBuildingNum
-      if (aFrom !== bFrom) {
-        return bFrom - aFrom
-      }
-
-      const aTo = a[1].toBuildingNum
-      const bTo = b[1].toBuildingNum
-      if (aTo !== bTo) {
-        return bTo - aTo
-      }
-
-      return b[1].rate - a[1].rate
-    })
-
     const sorted: IItemSummary = {}
-    for (const [key, value] of entries) {
-      sorted[key] = value
+    const proliferatorList = ['proliferatorMk3', 'proliferatorMk2', 'proliferatorMk1']
+    const outItem = ['refinedOil', 'hydrogen', 'graphene', 'deuterium']
+
+    for (const key of proliferatorList) {
+      if (itemSummary[key] && itemSummary[key].toBuildingNum === 0) {
+        sorted[key] = itemSummary[key]
+        break
+      }
+    }
+
+    for (const key in itemSummary) {
+      if (itemSummary[key].fromBuildingNum === 0) {
+        sorted[key] = itemSummary[key]
+      }
+    }
+
+    for (const key in itemSummary) {
+      if (itemSummary[key].toBuildingNum === 0) {
+        sorted[key] = itemSummary[key]
+      }
+    }
+
+    for (const key of outItem) {
+      if (
+        itemSummary[key] &&
+        itemSummary[key].fromBuildingNum - itemSummary[key].toBuildingNum > 0
+      ) {
+        sorted[key] = itemSummary[key]
+      }
+    }
+
+    for (const key in itemSummary) {
+      if (itemSummary[key].toBuildingNum !== 0 && itemSummary[key].fromBuildingNum !== 0) {
+        sorted[key] = itemSummary[key]
+      }
     }
 
     return sorted

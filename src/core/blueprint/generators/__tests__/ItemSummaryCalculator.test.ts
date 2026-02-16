@@ -126,7 +126,7 @@ describe('ItemSummaryCalculator', () => {
 
       const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
 
-      expect(summary['sciencePack'].fromBuildingNum).toBe(8)
+      expect(summary['sciencePack'].fromBuildingNum).toBe(2)
       expect(summary['ironIngot'].toBuildingNum).toBe(2)
     })
 
@@ -170,49 +170,81 @@ describe('ItemSummaryCalculator', () => {
   })
 
   describe('sortItemSummary', () => {
-    it('should sort by fromBuildingNum descending', () => {
+    it('should sort proliferator first when toBuildingNum is 0', () => {
       const summary = {
-        itemA: { rate: 10, fromBuildingNum: 5, toBuildingNum: 0 },
-        itemB: { rate: 20, fromBuildingNum: 10, toBuildingNum: 0 },
+        itemA: { rate: 10, fromBuildingNum: 5, toBuildingNum: 3 },
+        proliferatorMk3: { rate: 5, fromBuildingNum: 0, toBuildingNum: 0 },
         itemC: { rate: 15, fromBuildingNum: 3, toBuildingNum: 0 }
       }
 
       const sorted = calculator.sortItemSummary(summary)
       const keys = Object.keys(sorted)
 
-      expect(keys[0]).toBe('itemB')
-      expect(keys[1]).toBe('itemA')
-      expect(keys[2]).toBe('itemC')
+      expect(keys[0]).toBe('proliferatorMk3')
     })
 
-    it('should sort by toBuildingNum when fromBuildingNum is equal', () => {
+    it('should sort raw materials (fromBuildingNum=0) before products', () => {
       const summary = {
-        itemA: { rate: 10, fromBuildingNum: 5, toBuildingNum: 3 },
-        itemB: { rate: 20, fromBuildingNum: 5, toBuildingNum: 8 },
-        itemC: { rate: 15, fromBuildingNum: 5, toBuildingNum: 1 }
+        productA: { rate: 10, fromBuildingNum: 5, toBuildingNum: 0 },
+        rawMaterial: { rate: 20, fromBuildingNum: 0, toBuildingNum: 5 },
+        productB: { rate: 15, fromBuildingNum: 3, toBuildingNum: 2 }
       }
 
       const sorted = calculator.sortItemSummary(summary)
       const keys = Object.keys(sorted)
 
-      expect(keys[0]).toBe('itemB')
-      expect(keys[1]).toBe('itemA')
-      expect(keys[2]).toBe('itemC')
+      expect(keys[0]).toBe('rawMaterial')
     })
 
-    it('should sort by rate when both building counts are equal', () => {
+    it('should sort end products (toBuildingNum=0) after raw materials', () => {
       const summary = {
-        itemA: { rate: 10, fromBuildingNum: 5, toBuildingNum: 3 },
-        itemB: { rate: 20, fromBuildingNum: 5, toBuildingNum: 3 },
-        itemC: { rate: 15, fromBuildingNum: 5, toBuildingNum: 3 }
+        endProduct: { rate: 10, fromBuildingNum: 5, toBuildingNum: 0 },
+        intermediate: { rate: 20, fromBuildingNum: 3, toBuildingNum: 3 },
+        rawMaterial: { rate: 15, fromBuildingNum: 0, toBuildingNum: 5 }
       }
 
       const sorted = calculator.sortItemSummary(summary)
       const keys = Object.keys(sorted)
 
-      expect(keys[0]).toBe('itemB')
-      expect(keys[1]).toBe('itemC')
-      expect(keys[2]).toBe('itemA')
+      expect(keys[0]).toBe('rawMaterial')
+      expect(keys[1]).toBe('endProduct')
+      expect(keys[2]).toBe('intermediate')
+    })
+
+    it('should sort special byproducts (refinedOil, hydrogen) after end products', () => {
+      const summary = {
+        intermediate: { rate: 10, fromBuildingNum: 5, toBuildingNum: 3 },
+        refinedOil: { rate: 20, fromBuildingNum: 10, toBuildingNum: 2 },
+        endProduct: { rate: 15, fromBuildingNum: 5, toBuildingNum: 0 }
+      }
+
+      const sorted = calculator.sortItemSummary(summary)
+      const keys = Object.keys(sorted)
+
+      expect(keys[0]).toBe('endProduct')
+      expect(keys[1]).toBe('refinedOil')
+      expect(keys[2]).toBe('intermediate')
+    })
+
+    it('should sort in legacy order: proliferators -> raw materials -> end products -> byproducts -> intermediates', () => {
+      const summary = {
+        intermediate: { rate: 10, fromBuildingNum: 5, toBuildingNum: 3 },
+        hydrogen: { rate: 5, fromBuildingNum: 2, toBuildingNum: 1 },
+        endProduct: { rate: 15, fromBuildingNum: 5, toBuildingNum: 0 },
+        proliferatorMk1: { rate: 2, fromBuildingNum: 0, toBuildingNum: 0 },
+        rawMaterial: { rate: 20, fromBuildingNum: 0, toBuildingNum: 5 },
+        refinedOil: { rate: 8, fromBuildingNum: 3, toBuildingNum: 2 }
+      }
+
+      const sorted = calculator.sortItemSummary(summary)
+      const keys = Object.keys(sorted)
+
+      expect(keys[0]).toBe('proliferatorMk1')
+      expect(keys[1]).toBe('rawMaterial')
+      expect(keys[2]).toBe('endProduct')
+      expect(keys.slice(3, 5)).toContain('hydrogen')
+      expect(keys.slice(3, 5)).toContain('refinedOil')
+      expect(keys[5]).toBe('intermediate')
     })
   })
 
@@ -232,6 +264,91 @@ describe('ItemSummaryCalculator', () => {
 
       expect(summary['ironIngot'].rate).toBe(2)
       expect(summary['ironOre'].inputRate).toBe(2)
+    })
+  })
+
+  describe('Lab fromBuildingNum calculation', () => {
+    it('should calculate Lab fromBuildingNum as ceil(num/maxLabLayers)', () => {
+      const calc = new ItemSummaryCalculator({ maxLabLayers: 4 })
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'lab', num: 8 },
+          output: [{ name: 'sciencePack', rate: 1 }],
+          input: [{ name: 'ironIngot', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['sciencePack'].fromBuildingNum).toBe(2)
+      expect(summary['ironIngot'].toBuildingNum).toBe(2)
+    })
+
+    it('should round up Lab fromBuildingNum', () => {
+      const calc = new ItemSummaryCalculator({ maxLabLayers: 4 })
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'lab', num: 5 },
+          output: [{ name: 'sciencePack', rate: 1 }],
+          input: [{ name: 'ironIngot', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['sciencePack'].fromBuildingNum).toBe(2)
+    })
+
+    it('should handle single lab building', () => {
+      const calc = new ItemSummaryCalculator({ maxLabLayers: 4 })
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'lab', num: 1 },
+          output: [{ name: 'sciencePack', rate: 1 }],
+          input: [{ name: 'ironIngot', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['sciencePack'].fromBuildingNum).toBe(1)
+    })
+
+    it('should use different maxLabLayers config', () => {
+      const calc = new ItemSummaryCalculator({ maxLabLayers: 2 })
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'lab', num: 4 },
+          output: [{ name: 'sciencePack', rate: 1 }],
+          input: [{ name: 'ironIngot', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['sciencePack'].fromBuildingNum).toBe(2)
+    })
+  })
+
+  describe('non-Lab buildings fromBuildingNum', () => {
+    it('should use actual building num for non-Lab buildings', () => {
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 5 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const summary = calculator.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['ironIngot'].fromBuildingNum).toBe(5)
+      expect(summary['ironOre'].toBuildingNum).toBe(5)
     })
   })
 
