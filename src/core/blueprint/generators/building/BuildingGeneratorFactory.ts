@@ -1,9 +1,14 @@
 import type {
   IBuildingGeneratorConfig,
   IBuildingLayout,
-  ISubRecipe
+  ISubRecipe,
+  ISingleBuildingGenerateResult
 } from '../../types/buildingGenerator'
-import { BaseBuildingGenerator, type IBuildingGenerateParams } from './BaseBuildingGenerator'
+import {
+  BaseBuildingGenerator,
+  type IBuildingGenerateParams,
+  type IGenerateBuildingParams
+} from './BaseBuildingGenerator'
 import { SmelterGenerator } from './SmelterGenerator'
 import { AssemblerGenerator } from './AssemblerGenerator'
 import { PlantGenerator } from './PlantGenerator'
@@ -86,6 +91,17 @@ export class BuildingGeneratorFactory {
       throw new Error(`Unknown building category: ${params.category}`)
     }
     return generator.generate(params)
+  }
+
+  generateSingleBuilding(
+    category: number,
+    params: IGenerateBuildingParams
+  ): ISingleBuildingGenerateResult {
+    const generator = this.getGenerator(category)
+    if (!generator) {
+      throw new Error(`Unknown building category: ${category}`)
+    }
+    return generator.generateSingleBuilding(params)
   }
 
   updateConfig(config: Partial<IBuildingGeneratorConfig>): void {

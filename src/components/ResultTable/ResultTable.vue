@@ -131,7 +131,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'add-demand', item: TableItem): void
-  (e: 'toggle-exclude', item: TableItem): void
+  (e: 'toggle-exclude', item: TableItem & { action: 'exclude' | 'include' }): void
   (e: 'retry'): void
 }>()
 

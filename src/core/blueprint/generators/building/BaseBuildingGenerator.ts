@@ -6,7 +6,9 @@ import type {
   ISorterMap,
   ISubRecipe,
   BuildingArray,
-  IOccupiedArea
+  IOccupiedArea,
+  ISingleBuildingGenerateResult,
+  ISorterEntry
 } from '../../types/buildingGenerator'
 import { DEFAULT_BUILDING_GENERATOR_CONFIG } from '../../types/buildingGenerator'
 
@@ -66,6 +68,18 @@ export interface ISorterGenerateParams {
   config: IBuildingGeneratorConfig
 }
 
+export interface IGenerateBuildingParams {
+  subRecipe: ISubRecipe
+  position: ICoordinate
+  buildingMap: Record<string, any>
+  itemMap: Record<string, any>
+  proliferator?: string
+  buildingIndex: number
+  num: number
+  currentIndex: number
+  actualBuildingNum: number
+}
+
 export abstract class BaseBuildingGenerator {
   protected config: IBuildingGeneratorConfig
 
@@ -78,6 +92,16 @@ export abstract class BaseBuildingGenerator {
   abstract calculateBuildingArea(compactLayout: boolean): IBuildingLayout
 
   abstract generate(params: IBuildingGenerateParams): IBlueprintBuilding[]
+
+  generateSingleBuilding(params: IGenerateBuildingParams): ISingleBuildingGenerateResult {
+    return {
+      buildings: [],
+      sorterEntries: [],
+      stackedBuildingIndices: [],
+      processedBuildingCount: 1,
+      nextBuildingIndex: params.buildingIndex
+    }
+  }
 
   getBuildingTemplate(index: number): IBlueprintBuilding {
     return {
@@ -103,13 +127,13 @@ export abstract class BaseBuildingGenerator {
 
   protected selectSorter(
     rate: number,
-    buildingMap: Record<string, { itemId?: number; modelIndex?: number; sortingSpeed: number }>
+    buildingMap: Record<string, { itemId?: number; modelIndex?: number; sortingSpeed?: number }>
   ): { itemId: number; modelIndex: number; sortingSpeed: number } {
     const mk1 = buildingMap.sorterMk1
     const mk3 = buildingMap.sorterMk3
     const mk4 = buildingMap.sorterMk4
 
-    if (this.config.useSorterMk4 && mk4) {
+    if (this.config.useSorterMk4 && mk4?.sortingSpeed) {
       return {
         itemId: mk4.itemId || 0,
         modelIndex: mk4.modelIndex || 0,
@@ -117,18 +141,21 @@ export abstract class BaseBuildingGenerator {
       }
     }
 
-    if (this.config.onlySorterMk3 || rate > mk1.sortingSpeed) {
+    const mk1Speed = mk1?.sortingSpeed || 1.5
+    const mk3Speed = mk3?.sortingSpeed || 6
+
+    if (this.config.onlySorterMk3 || rate > mk1Speed) {
       return {
-        itemId: mk3.itemId || 0,
-        modelIndex: mk3.modelIndex || 0,
-        sortingSpeed: mk3.sortingSpeed
+        itemId: mk3?.itemId || 0,
+        modelIndex: mk3?.modelIndex || 0,
+        sortingSpeed: mk3Speed
       }
     }
 
     return {
-      itemId: mk1.itemId || 0,
-      modelIndex: mk1.modelIndex || 0,
-      sortingSpeed: mk1.sortingSpeed
+      itemId: mk1?.itemId || 0,
+      modelIndex: mk1?.modelIndex || 0,
+      sortingSpeed: mk1Speed
     }
   }
 

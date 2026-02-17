@@ -11,13 +11,13 @@ import type {
   ISubRecipe,
   IBuildingLayout,
   IOccupiedArea,
-  BuildingArray
+  BuildingArray,
+  ISorterEntry
 } from '../types/buildingGenerator'
 import type { IItemSummary } from '../types/conveyorGenerator'
 import { DEFAULT_BUILDING_GENERATOR_CONFIG as defaultBuildingConfig } from '../types/buildingGenerator'
 import { LayoutCalculator } from '../generators/LayoutCalculator'
 import { PRODUCTION_CATEGORY, type ProductionCategory } from '../generators/SorterGenerator'
-import { SorterPositionCalculator } from '../generators/sorter/SorterPositionCalculator'
 import { ItemSummaryCalculator } from '../generators/ItemSummaryCalculator'
 import { ConveyorGenerator } from '../generators/ConveyorGenerator'
 import { BuildingGeneratorFactory } from '../generators/building/BuildingGeneratorFactory'
@@ -61,7 +61,6 @@ export const DEFAULT_BLUEPRINT_SERVICE_CONFIG: IBlueprintServiceConfig = {
 export class BlueprintService {
   private config: IBlueprintServiceConfig
   private layoutCalculator: LayoutCalculator
-  private sorterPositionCalculator: SorterPositionCalculator
   private itemSummaryCalculator: ItemSummaryCalculator
   private conveyorGenerator: ConveyorGenerator
   private buildingGeneratorFactory: BuildingGeneratorFactory
@@ -78,7 +77,6 @@ export class BlueprintService {
     this.config = { ...DEFAULT_BLUEPRINT_SERVICE_CONFIG, ...config }
 
     this.layoutCalculator = new LayoutCalculator()
-    this.sorterPositionCalculator = new SorterPositionCalculator()
     this.itemSummaryCalculator = new ItemSummaryCalculator({
       stackLayers: this.config.stackLayers,
       maxLabLayers: this.config.maxLabLayers,
@@ -251,7 +249,12 @@ export class BlueprintService {
   }
 
   private initOccupiedArea(): void {
-    this.occupiedArea = [{ x1: -1, y1: -1, x2: this.blueprintSize.x, y2: -1 }]
+    // 必须初始化2个元素，因为generateBuildings中访问occupiedArea[length-2]
+    // 老代码：this.occupiedArea = [{ x1: -1, y1: -1, x2: this.blueprintSize.x, y2: -1 }, { x1: -1, y1: -1, x2: this.blueprintSize.x, y2: -1 }]
+    this.occupiedArea = [
+      { x1: -1, y1: -1, x2: this.blueprintSize.x, y2: -1 },
+      { x1: -1, y1: -1, x2: this.blueprintSize.x, y2: -1 }
+    ]
   }
 
   private getBuildingTemplate(): IBlueprintBuilding {
@@ -324,21 +327,10 @@ export class BlueprintService {
     const category = building.category ?? 0
     const productionCategory = category as ProductionCategory
 
-    let extraRate = 1
-    if (proliferator) {
-      const prolifItem = itemMap[proliferator] as any
-      if (subRecipe.acceleratorMode === 0) {
-        extraRate += prolifItem?.extra_rate || 0
-      } else if (subRecipe.acceleratorMode === 1) {
-        extraRate += prolifItem?.accelerate || 0
-      }
-    }
-
     let hasTeslaTowerThisLine = false
     let teslaTowerDistance = 0
 
-    for (let i = 0; i < num; i++) {
-      this.buildingIndex++
+    for (let i = 0; i < num; ) {
       this.lastProductionBuildingType = category
 
       let buildingX: number, buildingY: number, buildingZ: number
@@ -373,61 +365,35 @@ export class BlueprintService {
         })
       }
 
-      const acceleratorMode = subRecipe.acceleratorMode === 1 ? 1 : 0
-      const newBuilding = this.getBuildingTemplate()
-      newBuilding.localOffset = [
-        { x: buildingX, y: buildingY, z: buildingZ },
-        { x: buildingX, y: buildingY, z: buildingZ }
-      ]
-      newBuilding.yaw = buildingArea.yaw
-      newBuilding.itemId = building.itemId
-      newBuilding.modelIndex = building.modelIndex
-      newBuilding.recipeId =
-        typeof subRecipe.recipeID === 'string'
-          ? parseInt(subRecipe.recipeID)
-          : subRecipe.recipeID || 0
-      newBuilding.parameters = { acceleratorMode }
+      const actualBuildingNum = Math.min(1, num - i)
+      const result = this.buildingGeneratorFactory.generateSingleBuilding(category, {
+        subRecipe,
+        position: { x: buildingX, y: buildingY, z: buildingZ },
+        buildingMap,
+        itemMap,
+        proliferator,
+        buildingIndex: this.buildingIndex,
+        num,
+        currentIndex: i,
+        actualBuildingNum
+      })
 
-      const stackLabBuildingIndexList: number[] = []
-      let layers = 1
+      this.buildings.push(...result.buildings)
+      this.buildingIndex = result.nextBuildingIndex
 
-      if (category === PRODUCTION_CATEGORY.lab) {
-        newBuilding.outputToSlot = 14
-        newBuilding.inputFromSlot = 15
-        newBuilding.outputFromSlot = 15
-        newBuilding.inputToSlot = 14
-        ;(newBuilding.parameters as any).researchMode = 1
-        this.buildings.push(newBuilding)
-
-        const labHeight = building.height || 3
-        const maxLayers = this.config.maxLabLayers || 4
-        for (i++; i < num && layers < maxLayers; i++, layers++) {
-          const labBuilding = this.getBuildingTemplate()
-          labBuilding.localOffset = [
-            { x: buildingX, y: buildingY, z: buildingZ },
-            { x: buildingX, y: buildingY, z: buildingZ }
-          ]
-          labBuilding.localOffset[0].z = labHeight * layers
-          labBuilding.localOffset[1].z = labHeight * layers
-          labBuilding.yaw = newBuilding.yaw
-          labBuilding.itemId = building.itemId
-          labBuilding.modelIndex = building.modelIndex
-          labBuilding.recipeId = newBuilding.recipeId
-          labBuilding.inputObjIdx = this.buildingIndex - 1
-          labBuilding.outputToSlot = 14
-          labBuilding.inputFromSlot = 15
-          labBuilding.outputFromSlot = 15
-          labBuilding.inputToSlot = 14
-          labBuilding.parameters = { acceleratorMode, researchMode: 1 }
-          this.buildings.push(labBuilding)
-          stackLabBuildingIndexList.push(this.buildingIndex)
-        }
-        i--
-      } else {
-        this.buildings.push(newBuilding)
+      for (const entry of result.sorterEntries) {
+        this.addSorterEntry(entry.itemName, entry.type, {
+          index: entry.index,
+          rate: entry.rate,
+          ownerObjIdx: entry.ownerObjIdx,
+          ownerName: entry.ownerName,
+          ownerOffset: entry.ownerOffset,
+          recipeID: entry.recipeID
+        })
       }
 
-      const nowBuildingIndex = newBuilding.index
+      const nowBuildingIndex = result.buildings[0].index
+
       if (this.config.generateTeslaTower && buildingMap.teslaTower) {
         const shouldGenerateTeslaTower =
           (this.config.teslaTowerLineInterval > 1 &&
@@ -467,162 +433,7 @@ export class BlueprintService {
         }
       }
 
-      const productionSpeed = building.productionSpeed || 1
-      const actualBuildingNum = Math.min(1, num - i) + stackLabBuildingIndexList.length
-      const slotMaxIndex = building.slotMaxIndex || 8
-      let slotIndex = slotMaxIndex
-      const sorterList: number[] = []
-
-      for (const outputItem of subRecipe.output || []) {
-        let actualRate = outputItem.rate * productionSpeed * actualBuildingNum * extraRate
-
-        const sorterItem = this.selectSorter(actualRate, buildingMap as any)
-        if (category === PRODUCTION_CATEGORY.lab && actualRate > sorterItem.sortingSpeed) {
-          const extraSorter = this.getBuildingTemplate()
-          extraSorter.itemId = sorterItem.itemId
-          extraSorter.modelIndex = sorterItem.modelIndex
-          extraSorter.inputObjIdx = nowBuildingIndex
-          extraSorter.outputToSlot = -1
-          extraSorter.inputToSlot = 1
-          extraSorter.inputFromSlot = slotIndex - 3
-          extraSorter.filterId = itemMap[outputItem.name]?.iconId || 0
-          extraSorter.parameters = { length: 1 }
-          const offsetInfo = this.sorterPositionCalculator.calculate(
-            { x: buildingX, y: buildingY, z: buildingZ },
-            productionCategory,
-            slotIndex - 3,
-            0
-          )
-          extraSorter.localOffset = offsetInfo.offset
-          extraSorter.yaw = offsetInfo.yaw
-          this.buildings.push(extraSorter)
-          sorterList.push(this.buildingIndex)
-
-          this.addSorterEntry(outputItem.name, 'output', {
-            index: extraSorter.index,
-            rate: sorterItem.sortingSpeed,
-            ownerObjIdx: nowBuildingIndex,
-            ownerName: buildingName,
-            ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-            recipeID: newBuilding.recipeId
-          })
-          actualRate -= sorterItem.sortingSpeed
-        }
-
-        const newSorter = this.getBuildingTemplate()
-        newSorter.itemId = sorterItem.itemId
-        newSorter.modelIndex = sorterItem.modelIndex
-        newSorter.inputObjIdx = nowBuildingIndex
-        newSorter.outputToSlot = -1
-        newSorter.inputToSlot = 1
-        newSorter.inputFromSlot = slotIndex
-        newSorter.filterId = itemMap[outputItem.name]?.iconId || 0
-        newSorter.parameters = { length: 1 }
-        const offsetInfo = this.sorterPositionCalculator.calculate(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          productionCategory,
-          slotIndex,
-          0
-        )
-        newSorter.localOffset = offsetInfo.offset
-        newSorter.yaw = offsetInfo.yaw
-        this.buildings.push(newSorter)
-        sorterList.push(this.buildingIndex)
-
-        this.addSorterEntry(outputItem.name, 'output', {
-          index: newSorter.index,
-          rate: actualRate,
-          ownerObjIdx: nowBuildingIndex,
-          ownerName: buildingName,
-          ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-          recipeID: newBuilding.recipeId
-        })
-
-        slotIndex--
-        if (
-          !this.config.compactLayout &&
-          category === PRODUCTION_CATEGORY.collider &&
-          slotIndex === 5
-        ) {
-          slotIndex = 2
-        }
-      }
-
-      for (const inputItem of subRecipe.input || []) {
-        let actualRate = inputItem.rate * productionSpeed * actualBuildingNum
-        if (subRecipe.acceleratorMode === 1) {
-          actualRate *= extraRate
-        }
-
-        const sorterItem = this.selectSorter(actualRate, buildingMap as any)
-        if (category === PRODUCTION_CATEGORY.lab && actualRate > sorterItem.sortingSpeed) {
-          const extraSorter = this.getBuildingTemplate()
-          extraSorter.itemId = sorterItem.itemId
-          extraSorter.modelIndex = sorterItem.modelIndex
-          extraSorter.outputObjIdx = nowBuildingIndex
-          extraSorter.outputToSlot = slotIndex - 3
-          extraSorter.inputToSlot = 1
-          extraSorter.filterId = itemMap[inputItem.name]?.iconId || 0
-          extraSorter.parameters = { length: 1 }
-          const offsetInfo = this.sorterPositionCalculator.calculate(
-            { x: buildingX, y: buildingY, z: buildingZ },
-            productionCategory,
-            slotIndex - 3,
-            1
-          )
-          extraSorter.localOffset = offsetInfo.offset
-          extraSorter.yaw = offsetInfo.yaw
-          this.buildings.push(extraSorter)
-          sorterList.push(this.buildingIndex)
-
-          this.addSorterEntry(inputItem.name, 'input', {
-            index: extraSorter.index,
-            rate: sorterItem.sortingSpeed,
-            ownerObjIdx: nowBuildingIndex,
-            ownerName: buildingName,
-            ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-            recipeID: newBuilding.recipeId
-          })
-          actualRate -= sorterItem.sortingSpeed
-        }
-
-        const newSorter = this.getBuildingTemplate()
-        newSorter.itemId = sorterItem.itemId
-        newSorter.modelIndex = sorterItem.modelIndex
-        newSorter.outputObjIdx = nowBuildingIndex
-        newSorter.outputToSlot = slotIndex
-        newSorter.inputToSlot = 1
-        newSorter.filterId = itemMap[inputItem.name]?.iconId || 0
-        newSorter.parameters = { length: 1 }
-        const offsetInfo2 = this.sorterPositionCalculator.calculate(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          productionCategory,
-          slotIndex,
-          1
-        )
-        newSorter.localOffset = offsetInfo2.offset
-        newSorter.yaw = offsetInfo2.yaw
-        this.buildings.push(newSorter)
-        sorterList.push(this.buildingIndex)
-
-        this.addSorterEntry(inputItem.name, 'input', {
-          index: newSorter.index,
-          rate: actualRate,
-          ownerObjIdx: nowBuildingIndex,
-          ownerName: buildingName,
-          ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-          recipeID: newBuilding.recipeId
-        })
-
-        slotIndex--
-        if (
-          !this.config.compactLayout &&
-          category === PRODUCTION_CATEGORY.collider &&
-          slotIndex === 5
-        ) {
-          slotIndex = 2
-        }
-      }
+      const sorterList = result.sorterEntries.map(e => e.index)
 
       if (needNewLine) {
         this.buildingArray.push([{ index: nowBuildingIndex, sorterList }])
@@ -637,40 +448,11 @@ export class BlueprintService {
         }
       }
 
-      for (const labIndex of stackLabBuildingIndexList) {
+      for (const labIndex of result.stackedBuildingIndices) {
         this.buildingArray[this.buildingArray.length - 1].push({ index: labIndex, sorterList: [] })
       }
-    }
-  }
 
-  private selectSorter(
-    rate: number,
-    buildingMap: Record<string, { itemId?: number; modelIndex?: number; sortingSpeed?: number }>
-  ): { itemId: number; modelIndex: number; sortingSpeed: number } {
-    const mk1 = buildingMap.sorterMk1 || {}
-    const mk3 = buildingMap.sorterMk3 || {}
-    const mk4 = buildingMap.sorterMk4 || {}
-
-    if (this.config.useSorterMk4 && mk4.sortingSpeed) {
-      return {
-        itemId: mk4.itemId || 2014,
-        modelIndex: mk4.modelIndex || 483,
-        sortingSpeed: mk4.sortingSpeed || 120
-      }
-    }
-
-    if (this.config.onlySorterMk3 || rate > (mk1.sortingSpeed || 1.5)) {
-      return {
-        itemId: mk3.itemId || 2013,
-        modelIndex: mk3.modelIndex || 43,
-        sortingSpeed: mk3.sortingSpeed || 6
-      }
-    }
-
-    return {
-      itemId: mk1.itemId || 2011,
-      modelIndex: mk1.modelIndex || 41,
-      sortingSpeed: mk1.sortingSpeed || 1.5
+      i += result.processedBuildingCount
     }
   }
 
@@ -746,6 +528,10 @@ export class BlueprintService {
     })
     this.conveyorGenerator.updateBuildingMap(buildingMap)
     this.conveyorGenerator.setBuildingIndex(this.buildingIndex)
+    // 防御性编程：确保occupiedArea至少有2个元素
+    if (this.occupiedArea.length < 2) {
+      this.occupiedArea.push({ x1: -1, y1: -1, x2: this.blueprintSize.x, y2: -1 })
+    }
     const lastOccupiedArea = this.occupiedArea[this.occupiedArea.length - 1]
     const prevOccupiedArea =
       this.occupiedArea.length >= 2
@@ -865,24 +651,19 @@ export class BlueprintService {
     }
     this.buildingIndex = foundationStartIndex + stackLayers
 
-    const layerIndexMaps = new Map<number, Map<number, number>>()
-    for (let layer = 1; layer < stackLayers; layer++) {
-      const map = new Map<number, number>()
-      let idx = this.buildingIndex + 1 + (layer - 1) * cloneableBuildings.length
-      for (const base of cloneableBuildings) {
-        map.set(base.index, idx++)
-      }
-      layerIndexMaps.set(layer, map)
-    }
-
     for (let layer = 1; layer < stackLayers; layer++) {
       const zOffset = layer * zStep
-      const indexMap = layerIndexMaps.get(layer)!
+      const indexMap = new Map<number, number>()
+      let nextIndex = this.buildingIndex + 1
+      for (const base of cloneableBuildings) {
+        indexMap.set(base.index, nextIndex)
+        nextIndex++
+      }
 
       for (const base of cloneableBuildings) {
-        this.buildingIndex++
+        const newIndex = indexMap.get(base.index)!
         const clone: IBlueprintBuilding = {
-          index: this.buildingIndex,
+          index: newIndex,
           areaIndex: base.areaIndex,
           localOffset: base.localOffset
             ? [
@@ -923,6 +704,8 @@ export class BlueprintService {
 
         this.buildings.push(clone)
       }
+
+      this.buildingIndex = nextIndex - 1
     }
   }
 

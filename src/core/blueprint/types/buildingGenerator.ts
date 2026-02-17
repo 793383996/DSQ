@@ -63,6 +63,25 @@ export interface IBuildingGenerateResult {
   lastProductionBuildingType: number
 }
 
+export interface ISorterEntry {
+  index: number
+  rate: number
+  itemName: string
+  type: 'input' | 'output'
+  ownerObjIdx: number
+  ownerName: string
+  ownerOffset: ICoordinate
+  recipeID: number
+}
+
+export interface ISingleBuildingGenerateResult {
+  buildings: IBlueprintBuilding[]
+  sorterEntries: ISorterEntry[]
+  stackedBuildingIndices: number[]
+  processedBuildingCount: number
+  nextBuildingIndex: number
+}
+
 export interface ISubRecipeItem {
   name: string
   rate: number
