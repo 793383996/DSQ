@@ -36,6 +36,8 @@ export interface IBlueprintGenerateOptions {
   buildingMap: Record<string, IBuildingData>
   itemMap: Record<string, { iconId: number; name: string }>
   proliferator?: string
+  title?: string
+  iconId?: number
 }
 
 export const DEFAULT_BLUEPRINT_SERVICE_CONFIG: IBlueprintServiceConfig = {
@@ -146,7 +148,7 @@ export class BlueprintService {
       this.cloneToStackLayers(buildingMap)
     }
 
-    return this.createBlueprintData(this.buildings)
+    return this.createBlueprintData(this.buildings, options.title, options.iconId)
   }
 
   private mapRecipeIDs(recipes: ISubRecipe[]): void {
@@ -769,6 +771,11 @@ export class BlueprintService {
     )
 
     this.buildingIndex = this.conveyorGenerator.getBuildingIndex()
+    this.sprayCoaterOffsetList = this.conveyorGenerator.getSprayCoaterOffsetList()
+    const updatedOccupiedAreaX = this.conveyorGenerator.getOccupiedAreaX()
+    if (lastOccupiedArea && updatedOccupiedAreaX > lastOccupiedArea.x2) {
+      lastOccupiedArea.x2 = updatedOccupiedAreaX
+    }
 
     return conveyorBuildings
   }
@@ -917,30 +924,35 @@ export class BlueprintService {
     }
   }
 
-  private createBlueprintData(buildings: IBlueprintBuilding[]): IBlueprintData {
+  private createBlueprintData(
+    buildings: IBlueprintBuilding[],
+    title?: string,
+    iconId?: number
+  ): IBlueprintData {
+    const iconValue = iconId ?? 0
     return {
       version: 1,
       cursorOffset: { x: 0, y: 0 },
       cursorTargetArea: 0,
-      dragBoxSize: { x: 0, y: 0 },
+      dragBoxSize: { x: 1, y: 1 },
       primaryAreaIdx: 0,
       areas: [
         {
           index: 0,
           parentIndex: -1,
           tropicAnchor: 0,
-          areaSegments: 0,
+          areaSegments: 200,
           anchorLocalOffset: { x: 0, y: 0 },
-          size: { x: 100, y: 100 }
+          size: { x: 1, y: 1 }
         }
       ],
       buildings,
       header: {
-        layout: 1,
-        icons: [0, 0, 0, 0, 0],
+        layout: 10,
+        icons: [iconValue, 0, 0, 0, 0],
         time: new Date(),
-        gameVersion: '0.10.28',
-        shortDesc: '',
+        gameVersion: '0.9.26.13026',
+        shortDesc: title ?? '',
         desc: ''
       }
     }

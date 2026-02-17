@@ -279,21 +279,21 @@ export class SorterGenerator {
           { x: x - 4, y: y - 1, z },
           { x: x - 5, y: y - 1, z }
         ]
-        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 270) % 360]
+        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360]
         break
       case 4:
         data.offset = [
           { x: x - 4, y, z },
           { x: x - 5, y, z }
         ]
-        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 270) % 360]
+        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360]
         break
       case 3:
         data.offset = [
           { x: x - 4, y: y + 1, z },
           { x: x - 5, y: y + 1, z }
         ]
-        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 270) % 360]
+        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360]
         break
       case 2:
         data.offset = [

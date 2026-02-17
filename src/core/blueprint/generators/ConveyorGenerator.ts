@@ -11,6 +11,7 @@ import {
   CONVEYOR_BELT_MK3_DOWNGRADE_SPEED as MK3_DOWNGRADE_SPEED
 } from '../types/conveyorGenerator'
 import type { ISorterMap, ISorterInfo } from '../types/buildingGenerator'
+import { SorterGenerator, PRODUCTION_CATEGORY, type ProductionCategory } from './SorterGenerator'
 
 export interface IBuildingMap {
   [key: string]: {
@@ -29,15 +30,6 @@ export interface IBuildingMap {
 
 export const BUILDING_TYPE = {
   conveyor: 5
-} as const
-
-const PRODUCTION_CATEGORY = {
-  smelter: 0,
-  assembling: 1,
-  plant: 2,
-  refinery: 3,
-  collider: 4,
-  lab: 5
 } as const
 
 interface IBuildingArrayEntry {
@@ -67,10 +59,12 @@ export class ConveyorGenerator {
   private sprayCoaterOffsetList: ICoordinate[] = []
   private lastProductionBuildingType: number = 0
   private allBuildings: IBlueprintBuilding[] | null = null
+  private sorterGenerator: SorterGenerator
 
   constructor(buildingMap: IBuildingMap, config: Partial<IConveyorGeneratorConfig> = {}) {
     this.buildingMap = buildingMap
     this.config = { ...defaultConfig, ...config }
+    this.sorterGenerator = new SorterGenerator()
   }
 
   updateConfig(config: Partial<IConveyorGeneratorConfig>): void {
@@ -243,130 +237,14 @@ export class ConveyorGenerator {
     ownerCategory: number,
     slot: number,
     direction: number
-  ): { offset: ICoordinate; yaw: number[] } {
-    let offsetX = ownerOffset.x
-    let offsetY = ownerOffset.y
-    const offsetZ = ownerOffset.z
-    let yaw: number[] = [0, 0]
-
-    switch (ownerCategory) {
-      case PRODUCTION_CATEGORY.smelter:
-        if (slot === 0) {
-          offsetX -= 1
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 1
-          yaw = [270, 270]
-        } else if (slot === 2) {
-          offsetY -= 1
-          yaw = [180, 180]
-        } else if (slot === 3) {
-          offsetY += 1
-          yaw = [0, 0]
-        }
-        break
-      case PRODUCTION_CATEGORY.assembling:
-        if (slot === 0) {
-          offsetX -= 1
-          offsetY += 1
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 1
-          offsetY += 1
-          yaw = [270, 270]
-        } else if (slot === 2) {
-          offsetX += 1
-          offsetY -= 1
-          yaw = [270, 270]
-        } else if (slot === 3) {
-          offsetX -= 1
-          offsetY -= 1
-          yaw = [90, 90]
-        }
-        break
-      case PRODUCTION_CATEGORY.plant:
-        if (slot === 0) {
-          offsetX -= 2
-          offsetY += 2
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 2
-          offsetY += 2
-          yaw = [270, 270]
-        } else if (slot === 2) {
-          offsetX += 2
-          offsetY -= 2
-          yaw = [270, 270]
-        } else if (slot === 3) {
-          offsetX -= 2
-          offsetY -= 2
-          yaw = [90, 90]
-        }
-        break
-      case PRODUCTION_CATEGORY.refinery:
-        if (slot === 0) {
-          offsetX -= 1
-          offsetY += 1
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 2
-          offsetY += 1
-          yaw = [270, 270]
-        } else if (slot === 2) {
-          offsetX += 2
-          offsetY -= 1
-          yaw = [270, 270]
-        } else if (slot === 3) {
-          offsetX -= 1
-          offsetY -= 1
-          yaw = [90, 90]
-        }
-        break
-      case PRODUCTION_CATEGORY.collider:
-        if (slot === 0) {
-          offsetX -= 2
-          offsetY += 2
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 2
-          offsetY += 2
-          yaw = [270, 270]
-        } else if (slot === 2) {
-          offsetX += 2
-          offsetY -= 2
-          yaw = [270, 270]
-        }
-        break
-      case PRODUCTION_CATEGORY.lab:
-        if (slot === 0) {
-          offsetX -= 1
-          offsetY += 2
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 1
-          offsetY += 2
-          yaw = [270, 270]
-        } else if (slot === 2) {
-          offsetX += 1
-          offsetY -= 2
-          yaw = [270, 270]
-        } else if (slot === 3) {
-          offsetX -= 1
-          offsetY -= 2
-          yaw = [90, 90]
-        }
-        break
-      default:
-        if (slot === 0) {
-          offsetX -= 1
-          yaw = [90, 90]
-        } else if (slot === 1) {
-          offsetX += 1
-          yaw = [270, 270]
-        }
-    }
-
-    return { offset: { x: offsetX, y: offsetY, z: offsetZ }, yaw }
+  ): { offset: ICoordinate[]; yaw: number[] } {
+    const result = this.sorterGenerator.calculateSorterLocalOffsetAndYaw(
+      ownerOffset,
+      ownerCategory as ProductionCategory,
+      slot,
+      direction
+    )
+    return result
   }
 
   private newConveyorNode(
@@ -554,7 +432,7 @@ export class ConveyorGenerator {
                 newSorter.outputToSlot,
                 1
               )
-              newSorter.localOffset = [offsetInfo.offset, offsetInfo.offset]
+              newSorter.localOffset = offsetInfo.offset
               newSorter.yaw = offsetInfo.yaw
               result.push(newSorter)
 
@@ -1060,7 +938,7 @@ export class ConveyorGenerator {
         break
       }
       buildingY += 1
-      const outputObjIdx = this.buildingIndex + 1
+      const outputObjIdx = this.buildingIndex + 2
       const outputToSlot = 1
       const node = this.newConveyorNode(
         { x: buildingX, y: buildingY, z: buildingZ },
@@ -1088,7 +966,7 @@ export class ConveyorGenerator {
           { x: buildingX, y: buildingY, z: buildingZ },
           [0, 0],
           conveyor,
-          this.buildingIndex + 1,
+          this.buildingIndex + 2,
           1,
           null
         )
@@ -1104,7 +982,7 @@ export class ConveyorGenerator {
         { x: buildingX, y: buildingY, z: buildingZ },
         [0, 0],
         conveyor,
-        this.buildingIndex + 1,
+        this.buildingIndex + 2,
         1,
         null
       )
@@ -1117,7 +995,7 @@ export class ConveyorGenerator {
       buildingY += 1
       if (!(direction > 0 && i === outputData.length - 1)) {
         if (!(direction < 0 && i === 0)) {
-          outputObjIdx = this.buildingIndex + direction
+          outputObjIdx = this.buildingIndex + 1 + direction
         }
       }
       let nodeParameters: { iconId?: number; count?: string } | null = null
@@ -1166,7 +1044,7 @@ export class ConveyorGenerator {
             { x: buildingX, y: buildingY, z: buildingZ },
             [0, 0],
             conveyor,
-            this.buildingIndex - 1,
+            this.buildingIndex,
             1,
             null
           )
@@ -1182,7 +1060,7 @@ export class ConveyorGenerator {
           { x: buildingX, y: buildingY, z: buildingZ },
           [180, 180],
           conveyor,
-          this.buildingIndex - 1,
+          this.buildingIndex,
           1,
           null
         )
@@ -1192,7 +1070,7 @@ export class ConveyorGenerator {
           { x: buildingX, y: buildingY, z: buildingZ },
           [180, 180],
           conveyor,
-          this.buildingIndex - 1,
+          this.buildingIndex,
           1,
           null
         )
@@ -1203,7 +1081,7 @@ export class ConveyorGenerator {
         { x: buildingX, y: buildingY, z: buildingZ },
         [180, 180],
         conveyor,
-        this.buildingIndex - 1,
+        this.buildingIndex,
         1,
         null
       )
@@ -1213,7 +1091,7 @@ export class ConveyorGenerator {
         { x: buildingX, y: buildingY, z: buildingZ },
         [180, 180],
         conveyor,
-        this.buildingIndex - 1,
+        this.buildingIndex,
         1,
         parameters
       )
@@ -1228,7 +1106,7 @@ export class ConveyorGenerator {
       const sprayCoaterOffset = this.sprayCoaterOffsetList[this.sprayCoaterOffsetList.length - 1]
       if (sprayCoaterOffset) {
         const sprayCoater = this.newSprayCoater(
-          { x: sprayCoaterOffset.x + 1, y: sprayCoaterOffset.y, z: sprayCoaterOffset.z },
+          { x: sprayCoaterOffset.x, y: sprayCoaterOffset.y, z: sprayCoaterOffset.z },
           sprayYaw
         )
         result.push(sprayCoater)
@@ -1246,7 +1124,7 @@ export class ConveyorGenerator {
       localOffset: [offset, offset],
       yaw,
       itemId: sprayCoater?.itemId || 2313,
-      modelIndex: sprayCoater?.modelIndex || 481,
+      modelIndex: sprayCoater?.modelIndex || 120,
       outputObjIdx: -1,
       inputObjIdx: -1,
       outputToSlot: 14,

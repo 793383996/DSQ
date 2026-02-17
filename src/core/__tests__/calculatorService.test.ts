@@ -95,8 +95,8 @@ describe('CalculatorService', () => {
     it('should throw error when update_all is not a function', async () => {
       window.update_all = undefined as unknown as typeof window.update_all
 
-      await expect(service.calculate([])).rejects.toThrow('计算引擎未初始化')
-    })
+      await expect(service.calculate([])).rejects.toThrow('计算引擎初始化超时')
+    }, 10000)
 
     it('should return demands in result.xqs', async () => {
       window.update_all = vi.fn()

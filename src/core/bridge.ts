@@ -170,7 +170,7 @@ export interface OutputRecipe {
 
 export interface Recipe {
   blueprintTitle: string
-  blueprintIcon: string[]
+  blueprintIcon: number[]
   blueprintDesc: string
 }
 
@@ -359,9 +359,14 @@ export function getLegacyRecipe(): ILegacyRecipe | null {
   const win = getWin()
   if (typeof win.getRecipe === 'function') {
     const recipe = win.getRecipe()
+    const blueprintIcon = Array.isArray(recipe.blueprintIcon)
+      ? recipe.blueprintIcon.map((v: any) => (typeof v === 'number' ? v : parseInt(String(v), 10)))
+      : []
     return {
       proliferator: recipe.proliferator,
-      subRecipes: recipe.recipeList as ILegacySubRecipe[]
+      subRecipes: recipe.recipeList as ILegacySubRecipe[],
+      blueprintTitle: recipe.blueprintTitle,
+      blueprintIcon
     }
   }
   return null

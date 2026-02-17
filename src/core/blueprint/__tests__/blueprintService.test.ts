@@ -220,9 +220,9 @@ describe('BlueprintService', () => {
       })
 
       expect(result.header).toBeDefined()
-      expect(result.header.layout).toBe(1)
+      expect(result.header.layout).toBe(10)
       expect(result.header.icons).toEqual([0, 0, 0, 0, 0])
-      expect(result.header.gameVersion).toBe('0.10.28')
+      expect(result.header.gameVersion).toBe('0.9.26.13026')
     })
 
     it('should create valid area', () => {
@@ -243,7 +243,7 @@ describe('BlueprintService', () => {
 
       expect(result.areas[0].index).toBe(0)
       expect(result.areas[0].parentIndex).toBe(-1)
-      expect(result.areas[0].size).toEqual({ x: 100, y: 100 })
+      expect(result.areas[0].size).toEqual({ x: 1, y: 1 })
     })
   })
 

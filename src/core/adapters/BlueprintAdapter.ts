@@ -11,6 +11,8 @@ import { logger } from '../../utils/logger'
 export interface ILegacyRecipe {
   proliferator?: string
   subRecipes: ILegacySubRecipe[]
+  blueprintTitle?: string
+  blueprintIcon?: number[]
 }
 
 export interface ILegacySubRecipe {
@@ -247,11 +249,15 @@ export function generateBlueprintWithNewService(
 
     const service = new BlueprintService(config)
 
+    const iconId = legacyRecipe.blueprintIcon?.[0]
+
     const options: IBlueprintGenerateOptions = {
       recipes,
       buildingMap: buildingMap as any,
       itemMap,
-      proliferator: legacyRecipe.proliferator
+      proliferator: legacyRecipe.proliferator,
+      title: legacyRecipe.blueprintTitle,
+      iconId
     }
 
     const blueprintData = service.generate(options)
