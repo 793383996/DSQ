@@ -160,5 +160,12 @@ export default {
   },
   performance: {
     poorMetric: '性能指标较差'
+  },
+  meta: {
+    title: '戴森球计划量产量化计算器 - DSP生产链规划工具',
+    description:
+      '《戴森球计划》自动化量产计算器，支持全自动计算量产需求、蓝图生成、生产链优化。帮助玩家高效规划戴森球生产线。',
+    keywords:
+      '戴森球计划,量产量化工具,量产量化计算器,自动化工具,生产工具,Dyson Sphere Program,计算器,蓝图'
   }
 }

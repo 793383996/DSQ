@@ -160,5 +160,11 @@ export default {
   },
   performance: {
     poorMetric: 'Poor performance metric'
+  },
+  meta: {
+    title: 'Dyson Sphere Program Calculator - Production Chain Planner',
+    description:
+      'Dyson Sphere Program production calculator with automatic requirement calculation, blueprint generation, and production chain optimization.',
+    keywords: 'Dyson Sphere Program,calculator,production planner,blueprint,automation,DSP'
   }
 }

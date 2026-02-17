@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
 import {
@@ -58,6 +58,7 @@ import {
   StateChangedDuringCalculationError
 } from './core/services/CalculatorService'
 import { logger } from './utils/logger'
+import { useMeta } from './composables/useMeta'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
 import ResultTable from './components/ResultTable/ResultTable.vue'
@@ -67,8 +68,34 @@ import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.vue'
 import LocaleSwitcher from './components/LocaleSwitcher/LocaleSwitcher.vue'
 import PWAUpdateBanner from './components/PWAUpdateBanner/PWAUpdateBanner.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const store = useBlueprintStore()
+
+const siteUrl = computed(() => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  return import.meta.env.VITE_SITE_URL || 'https://dsq-calculator.example.com'
+})
+
+const ogImage = computed(() => `${siteUrl.value}/og-image.svg`)
+
+const metaTitle = computed(() => t('meta.title'))
+const metaDescription = computed(() => t('meta.description'))
+const metaKeywords = computed(() =>
+  t('meta.keywords')
+    .split(',')
+    .map((k: string) => k.trim())
+)
+
+useMeta({
+  title: metaTitle,
+  description: metaDescription,
+  keywords: metaKeywords,
+  ogImage,
+  ogUrl: siteUrl,
+  canonical: siteUrl
+})
 
 const showSettings = ref(false)
 const showAddDialog = ref(false)
