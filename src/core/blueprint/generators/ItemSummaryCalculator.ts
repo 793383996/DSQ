@@ -120,7 +120,7 @@ export class ItemSummaryCalculator {
       if (category === productionCategory.lab) {
         fromBuildingNum = Math.ceil(buildingNum / this.config.maxLabLayers)
       } else {
-        fromBuildingNum = buildingNum * this.config.stackLayers
+        fromBuildingNum = buildingNum
       }
     }
 
@@ -164,8 +164,6 @@ export class ItemSummaryCalculator {
 
     if (category === productionCategory.lab) {
       toBuildingNum = Math.ceil(buildingNum / this.config.maxLabLayers)
-    } else {
-      toBuildingNum = buildingNum * this.config.stackLayers
     }
 
     const acceleratorMode = subRecipe.acceleratorMode ?? -1

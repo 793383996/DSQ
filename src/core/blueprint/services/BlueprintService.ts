@@ -11,20 +11,15 @@ import type {
   ISubRecipe,
   IBuildingLayout,
   IOccupiedArea,
-  DEFAULT_BUILDING_GENERATOR_CONFIG
+  BuildingArray
 } from '../types/buildingGenerator'
-import type { IItemSummary, IConveyorGeneratorConfig } from '../types/conveyorGenerator'
+import type { IItemSummary } from '../types/conveyorGenerator'
 import { DEFAULT_BUILDING_GENERATOR_CONFIG as defaultBuildingConfig } from '../types/buildingGenerator'
-import { BuildingGenerator } from '../generators/BuildingGenerator'
 import { LayoutCalculator } from '../generators/LayoutCalculator'
-import {
-  SorterGenerator,
-  PRODUCTION_CATEGORY,
-  type ProductionCategory
-} from '../generators/SorterGenerator'
+import { PRODUCTION_CATEGORY, type ProductionCategory } from '../generators/SorterGenerator'
+import { SorterPositionCalculator } from '../generators/sorter/SorterPositionCalculator'
 import { ItemSummaryCalculator } from '../generators/ItemSummaryCalculator'
 import { ConveyorGenerator } from '../generators/ConveyorGenerator'
-import { ConnectionBuilder } from '../generators/ConnectionBuilder'
 import { BuildingGeneratorFactory } from '../generators/building/BuildingGeneratorFactory'
 import { logger } from '../../../utils/logger'
 import recipeMapData from '../../data/recipeMap.json'
@@ -63,12 +58,10 @@ export const DEFAULT_BLUEPRINT_SERVICE_CONFIG: IBlueprintServiceConfig = {
 
 export class BlueprintService {
   private config: IBlueprintServiceConfig
-  private buildingGenerator: BuildingGenerator
   private layoutCalculator: LayoutCalculator
-  private sorterGenerator: SorterGenerator
+  private sorterPositionCalculator: SorterPositionCalculator
   private itemSummaryCalculator: ItemSummaryCalculator
   private conveyorGenerator: ConveyorGenerator
-  private connectionBuilder: ConnectionBuilder
   private buildingGeneratorFactory: BuildingGeneratorFactory
   private buildings: IBlueprintBuilding[] = []
   private sorters: ISorterMap = {}
@@ -77,14 +70,13 @@ export class BlueprintService {
   private blueprintSize: { x: number; y: number } = { x: 0, y: 0 }
   private sprayCoaterOffsetList: ICoordinate[] = []
   private lastProductionBuildingType: number = 0
-  private buildingArray: Array<Array<{ index: number; sorterList: number[] }>> = []
+  private buildingArray: BuildingArray = []
 
   constructor(config: Partial<IBlueprintServiceConfig> = {}) {
     this.config = { ...DEFAULT_BLUEPRINT_SERVICE_CONFIG, ...config }
 
-    this.buildingGenerator = new BuildingGenerator(this.config)
     this.layoutCalculator = new LayoutCalculator()
-    this.sorterGenerator = new SorterGenerator()
+    this.sorterPositionCalculator = new SorterPositionCalculator()
     this.itemSummaryCalculator = new ItemSummaryCalculator({
       stackLayers: this.config.stackLayers,
       maxLabLayers: this.config.maxLabLayers,
@@ -104,12 +96,11 @@ export class BlueprintService {
         selfSpray: this.config.selfSpray
       }
     )
-    this.connectionBuilder = new ConnectionBuilder({
-      maxSorterNumOneBelt: 8,
-      stackLayers: this.config.stackLayers
-    })
     this.buildingGeneratorFactory = new BuildingGeneratorFactory({
-      compactLayout: this.config.compactLayout
+      compactLayout: this.config.compactLayout,
+      onlySorterMk3: this.config.onlySorterMk3,
+      useSorterMk4: this.config.useSorterMk4,
+      maxLabLayers: this.config.maxLabLayers
     })
   }
 
@@ -219,7 +210,6 @@ export class BlueprintService {
   }
 
   private reset(): void {
-    this.buildingGenerator.reset()
     this.layoutCalculator.reset()
     this.conveyorGenerator.reset()
     this.buildings = []
@@ -495,7 +485,7 @@ export class BlueprintService {
           extraSorter.inputFromSlot = slotIndex - 3
           extraSorter.filterId = itemMap[outputItem.name]?.iconId || 0
           extraSorter.parameters = { length: 1 }
-          const offsetInfo = this.sorterGenerator.calculateSorterLocalOffsetAndYaw(
+          const offsetInfo = this.sorterPositionCalculator.calculate(
             { x: buildingX, y: buildingY, z: buildingZ },
             productionCategory,
             slotIndex - 3,
@@ -526,7 +516,7 @@ export class BlueprintService {
         newSorter.inputFromSlot = slotIndex
         newSorter.filterId = itemMap[outputItem.name]?.iconId || 0
         newSorter.parameters = { length: 1 }
-        const offsetInfo = this.sorterGenerator.calculateSorterLocalOffsetAndYaw(
+        const offsetInfo = this.sorterPositionCalculator.calculate(
           { x: buildingX, y: buildingY, z: buildingZ },
           productionCategory,
           slotIndex,
@@ -572,7 +562,7 @@ export class BlueprintService {
           extraSorter.inputToSlot = 1
           extraSorter.filterId = itemMap[inputItem.name]?.iconId || 0
           extraSorter.parameters = { length: 1 }
-          const offsetInfo = this.sorterGenerator.calculateSorterLocalOffsetAndYaw(
+          const offsetInfo = this.sorterPositionCalculator.calculate(
             { x: buildingX, y: buildingY, z: buildingZ },
             productionCategory,
             slotIndex - 3,
@@ -602,7 +592,7 @@ export class BlueprintService {
         newSorter.inputToSlot = 1
         newSorter.filterId = itemMap[inputItem.name]?.iconId || 0
         newSorter.parameters = { length: 1 }
-        const offsetInfo2 = this.sorterGenerator.calculateSorterLocalOffsetAndYaw(
+        const offsetInfo2 = this.sorterPositionCalculator.calculate(
           { x: buildingX, y: buildingY, z: buildingZ },
           productionCategory,
           slotIndex,
@@ -867,11 +857,11 @@ export class BlueprintService {
     this.buildingIndex = foundationStartIndex + stackLayers
 
     const layerIndexMaps = new Map<number, Map<number, number>>()
-    let nextIndex = this.buildingIndex + 1
     for (let layer = 1; layer < stackLayers; layer++) {
       const map = new Map<number, number>()
+      let idx = this.buildingIndex + 1 + (layer - 1) * cloneableBuildings.length
       for (const base of cloneableBuildings) {
-        map.set(base.index, nextIndex++)
+        map.set(base.index, idx++)
       }
       layerIndexMaps.set(layer, map)
     }
@@ -959,7 +949,12 @@ export class BlueprintService {
   updateConfig(config: Partial<IBlueprintServiceConfig>): void {
     this.config = { ...this.config, ...config }
 
-    this.buildingGenerator.updateConfig(this.config)
+    this.buildingGeneratorFactory.updateConfig({
+      compactLayout: this.config.compactLayout,
+      onlySorterMk3: this.config.onlySorterMk3,
+      useSorterMk4: this.config.useSorterMk4,
+      maxLabLayers: this.config.maxLabLayers
+    })
     this.itemSummaryCalculator.updateConfig({
       stackLayers: this.config.stackLayers,
       maxLabLayers: this.config.maxLabLayers,
@@ -975,10 +970,6 @@ export class BlueprintService {
       useSorterMk4: this.config.useSorterMk4,
       onlySorterMk3: this.config.onlySorterMk3,
       selfSpray: this.config.selfSpray
-    })
-    this.connectionBuilder.updateConfig({
-      maxSorterNumOneBelt: 8,
-      stackLayers: this.config.stackLayers
     })
   }
 
