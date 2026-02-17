@@ -6,6 +6,7 @@ import {
 } from '../blueprint/services/BlueprintService'
 import type { IBlueprintData } from '../types/blueprint'
 import type { ISubRecipe } from '../blueprint/types/buildingGenerator'
+import { logger } from '../../utils/logger'
 
 export interface ILegacyRecipe {
   proliferator?: string
@@ -48,28 +49,125 @@ export interface IBlueprintGenerateResult {
   error?: string
 }
 
-function getBuildingMap(): Record<
-  string,
-  {
-    itemId: number
-    modelIndex: number
-    productionSpeed?: number
-    category?: number
-    size?: { x: number; y: number }
-    transportSpeed?: number
-    type?: number
+interface IBuildingMapEntry {
+  itemId: number
+  modelIndex: number
+  productionSpeed?: number
+  category?: number
+  size?: { x: number; y: number }
+  transportSpeed?: number
+  type?: number
+}
+
+interface IItemMapEntry {
+  iconId: number
+  name: string
+}
+
+interface IDataValidationResult {
+  valid: boolean
+  buildingMap: Record<string, IBuildingMapEntry>
+  itemMap: Record<string, IItemMapEntry>
+  errors: string[]
+}
+
+const REQUIRED_BUILDINGS = [
+  'arcSmelter',
+  'assemblingMachineMk1',
+  'lab',
+  'conveyorBeltMk1',
+  'conveyorBeltMK3',
+  'sorterMk1',
+  'sorterMk3'
+]
+
+function validateBuildingMapEntry(entry: unknown, name: string): entry is IBuildingMapEntry {
+  if (!entry || typeof entry !== 'object') return false
+  const e = entry as Record<string, unknown>
+  return typeof e.itemId === 'number' && typeof e.modelIndex === 'number'
+}
+
+function validateItemMapEntry(entry: unknown): entry is IItemMapEntry {
+  if (!entry || typeof entry !== 'object') return false
+  const e = entry as Record<string, unknown>
+  return typeof e.iconId === 'number' && typeof e.name === 'string'
+}
+
+function validateAndGetData(): IDataValidationResult {
+  const errors: string[] = []
+  const win = window as any
+
+  const buildingMap: Record<string, IBuildingMapEntry> = {}
+  const itemMap: Record<string, IItemMapEntry> = {}
+
+  if (!win.buildingMap) {
+    errors.push('window.buildingMap is undefined - legacy data not injected')
+    logger.error('[BlueprintAdapter] window.buildingMap is undefined')
+  } else if (typeof win.buildingMap !== 'object') {
+    errors.push('window.buildingMap is not an object')
+    logger.error('[BlueprintAdapter] window.buildingMap is not an object:', typeof win.buildingMap)
+  } else {
+    const rawBuildingMap = win.buildingMap as Record<string, unknown>
+    let validCount = 0
+    for (const [key, value] of Object.entries(rawBuildingMap)) {
+      if (validateBuildingMapEntry(value, key)) {
+        buildingMap[key] = value
+        validCount++
+      }
+    }
+    if (validCount === 0) {
+      errors.push('window.buildingMap contains no valid entries')
+      logger.error('[BlueprintAdapter] buildingMap has no valid entries')
+    } else {
+      const missingRequired = REQUIRED_BUILDINGS.filter(b => !buildingMap[b])
+      if (missingRequired.length > 0) {
+        logger.warn(`[BlueprintAdapter] Missing required buildings: ${missingRequired.join(', ')}`)
+      }
+    }
   }
-> {
+
+  if (!win.itemMap) {
+    errors.push('window.itemMap is undefined - legacy data not injected')
+    logger.error('[BlueprintAdapter] window.itemMap is undefined')
+  } else if (typeof win.itemMap !== 'object') {
+    errors.push('window.itemMap is not an object')
+    logger.error('[BlueprintAdapter] window.itemMap is not an object:', typeof win.itemMap)
+  } else {
+    const rawItemMap = win.itemMap as Record<string, unknown>
+    let validCount = 0
+    for (const [key, value] of Object.entries(rawItemMap)) {
+      if (validateItemMapEntry(value)) {
+        itemMap[key] = value
+        validCount++
+      }
+    }
+    if (validCount === 0) {
+      errors.push('window.itemMap contains no valid entries')
+      logger.error('[BlueprintAdapter] itemMap has no valid entries')
+    }
+  }
+
+  return {
+    valid: Object.keys(buildingMap).length > 0 && Object.keys(itemMap).length > 0,
+    buildingMap,
+    itemMap,
+    errors
+  }
+}
+
+function getBuildingMap(): Record<string, IBuildingMapEntry> {
   const win = window as any
   if (!win.buildingMap) {
+    logger.warn('[BlueprintAdapter] getBuildingMap: window.buildingMap is undefined')
     return {}
   }
   return win.buildingMap
 }
 
-function getItemMap(): Record<string, { iconId: number; name: string }> {
+function getItemMap(): Record<string, IItemMapEntry> {
   const win = window as any
   if (!win.itemMap) {
+    logger.warn('[BlueprintAdapter] getItemMap: window.itemMap is undefined')
     return {}
   }
   return win.itemMap
@@ -116,18 +214,36 @@ export function generateBlueprintWithNewService(
   legacyConfig: ILegacyBlueprintConfig
 ): IBlueprintGenerateResult {
   try {
-    const buildingMap = getBuildingMap()
-    const itemMap = getItemMap()
+    const validation = validateAndGetData()
 
-    if (Object.keys(buildingMap).length === 0) {
+    if (!validation.valid) {
+      const errorMsg =
+        validation.errors.length > 0 ? validation.errors.join('; ') : 'Data validation failed'
+      logger.error('[BlueprintAdapter] Validation failed:', errorMsg)
       return {
         success: false,
-        error: 'buildingMap not loaded'
+        error: errorMsg
+      }
+    }
+
+    const { buildingMap, itemMap } = validation
+
+    if (!legacyRecipe.subRecipes || legacyRecipe.subRecipes.length === 0) {
+      logger.warn('[BlueprintAdapter] No subRecipes provided')
+      return {
+        success: false,
+        error: 'No recipes provided'
       }
     }
 
     const recipes = convertLegacyRecipe(legacyRecipe)
     const config = convertLegacyConfig(legacyConfig)
+
+    logger.info('[BlueprintAdapter] Generating blueprint with config:', {
+      stackLayers: config.stackLayers,
+      onlyConveyorBeltMk3: config.onlyConveyorBeltMk3,
+      recipeCount: recipes.length
+    })
 
     const service = new BlueprintService(config)
 
@@ -142,6 +258,11 @@ export function generateBlueprintWithNewService(
 
     const blueprintString = encodeBlueprint(blueprintData)
 
+    logger.info(
+      '[BlueprintAdapter] Blueprint generated successfully, building count:',
+      blueprintData.buildings.length
+    )
+
     return {
       success: true,
       blueprintString,
@@ -149,6 +270,7 @@ export function generateBlueprintWithNewService(
     }
   } catch (error) {
     const err = error as Error
+    logger.error('[BlueprintAdapter] Generation failed:', err.message, err.stack)
     return {
       success: false,
       error: err.message || 'Unknown error'
@@ -157,7 +279,8 @@ export function generateBlueprintWithNewService(
 }
 
 export function isBlueprintServiceAvailable(): boolean {
-  const buildingMap = getBuildingMap()
-  const itemMap = getItemMap()
-  return Object.keys(buildingMap).length > 0 && Object.keys(itemMap).length > 0
+  const validation = validateAndGetData()
+  return validation.valid
 }
+
+export { validateAndGetData, REQUIRED_BUILDINGS }

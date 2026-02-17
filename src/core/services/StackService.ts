@@ -6,7 +6,7 @@ import type {
   ICloneFilter,
   ICloneResult
 } from '../types/stack'
-import { DEFAULT_STACK_CONFIG, BELT_ITEM_IDS, Z_STEP } from '../types/stack'
+import { DEFAULT_STACK_CONFIG, Z_STEP } from '../types/stack'
 import type { IBlueprintBuilding } from '../types/blueprint'
 import { buildIndexMap, cloneBuildingWithRemap } from '../utils/IndexMapper'
 import { buildingMap, PRODUCTION_CATEGORY } from '../types/buildingMap'
@@ -15,6 +15,7 @@ const LAB_CATEGORY = PRODUCTION_CATEGORY.lab
 
 let labItemIdsCache: Set<number> | null = null
 let sprayCoaterItemIdCache: number | null = null
+let beltItemIdsCache: Set<number> | null = null
 
 function getLabItemIds(): Set<number> {
   if (labItemIdsCache === null) {
@@ -23,6 +24,16 @@ function getLabItemIds(): Set<number> {
     if (buildingMap['自演化研究站']) labItemIdsCache.add(buildingMap['自演化研究站'].itemId)
   }
   return labItemIdsCache
+}
+
+function getBeltItemIds(): Set<number> {
+  if (beltItemIdsCache === null) {
+    beltItemIdsCache = new Set<number>()
+    if (buildingMap.conveyorBeltMk1) beltItemIdsCache.add(buildingMap.conveyorBeltMk1.itemId)
+    if (buildingMap.conveyorBeltMk2) beltItemIdsCache.add(buildingMap.conveyorBeltMk2.itemId)
+    if (buildingMap.conveyorBeltMK3) beltItemIdsCache.add(buildingMap.conveyorBeltMK3.itemId)
+  }
+  return beltItemIdsCache
 }
 
 function getSprayCoaterItemId(): number {
@@ -154,7 +165,7 @@ export class StackService {
 
     return {
       labItemIds,
-      beltItemIds: BELT_ITEM_IDS,
+      beltItemIds: getBeltItemIds(),
       sprayCoaterItemId: getSprayCoaterItemId(),
       labIndices
     }

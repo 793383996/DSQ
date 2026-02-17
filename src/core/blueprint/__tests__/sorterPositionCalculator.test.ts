@@ -84,9 +84,9 @@ describe('SorterPositionCalculator', () => {
     it('should calculate correct offset for slot 8', () => {
       const result = calculator.calculate({ x: 0, y: 0, z: 0 }, PRODUCTION_CATEGORY.refinery, 8, 0)
       expect(result.offset).toHaveLength(2)
-      expect(result.offset[0]).toEqual({ x: -0.8, y: -1, z: 0 })
-      expect(result.offset[1]).toEqual({ x: -0.8, y: -2, z: 0 })
-      expect(result.yaw).toEqual([180, 180])
+      expect(result.offset[0]).toEqual({ x: -3, y: -1, z: 0 })
+      expect(result.offset[1]).toEqual({ x: -4, y: -1, z: 0 })
+      expect(result.yaw).toEqual([270, 270])
     })
 
     it('should calculate correct offset for slot 0', () => {

@@ -22,10 +22,10 @@ export class RefinerySorterStrategy extends SorterPositionStrategy {
     switch (slotIndex) {
       case 8:
         offsets = [
-          { x: x - 0.8, y: y - 1, z },
-          { x: x - 0.8, y: y - 2, z }
+          { x: x - 3, y: y - 1, z },
+          { x: x - 4, y: y - 1, z }
         ]
-        baseYaw = 180
+        baseYaw = 270
         break
       case 7:
         offsets = [

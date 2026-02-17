@@ -21,8 +21,10 @@
         @add-item="showAddDialog = true"
       />
 
+      <DemandList @demand-changed="runCalculation" />
+
       <ResultTable
-        :items="resultItems"
+        :items="store.resultItems"
         :is-loading="isCalculating"
         :error="calculationError"
         :hide-source="hideSource"
@@ -41,21 +43,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
-import { isLegacyDataLoaded, waitForLegacyData, isGameDataLoaded } from './core/bridge'
+import {
+  isLegacyDataLoaded,
+  waitForLegacyData,
+  isGameDataLoaded,
+  syncStateToLegacy
+} from './core/bridge'
 import type { LegacyWindow } from './core/types/legacy'
 import {
   calculatorService,
   StateChangedDuringCalculationError
 } from './core/services/CalculatorService'
-import type { ResultItem } from './stores/blueprint'
 import { logger } from './utils/logger'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
 import ResultTable from './components/ResultTable/ResultTable.vue'
 import AddItemDialog from './components/AddItemDialog/AddItemDialog.vue'
+import DemandList from './components/DemandList/DemandList.vue'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.vue'
 import LocaleSwitcher from './components/LocaleSwitcher/LocaleSwitcher.vue'
 import PWAUpdateBanner from './components/PWAUpdateBanner/PWAUpdateBanner.vue'
@@ -66,17 +73,26 @@ const store = useBlueprintStore()
 const showSettings = ref(false)
 const showAddDialog = ref(false)
 const hideSource = ref(false)
-const resultItems = ref<ResultItem[]>([])
 const isCalculating = ref(false)
 const calculationError = ref<string | null>(null)
 const isDataReady = ref(false)
-let iconCheckIntervalId: ReturnType<typeof setInterval> | null = null
+let removeSettingsListener: (() => void) | null = null
 
 function getWin(): LegacyWindow {
   return window as unknown as LegacyWindow
 }
 
 onMounted(async () => {
+  // P0-3修复：启用store到legacy的自动同步
+  store.enableSync()
+
+  // P1-2修复：监听设置变更，自动触发计算
+  removeSettingsListener = store.onSettingsChange(() => {
+    if (store.demandList.length > 0) {
+      runCalculation()
+    }
+  })
+
   const loadResult = await waitForLegacyData(10000, 2)
   isDataReady.value = loadResult.success
 
@@ -105,23 +121,26 @@ onMounted(async () => {
     })
   }
 
-  iconCheckIntervalId = setInterval(() => {
-    if (isGameDataLoaded()) {
+  // P2-1修复：改用事件驱动替代轮询
+  if (isGameDataLoaded()) {
+    store.checkIconsLoaded()
+    logger.log('[App] Game icons already loaded')
+  } else {
+    const handleGameDataLoaded = () => {
       store.checkIconsLoaded()
-      if (iconCheckIntervalId) {
-        clearInterval(iconCheckIntervalId)
-        iconCheckIntervalId = null
-      }
-      logger.log('[App] Game icons loaded')
+      window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
+      logger.log('[App] Game icons loaded via event')
     }
-  }, 500)
+    window.addEventListener('gameDataLoaded', handleGameDataLoaded)
 
-  setTimeout(() => {
-    if (iconCheckIntervalId) {
-      clearInterval(iconCheckIntervalId)
-      iconCheckIntervalId = null
-    }
-  }, 30000)
+    // 保留超时保护
+    setTimeout(() => {
+      window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
+      if (!store.isIconsLoaded) {
+        logger.warn('[App] Game icons load timeout')
+      }
+    }, 30000)
+  }
 
   if (win.settings || win.settings_time || win.settings_pf) {
     store.syncAllSettings(win.settings || {}, win.settings_time || {}, win.settings_pf || {})
@@ -130,9 +149,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (iconCheckIntervalId) {
-    clearInterval(iconCheckIntervalId)
-    iconCheckIntervalId = null
+  // P1-2修复：清理设置变更监听器
+  if (removeSettingsListener) {
+    removeSettingsListener()
+    removeSettingsListener = null
   }
 })
 
@@ -152,6 +172,14 @@ async function runCalculation(retryCount: number = 0) {
   store.setCalculating(true)
 
   try {
+    // P0-2修复：计算前强制同步状态到legacy，确保watch的异步更新已完成
+    await nextTick()
+    syncStateToLegacy({
+      demandList: store.demandList,
+      excludeList: store.excludeList,
+      machineSettings: store.machineSettings
+    })
+
     const snapshot = store.createSnapshot()
     const demands = snapshot.demandList.map(d => ({
       name: d.name,
@@ -168,11 +196,12 @@ async function runCalculation(retryCount: number = 0) {
 
     if (result && result.items) {
       const allItems = [...result.items, ...(result.items2 || [])]
-      resultItems.value = allItems.map((item, index) => ({
-        ...item,
-        id: `${item.name}-${index}`
-      }))
-      store.setResultItems(resultItems.value)
+      store.setResultItems(
+        allItems.map((item, index) => ({
+          ...item,
+          id: `${item.name}-${index}`
+        }))
+      )
     }
   } catch (error: unknown) {
     if (error instanceof StateChangedDuringCalculationError && retryCount < 3) {
@@ -200,11 +229,19 @@ function handleAddDemand(item: { name: string }) {
   runCalculation()
 }
 
-function handleToggleExclude(item: { name: string }) {
-  if (store.excludeList.includes(item.name)) {
+// P2-1修复：支持明确的action参数，避免状态不一致
+function handleToggleExclude(item: { name: string; action?: 'exclude' | 'include' }) {
+  if (item.action === 'exclude') {
+    store.addExclude(item.name)
+  } else if (item.action === 'include') {
     store.removeExclude(item.name)
   } else {
-    store.addExclude(item.name)
+    // 兼容旧的调用方式
+    if (store.excludeList.includes(item.name)) {
+      store.removeExclude(item.name)
+    } else {
+      store.addExclude(item.name)
+    }
   }
   runCalculation()
 }

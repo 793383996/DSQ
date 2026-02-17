@@ -104,8 +104,8 @@ describe('ConnectionBuilder', () => {
 
       builder.connectSortersToConveyor(buildings, sorters, 10, itemSummary)
 
-      expect(buildings[0].inputObjIdx).toBe(10)
-      expect(buildings[1].inputObjIdx).toBe(10)
+      expect(buildings[0].inputObjIdx).toBe(11)
+      expect(buildings[1].inputObjIdx).toBe(11)
     })
 
     it('should skip items not in itemSummary', () => {

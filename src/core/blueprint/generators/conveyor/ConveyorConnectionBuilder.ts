@@ -9,6 +9,21 @@ import {
 import type { IConveyorGeneratorConfig } from '../../types/conveyorGenerator'
 import { DEFAULT_CONVEYOR_GENERATOR_CONFIG } from '../../types/conveyorGenerator'
 
+/**
+ * ConveyorConnectionBuilder - 传送带连接生成器（简化版）
+ *
+ * 功能范围：
+ * - 基础传送带节点生成
+ * - 简单的物料参数设置
+ *
+ * 不包含的功能（由 ConveyorGenerator 处理）：
+ * - 分拣器连接逻辑
+ * - X射线裂解/重整精炼特殊处理
+ * - 速率匹配和分拣器分配
+ * - 建筑物位置调整
+ *
+ * @see ConveyorGenerator - 完整版传送带生成器
+ */
 export interface IConnectionBuildParams {
   itemName: string
   itemEntry: IItemSummaryEntry

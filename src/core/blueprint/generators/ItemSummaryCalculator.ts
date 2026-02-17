@@ -1,18 +1,30 @@
 import type { IItemSummary, IItemSummaryEntry } from '../types/conveyorGenerator'
-import type { ISubRecipe } from '../types/buildingGenerator'
+import type { ISubRecipe, ISorterMap } from '../types/buildingGenerator'
 import type { IBuildingData } from '../../types/blueprint'
 import { PRODUCTION_CATEGORY } from './SorterGenerator'
+
+const PROLIFERATOR_PRIORITY_LIST = ['proliferatorMk3', 'proliferatorMk2', 'proliferatorMk1']
+const BYPRODUCT_PRIORITY_LIST = ['refinedOil', 'hydrogen', 'graphene', 'deuterium']
+
+export interface IProliferatorItemMap {
+  extra_rate?: number
+  accelerate?: number
+}
 
 export interface IItemSummaryCalculatorConfig {
   stackLayers: number
   maxLabLayers: number
   extraRate: number
+  proliferator?: string
+  itemMap?: Record<string, IProliferatorItemMap>
 }
 
 export const DEFAULT_ITEM_SUMMARY_CONFIG: IItemSummaryCalculatorConfig = {
   stackLayers: 1,
   maxLabLayers: 4,
-  extraRate: 1.25
+  extraRate: 1.25,
+  proliferator: undefined,
+  itemMap: undefined
 }
 
 export class ItemSummaryCalculator {
@@ -20,6 +32,25 @@ export class ItemSummaryCalculator {
 
   constructor(config: Partial<IItemSummaryCalculatorConfig> = {}) {
     this.config = { ...DEFAULT_ITEM_SUMMARY_CONFIG, ...config }
+  }
+
+  updateConfig(config: Partial<IItemSummaryCalculatorConfig>): void {
+    this.config = { ...this.config, ...config }
+  }
+
+  private calculateExtraRate(acceleratorMode: number): number {
+    let extraRate = 1
+
+    if (this.config.proliferator && this.config.itemMap && acceleratorMode !== -1) {
+      const prolifItem = this.config.itemMap[this.config.proliferator]
+      if (acceleratorMode === 0) {
+        extraRate += prolifItem?.extra_rate || 0
+      } else if (acceleratorMode === 1) {
+        extraRate += prolifItem?.accelerate || 0
+      }
+    }
+
+    return extraRate
   }
 
   calculate(
@@ -80,17 +111,27 @@ export class ItemSummaryCalculator {
     }
 
     const buildingNum = subRecipe.building?.num || 0
-    let fromBuildingNum = buildingNum
+    const isRawMaterial = subRecipe.input === null
 
-    if (category === productionCategory.lab) {
-      fromBuildingNum = Math.ceil(buildingNum / this.config.maxLabLayers)
+    let fromBuildingNum = 0
+    if (isRawMaterial) {
+      fromBuildingNum = 0
+    } else {
+      if (category === productionCategory.lab) {
+        fromBuildingNum = Math.ceil(buildingNum / this.config.maxLabLayers)
+      } else {
+        fromBuildingNum = buildingNum * this.config.stackLayers
+      }
     }
 
-    for (const outputItem of subRecipe.output) {
-      let outputRate = outputItem.rate * productionSpeed * buildingNum
+    const extraRate = this.calculateExtraRate(subRecipe.acceleratorMode ?? -1)
 
-      if (subRecipe.acceleratorMode === 1) {
-        outputRate *= this.config.extraRate
+    for (const outputItem of subRecipe.output) {
+      let outputRate: number
+      if (isRawMaterial) {
+        outputRate = outputItem.rate
+      } else {
+        outputRate = outputItem.rate * productionSpeed * buildingNum * extraRate
       }
 
       if (itemSummary[outputItem.name]) {
@@ -123,16 +164,21 @@ export class ItemSummaryCalculator {
 
     if (category === productionCategory.lab) {
       toBuildingNum = Math.ceil(buildingNum / this.config.maxLabLayers)
+    } else {
+      toBuildingNum = buildingNum * this.config.stackLayers
+    }
+
+    const acceleratorMode = subRecipe.acceleratorMode ?? -1
+    const needProliferator = acceleratorMode !== -1
+
+    let inputExtraRate = 1
+    if (acceleratorMode === 1 && this.config.proliferator && this.config.itemMap) {
+      const prolifItem = this.config.itemMap[this.config.proliferator]
+      inputExtraRate += prolifItem?.accelerate || 0
     }
 
     for (const inputItem of subRecipe.input) {
-      let itemInputRate = inputItem.rate * productionSpeed * buildingNum
-
-      if (subRecipe.acceleratorMode === 1) {
-        itemInputRate *= this.config.extraRate
-      }
-
-      const needProliferator = subRecipe.acceleratorMode !== -1
+      const itemInputRate = inputItem.rate * productionSpeed * buildingNum * inputExtraRate
 
       if (itemSummary[inputItem.name]) {
         itemSummary[inputItem.name].toBuildingNum += toBuildingNum
@@ -175,42 +221,71 @@ export class ItemSummaryCalculator {
     }
   }
 
+  static applyStackLayersToSorters(sorters: ISorterMap, stackLayers: number): void {
+    if (stackLayers <= 1) {
+      return
+    }
+
+    for (const itemName in sorters) {
+      const sorter = sorters[itemName]
+      if (sorter.output) {
+        for (const s of sorter.output) {
+          s.rate *= stackLayers
+        }
+      }
+      if (sorter.input) {
+        for (const s of sorter.input) {
+          s.rate *= stackLayers
+        }
+      }
+    }
+  }
+
   sortItemSummary(itemSummary: IItemSummary): IItemSummary {
     const sorted: IItemSummary = {}
-    const proliferatorList = ['proliferatorMk3', 'proliferatorMk2', 'proliferatorMk1']
-    const outItem = ['refinedOil', 'hydrogen', 'graphene', 'deuterium']
+    const addedKeys = new Set<string>()
 
-    for (const key of proliferatorList) {
+    for (const key of PROLIFERATOR_PRIORITY_LIST) {
       if (itemSummary[key] && itemSummary[key].toBuildingNum === 0) {
         sorted[key] = itemSummary[key]
+        addedKeys.add(key)
         break
       }
     }
 
     for (const key in itemSummary) {
-      if (itemSummary[key].fromBuildingNum === 0) {
+      if (!addedKeys.has(key) && itemSummary[key].fromBuildingNum === 0) {
         sorted[key] = itemSummary[key]
+        addedKeys.add(key)
       }
     }
 
     for (const key in itemSummary) {
-      if (itemSummary[key].toBuildingNum === 0) {
+      if (!addedKeys.has(key) && itemSummary[key].toBuildingNum === 0) {
         sorted[key] = itemSummary[key]
+        addedKeys.add(key)
       }
     }
 
-    for (const key of outItem) {
+    for (const key of BYPRODUCT_PRIORITY_LIST) {
       if (
+        !addedKeys.has(key) &&
         itemSummary[key] &&
         itemSummary[key].fromBuildingNum - itemSummary[key].toBuildingNum > 0
       ) {
         sorted[key] = itemSummary[key]
+        addedKeys.add(key)
       }
     }
 
     for (const key in itemSummary) {
-      if (itemSummary[key].toBuildingNum !== 0 && itemSummary[key].fromBuildingNum !== 0) {
+      if (
+        !addedKeys.has(key) &&
+        itemSummary[key].toBuildingNum !== 0 &&
+        itemSummary[key].fromBuildingNum !== 0
+      ) {
         sorted[key] = itemSummary[key]
+        addedKeys.add(key)
       }
     }
 

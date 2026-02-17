@@ -122,6 +122,10 @@ export default {
     noMatch: '未找到匹配物品',
     unit: '个'
   },
+  demandList: {
+    title: '需求列表',
+    hint: '右键图标删除需求，点击数量编辑'
+  },
   errorBoundary: {
     title: '程序出错了',
     message: '抱歉，程序遇到了一个错误',

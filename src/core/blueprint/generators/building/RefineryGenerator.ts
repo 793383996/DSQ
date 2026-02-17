@@ -24,10 +24,10 @@ export class RefineryGenerator extends BaseBuildingGenerator {
   calculateBuildingArea(compactLayout: boolean): IBuildingLayout {
     if (compactLayout) {
       return {
-        area: 40,
-        x: 8,
+        area: 30,
+        x: 7,
         y: 5,
-        centerPoint: [2, 3, 2, 4],
+        centerPoint: [2, 3, 2, 3],
         yaw: [90, 90]
       }
     }

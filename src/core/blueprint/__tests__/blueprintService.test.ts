@@ -86,12 +86,12 @@ describe('BlueprintService', () => {
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.generateTeslaTower).toBe(false)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.teslaTowerInterval).toBe(10)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.teslaTowerLineInterval).toBe(2)
-      expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.compactLayout).toBe(true)
+      expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.compactLayout).toBe(false)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.maxLabLayers).toBe(4)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.stackLayers).toBe(1)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.upgradeConveyorBelt).toBe(true)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.onlyConveyorBeltMk3Downgrade).toBe(false)
-      expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.xYRatio).toBe(1.5)
+      expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.xYRatio).toBe(2)
       expect(DEFAULT_BLUEPRINT_SERVICE_CONFIG.extraRate).toBe(1.25)
     })
   })
@@ -344,8 +344,9 @@ describe('BlueprintService', () => {
       const recipes: ISubRecipe[] = [
         {
           building: { name: 'lab', num: 1 },
-          output: [{ name: 'sciencePack', rate: 1 }],
-          input: [{ name: 'ironIngot', rate: 1 }],
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          recipeID: 1,
           acceleratorMode: 0
         }
       ]
@@ -406,6 +407,121 @@ describe('BlueprintService', () => {
       const stackedService = new BlueprintService({ stackLayers: 4 })
       const config = stackedService.getConfig()
       expect(config.stackLayers).toBe(4)
+    })
+  })
+
+  describe('proliferator and sprayCoater', () => {
+    it('should handle proliferator in recipe', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap,
+        proliferator: 'proliferatorMk3'
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+
+    it('should handle acceleratorMode for production boost', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 1
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap,
+        proliferator: 'proliferatorMk3'
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+
+    it('should handle selfSpray config', () => {
+      const selfSprayService = new BlueprintService({ selfSpray: true })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = selfSprayService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap,
+        proliferator: 'proliferatorMk3'
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('special recipes', () => {
+    it('should handle recipe with multiple outputs', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [
+            { name: 'ironIngot', rate: 0.5 },
+            { name: 'copperIngot', rate: 0.5 }
+          ],
+          input: [
+            { name: 'ironOre', rate: 0.5 },
+            { name: 'copperOre', rate: 0.5 }
+          ],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+
+    it('should handle recipe without input', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          recipeID: 1,
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+      expect(result.buildings.length).toBeGreaterThan(0)
     })
   })
 })

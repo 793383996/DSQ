@@ -98,7 +98,51 @@ describe('ItemSummaryCalculator', () => {
       expect(Object.keys(summary).length).toBe(0)
     })
 
-    it('should apply extra rate for accelerator mode 1', () => {
+    it('should apply extra rate for accelerator mode 1 with proliferator', () => {
+      const mockItemMap = {
+        proliferatorMk3: { extra_rate: 0.25, accelerate: 1 }
+      }
+      const calc = new ItemSummaryCalculator({
+        proliferator: 'proliferatorMk3',
+        itemMap: mockItemMap
+      })
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 1
+        }
+      ]
+
+      const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['ironIngot'].rate).toBe(2)
+    })
+
+    it('should apply extra rate for production mode (acceleratorMode 0) with proliferator', () => {
+      const mockItemMap = {
+        proliferatorMk3: { extra_rate: 0.25, accelerate: 1 }
+      }
+      const calc = new ItemSummaryCalculator({
+        proliferator: 'proliferatorMk3',
+        itemMap: mockItemMap
+      })
+      const subRecipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const summary = calc.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
+
+      expect(summary['ironIngot'].rate).toBe(1.25)
+    })
+
+    it('should not apply extra rate without proliferator config', () => {
       const subRecipes: ISubRecipe[] = [
         {
           building: { name: 'arcSmelter', num: 1 },
@@ -110,7 +154,7 @@ describe('ItemSummaryCalculator', () => {
 
       const summary = calculator.calculate(subRecipes, mockBuildingMap, PRODUCTION_CATEGORY)
 
-      expect(summary['ironIngot'].rate).toBe(1.25)
+      expect(summary['ironIngot'].rate).toBe(1)
     })
 
     it('should handle lab category with maxLabLayers', () => {
@@ -135,13 +179,13 @@ describe('ItemSummaryCalculator', () => {
         {
           building: { name: 'arcSmelter', num: 1 },
           output: [{ name: 'ironIngot', rate: 1 }],
-          input: null,
+          input: [{ name: 'ironOre', rate: 1 }],
           acceleratorMode: 0
         },
         {
           building: { name: 'arcSmelter', num: 2 },
           output: [{ name: 'ironIngot', rate: 1 }],
-          input: null,
+          input: [{ name: 'ironOre', rate: 1 }],
           acceleratorMode: 0
         }
       ]

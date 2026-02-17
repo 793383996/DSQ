@@ -142,7 +142,7 @@ describe('SorterGenerator', () => {
         )
 
         expect(result.offset.length).toBe(2)
-        expect(result.yaw[0]).toBe(270)
+        expect(result.yaw[0]).toBe(0)
       })
     })
 
@@ -156,7 +156,7 @@ describe('SorterGenerator', () => {
         )
 
         expect(result.offset.length).toBe(2)
-        expect(result.yaw[0]).toBe(180)
+        expect(result.yaw[0]).toBe(270)
       })
 
       it('should calculate offset for slot 0', () => {

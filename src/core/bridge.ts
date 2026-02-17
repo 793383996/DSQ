@@ -20,18 +20,43 @@ let isBridgeInitialized = false
 let legacyModulesPromise: Promise<unknown> | null = null
 let recipeIndexReady: boolean = false
 let recipeIndexReadyResolve: (() => void) | null = null
-const recipeIndexReadyPromise = new Promise<void>(resolve => {
-  recipeIndexReadyResolve = resolve
-})
+let recipeIndexReadyPromise: Promise<void> | null = null
+
+const RECIPE_INDEX_TIMEOUT_MS = 10000
+
+function getRecipeIndexReadyPromise(): Promise<void> {
+  if (recipeIndexReadyPromise) return recipeIndexReadyPromise
+
+  recipeIndexReadyPromise = new Promise<void>(resolve => {
+    recipeIndexReadyResolve = resolve
+
+    const timeoutId = setTimeout(() => {
+      if (!recipeIndexReady) {
+        logger.warn('[bridge] Recipe index ready timeout, proceeding anyway')
+        resolve()
+      }
+    }, RECIPE_INDEX_TIMEOUT_MS)
+
+    const originalResolve = resolve
+    recipeIndexReadyResolve = () => {
+      clearTimeout(timeoutId)
+      originalResolve()
+    }
+  })
+
+  return recipeIndexReadyPromise
+}
 
 function getWin(): LegacyWindow {
   return window as unknown as LegacyWindow
 }
 
 export function notifyRecipeIndexReady(): void {
+  if (recipeIndexReady) return
   recipeIndexReady = true
   if (recipeIndexReadyResolve) {
     recipeIndexReadyResolve()
+    recipeIndexReadyResolve = null
   }
   logger.log('[bridge] Recipe index ready notification received')
 }
@@ -81,7 +106,7 @@ async function loadLegacyModules() {
     const win = getWin()
     ;(win as any).itemMap = itemMap
 
-    await recipeIndexReadyPromise
+    await getRecipeIndexReadyPromise()
 
     if (win.data && win.recipeIndexByProduct && !recipeAdapter.isLoaded()) {
       recipeAdapter.loadFromRawData(win.data as unknown as IRawRecipe[])

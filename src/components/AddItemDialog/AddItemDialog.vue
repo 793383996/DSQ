@@ -40,6 +40,12 @@
               {{ $t('addItemDialog.loading') }}
             </div>
           </div>
+          <div v-else-if="loadError" class="error-state">
+            <span class="error-text">{{ loadError }}</span>
+            <button class="retry-btn" @click="loadItems">
+              {{ $t('common.retry') }}
+            </button>
+          </div>
           <div v-else-if="filteredItems.length > 0" class="items-grid">
             <button
               v-for="item in filteredItems"
@@ -123,20 +129,40 @@ const searchInput = ref<HTMLInputElement | null>(null)
 const icons1Items = ref<ItemData[]>([])
 const icons2Items = ref<ItemData[]>([])
 const isLoading = ref(true)
+const loadError = ref<string | null>(null)
 const activeTab = ref<'icons1' | 'icons2'>('icons1')
 
+// P1-3修复：添加错误处理和重试机制
 async function loadItems() {
-  if (!isLegacyDataLoaded()) {
-    const loaded = await waitForLegacyData(10000)
-    if (!loaded) {
-      logger.warn('Legacy data load timeout')
+  isLoading.value = true
+  loadError.value = null
+
+  try {
+    if (!isLegacyDataLoaded()) {
+      const loaded = await waitForLegacyData(10000)
+      if (!loaded) {
+        loadError.value = '数据加载超时，请重试'
+        logger.warn('[AddItemDialog] Legacy data load timeout')
+        return
+      }
+    }
+
+    const data = getSelectableItemsWithIcons()
+
+    if (!data.icons1.length && !data.icons2.length) {
+      loadError.value = '未找到可用物品数据'
+      logger.warn('[AddItemDialog] No items found')
       return
     }
+
+    icons1Items.value = data.icons1
+    icons2Items.value = data.icons2
+  } catch (e) {
+    loadError.value = '数据加载失败，请重试'
+    logger.error('[AddItemDialog] Failed to load items:', e)
+  } finally {
+    isLoading.value = false
   }
-  const data = getSelectableItemsWithIcons()
-  icons1Items.value = data.icons1
-  icons2Items.value = data.icons2
-  isLoading.value = false
 }
 
 onMounted(() => {
@@ -364,6 +390,36 @@ function confirm() {
   text-align: center;
   padding: 40px 20px;
   color: #94a3b8;
+}
+
+.error-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #e74c3c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.error-text {
+  font-size: 14px;
+}
+
+.retry-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.retry-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
 }
 
 .loading-hint {

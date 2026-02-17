@@ -45,7 +45,7 @@
         <tr
           v-for="(item, index) in visibleItems"
           :key="getItemKey(item, index)"
-          v-memo="[item.name, item.rate, item.count, isExcluded(item.name)]"
+          v-memo="[item.name, item.number1, item.number2, isExcluded(item.name)]"
           :class="{ 'is-excluded': isExcluded(item.name) }"
         >
           <td class="col-icon">
@@ -61,13 +61,13 @@
             <span class="item-name" :title="item.name">{{ item.name }}</span>
           </td>
           <td class="col-rate">
-            <span class="item-rate">{{ formatNumber(item.rate) }}</span>
+            <span class="item-rate">{{ item.number1 }}</span>
           </td>
           <td class="col-count">
-            <span class="item-count">{{ formatNumber(item.count) }}</span>
+            <span class="item-count">{{ item.number2 || '-' }}</span>
           </td>
           <td class="col-building">
-            <span class="item-building">{{ item.building || '-' }}</span>
+            <span class="item-building">{{ getBuildingName(item) }}</span>
           </td>
           <td class="col-actions">
             <button
@@ -111,14 +111,9 @@ import { computed } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { useIconProvider } from '../../composables/useIconProvider'
 import { formatNumber } from '../../utils/format'
+import type { IConsumptionItem, IResultItemOutput } from '../../core/types/recipe'
 
-interface TableItem {
-  name: string
-  rate?: number
-  count?: number
-  building?: string
-  icon?: string
-}
+type TableItem = IConsumptionItem | IResultItemOutput
 
 interface Props {
   items: TableItem[]
@@ -181,18 +176,26 @@ function getItemInitial(name: string): string {
   return name.charAt(0).toUpperCase()
 }
 
+function getBuildingName(item: TableItem): string {
+  if (item.m && item.m.length > 0) {
+    const selected = item.m.find(m => m.class.includes('selected'))
+    if (selected) return selected.showName || selected.name
+    return item.m[0].showName || item.m[0].name
+  }
+  return '-'
+}
+
 function addToDemand(item: TableItem) {
   emit('add-demand', item)
 }
 
+// P2-1修复：移除对store的直接操作，只通过事件通知父组件
 function excludeItem(item: TableItem) {
-  store.addExclude(item.name)
-  emit('toggle-exclude', item)
+  emit('toggle-exclude', { ...item, action: 'exclude' })
 }
 
 function includeItem(item: TableItem) {
-  store.removeExclude(item.name)
-  emit('toggle-exclude', item)
+  emit('toggle-exclude', { ...item, action: 'include' })
 }
 </script>
 

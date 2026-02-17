@@ -60,15 +60,25 @@ export class ConveyorGenerator {
   private buildings: IBlueprintBuilding[] = []
   private buildingIndex: number = 0
   private occupiedAreaX: number = 0
+  private occupiedAreaY: number = 0
   private config: IConveyorGeneratorConfig
   private buildingMap: IBuildingMap
   private buildingArray: BuildingArray = []
   private sprayCoaterOffsetList: ICoordinate[] = []
   private lastProductionBuildingType: number = 0
+  private allBuildings: IBlueprintBuilding[] | null = null
 
   constructor(buildingMap: IBuildingMap, config: Partial<IConveyorGeneratorConfig> = {}) {
     this.buildingMap = buildingMap
     this.config = { ...defaultConfig, ...config }
+  }
+
+  updateConfig(config: Partial<IConveyorGeneratorConfig>): void {
+    this.config = { ...this.config, ...config }
+  }
+
+  updateBuildingMap(buildingMap: IBuildingMap): void {
+    this.buildingMap = buildingMap
   }
 
   setBuildingIndex(index: number): void {
@@ -77,6 +87,10 @@ export class ConveyorGenerator {
 
   setOccupiedAreaX(x: number): void {
     this.occupiedAreaX = x
+  }
+
+  setOccupiedAreaY(y: number): void {
+    this.occupiedAreaY = y
   }
 
   setBuildingArray(buildingArray: BuildingArray): void {
@@ -89,6 +103,10 @@ export class ConveyorGenerator {
 
   setLastProductionBuildingType(type: number): void {
     this.lastProductionBuildingType = type
+  }
+
+  setAllBuildings(buildings: IBlueprintBuilding[]): void {
+    this.allBuildings = buildings
   }
 
   getBuildings(): IBlueprintBuilding[] {
@@ -113,6 +131,14 @@ export class ConveyorGenerator {
     this.sprayCoaterOffsetList = []
   }
 
+  fullReset(): void {
+    this.reset()
+    this.buildingIndex = 0
+    this.occupiedAreaX = 0
+    this.occupiedAreaY = 0
+    this.lastProductionBuildingType = 0
+  }
+
   selectConveyorBelt(
     rate: number,
     fromBuildingNum: number
@@ -123,6 +149,11 @@ export class ConveyorGenerator {
   } {
     const mk1 = this.buildingMap.conveyorBeltMk1
     const mk3 = this.buildingMap.conveyorBeltMK3
+
+    if (!mk3) {
+      throw new Error('[ConveyorGenerator] conveyorBeltMK3 not found in buildingMap')
+    }
+
     const mk3Speed = this.config.onlyConveyorBeltMk3Downgrade
       ? MK3_DOWNGRADE_SPEED
       : mk3.transportSpeed || MK3_SPEED
@@ -143,6 +174,14 @@ export class ConveyorGenerator {
           transportSpeed: mk3Speed
         }
       }
+      return {
+        itemId: mk3.itemId,
+        modelIndex: mk3.modelIndex,
+        transportSpeed: mk3Speed
+      }
+    }
+
+    if (!mk1) {
       return {
         itemId: mk3.itemId,
         modelIndex: mk3.modelIndex,
@@ -372,6 +411,9 @@ export class ConveyorGenerator {
       stackLayers > 1
         ? Math.max(1, Math.floor(this.config.maxSorterNumOneBelt / stackLayers))
         : this.config.maxSorterNumOneBelt
+    const itemSummaryKeys = Object.keys(itemSummary)
+    const maxIterations = Math.max(10000, itemSummaryKeys.length * 500)
+    let totalIterations = 0
 
     for (const item in itemSummary) {
       const itemName = item
@@ -382,6 +424,14 @@ export class ConveyorGenerator {
       const maxTransportSpeed = this.calculateMaxTransportSpeed(itemEntry.fromBuildingNum)
 
       for (let totalDoneRate = 0; itemEntry.rate - totalDoneRate > zero; ) {
+        totalIterations++
+        if (totalIterations > maxIterations) {
+          console.error(
+            `[ConveyorGenerator] 死循环检测: item=${itemName}, rate=${itemEntry.rate}, totalDoneRate=${totalDoneRate}`
+          )
+          break
+        }
+
         let needSprayCoater = itemEntry.needProliferator
         let doneRate = 0
         let parameters: { iconId: number; count: string } | null = null
@@ -411,7 +461,7 @@ export class ConveyorGenerator {
             if (itemSorters.output[j].rate - inputRate > zero) {
               break
             }
-            if (doneSorterNum % sortersPerNode === 0) {
+            if ((doneSorterNum + 1) % sortersPerNode === 0 || doneSorterNum === 0) {
               inputData.push([itemSorters.output[j].index])
             } else {
               inputData[inputData.length - 1].push(itemSorters.output[j].index)
@@ -437,13 +487,30 @@ export class ConveyorGenerator {
         doneSorterNum = 0
 
         if (itemEntry.toBuildingNum !== 0 && itemSorters?.input) {
-          for (let j = itemSorters.input.length - 1; j >= 0; j--) {
-            if (
-              totalDoneRate + zero < itemEntry.rate &&
-              outputRate + zero < itemSorters.input[j].rate
-            ) {
-              outputData.push([itemSorters.input[j].index])
-              const newSorterRate = itemSorters.input[j].rate - outputRate
+          if (['hydrogen', 'refinedOil'].includes(itemName) && itemEntry.toBuildingNum !== 0) {
+            const reorderedInput: ISorterInfo[] = []
+            const refineryInputs: ISorterInfo[] = []
+
+            for (const sorter of itemSorters.input) {
+              const recipeID = sorter.recipeID ?? 0
+              const isRefinery =
+                (itemName === 'hydrogen' && recipeID === 58) ||
+                (itemName === 'refinedOil' && recipeID === 121)
+
+              if (isRefinery) {
+                refineryInputs.push(sorter)
+              } else {
+                reorderedInput.push(sorter)
+              }
+            }
+            itemSorters.input = [...reorderedInput, ...refineryInputs]
+          }
+
+          const inputList = itemSorters.input
+          for (let j = inputList.length - 1; j >= 0; j--) {
+            if (totalDoneRate + zero < itemEntry.rate && outputRate + zero < inputList[j].rate) {
+              outputData.push([inputList[j].index])
+              const newSorterRate = inputList[j].rate - outputRate
 
               let sorter = this.buildingMap.sorterMk1
               if (
@@ -459,9 +526,10 @@ export class ConveyorGenerator {
               const newSorter = this.getBuildingTemplate()
               newSorter.itemId = sorter.itemId
               newSorter.modelIndex = sorter.modelIndex
-              newSorter.outputObjIdx = itemSorters.input[j].ownerObjIdx
+              newSorter.outputObjIdx = inputList[j].ownerObjIdx
+              newSorter.filterId = itemMap[itemName]?.iconId || 0
 
-              const ownerName = itemSorters.input[j].ownerName
+              const ownerName = inputList[j].ownerName
               const ownerBuilding = this.buildingMap[ownerName as string]
               const ownerCategory = ownerBuilding?.category ?? 0
 
@@ -481,7 +549,7 @@ export class ConveyorGenerator {
               newSorter.parameters = { length: 1 }
 
               const offsetInfo = this.calculateSorterLocalOffsetAndYaw(
-                itemSorters.input[j].ownerOffset,
+                inputList[j].ownerOffset,
                 ownerCategory,
                 newSorter.outputToSlot,
                 1
@@ -492,9 +560,10 @@ export class ConveyorGenerator {
 
               let startMove = false
               let findTargetBuilding = false
+              const buildingsToSearch = this.allBuildings || result
               for (let i = 0; i < this.buildingArray.length; i++) {
                 for (let k = 0; k < this.buildingArray[i].length; k++) {
-                  if (this.buildingArray[i][k].index === itemSorters.input[j].ownerObjIdx) {
+                  if (this.buildingArray[i][k].index === inputList[j].ownerObjIdx) {
                     this.buildingArray[i][k].sorterList.push(newSorter.index)
                     findTargetBuilding = true
                     if (
@@ -507,7 +576,7 @@ export class ConveyorGenerator {
                     }
                   } else if (startMove) {
                     const toMoveNum = 1 + this.buildingArray[i][k].sorterList.length
-                    for (const b of result) {
+                    for (const b of buildingsToSearch) {
                       if (b.index === this.buildingArray[i][k].index) {
                         b.localOffset![0].x += 1
                         b.localOffset![1].x += 1
@@ -523,25 +592,27 @@ export class ConveyorGenerator {
                 }
               }
 
-              itemSorters.input.unshift({
+              inputList.unshift({
                 index: newSorter.index,
                 rate: newSorterRate,
-                ownerObjIdx: itemSorters.input[j].ownerObjIdx,
-                ownerName: itemSorters.input[j].ownerName,
-                ownerOffset: itemSorters.input[j].ownerOffset,
-                recipeID: (itemSorters.input[j] as IExtendedSorterInfo).recipeID ?? 0
+                ownerObjIdx: inputList[j].ownerObjIdx,
+                ownerName: inputList[j].ownerName,
+                ownerOffset: inputList[j].ownerOffset,
+                recipeID: inputList[j].recipeID ?? 0
               })
-              itemSorters.input.pop()
+              inputList.pop()
               break
             }
 
-            if (doneSorterNum % sortersPerNode === 0 || doneSorterNum === 0) {
-              outputData.push([itemSorters.input[j].index])
+            const needMoreOutput = totalDoneRate + zero < itemEntry.rate
+            const needMoreCoverage = outputData.length < inputData.length
+            if (needMoreOutput || needMoreCoverage) {
+              outputData.push([inputList[j].index])
             } else {
-              outputData[outputData.length - 1].push(itemSorters.input[j].index)
+              outputData[outputData.length - 1].push(inputList[j].index)
             }
-            outputRate -= itemSorters.input[j].rate
-            itemSorters.input.pop()
+            outputRate -= inputList[j].rate
+            inputList.pop()
             doneSorterNum++
             if (outputRate <= 0) {
               if (j > 0 && totalDoneRate >= itemEntry.rate) {
@@ -980,7 +1051,7 @@ export class ConveyorGenerator {
     result: IBlueprintBuilding[]
   ): void {
     const buildingX = this.occupiedAreaX + 1
-    let buildingY = 0
+    let buildingY = this.occupiedAreaY
     const buildingZ = 0
     let nodeNum = 0
 
@@ -1152,7 +1223,7 @@ export class ConveyorGenerator {
     if (needSprayCoater) {
       let sprayYaw: number[] = [0, 0]
       if (direction < 0) {
-        sprayYaw = [270, 270]
+        sprayYaw = [180, 180]
       }
       const sprayCoaterOffset = this.sprayCoaterOffsetList[this.sprayCoaterOffsetList.length - 1]
       if (sprayCoaterOffset) {
@@ -1178,10 +1249,10 @@ export class ConveyorGenerator {
       modelIndex: sprayCoater?.modelIndex || 481,
       outputObjIdx: -1,
       inputObjIdx: -1,
-      outputToSlot: 0,
-      inputFromSlot: 0,
-      outputFromSlot: 0,
-      inputToSlot: 0,
+      outputToSlot: 14,
+      inputFromSlot: 15,
+      outputFromSlot: 15,
+      inputToSlot: 14,
       outputOffset: 0,
       inputOffset: 0,
       recipeId: 0,

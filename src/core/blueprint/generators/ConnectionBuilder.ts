@@ -18,13 +18,27 @@ export class ConnectionBuilder {
     this.config = { ...DEFAULT_CONNECTION_CONFIG, ...config }
   }
 
+  updateConfig(config: Partial<IConnectionConfig>): void {
+    this.config = { ...this.config, ...config }
+  }
+
+  private buildBuildingIndexMap(buildings: IBlueprintBuilding[]): Map<number, IBlueprintBuilding> {
+    const map = new Map<number, IBlueprintBuilding>()
+    for (const building of buildings) {
+      map.set(building.index, building)
+    }
+    return map
+  }
+
   connectSortersToConveyor(
     buildings: IBlueprintBuilding[],
     sorters: ISorterMap,
     conveyorStartIndex: number,
     itemSummary: Record<string, { rate: number; fromBuildingNum: number }>
-  ): void {
+  ): number {
     const sortersPerNode = this.calculateSortersPerNode()
+    const buildingMap = this.buildBuildingIndexMap(buildings)
+    let currentIndex = conveyorStartIndex
 
     for (const itemName in sorters) {
       const itemSorters = sorters[itemName]
@@ -37,37 +51,35 @@ export class ConnectionBuilder {
       const outputSorters = itemSorters.output || []
       const inputSorters = itemSorters.input || []
 
-      this.connectOutputSorters(
-        buildings,
-        outputSorters,
-        conveyorStartIndex,
-        sortersPerNode,
-        itemEntry.rate
-      )
+      const outputNodeCount = this.calculateConveyorNodeCount(itemEntry.rate)
+      const inputNodeCount = this.calculateConveyorNodeCount(itemEntry.rate)
+
+      this.connectOutputSorters(buildingMap, outputSorters, currentIndex, sortersPerNode)
+
       this.connectInputSorters(
-        buildings,
+        buildingMap,
         inputSorters,
-        conveyorStartIndex,
-        sortersPerNode,
-        itemEntry.rate
+        currentIndex + outputNodeCount,
+        sortersPerNode
       )
 
-      conveyorStartIndex += this.calculateConveyorNodeCount(itemEntry.rate)
+      currentIndex += outputNodeCount + inputNodeCount
     }
+
+    return currentIndex
   }
 
   private connectOutputSorters(
-    buildings: IBlueprintBuilding[],
+    buildingMap: Map<number, IBlueprintBuilding>,
     sorters: ISorterInfo[],
     conveyorStartIndex: number,
-    sortersPerNode: number,
-    totalRate: number
+    sortersPerNode: number
   ): void {
     let nodeIndex = conveyorStartIndex
     let sortersOnCurrentNode = 0
 
     for (const sorter of sorters) {
-      const building = buildings.find(b => b.index === sorter.ownerObjIdx)
+      const building = buildingMap.get(sorter.ownerObjIdx)
       if (!building) {
         continue
       }
@@ -83,17 +95,16 @@ export class ConnectionBuilder {
   }
 
   private connectInputSorters(
-    buildings: IBlueprintBuilding[],
+    buildingMap: Map<number, IBlueprintBuilding>,
     sorters: ISorterInfo[],
     conveyorStartIndex: number,
-    sortersPerNode: number,
-    totalRate: number
+    sortersPerNode: number
   ): void {
     let nodeIndex = conveyorStartIndex
     let sortersOnCurrentNode = 0
 
     for (const sorter of sorters) {
-      const building = buildings.find(b => b.index === sorter.ownerObjIdx)
+      const building = buildingMap.get(sorter.ownerObjIdx)
       if (!building) {
         continue
       }

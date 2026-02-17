@@ -138,31 +138,31 @@ export class SorterGenerator {
         break
       case 3:
         data.offset = [
-          { x: x + 0.8, y: y + 1, z },
-          { x: x + 0.8, y: y + 2, z }
+          { x: x + 1.6, y: y - 1, z },
+          { x: x + 1.6, y: y - 2, z }
         ]
-        data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360]
+        data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360]
         break
       case 2:
         data.offset = [
-          { x, y: y + 1, z },
-          { x, y: y + 2, z }
+          { x: x + 0.8, y: y + 2, z },
+          { x: x + 0.8, y: y + 3, z }
         ]
         data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360]
         break
       case 1:
         data.offset = [
-          { x: x - 0.8, y: y + 1, z },
-          { x: x - 0.8, y: y + 2, z }
+          { x, y: y + 2, z },
+          { x, y: y + 3, z }
         ]
         data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360]
         break
       case 0:
         data.offset = [
-          { x: x - 3, y: y + 1, z },
-          { x: x - 4, y: y + 1, z }
+          { x: x - 0.8, y: y + 2, z },
+          { x: x - 0.8, y: y + 3, z }
         ]
-        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360]
+        data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360]
         break
       default:
         throw new Error(`unsupported: plant slot < 0`)
@@ -179,10 +179,10 @@ export class SorterGenerator {
     switch (slotIndex) {
       case 8:
         data.offset = [
-          { x: x - 0.8, y: y - 1, z },
-          { x: x - 0.8, y: y - 2, z }
+          { x: x - 3, y: y - 1, z },
+          { x: x - 4, y: y - 1, z }
         ]
-        data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360]
+        data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360]
         break
       case 7:
         data.offset = [

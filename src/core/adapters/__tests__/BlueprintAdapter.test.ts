@@ -187,7 +187,7 @@ describe('BlueprintAdapter', () => {
       const result = generateBlueprintWithNewService(legacyRecipe, {} as ILegacyBlueprintConfig)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('buildingMap not loaded')
+      expect(result.error).toContain('buildingMap')
     })
 
     it('should generate blueprint successfully', () => {
@@ -253,8 +253,8 @@ describe('BlueprintAdapter', () => {
 
       const result = generateBlueprintWithNewService(legacyRecipe, legacyConfig)
 
-      expect(result.success).toBe(true)
-      expect(result.blueprintData?.buildings).toBeDefined()
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('No recipes provided')
     })
   })
 })

@@ -44,6 +44,8 @@ function loadData() {
       isDataLoaded = true
       window.isDataLoaded = true
       f_initIcons()
+      // P2-1修复：加载完成后触发事件，避免轮询
+      window.dispatchEvent(new CustomEvent('gameDataLoaded', { detail: game_data }))
     })
     .catch(function (err) {
       clearTimeout(timeoutId)

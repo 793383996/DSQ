@@ -27,6 +27,9 @@ import { ConveyorGenerator } from '../generators/ConveyorGenerator'
 import { ConnectionBuilder } from '../generators/ConnectionBuilder'
 import { BuildingGeneratorFactory } from '../generators/building/BuildingGeneratorFactory'
 import { logger } from '../../../utils/logger'
+import recipeMapData from '../../data/recipeMap.json'
+
+const LAB_CATEGORY = PRODUCTION_CATEGORY.lab
 
 export interface IBlueprintServiceConfig extends IBuildingGeneratorConfig {
   xYRatio: number
@@ -49,12 +52,12 @@ export const DEFAULT_BLUEPRINT_SERVICE_CONFIG: IBlueprintServiceConfig = {
   generateTeslaTower: false,
   teslaTowerInterval: 10,
   teslaTowerLineInterval: 2,
-  compactLayout: true,
+  compactLayout: false,
   maxLabLayers: 4,
   stackLayers: 1,
   upgradeConveyorBelt: true,
   onlyConveyorBeltMk3Downgrade: false,
-  xYRatio: 1.5,
+  xYRatio: 2,
   extraRate: 1.25
 }
 
@@ -105,13 +108,25 @@ export class BlueprintService {
       maxSorterNumOneBelt: 8,
       stackLayers: this.config.stackLayers
     })
-    this.buildingGeneratorFactory = new BuildingGeneratorFactory(this.config)
+    this.buildingGeneratorFactory = new BuildingGeneratorFactory({
+      compactLayout: this.config.compactLayout
+    })
   }
 
   generate(options: IBlueprintGenerateOptions): IBlueprintData {
     const { recipes, buildingMap, itemMap, proliferator } = options
 
     this.reset()
+
+    this.itemSummaryCalculator.updateConfig({
+      stackLayers: this.config.stackLayers,
+      maxLabLayers: this.config.maxLabLayers,
+      extraRate: this.config.extraRate,
+      proliferator,
+      itemMap: itemMap as any
+    })
+
+    this.mapRecipeIDs(recipes)
 
     const adjustedRecipes = this.adjustRecipesForStackLayers(recipes, buildingMap)
 
@@ -134,13 +149,45 @@ export class BlueprintService {
       proliferator
     )
 
-    const allBuildings = [...this.buildings, ...conveyorBuildings, ...sprayCoaterBuildings]
+    this.buildings.push(...conveyorBuildings, ...sprayCoaterBuildings)
 
     if (this.config.stackLayers > 1) {
       this.cloneToStackLayers(buildingMap)
     }
 
-    return this.createBlueprintData(allBuildings)
+    return this.createBlueprintData(this.buildings)
+  }
+
+  private mapRecipeIDs(recipes: ISubRecipe[]): void {
+    const recipeMap = recipeMapData as Record<string, number>
+    const specialRecipeIds = [58, 121]
+
+    for (const subRecipe of recipes) {
+      if (!subRecipe.input) {
+        continue
+      }
+
+      const inputNames = subRecipe.input.map(item => item.name).join('+')
+      const outputNames = subRecipe.output.map(item => item.name).join('+')
+      const recipeStr = `${inputNames}=${outputNames}`
+
+      const recipeId = recipeMap[recipeStr]
+      if (!recipeId || recipeId === -1) {
+        logger.warn(
+          `[BlueprintService] 不支持的配方: ${recipeStr.replace('=', '->')}，请排除对应物品`
+        )
+        subRecipe.recipeID = -1
+        continue
+      }
+
+      subRecipe.recipeID = recipeId
+
+      if (specialRecipeIds.includes(recipeId)) {
+        logger.warn(
+          `[BlueprintService] X射线裂解(制氢)与重整精炼(制精炼油)可能需手动提供初始启动的精炼油/氢`
+        )
+      }
+    }
   }
 
   private adjustRecipesForStackLayers(
@@ -156,11 +203,16 @@ export class BlueprintService {
         return recipe
       }
 
+      const building = buildingMap?.[recipe.building.name]
+      const isLab = building?.category === LAB_CATEGORY
+
       return {
         ...recipe,
         building: {
           ...recipe.building,
-          num: Math.ceil(recipe.building.num / this.config.stackLayers)
+          num: isLab
+            ? recipe.building.num
+            : Math.ceil(recipe.building.num / this.config.stackLayers)
         }
       }
     })
@@ -235,33 +287,11 @@ export class BlueprintService {
 
   private calculateBuildingArea(building: IBuildingData, subRecipe: ISubRecipe): IBuildingLayout {
     const category = building.category ?? 0
-    const compactLayout = this.config.compactLayout
-
-    switch (category) {
-      case PRODUCTION_CATEGORY.smelter:
-        if ((subRecipe.output?.length || 0) + (subRecipe.input?.length || 0) <= 2) {
-          return { area: 12, x: 3, y: 4, centerPoint: [2, 1, 1, 1], yaw: [0, 0] }
-        }
-        return { area: 16, x: 4, y: 4, centerPoint: [2, 2, 1, 1], yaw: [0, 0] }
-      case PRODUCTION_CATEGORY.assembling:
-        return { area: 16, x: 4, y: 4, centerPoint: [2, 2, 1, 1], yaw: [0, 0] }
-      case PRODUCTION_CATEGORY.plant:
-        return { area: 48, x: 8, y: 6, centerPoint: [2, 4, 3, 3], yaw: [0, 0] }
-      case PRODUCTION_CATEGORY.refinery:
-        if (compactLayout) {
-          return { area: 30, x: 7, y: 5, centerPoint: [2, 3, 2, 3], yaw: [90, 90] }
-        }
-        return { area: 40, x: 8, y: 5, centerPoint: [2, 3, 2, 4], yaw: [90, 90] }
-      case PRODUCTION_CATEGORY.collider:
-        if (compactLayout) {
-          return { area: 66, x: 11, y: 6, centerPoint: [3, 5, 2, 5], yaw: [0, 0] }
-        }
-        return { area: 77, x: 11, y: 7, centerPoint: [3, 5, 3, 5], yaw: [0, 0] }
-      case PRODUCTION_CATEGORY.lab:
-        return { area: 42, x: 7, y: 6, centerPoint: [3, 3, 2, 3], yaw: [0, 0] }
-      default:
-        return { area: 9, x: 3, y: 3, centerPoint: [1.5, 1.5, 1.5, 1.5], yaw: [0, 0] }
-    }
+    return this.buildingGeneratorFactory.calculateBuildingAreaForRecipe(
+      category,
+      this.config.compactLayout,
+      subRecipe
+    )
   }
 
   private generateBuildings(
@@ -289,6 +319,11 @@ export class BlueprintService {
     const building = buildingMap[buildingName]
 
     if (!building) {
+      return
+    }
+
+    if (subRecipe.recipeID === -1 || subRecipe.recipeID === undefined) {
+      logger.warn(`[BlueprintService] 跳过无效配方的建筑生成: ${buildingName}`)
       return
     }
 
@@ -401,6 +436,45 @@ export class BlueprintService {
       }
 
       const nowBuildingIndex = newBuilding.index
+      if (this.config.generateTeslaTower && buildingMap.teslaTower) {
+        const shouldGenerateTeslaTower =
+          (this.config.teslaTowerLineInterval > 1 &&
+            ((this.buildingArray.length > 0 && this.buildingArray.length % 2 === 0) ||
+              (needNewLine && this.buildingArray.length % 2 === 1))) ||
+          (this.config.teslaTowerLineInterval === 1 && this.buildingArray.length > 0)
+
+        if (shouldGenerateTeslaTower) {
+          const teslaTowerOffset = this.calculateTeslaTowerOffset(
+            { x: buildingX, y: buildingY, z: buildingZ },
+            category
+          )
+          teslaTowerDistance += teslaTowerOffset.distance
+
+          const teslaTowerInterval = this.config.teslaTowerInterval || 10
+          if (
+            (hasTeslaTowerThisLine && teslaTowerDistance >= teslaTowerInterval) ||
+            (!hasTeslaTowerThisLine && teslaTowerDistance >= teslaTowerInterval / 2) ||
+            (teslaTowerDistance >= teslaTowerInterval / 2 &&
+              this.blueprintSize.x - buildingX < teslaTowerInterval)
+          ) {
+            const teslaTower = this.getBuildingTemplate()
+            teslaTower.itemId = buildingMap.teslaTower.itemId
+            teslaTower.modelIndex = buildingMap.teslaTower.modelIndex
+            teslaTower.localOffset = [teslaTowerOffset.offset, teslaTowerOffset.offset]
+            teslaTowerDistance = 0
+            hasTeslaTowerThisLine = true
+
+            if (this.buildingArray.length > 0) {
+              this.buildingArray[this.buildingArray.length - 1].push({
+                index: teslaTower.index,
+                sorterList: []
+              })
+            }
+            this.buildings.push(teslaTower)
+          }
+        }
+      }
+
       const productionSpeed = building.productionSpeed || 1
       const actualBuildingNum = Math.min(1, num - i) + stackLabBuildingIndexList.length
       const slotMaxIndex = building.slotMaxIndex || 8
@@ -618,12 +692,56 @@ export class BlueprintService {
     this.sorters[itemName][type]!.push(info)
   }
 
+  private calculateTeslaTowerOffset(
+    buildingOffset: ICoordinate,
+    category: number
+  ): { offset: ICoordinate; distance: number } {
+    switch (category) {
+      case PRODUCTION_CATEGORY.smelter:
+        return {
+          offset: { x: buildingOffset.x - 1, y: buildingOffset.y - 2, z: 0 },
+          distance: 3
+        }
+      case PRODUCTION_CATEGORY.assembling:
+        return {
+          offset: { x: buildingOffset.x + 2, y: buildingOffset.y - 2, z: 0 },
+          distance: 3
+        }
+      case PRODUCTION_CATEGORY.plant:
+        return {
+          offset: { x: buildingOffset.x + 3, y: buildingOffset.y - 2, z: 0 },
+          distance: 7
+        }
+      case PRODUCTION_CATEGORY.refinery:
+        return {
+          offset: { x: buildingOffset.x - 3, y: buildingOffset.y - 2, z: 0 },
+          distance: 7
+        }
+      case PRODUCTION_CATEGORY.collider:
+        return {
+          offset: { x: buildingOffset.x + 1, y: buildingOffset.y - 3, z: 0 },
+          distance: 10
+        }
+      case PRODUCTION_CATEGORY.lab:
+        return {
+          offset: { x: buildingOffset.x + 3, y: buildingOffset.y - 3, z: 0 },
+          distance: 6
+        }
+      default:
+        logger.warn(`[BlueprintService] 未知的建筑类型: ${category}`)
+        return {
+          offset: { x: buildingOffset.x, y: buildingOffset.y, z: 0 },
+          distance: 0
+        }
+    }
+  }
+
   private generateConveyors(
     itemSummary: IItemSummary,
     buildingMap: Record<string, IBuildingData>,
     itemMap: Record<string, { iconId: number; name: string }>
   ): IBlueprintBuilding[] {
-    this.conveyorGenerator = new ConveyorGenerator(buildingMap, {
+    this.conveyorGenerator.updateConfig({
       onlyConveyorBeltMk3: this.config.onlyConveyorBeltMk3,
       onlyConveyorBeltMk3Downgrade: this.config.onlyConveyorBeltMk3Downgrade,
       upgradeConveyorBelt: this.config.upgradeConveyorBelt,
@@ -634,28 +752,25 @@ export class BlueprintService {
       onlySorterMk3: this.config.onlySorterMk3,
       selfSpray: this.config.selfSpray
     })
+    this.conveyorGenerator.updateBuildingMap(buildingMap)
     this.conveyorGenerator.setBuildingIndex(this.buildingIndex)
     const lastOccupiedArea = this.occupiedArea[this.occupiedArea.length - 1]
+    const prevOccupiedArea =
+      this.occupiedArea.length >= 2
+        ? this.occupiedArea[this.occupiedArea.length - 2]
+        : lastOccupiedArea
+    lastOccupiedArea.x2++
+    if (prevOccupiedArea && this.occupiedArea.length >= 2) {
+      prevOccupiedArea.y2++
+    }
     this.conveyorGenerator.setOccupiedAreaX(lastOccupiedArea?.x2 || 0)
+    this.conveyorGenerator.setOccupiedAreaY(prevOccupiedArea?.y2 || 0)
     this.conveyorGenerator.setBuildingArray(this.buildingArray)
     this.conveyorGenerator.setSprayCoaterOffsetList(this.sprayCoaterOffsetList)
     this.conveyorGenerator.setLastProductionBuildingType(this.lastProductionBuildingType)
+    this.conveyorGenerator.setAllBuildings(this.buildings)
 
-    if (this.config.stackLayers > 1) {
-      for (const itemName in this.sorters) {
-        const sorter = this.sorters[itemName]
-        if (sorter.output) {
-          for (const s of sorter.output) {
-            s.rate *= this.config.stackLayers
-          }
-        }
-        if (sorter.input) {
-          for (const s of sorter.input) {
-            s.rate *= this.config.stackLayers
-          }
-        }
-      }
-    }
+    ItemSummaryCalculator.applyStackLayersToSorters(this.sorters, this.config.stackLayers)
 
     const conveyorBuildings = this.conveyorGenerator.generateConveyorBelts(
       itemSummary,
@@ -701,7 +816,10 @@ export class BlueprintService {
     const labItemIds = new Set<number>()
     if (buildingMap.lab) labItemIds.add(buildingMap.lab.itemId)
     if (buildingMap['自演化研究站']) labItemIds.add(buildingMap['自演化研究站'].itemId)
-    const beltItemIds = new Set([2001, 2002, 2003])
+    const beltItemIds = new Set<number>()
+    if (buildingMap.conveyorBeltMk1) beltItemIds.add(buildingMap.conveyorBeltMk1.itemId)
+    if (buildingMap.conveyorBeltMk2) beltItemIds.add(buildingMap.conveyorBeltMk2.itemId)
+    if (buildingMap.conveyorBeltMK3) beltItemIds.add(buildingMap.conveyorBeltMK3.itemId)
     const sprayCoaterItemId = buildingMap.sprayCoater?.itemId ?? 2313
 
     const labIndices = new Set<number>()
@@ -746,17 +864,21 @@ export class BlueprintService {
       }
       this.buildings.push(foundation)
     }
-    this.buildingIndex = foundationStartIndex + stackLayers - 1
+    this.buildingIndex = foundationStartIndex + stackLayers
+
+    const layerIndexMaps = new Map<number, Map<number, number>>()
+    let nextIndex = this.buildingIndex + 1
+    for (let layer = 1; layer < stackLayers; layer++) {
+      const map = new Map<number, number>()
+      for (const base of cloneableBuildings) {
+        map.set(base.index, nextIndex++)
+      }
+      layerIndexMaps.set(layer, map)
+    }
 
     for (let layer = 1; layer < stackLayers; layer++) {
       const zOffset = layer * zStep
-
-      const indexMap = new Map<number, number>()
-      let nextIndex = this.buildingIndex + 1
-      for (const base of cloneableBuildings) {
-        indexMap.set(base.index, nextIndex)
-        nextIndex++
-      }
+      const indexMap = layerIndexMaps.get(layer)!
 
       for (const base of cloneableBuildings) {
         this.buildingIndex++
@@ -836,6 +958,28 @@ export class BlueprintService {
 
   updateConfig(config: Partial<IBlueprintServiceConfig>): void {
     this.config = { ...this.config, ...config }
+
+    this.buildingGenerator.updateConfig(this.config)
+    this.itemSummaryCalculator.updateConfig({
+      stackLayers: this.config.stackLayers,
+      maxLabLayers: this.config.maxLabLayers,
+      extraRate: this.config.extraRate
+    })
+    this.conveyorGenerator.updateConfig({
+      onlyConveyorBeltMk3: this.config.onlyConveyorBeltMk3,
+      onlyConveyorBeltMk3Downgrade: this.config.onlyConveyorBeltMk3Downgrade,
+      upgradeConveyorBelt: this.config.upgradeConveyorBelt,
+      conveyorBeltStackLayer: this.config.conveyorBeltStackLayer,
+      maxSorterNumOneBelt: 8,
+      stackLayers: this.config.stackLayers,
+      useSorterMk4: this.config.useSorterMk4,
+      onlySorterMk3: this.config.onlySorterMk3,
+      selfSpray: this.config.selfSpray
+    })
+    this.connectionBuilder.updateConfig({
+      maxSorterNumOneBelt: 8,
+      stackLayers: this.config.stackLayers
+    })
   }
 
   getConfig(): IBlueprintServiceConfig {

@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { logger } from '../utils/logger'
 import type { IConsumptionItem, IResultItemOutput } from '../core/types/recipe'
 import type { IRecipeSettings, ISpeedSettings, IProductivitySettings } from '../core/types/settings'
 import { APP_CONFIG } from '../core/config/app.config'
-import { isGameDataLoaded } from '../core/bridge'
+import { isGameDataLoaded, syncStateToLegacy } from '../core/bridge'
 
 export interface DemandItem {
   name: string
@@ -65,6 +65,61 @@ export const useBlueprintStore = defineStore('blueprint', () => {
 
   const hasDemand = computed(() => demandList.value.length > 0)
   const demandCount = computed(() => demandList.value.length)
+
+  // P0-3修复：自动同步store状态到legacy全局变量
+  let syncEnabled = false
+  function enableSync() {
+    syncEnabled = true
+  }
+
+  function doSyncToLegacy() {
+    if (!syncEnabled) return
+    try {
+      syncStateToLegacy({
+        demandList: demandList.value,
+        excludeList: excludeList.value,
+        machineSettings: machineSettings.value
+      })
+    } catch (e) {
+      logger.warn('[Store] Failed to sync to legacy:', e)
+    }
+  }
+
+  // P0-3修复：监听状态变化自动同步
+  watch(
+    [demandList, excludeList],
+    () => {
+      doSyncToLegacy()
+    },
+    { deep: true }
+  )
+
+  // P1-2修复：设置变更回调机制（带防抖）
+  const settingsChangeCallbacks: Set<() => void> = new Set()
+  let settingsChangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  const SETTINGS_CHANGE_DEBOUNCE_MS = 300
+
+  function onSettingsChange(callback: () => void): () => void {
+    settingsChangeCallbacks.add(callback)
+    return () => settingsChangeCallbacks.delete(callback)
+  }
+
+  function notifySettingsChange() {
+    // P1-2修复：防抖处理，避免频繁触发计算
+    if (settingsChangeDebounceTimer) {
+      clearTimeout(settingsChangeDebounceTimer)
+    }
+    settingsChangeDebounceTimer = setTimeout(() => {
+      settingsChangeDebounceTimer = null
+      settingsChangeCallbacks.forEach(cb => {
+        try {
+          cb()
+        } catch (e) {
+          logger.warn('[Store] Settings change callback error:', e)
+        }
+      })
+    }, SETTINGS_CHANGE_DEBOUNCE_MS)
+  }
 
   function checkIconsLoaded() {
     isIconsLoaded.value = isGameDataLoaded()
@@ -146,11 +201,15 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   function setMachineSetting<K extends keyof MachineSettings>(key: K, value: MachineSettings[K]) {
     machineSettings.value[key] = value
     persistSettings()
+    // P1-2修复：设置变更时通知监听者
+    notifySettingsChange()
   }
 
   function loadMachineSettings(settings: MachineSettings) {
     machineSettings.value = { ...settings }
     persistSettings()
+    // P1-2修复：设置变更时通知监听者
+    notifySettingsChange()
   }
 
   function persistSettings() {
@@ -212,6 +271,8 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     syncRecipeSettings,
     syncSpeedSettings,
     syncProductivitySettings,
-    syncAllSettings
+    syncAllSettings,
+    enableSync,
+    onSettingsChange
   }
 })

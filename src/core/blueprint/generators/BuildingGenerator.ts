@@ -26,6 +26,10 @@ export class BuildingGenerator {
     this.config = { ...defaultConfig, ...config }
   }
 
+  updateConfig(config: Partial<IBuildingGeneratorConfig>): void {
+    this.config = { ...this.config, ...config }
+  }
+
   getBuildingTemplate(): IBlueprintBuilding {
     this.buildingIndex++
     return {

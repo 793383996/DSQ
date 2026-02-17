@@ -55,6 +55,24 @@ function clearLegacyGlobalState(): void {
   w.totalAcc = 0
 }
 
+// P0-2修复：等待update_all函数可用，带超时和重试机制
+const MAX_WAIT_UPDATE_ALL_MS = 5000
+const WAIT_INTERVAL_MS = 100
+
+async function waitForUpdateAll(): Promise<() => void> {
+  const win = window as unknown as LegacyWindow
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < MAX_WAIT_UPDATE_ALL_MS) {
+    if (typeof win.update_all === 'function') {
+      return win.update_all as () => void
+    }
+    await new Promise(resolve => setTimeout(resolve, WAIT_INTERVAL_MS))
+  }
+
+  throw new Error('计算引擎初始化超时，请刷新页面重试')
+}
+
 /**
  * 计算服务 - 封装 update_all 逻辑
  *
@@ -155,13 +173,9 @@ export class CalculatorService {
     })
 
     try {
-      const updateAll = win.update_all
-      if (typeof updateAll === 'function') {
-        ;(updateAll as () => void)()
-      } else {
-        logger.error('[CalculatorService] update_all function not found')
-        throw new Error('计算引擎未初始化')
-      }
+      // P0-2修复：使用等待机制确保update_all可用
+      const updateAll = await waitForUpdateAll()
+      updateAll()
 
       if (snapshot && options.validateState) {
         if (!options.validateState(snapshot)) {

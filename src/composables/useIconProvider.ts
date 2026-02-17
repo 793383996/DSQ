@@ -1,6 +1,7 @@
 import { ref, shallowRef } from 'vue'
 import { itemMap, getItemRemark } from '../core/data'
 import { logger } from '../utils/logger'
+import type { LegacyWindow } from '../core/types/legacy'
 
 interface IconCache {
   [key: string]: string
@@ -17,6 +18,10 @@ const isInitialized = ref(false)
 const BASE_ICON_URL = 'https://icon.dspbh.cn/dse/'
 
 const itemMapReverseIndex: Record<string, { iconId: string; key: string }> = {}
+
+function getWin(): LegacyWindow {
+  return window as unknown as LegacyWindow
+}
 
 function buildReverseIndex(): void {
   if (Object.keys(itemMapReverseIndex).length > 0) return
@@ -47,6 +52,14 @@ export function useIconProvider() {
 
   async function loadIconByName(name: string): Promise<string | null> {
     buildReverseIndex()
+
+    // P1-1修复：优先使用legacy已加载的图标
+    const win = getWin()
+    if (win.icons && win.icons[name]) {
+      const base64Icon = 'data:image/png;base64,' + win.icons[name]
+      iconCache.value = { ...iconCache.value, [name]: base64Icon }
+      return base64Icon
+    }
 
     const cached = iconCache.value[name]
     if (cached) return cached
@@ -87,11 +100,18 @@ export function useIconProvider() {
     logger.log('[IconProvider] Lazy loading mode enabled')
   }
 
+  // P1-1修复：优先从window.icons获取，再从缓存获取
   function getIcon(name: string): string | null {
+    const win = getWin()
+    if (win.icons && win.icons[name]) {
+      return 'data:image/png;base64,' + win.icons[name]
+    }
     return iconCache.value[name] || null
   }
 
   function hasIcon(name: string): boolean {
+    const win = getWin()
+    if (win.icons && win.icons[name]) return true
     return name in iconCache.value
   }
 

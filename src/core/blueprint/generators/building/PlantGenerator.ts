@@ -22,20 +22,11 @@ export class PlantGenerator extends BaseBuildingGenerator {
   }
 
   calculateBuildingArea(compactLayout: boolean): IBuildingLayout {
-    if (compactLayout) {
-      return {
-        area: 35,
-        x: 7,
-        y: 5,
-        centerPoint: [2, 3, 2, 3],
-        yaw: [0, 0]
-      }
-    }
     return {
       area: 48,
       x: 8,
       y: 6,
-      centerPoint: [3, 3, 2, 4],
+      centerPoint: [2, 4, 3, 3],
       yaw: [0, 0]
     }
   }

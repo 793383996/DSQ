@@ -23,12 +23,23 @@ export class SmelterGenerator extends BaseBuildingGenerator {
 
   calculateBuildingArea(compactLayout: boolean): IBuildingLayout {
     return {
-      x: 3,
-      y: 3,
-      area: 9,
-      centerPoint: [1.5, 1.5, 1.5, 1.5],
+      area: 16,
+      x: 4,
+      y: 4,
+      centerPoint: [2, 2, 1, 1],
       yaw: [0, 0]
     }
+  }
+
+  calculateBuildingAreaWithRecipe(
+    compactLayout: boolean,
+    outputCount: number,
+    inputCount: number
+  ): IBuildingLayout {
+    if (outputCount + inputCount <= 2) {
+      return { area: 12, x: 3, y: 4, centerPoint: [2, 1, 1, 1], yaw: [0, 0] }
+    }
+    return { area: 16, x: 4, y: 4, centerPoint: [2, 2, 1, 1], yaw: [0, 0] }
   }
 
   generate(params: IBuildingGenerateParams): IBlueprintBuilding[] {

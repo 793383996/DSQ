@@ -122,6 +122,10 @@ export default {
     noMatch: 'No matching items found',
     unit: 'units'
   },
+  demandList: {
+    title: 'Demand List',
+    hint: 'Right-click icon to remove, click number to edit'
+  },
   errorBoundary: {
     title: 'Something went wrong',
     message: 'Sorry, the application encountered an error',

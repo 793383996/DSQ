@@ -64,9 +64,10 @@ export class LabGenerator extends BaseBuildingGenerator {
 
     const stackedLabIndices: number[] = []
     const maxLayers = this.config.maxLabLayers || 4
+    const totalLabNum = Math.ceil(subRecipe.building!.num)
     let layers = 1
 
-    for (let layer = 1; layer < Math.min(subRecipe.building!.num, maxLayers); layer++) {
+    for (let layer = 1; layer < Math.min(totalLabNum, maxLayers); layer++) {
       context.buildingIndex++
       const labBuilding = this.getBuildingTemplate(context.buildingIndex)
 
