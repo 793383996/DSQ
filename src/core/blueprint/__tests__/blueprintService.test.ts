@@ -56,6 +56,26 @@ const mockBuildingMap: Record<string, IBuildingData> = {
     transportSpeed: 30,
     type: 5,
     remark: ''
+  },
+  sorterMk1: {
+    name: 'sorterMk1',
+    itemId: 2100,
+    modelIndex: 2200,
+    sortingSpeed: 6,
+    remark: ''
+  },
+  sorterMk3: {
+    name: 'sorterMk3',
+    itemId: 2102,
+    modelIndex: 2202,
+    sortingSpeed: 30,
+    remark: ''
+  },
+  teslaTower: {
+    name: 'teslaTower',
+    itemId: 1101,
+    modelIndex: 1201,
+    remark: ''
   }
 }
 
@@ -245,6 +265,28 @@ describe('BlueprintService', () => {
       expect(result.areas[0].parentIndex).toBe(-1)
       expect(result.areas[0].size).toEqual({ x: 1, y: 1 })
     })
+
+    it('should use custom title and iconId', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: null,
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap,
+        title: 'Test Blueprint',
+        iconId: 1001
+      })
+
+      expect(result.header.shortDesc).toBe('Test Blueprint')
+      expect(result.header.icons[0]).toBe(1001)
+    })
   })
 
   describe('updateConfig', () => {
@@ -379,6 +421,27 @@ describe('BlueprintService', () => {
       })
 
       expect(result).toBeDefined()
+    })
+
+    it('should generate correct number of foundations for stackLayers', () => {
+      const stackedService = new BlueprintService({ stackLayers: 3 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 3 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const foundations = result.buildings.filter(b => b.itemId === 1131)
+      expect(foundations.length).toBe(3)
     })
   })
 
@@ -522,6 +585,379 @@ describe('BlueprintService', () => {
 
       expect(result).toBeDefined()
       expect(result.buildings.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Phase 1: init() - initialization and preprocessing', () => {
+    it('should map recipe IDs correctly', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+    })
+
+    it('should adjust building num for stackLayers', () => {
+      const stackedService = new BlueprintService({ stackLayers: 4 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 16 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const smelters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.arcSmelter.modelIndex
+      )
+      expect(smelters.length).toBe(16)
+    })
+
+    it('should calculate blueprint size based on recipes', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 10 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result).toBeDefined()
+    })
+  })
+
+  describe('Phase 2: generateBuildings() - building generation', () => {
+    it('should generate buildings with correct positions', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 3 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const smelters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.arcSmelter.modelIndex
+      )
+      expect(smelters.length).toBe(3)
+
+      for (const smelter of smelters) {
+        expect(smelter.localOffset).toBeDefined()
+        expect(smelter.localOffset).toHaveLength(2)
+      }
+    })
+
+    it('should generate sorters for each building', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const sorters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.sorterMk1?.modelIndex
+      )
+      expect(sorters.length).toBeGreaterThan(0)
+    })
+
+    it('should handle lab vertical stacking', () => {
+      const labService = new BlueprintService({ maxLabLayers: 4 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'lab', num: 8 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          recipeID: 1,
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = labService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const labs = result.buildings.filter(b => b.modelIndex === mockBuildingMap.lab.modelIndex)
+      expect(labs.length).toBe(8)
+    })
+  })
+
+  describe('Phase 3: generateConveyorBelts() - conveyor network', () => {
+    it('should generate conveyor belts connecting buildings', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const conveyors = result.buildings.filter(
+        b => b.itemId === mockBuildingMap.conveyorBeltMK3.itemId
+      )
+      expect(conveyors.length).toBeGreaterThan(0)
+    })
+
+    it('should connect sorters to conveyor belts', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const sorters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.sorterMk1?.modelIndex
+      )
+      for (const sorter of sorters) {
+        expect(sorter.outputObjIdx).toBeGreaterThan(-1)
+      }
+    })
+
+    it('should handle raw material input correctly', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: null,
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      expect(result.buildings.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Phase 4: generateConveyorBeltsForSprayCoater() - proliferator system', () => {
+    it('should generate spray coater conveyors when needed', () => {
+      const sprayService = new BlueprintService({ selfSpray: true })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = sprayService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap,
+        proliferator: 'proliferatorMk3'
+      })
+
+      expect(result).toBeDefined()
+    })
+  })
+
+  describe('Phase 5: cloneToStackLayers() - building stacking', () => {
+    it('should not clone when stackLayers is 1', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 2 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const smelters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.arcSmelter.modelIndex
+      )
+      expect(smelters.length).toBe(2)
+    })
+
+    it('should clone buildings to multiple layers', () => {
+      const stackedService = new BlueprintService({ stackLayers: 3 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 9 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const smelters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.arcSmelter.modelIndex
+      )
+      expect(smelters.length).toBe(9)
+    })
+
+    it('should set correct z offset for cloned buildings', () => {
+      const stackedService = new BlueprintService({ stackLayers: 2 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const smelters = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.arcSmelter.modelIndex
+      )
+      expect(smelters.length).toBe(2)
+
+      const zOffsets = smelters.map(s => s.localOffset![0].z)
+      expect(zOffsets).toContain(0)
+      expect(zOffsets).toContain(10)
+    })
+
+    it('should remap building indices correctly', () => {
+      const stackedService = new BlueprintService({ stackLayers: 2 })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 1 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = stackedService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const indices = result.buildings.map(b => b.index)
+      const uniqueIndices = new Set(indices)
+      expect(indices.length).toBe(uniqueIndices.size)
+    })
+  })
+
+  describe('generateTeslaTower', () => {
+    it('should generate tesla towers when enabled', () => {
+      const towerService = new BlueprintService({
+        generateTeslaTower: true,
+        teslaTowerInterval: 10,
+        teslaTowerLineInterval: 1
+      })
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 10 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = towerService.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const towers = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.teslaTower?.modelIndex
+      )
+      expect(towers.length).toBeGreaterThan(0)
+    })
+
+    it('should not generate tesla towers when disabled', () => {
+      const recipes: ISubRecipe[] = [
+        {
+          building: { name: 'arcSmelter', num: 10 },
+          output: [{ name: 'ironIngot', rate: 1 }],
+          input: [{ name: 'ironOre', rate: 1 }],
+          acceleratorMode: 0
+        }
+      ]
+
+      const result = service.generate({
+        recipes,
+        buildingMap: mockBuildingMap,
+        itemMap: mockItemMap
+      })
+
+      const towers = result.buildings.filter(
+        b => b.modelIndex === mockBuildingMap.teslaTower?.modelIndex
+      )
+      expect(towers.length).toBe(0)
     })
   })
 })

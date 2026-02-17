@@ -37,6 +37,9 @@ build/
 out/
 .vite/
 
+# 测试覆盖率报告
+coverage/
+
 # 环境配置
 .env
 .env.local
