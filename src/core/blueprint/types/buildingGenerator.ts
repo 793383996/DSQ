@@ -93,7 +93,7 @@ export const DEFAULT_BUILDING_GENERATOR_CONFIG: IBuildingGeneratorConfig = {
   generateTeslaTower: false,
   teslaTowerInterval: 10,
   teslaTowerLineInterval: 2,
-  compactLayout: true,
+  compactLayout: false,
   maxLabLayers: 4,
   stackLayers: 1,
   upgradeConveyorBelt: true,

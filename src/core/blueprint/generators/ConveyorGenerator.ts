@@ -690,7 +690,7 @@ export class ConveyorGenerator {
         nodePositions[i],
         [0, 0],
         conveyor,
-        this.buildingIndex + 1,
+        this.buildingIndex + 2,
         1,
         i === 0 ? proliferatorParameters : null
       )
@@ -702,7 +702,7 @@ export class ConveyorGenerator {
         { x: this.conveyorStartOffsetX + i, y: selfSprayStartOffset.y + 1, z: 1 },
         [0, 0],
         conveyor,
-        this.buildingIndex + 1,
+        this.buildingIndex + 2,
         1,
         null
       )
@@ -714,7 +714,7 @@ export class ConveyorGenerator {
         { x: selfSprayStartOffset.x - 1, y: selfSprayStartOffset.y - i, z: 1 },
         [0, 0],
         conveyor,
-        this.buildingIndex + 1,
+        this.buildingIndex + 2,
         1,
         null
       )
@@ -735,7 +735,7 @@ export class ConveyorGenerator {
       { x: firstSprayOffset.x - 1, y: firstSprayOffset.y, z: 1 },
       [0, 0],
       conveyor,
-      this.buildingIndex + 1,
+      this.buildingIndex + 2,
       1,
       proliferatorParameters
     )
@@ -745,7 +745,7 @@ export class ConveyorGenerator {
       { x: firstSprayOffset.x, y: firstSprayOffset.y, z: 1 },
       [0, 0],
       conveyor,
-      this.buildingIndex + 1,
+      this.buildingIndex + 2,
       1,
       null
     )
@@ -766,7 +766,7 @@ export class ConveyorGenerator {
                 { x, y: nowSpray.y, z: 1 },
                 [0, 0],
                 conveyor,
-                this.buildingIndex + 1,
+                this.buildingIndex + 2,
                 1,
                 null
               )
@@ -781,7 +781,7 @@ export class ConveyorGenerator {
                 { x, y: nowSpray.y, z: 1 },
                 [0, 0],
                 conveyor,
-                this.buildingIndex + 1,
+                this.buildingIndex + 2,
                 1,
                 null
               )
@@ -816,7 +816,7 @@ export class ConveyorGenerator {
                     lastNodeOffset,
                     [0, 0],
                     conveyor,
-                    this.buildingIndex + 1,
+                    this.buildingIndex + 2,
                     1,
                     null
                   )
@@ -829,7 +829,7 @@ export class ConveyorGenerator {
                     lastNodeOffset,
                     [0, 0],
                     conveyor,
-                    this.buildingIndex + 1,
+                    this.buildingIndex + 2,
                     1,
                     null
                   )
@@ -846,7 +846,7 @@ export class ConveyorGenerator {
                 lastNodeOffset,
                 [0, 0],
                 conveyor,
-                this.buildingIndex + 1,
+                this.buildingIndex + 2,
                 1,
                 null
               )
@@ -858,7 +858,7 @@ export class ConveyorGenerator {
                   lastNodeOffset,
                   [0, 0],
                   conveyor,
-                  this.buildingIndex + 1,
+                  this.buildingIndex + 2,
                   1,
                   null
                 )
@@ -872,7 +872,7 @@ export class ConveyorGenerator {
                     { x, y: lastNodeOffset.y, z: 1 },
                     [0, 0],
                     conveyor,
-                    this.buildingIndex + 1,
+                    this.buildingIndex + 2,
                     1,
                     null
                   )
@@ -884,7 +884,7 @@ export class ConveyorGenerator {
                     { x, y: lastNodeOffset.y, z: 1 },
                     [0, 0],
                     conveyor,
-                    this.buildingIndex + 1,
+                    this.buildingIndex + 2,
                     1,
                     null
                   )
@@ -900,7 +900,7 @@ export class ConveyorGenerator {
                 { x: spray.x, y: spray.y, z: 1 },
                 [0, 0],
                 conveyor,
-                this.buildingIndex + 1,
+                this.buildingIndex + 2,
                 1,
                 null
               )
