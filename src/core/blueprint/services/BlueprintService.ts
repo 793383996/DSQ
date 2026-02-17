@@ -751,6 +751,8 @@ export class BlueprintService {
       this.occupiedArea.length >= 2
         ? this.occupiedArea[this.occupiedArea.length - 2]
         : lastOccupiedArea
+    const conveyorStartOffsetX = lastOccupiedArea?.x2 || 0
+    this.conveyorGenerator.setConveyorStartOffsetX(conveyorStartOffsetX)
     lastOccupiedArea.x2++
     if (prevOccupiedArea && this.occupiedArea.length >= 2) {
       prevOccupiedArea.y2++

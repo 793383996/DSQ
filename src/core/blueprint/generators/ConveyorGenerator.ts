@@ -53,6 +53,7 @@ export class ConveyorGenerator {
   private buildingIndex: number = 0
   private occupiedAreaX: number = 0
   private occupiedAreaY: number = 0
+  private conveyorStartOffsetX: number = 0
   private config: IConveyorGeneratorConfig
   private buildingMap: IBuildingMap
   private buildingArray: BuildingArray = []
@@ -85,6 +86,10 @@ export class ConveyorGenerator {
 
   setOccupiedAreaY(y: number): void {
     this.occupiedAreaY = y
+  }
+
+  setConveyorStartOffsetX(x: number): void {
+    this.conveyorStartOffsetX = x
   }
 
   setBuildingArray(buildingArray: BuildingArray): void {
@@ -130,6 +135,7 @@ export class ConveyorGenerator {
     this.buildingIndex = 0
     this.occupiedAreaX = 0
     this.occupiedAreaY = 0
+    this.conveyorStartOffsetX = 0
     this.lastProductionBuildingType = 0
   }
 
@@ -651,32 +657,32 @@ export class ConveyorGenerator {
     }
 
     const sprayCoaterBuilding = this.newSprayCoater(
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 4, z: 0 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 4, z: 0 },
       [0, 0]
     )
     result.push(sprayCoaterBuilding)
 
     const nodePositions = [
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 6, z: 0 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 5, z: 0 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 4, z: 0 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 3, z: 0 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 2, z: 0 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 2, z: 0 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 3, z: 0 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 4, z: 0.5 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 5, z: 1 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 6, z: 1 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 6, z: 1 },
-      { x: this.occupiedAreaX, y: selfSprayStartOffset.y + 6, z: 1 },
-      { x: this.occupiedAreaX, y: selfSprayStartOffset.y + 5, z: 1 },
-      { x: this.occupiedAreaX, y: selfSprayStartOffset.y + 4, z: 1 },
-      { x: this.occupiedAreaX, y: selfSprayStartOffset.y + 3, z: 1 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 3, z: 1 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 3, z: 1 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 2, z: 1 },
-      { x: this.occupiedAreaX - 2, y: selfSprayStartOffset.y + 1, z: 1 },
-      { x: this.occupiedAreaX - 1, y: selfSprayStartOffset.y + 1, z: 1 }
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 6, z: 0 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 5, z: 0 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 4, z: 0 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 3, z: 0 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 2, z: 0 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 2, z: 0 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 3, z: 0 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 4, z: 0.5 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 5, z: 1 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 6, z: 1 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 6, z: 1 },
+      { x: this.conveyorStartOffsetX, y: selfSprayStartOffset.y + 6, z: 1 },
+      { x: this.conveyorStartOffsetX, y: selfSprayStartOffset.y + 5, z: 1 },
+      { x: this.conveyorStartOffsetX, y: selfSprayStartOffset.y + 4, z: 1 },
+      { x: this.conveyorStartOffsetX, y: selfSprayStartOffset.y + 3, z: 1 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 3, z: 1 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 3, z: 1 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 2, z: 1 },
+      { x: this.conveyorStartOffsetX - 2, y: selfSprayStartOffset.y + 1, z: 1 },
+      { x: this.conveyorStartOffsetX - 1, y: selfSprayStartOffset.y + 1, z: 1 }
     ]
 
     for (let i = 0; i < nodePositions.length; i++) {
@@ -691,9 +697,9 @@ export class ConveyorGenerator {
       result.push(node)
     }
 
-    for (let i = 0; i < selfSprayStartOffset.x - this.occupiedAreaX; i++) {
+    for (let i = 0; i < selfSprayStartOffset.x - this.conveyorStartOffsetX; i++) {
       const node = this.newConveyorNode(
-        { x: this.occupiedAreaX + i, y: selfSprayStartOffset.y + 1, z: 1 },
+        { x: this.conveyorStartOffsetX + i, y: selfSprayStartOffset.y + 1, z: 1 },
         [0, 0],
         conveyor,
         this.buildingIndex + 1,
@@ -928,7 +934,8 @@ export class ConveyorGenerator {
     needSprayCoater: boolean,
     result: IBlueprintBuilding[]
   ): void {
-    const buildingX = this.occupiedAreaX + 1
+    this.occupiedAreaX += 1
+    const buildingX = this.occupiedAreaX
     let buildingY = this.occupiedAreaY
     const buildingZ = 0
     let nodeNum = 0
@@ -1113,7 +1120,9 @@ export class ConveyorGenerator {
       }
     }
 
-    this.occupiedAreaX = buildingX
+    if (buildingX > 0) {
+      this.occupiedAreaX = buildingX
+    }
   }
 
   private newSprayCoater(offset: ICoordinate, yaw: number[]): IBlueprintBuilding {
