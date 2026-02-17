@@ -958,11 +958,13 @@ export class ConveyorGenerator {
       result.push(node)
       nodeNum++
 
-      const toChangeNum = inputData[i].length
-      for (const b of result) {
+      let toChangeNum = inputData[i].length
+      const buildingsToSearch = this.allBuildings || result
+      for (const b of buildingsToSearch) {
         if (toChangeNum <= 0) break
         if (inputData[i].includes(b.index)) {
           b.outputObjIdx = this.buildingIndex
+          toChangeNum--
         }
       }
     }
@@ -1027,12 +1029,14 @@ export class ConveyorGenerator {
       result.push(node)
       nodeNum++
 
-      const toChangeNum = outputData[i].length
-      for (const b of result) {
+      let toChangeNum = outputData[i].length
+      const buildingsToSearch = this.allBuildings || result
+      for (const b of buildingsToSearch) {
         if (toChangeNum <= 0) break
         if (outputData[i].includes(b.index)) {
           b.inputObjIdx = this.buildingIndex
           b.inputFromSlot = -1
+          toChangeNum--
         }
       }
     }
