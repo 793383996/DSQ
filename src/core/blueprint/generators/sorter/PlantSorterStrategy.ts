@@ -43,31 +43,31 @@ export class PlantSorterStrategy extends SorterPositionStrategy {
         break
       case 3:
         offsets = [
-          { x: x + 0.8, y: y + 1, z },
-          { x: x + 0.8, y: y + 2, z }
+          { x: x + 1.6, y: y - 1, z },
+          { x: x + 1.6, y: y - 2, z }
         ]
-        baseYaw = 0
+        baseYaw = 180
         break
       case 2:
         offsets = [
-          { x, y: y + 1, z },
-          { x, y: y + 2, z }
+          { x: x + 0.8, y: y + 2, z },
+          { x: x + 0.8, y: y + 3, z }
         ]
         baseYaw = 0
         break
       case 1:
         offsets = [
-          { x: x - 0.8, y: y + 1, z },
-          { x: x - 0.8, y: y + 2, z }
+          { x, y: y + 2, z },
+          { x, y: y + 3, z }
         ]
         baseYaw = 0
         break
       case 0:
         offsets = [
-          { x: x - 3, y: y + 1, z },
-          { x: x - 4, y: y + 1, z }
+          { x: x - 0.8, y: y + 2, z },
+          { x: x - 0.8, y: y + 3, z }
         ]
-        baseYaw = 270
+        baseYaw = 0
         break
       default:
         throw new Error(`unsupported: plant slot < 0`)
