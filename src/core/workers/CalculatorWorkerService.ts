@@ -283,17 +283,21 @@ export class CalculatorWorkerService {
   }
 
   // P6-4修复：计算轨道采集器t值缓存，与UpdateAllService.doSpeed1逻辑对齐
+  // P0-4修复：键名与老代码data.js doSpeed1函数完全对齐
+  // 老代码HTML: speed1_1 = 氢(气态) 默认1, speed1_2 = 重氢 默认0.02
+  // 老代码HTML: speed1_3 = 可燃冰 默认0.5, speed1_4 = 氢(巨冰) 默认0.5
+  // 架构师注：老代码变量名speed1_3对应可燃冰，speed1_4对应氢(巨冰)
+  // 新代码键名需正确映射：轨道采集器(巨冰)_可燃冰 → speed1_3，轨道采集器(巨冰)_氢 → speed1_4
   private calculateOrbitalCollectorTCache(
     recipes: IRawRecipe[],
     settingsTime: Record<string, number>
   ): Record<string, number> {
     const st = settingsTime || {}
-    const speed1_1 = st['轨道采集器(气态)'] || 1
+    const speed1_1 = st['轨道采集器(气态)_氢'] || 1
     const speed1_2 = st['轨道采集器(气态)_重氢'] || 0.02
-    const speed1_4 = st['轨道采集器(巨冰)'] || 0.5
     const speed1_3 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
-    const oreSpeed = st['采矿机'] || 3
-    const ore = (oreSpeed / 0.5 / 6) * 100
+    const speed1_4 = st['轨道采集器(巨冰)_氢'] || 0.5
+    const ore = st['采矿机_效率'] || 100
 
     const getSum = (value1: number, value2: number, p1: number, p2: number): number => {
       let sum = 60 * value1 * 0.01 * ore * 8

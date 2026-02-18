@@ -358,15 +358,14 @@ export class UpdateAllService {
   private doSpeed1(settingsTime: Record<string, number>): void {
     const st = settingsTime || {}
     // P0-4修复：键名与老代码data.js doSpeed1函数完全对齐
-    // 老代码：speed1_1 = st['轨道采集器(气态)_氢'] = 氢(气态) 默认1
-    // 老代码：speed1_2 = st['轨道采集器(气态)_重氢'] = 重氢 默认0.02
-    // 老代码：speed1_3 = st['轨道采集器(巨冰)_氢'] = 氢(巨冰) 默认0.5
-    // 老代码：speed1_4 = st['轨道采集器(巨冰)_可燃冰'] = 可燃冰 默认0.5
-    // 老代码：ore = st['采矿机_效率'] = 采矿作业速度 默认100
+    // 老代码HTML: speed1_1 = 氢(气态) 默认1, speed1_2 = 重氢 默认0.02
+    // 老代码HTML: speed1_3 = 可燃冰 默认0.5, speed1_4 = 氢(巨冰) 默认0.5
+    // 架构师注：老代码变量名speed1_3对应可燃冰，speed1_4对应氢(巨冰)
+    // 新代码键名需正确映射：轨道采集器(巨冰)_可燃冰 → speed1_3，轨道采集器(巨冰)_氢 → speed1_4
     const speed1_1 = st['轨道采集器(气态)_氢'] || 1
     const speed1_2 = st['轨道采集器(气态)_重氢'] || 0.02
-    const speed1_3 = st['轨道采集器(巨冰)_氢'] || 0.5
-    const speed1_4 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
+    const speed1_3 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
+    const speed1_4 = st['轨道采集器(巨冰)_氢'] || 0.5
     const ore = st['采矿机_效率'] || 100
 
     const getSum = (value1: number, value2: number, p1: number, p2: number): number => {
