@@ -1,3 +1,31 @@
+/**
+ * BlueprintAdapter - 蓝图适配器
+ *
+ * 功能：
+ * - 将遗留格式的配方数据转换为新服务格式
+ * - 将遗留配置转换为新服务配置
+ * - 调用BlueprintService生成蓝图
+ * - 验证buildingMap和itemMap数据有效性
+ *
+ * 主要方法：
+ * - generateBlueprintWithNewService(legacyRecipe, legacyConfig): 生成蓝图
+ * - convertLegacyRecipe(legacyRecipe): 转换遗留配方格式
+ * - convertLegacyConfig(legacyConfig): 转换遗留配置格式
+ * - isBlueprintServiceAvailable(): 检查服务是否可用
+ * - validateAndGetData(): 验证并获取数据
+ *
+ * 上游调用：
+ * - core/bridge.ts: legacyGenerateBlueprint()
+ *
+ * 下游依赖：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
+ * - core/utils/BlueprintEncoder.ts: 蓝图编码
+ * - utils/logger.ts: 日志记录
+ *
+ * 数据验证：
+ * - 检查window.buildingMap和window.itemMap是否存在
+ * - 验证必需的建筑类型是否存在
+ */
 import { encodeBlueprint } from '../utils/BlueprintEncoder'
 import {
   BlueprintService,

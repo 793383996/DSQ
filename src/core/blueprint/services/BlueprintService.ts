@@ -1,3 +1,38 @@
+/**
+ * BlueprintService - 蓝图生成服务
+ *
+ * 功能：
+ * - 协调建筑生成器、传送带生成器、分拣器生成器
+ * - 计算建筑布局和物品摘要
+ * - 生成完整的蓝图数据结构
+ * - 支持堆叠层和特斯拉塔生成
+ *
+ * 主要方法：
+ * - generate(options): 生成蓝图数据
+ * - generateBuildings(recipes, buildingMap, itemMap): 生成建筑
+ * - generateConveyors(): 生成传送带和分拣器
+ * - generateTeslaTowers(): 生成特斯拉塔
+ * - getBlueprintData(): 获取蓝图数据
+ *
+ * 上游调用：
+ * - core/adapters/BlueprintAdapter.ts: 蓝图适配器
+ *
+ * 下游依赖：
+ * - generators/LayoutCalculator.ts: 布局计算器
+ * - generators/ItemSummaryCalculator.ts: 物品摘要计算器
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 生成流程：
+ * 1. 初始化各生成器
+ * 2. 计算建筑布局
+ * 3. 生成生产建筑
+ * 4. 计算物品摘要
+ * 5. 生成传送带和分拣器
+ * 6. 生成特斯拉塔（可选）
+ * 7. 组装蓝图数据
+ */
 import type {
   IBlueprintData,
   IBlueprintBuilding,

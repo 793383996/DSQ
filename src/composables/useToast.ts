@@ -1,3 +1,28 @@
+/**
+ * useToast - Toast消息组合式函数
+ *
+ * 功能：
+ * - 提供全局Toast消息访问
+ * - 支持多种消息类型：success/error/warning/info/loading
+ * - 支持遗留代码的cocoMessage代理
+ *
+ * 主要方法：
+ * - useToast(): 获取Toast实例
+ * - setToastInstance(instance): 设置全局Toast实例
+ * - cocoMessageProxy(message, type): 遗留代码消息代理
+ *
+ * 上游调用：
+ * - App.vue: 设置全局Toast实例
+ * - components/BlueprintGenerator.vue: 显示操作结果
+ * - core/bridge.ts: 遗留代码消息提示
+ *
+ * 下游依赖：
+ * - components/Toast/Toast.vue: Toast组件实例
+ *
+ * 使用方式：
+ * - 在App.vue中通过ref获取Toast实例并调用setToastInstance
+ * - 在其他组件中通过useToast()获取实例
+ */
 import { ref, getCurrentInstance } from 'vue'
 
 interface ToastAPI {

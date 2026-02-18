@@ -1,3 +1,33 @@
+/**
+ * ConveyorGenerator - 传送带生成器
+ *
+ * 功能：
+ * - 根据物品摘要生成传送带网络
+ * - 计算传送带路径和连接点
+ * - 协调分拣器生成器放置分拣器
+ * - 支持传送带等级选择（Mk1/Mk3）
+ * - 支持传送带降级和升级
+ *
+ * 主要方法：
+ * - generate(itemSummary, sorters, buildingArray, buildings): 生成传送带
+ * - updateConfig(config): 更新配置
+ * - updateBuildingMap(buildingMap): 更新建筑映射
+ * - setBuildingIndex(index): 设置建筑索引
+ * - getBuildings(): 获取生成的建筑列表
+ *
+ * 上游调用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
+ *
+ * 下游依赖：
+ * - generators/SorterGenerator.ts: 分拣器生成器
+ * - types/conveyorGenerator.ts: 传送带类型定义
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 传送带速度：
+ * - Mk1: 6物品/秒
+ * - Mk3: 30物品/秒
+ * - Mk3降级: 15物品/秒
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../types/blueprint'
 import type {
   IConveyorGeneratorConfig,

@@ -1,3 +1,32 @@
+/**
+ * Desensitize - 敏感数据脱敏工具
+ *
+ * 功能：
+ * - 对敏感数据进行脱敏处理
+ * - 支持邮箱、手机号、身份证等脱敏
+ * - 支持对象和字符串的递归脱敏
+ *
+ * 主要方法：
+ * - maskEmail(email): 邮箱脱敏
+ * - maskPhone(phone): 手机号脱敏
+ * - maskIdCard(idCard): 身份证脱敏
+ * - maskBankCard(card): 银行卡脱敏
+ * - desensitizeValue(value): 值脱敏
+ * - desensitizeString(str): 字符串脱敏
+ * - desensitizeObject(obj): 对象脱敏
+ *
+ * 上游调用：
+ * - utils/logger.ts: 日志工具
+ * - utils/errorReporter.ts: 错误上报器
+ *
+ * 敏感键名：
+ * - password/passwd/pwd
+ * - secret/token/apiKey
+ * - accessToken/refreshToken
+ * - privateKey/credential
+ * - session/cookie
+ * - ssn/creditCard/cardNumber
+ */
 type DesensitizeFn = (value: string) => string
 
 const SENSITIVE_KEYS = [

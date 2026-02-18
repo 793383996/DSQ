@@ -1,18 +1,7 @@
-import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
-import type { ISorterMap, ISorterInfo } from '../../types/buildingGenerator'
-import type { IItemSummary, IItemSummaryEntry } from '../../types/conveyorGenerator'
-import {
-  ConveyorNodeBuilder,
-  type IConveyorBelt,
-  type IBuildingMapForConveyor
-} from './ConveyorNodeBuilder'
-import type { IConveyorGeneratorConfig } from '../../types/conveyorGenerator'
-import { DEFAULT_CONVEYOR_GENERATOR_CONFIG } from '../../types/conveyorGenerator'
-
 /**
- * ConveyorConnectionBuilder - 传送带连接生成器（简化版）
+ * ConveyorConnectionBuilder - 传送带连接构建器（简化版）
  *
- * 功能范围：
+ * 功能：
  * - 基础传送带节点生成
  * - 简单的物料参数设置
  *
@@ -22,8 +11,20 @@ import { DEFAULT_CONVEYOR_GENERATOR_CONFIG } from '../../types/conveyorGenerator
  * - 速率匹配和分拣器分配
  * - 建筑物位置调整
  *
+ * 主要方法：
+ * - buildConnection(params): 构建传送带连接
+ * - setBuildingIndex(index): 设置建筑索引
+ *
+ * 上游调用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ *
+ * 下游依赖：
+ * - generators/conveyor/ConveyorNodeBuilder.ts: 传送带节点构建器
+ * - types/conveyorGenerator.ts: 传送带类型定义
+ *
  * @see ConveyorGenerator - 完整版传送带生成器
  */
+import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 export interface IConnectionBuildParams {
   itemName: string
   itemEntry: IItemSummaryEntry

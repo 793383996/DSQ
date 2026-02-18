@@ -1,3 +1,31 @@
+/**
+ * Data数据模块
+ *
+ * 功能：
+ * - 导出配方映射和配方数据
+ * - 导出物品和建筑查询函数
+ * - 提供数据访问入口
+ *
+ * 导出数据：
+ * - RecipeMap: 配方映射
+ * - Recipes: 配方列表
+ * - itemMap: 物品映射
+ * - buildingMap: 建筑映射
+ *
+ * 导出函数：
+ * - getRecipeIdByKey(key): 获取配方ID
+ * - getRecipeCount(): 获取配方数量
+ * - getItemByName/getItemByRemark: 物品查询
+ * - getBuildingByName/getBuildingByItemId: 建筑查询
+ *
+ * 上游使用：
+ * - core/services/RecipeCalculator.ts: 配方计算器
+ * - core/blueprint/services/BlueprintService.ts: 蓝图服务
+ *
+ * 下游依赖：
+ * - core/data/recipeMap.json: 配方映射数据
+ * - core/data/recipes.json: 配方数据
+ */
 import recipeMapData from './recipeMap.json'
 import recipesData from './recipes.json'
 

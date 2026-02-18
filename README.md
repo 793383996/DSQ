@@ -69,92 +69,257 @@ npm run storybook
 
 ```
 DSQ/
-├── .github/                    # GitHub配置
-│   └── workflows/              # CI/CD流水线
-├── .husky/                     # Git Hooks
-├── .storybook/                 # Storybook配置
-├── dist/                       # 构建输出目录
-├── e2e/                        # E2E测试
-├── img/                        # 静态图片资源
-├── public/                     # 公共静态资源
-├── quote/                      # 页眉页脚模板
-├── Scripts/                    # 遗留代码目录
-│   ├── blueprint.js            # 蓝图生成核心（遗留）
-│   ├── data.js                 # 计算核心（遗留）
-│   └── localDocs/              # 项目文档
-├── src/                        # 源代码目录
-│   ├── components/             # Vue组件
-│   │   ├── AddItemDialog/      # 添加物品对话框
-│   │   ├── BlueprintGenerator/ # 蓝图生成器
-│   │   ├── ConfigPanel/        # 配置面板
-│   │   ├── ControlPanel/       # 控制面板
-│   │   ├── DemandList/         # 需求列表
-│   │   ├── ErrorBoundary/      # 错误边界
-│   │   ├── LocaleSwitcher/     # 语言切换
-│   │   ├── PWAUpdateBanner/    # PWA更新提示
-│   │   ├── ResultTable/        # 结果表格
-│   │   ├── Skeleton/           # 骨架屏组件
-│   │   ├── Toast/              # 消息提示
-│   │   └── layout/             # 响应式布局组件
-│   ├── composables/            # 组合式函数
-│   │   ├── useBreakpoints.ts   # 断点检测
-│   │   ├── useIconProvider.ts  # 图标提供者
-│   │   ├── useMeta.ts          # 元数据管理
-│   │   └── useToast.ts         # 消息提示
-│   ├── core/                   # 核心业务逻辑
-│   │   ├── adapters/           # 适配器层
-│   │   │   ├── BlueprintAdapter.ts  # 蓝图适配器
-│   │   │   ├── RecipeAdapter.ts     # 配方适配器
-│   │   │   └── SettingsAdapter.ts   # 设置适配器
-│   │   ├── blueprint/          # 蓝图生成模块
-│   │   │   ├── generators/     # 生成器
-│   │   │   │   ├── building/   # 建筑生成器
-│   │   │   │   ├── conveyor/   # 传送带生成器
-│   │   │   │   └── sorter/     # 分拣器生成器
-│   │   │   ├── services/       # 蓝图服务
-│   │   │   └── types/          # 类型定义
-│   │   ├── data/               # 数据文件
-│   │   │   ├── recipes.json    # 配方数据
-│   │   │   ├── itemMap.json    # 物品映射
-│   │   │   └── buildingMap.json# 建筑映射
-│   │   ├── legacy/             # 遗留代码封装
-│   │   ├── services/           # 服务层
-│   │   │   ├── CalculatorService.ts  # 计算服务
-│   │   │   ├── CalculationContext.ts # 计算上下文
-│   │   │   └── StackService.ts       # 堆叠服务
-│   │   ├── types/              # 类型定义
-│   │   ├── utils/              # 工具函数
-│   │   │   ├── BlueprintEncoder.ts   # 蓝图编码
-│   │   │   ├── BlueprintDecoder.ts   # 蓝图解码
-│   │   │   └── IndexMapper.ts        # 索引映射
-│   │   ├── workers/            # Web Worker
-│   │   │   ├── calculator.worker.ts  # 计算Worker
-│   │   │   └── CalculatorWorkerService.ts
-│   │   └── bridge.ts           # 遗留代码桥接层
-│   ├── i18n/                   # 国际化
-│   │   └── locales/            # 语言文件
-│   │       ├── zh-CN.ts        # 简体中文
-│   │       └── en-US.ts        # 英文
-│   ├── stores/                 # Pinia状态管理
-│   │   └── blueprint.ts        # 蓝图状态
-│   ├── utils/                  # 通用工具
-│   │   ├── errorReporter.ts    # 错误上报
-│   │   ├── logger.ts           # 日志工具
-│   │   └── webVitals.ts        # 性能监控
-│   ├── App.vue                 # 根组件
-│   └── main.ts                 # 入口文件
-├── .env.development            # 开发环境变量
-├── .env.production             # 生产环境变量
-├── .eslintrc.cjs               # ESLint配置
-├── .prettierrc                 # Prettier配置
-├── Dockerfile                  # Docker配置
-├── docker-compose.yml          # Docker Compose配置
-├── index.html                  # HTML入口
-├── package.json                # 项目配置
-├── playwright.config.ts        # E2E测试配置
-├── tsconfig.json               # TypeScript配置
-├── vite.config.ts              # Vite配置
-└── vitest.config.ts            # 单元测试配置
+├── .github/                        # GitHub配置
+│   └── workflows/
+│       ├── ci.yml                  # CI/CD流水线：lint、test、e2e、build、deploy
+│       └── release.yml             # 发布流水线：版本发布自动化
+├── .husky/                         # Git Hooks
+│   └── pre-commit                  # 提交前代码检查钩子
+├── .storybook/                     # Storybook组件文档配置
+│   ├── main.ts                     # Storybook入口配置
+│   └── preview.ts                  # Storybook预览配置
+├── .well-known/                    # Well-Known URI配置
+│   └── appspecific/
+│       └── com.chrome.devtools.json # Chrome DevTools配置
+├── Scripts/                        # 遗留代码目录
+│   ├── blueprint.js                # 蓝图编解码核心（遗留）：itemMap定义、蓝图JSON编解码
+│   ├── cocoMessage.js              # 消息提示组件（遗留）
+│   ├── data.js                     # 配方数据定义（遗留）：所有游戏配方数据
+│   ├── data.json                   # 配方数据JSON格式
+│   ├── e2e-setup.js                # E2E测试环境初始化
+│   ├── extract-recipes.ts          # 配方数据提取脚本
+│   ├── index.html.backup           # 原始HTML备份
+│   └── style.css                   # 遗留样式文件
+├── e2e/                            # E2E测试
+│   └── calculator.spec.ts          # 计算器E2E测试用例
+├── feature-test/                   # 功能测试数据
+│   ├── 电力感应塔-json - 堆叠.txt   # 电力感应塔堆叠测试数据
+│   └── 电力感应塔-json.txt          # 电力感应塔测试数据
+├── img/                            # 静态图片资源
+│   └── to.png                      # 网站图标
+├── k8s/                            # Kubernetes部署配置
+│   └── deployment.yaml             # K8s部署清单
+├── localDocs/                      # 项目文档
+│   ├── Features.md                 # 功能特性文档
+│   ├── bluepirnt重构.md            # 蓝图模块重构文档
+│   ├── data模块详细说明.md          # data模块详细说明
+│   ├── data重构.md                 # data模块重构文档
+│   ├── index重构.md                # index重构文档
+│   ├── 功能清单.md                 # 功能清单文档
+│   ├── 原indexUI流程拆分详细文档.md # 原UI流程拆分文档
+│   ├── 原index流程拆分详细文档.md   # 原流程拆分文档
+│   ├── 堆叠流程重构.md             # 堆叠流程重构文档
+│   ├── 架构补齐文档.md             # 架构补齐文档
+│   ├── 架构迁移方案.md             # 架构迁移方案文档
+│   ├── 蓝图不堆叠模块详细说明.md    # 蓝图不堆叠模块说明
+│   ├── 蓝图堆叠模块详细说明.md      # 蓝图堆叠模块说明
+│   ├── 蓝图模块说明.md             # 蓝图模块说明
+│   ├── 重构后部署方案.md           # 重构后部署方案
+│   └── 需求文档.md                 # 需求文档
+├── public/                         # 公共静态资源
+│   ├── 429.html                    # 请求过多错误页面
+│   ├── health.json                 # 健康检查端点
+│   ├── og-image.svg                # Open Graph图片
+│   ├── pwa-192x192.svg             # PWA图标192x192
+│   ├── pwa-512x512.svg             # PWA图标512x512
+│   ├── ready.json                  # 就绪检查端点
+│   ├── robots.txt                  # 爬虫规则
+│   └── sitemap.xml                 # 站点地图
+├── quote/                          # 页眉页脚模板
+│   ├── localDocs/
+│   │   └── 模块说明.md             # 模块说明文档
+│   ├── explanation.html            # 说明页面模板
+│   └── updata.html                 # 更新页面模板
+├── src/                            # 源代码目录
+│   ├── components/                 # Vue组件
+│   │   ├── AddItemDialog/
+│   │   │   └── AddItemDialog.vue   # 添加物品对话框：物品搜索、分类筛选、数量输入
+│   │   ├── BlueprintGenerator/
+│   │   │   └── BlueprintGenerator.vue # 蓝图生成器：生成蓝图字符串、下载蓝图文件
+│   │   ├── ConfigPanel/
+│   │   │   └── ConfigPanel.vue     # 配置面板：设备类型选择、增产剂配置、蓝图参数设置
+│   │   ├── ControlPanel/
+│   │   │   └── ControlPanel.vue    # 控制面板：产量/设备数量输入、添加需求、设置按钮
+│   │   ├── DemandList/
+│   │   │   └── DemandList.vue      # 需求列表：显示已添加需求、编辑数量、删除需求
+│   │   ├── ErrorBoundary/
+│   │   │   ├── ErrorBoundary.vue   # 错误边界：捕获组件错误、显示错误UI、重试机制
+│   │   │   └── ErrorBoundary.stories.ts # 错误边界Storybook文档
+│   │   ├── LocaleSwitcher/
+│   │   │   ├── LocaleSwitcher.vue  # 语言切换：中英文切换下拉框
+│   │   │   └── LocaleSwitcher.stories.ts # 语言切换Storybook文档
+│   │   ├── PWAUpdateBanner/
+│   │   │   └── PWAUpdateBanner.vue # PWA更新提示：检测新版本、提示用户刷新
+│   │   ├── ResultTable/
+│   │   │   └── ResultTable.vue     # 结果表格：树形展示计算结果、排除物品、配方选择
+│   │   ├── Skeleton/
+│   │   │   ├── Skeleton.vue        # 骨架屏基础组件：加载占位动画
+│   │   │   ├── SkeletonCard.vue    # 卡片骨架屏
+│   │   │   ├── SkeletonTable.vue   # 表格骨架屏
+│   │   │   └── index.ts            # 骨架屏组件导出
+│   │   ├── Toast/
+│   │   │   └── Toast.vue           # 消息提示：success/error/warning/info/loading
+│   │   └── layout/
+│   │       ├── ResponsiveContainer.vue # 响应式容器：自适应宽度、响应式padding
+│   │       ├── ResponsiveGrid.vue  # 响应式网格：自适应列数、响应式间距
+│   │       ├── ResponsiveHide.vue  # 响应式隐藏：断点控制显示/隐藏
+│   │       └── index.ts            # 布局组件导出
+│   ├── composables/                # 组合式函数
+│   │   ├── useBreakpoints.ts       # 断点检测：响应式断点(xs/sm/md/lg/xl/2xl)
+│   │   ├── useIconProvider.ts      # 图标提供者：物品图标加载、缓存、Base64转换
+│   │   ├── useMeta.ts              # 元数据管理：动态设置title/description/og标签
+│   │   └── useToast.ts             # 消息提示：全局toast API封装
+│   ├── core/                       # 核心业务逻辑
+│   │   ├── adapters/               # 适配器层
+│   │   │   ├── BlueprintAdapter.ts # 蓝图适配器：封装蓝图生成、配置转换
+│   │   │   ├── RecipeAdapter.ts    # 配方适配器：配方数据转换、索引构建
+│   │   │   ├── SettingsAdapter.ts  # 设置适配器：配方设置/速度设置/增产剂设置管理
+│   │   │   └── index.ts            # 适配器导出
+│   │   ├── blueprint/              # 蓝图生成模块
+│   │   │   ├── generators/         # 生成器
+│   │   │   │   ├── building/       # 建筑生成器
+│   │   │   │   │   ├── AssemblerGenerator.ts      # 制造台生成器
+│   │   │   │   │   ├── BaseBuildingGenerator.ts   # 建筑生成器基类
+│   │   │   │   │   ├── BuildingGeneratorFactory.ts# 建筑生成器工厂
+│   │   │   │   │   ├── ColliderGenerator.ts       # 粒子对撞机生成器
+│   │   │   │   │   ├── LabGenerator.ts            # 研究站生成器
+│   │   │   │   │   ├── PlantGenerator.ts         # 化工厂生成器
+│   │   │   │   │   ├── RefineryGenerator.ts      # 精炼厂生成器
+│   │   │   │   │   ├── SmelterGenerator.ts       # 熔炉生成器
+│   │   │   │   │   └── index.ts                   # 建筑生成器导出
+│   │   │   │   ├── conveyor/       # 传送带生成器
+│   │   │   │   │   ├── ConveyorConnectionBuilder.ts    # 传送带连接构建器
+│   │   │   │   │   ├── ConveyorNodeBuilder.ts         # 传送带节点构建器
+│   │   │   │   │   ├── SprayCoaterConveyorBuilder.ts  # 喷涂机传送带构建器
+│   │   │   │   │   └── index.ts                       # 传送带生成器导出
+│   │   │   │   ├── sorter/         # 分拣器生成器
+│   │   │   │   │   ├── ColliderSorterStrategy.ts      # 对撞机分拣器策略
+│   │   │   │   │   ├── LabSorterStrategy.ts           # 研究站分拣器策略
+│   │   │   │   │   ├── PlantSorterStrategy.ts         # 化工厂分拣器策略
+│   │   │   │   │   ├── RefinerySorterStrategy.ts      # 精炼厂分拣器策略
+│   │   │   │   │   ├── SmelterAssemblerSorterStrategy.ts # 熔炉/制造台分拣器策略
+│   │   │   │   │   ├── SorterPositionCalculator.ts    # 分拣器位置计算器
+│   │   │   │   │   ├── SorterPositionStrategy.ts      # 分拣器位置策略接口
+│   │   │   │   │   └── index.ts                       # 分拣器生成器导出
+│   │   │   │   ├── BuildingGenerator.ts    # 建筑生成器：建筑布局、索引分配
+│   │   │   │   ├── ConnectionBuilder.ts    # 连接构建器：建筑间连接
+│   │   │   │   ├── ConveyorGenerator.ts    # 传送带生成器：传送带网络生成
+│   │   │   │   ├── ItemSummaryCalculator.ts # 物品汇总计算器：输入输出汇总
+│   │   │   │   ├── LayoutCalculator.ts      # 布局计算器：蓝图尺寸、建筑位置
+│   │   │   │   ├── SorterGenerator.ts       # 分拣器生成器：分拣器位置、朝向
+│   │   │   │   └── index.ts                 # 生成器导出
+│   │   │   ├── services/
+│   │   │   │   ├── BlueprintService.ts      # 蓝图服务：蓝图生成入口、配置管理
+│   │   │   │   └── index.ts                 # 服务导出
+│   │   │   ├── types/
+│   │   │   │   ├── buildingGenerator.ts     # 建筑生成器类型定义
+│   │   │   │   ├── conveyorGenerator.ts     # 传送带生成器类型定义
+│   │   │   │   └── index.ts                 # 类型导出
+│   │   │   └── index.ts                     # 蓝图模块导出
+│   │   ├── config/
+│   │   │   └── app.config.ts                # 应用配置：版本、存储键名、默认值
+│   │   ├── data/                            # 数据文件
+│   │   │   ├── buildingMap.json             # 建筑映射：itemId/modelIndex/size等
+│   │   │   ├── buildingType.json            # 建筑类型定义
+│   │   │   ├── index.ts                     # 数据导出
+│   │   │   ├── itemMap.json                 # 物品映射：iconId/name/remark
+│   │   │   ├── productionCategory.json      # 生产类别定义
+│   │   │   ├── recipeMap.json               # 配方映射
+│   │   │   ├── recipes.json                 # 配方数据：所有游戏配方
+│   │   │   └── recipes.schema.json          # 配方数据JSON Schema
+│   │   ├── legacy/                          # 遗留代码封装
+│   │   │   ├── blueprint.d.ts               # 蓝图模块类型声明
+│   │   │   ├── blueprint.js                 # 蓝图模块封装：编解码函数
+│   │   │   ├── calculator.d.ts              # 计算器类型声明
+│   │   │   ├── calculator.js                # 计算器模块：loadNumber/find/checkResult
+│   │   │   ├── configData.d.ts              # 配置数据类型声明
+│   │   │   ├── configData.js                # 配置数据：energyData/spaceData
+│   │   │   ├── data.d.ts                    # data模块类型声明
+│   │   │   ├── data.js                      # data模块：update_all核心计算逻辑
+│   │   │   ├── iconLoader.d.ts              # 图标加载器类型声明
+│   │   │   ├── iconLoader.js                # 图标加载器：游戏图标加载
+│   │   │   ├── recipeHelper.d.ts            # 配方助手类型声明
+│   │   │   ├── recipeHelper.js              # 配方助手：getGroup/getPfs
+│   │   │   ├── settingsHelper.d.ts          # 设置助手类型声明
+│   │   │   ├── settingsHelper.js            # 设置助手：设置持久化
+│   │   │   ├── storageManager.d.ts          # 存储管理类型声明
+│   │   │   └── storageManager.js            # 存储管理：localStorage封装
+│   │   ├── services/                        # 服务层
+│   │   │   ├── CalculationContext.ts        # 计算上下文：消费/生产记录、递归深度
+│   │   │   ├── CalculatorService.ts         # 计算服务：计算入口、状态管理
+│   │   │   ├── RecipeCalculator.ts          # 配方计算器：loadNumber/find/checkResult
+│   │   │   ├── StackService.ts              # 堆叠服务：垂直堆叠、索引重映射
+│   │   │   ├── UpdateAllService.ts          # 更新服务：update_all逻辑封装
+│   │   │   └── index.ts                     # 服务导出
+│   │   ├── types/                           # 类型定义
+│   │   │   ├── blueprint.ts                 # 蓝图类型：IBlueprintData/IBlueprintBuilding
+│   │   │   ├── buildingMap.ts               # 建筑映射类型
+│   │   │   ├── calculator.ts                # 计算器类型
+│   │   │   ├── index.ts                     # 类型导出
+│   │   │   ├── itemMap.ts                   # 物品映射类型
+│   │   │   ├── legacy.ts                    # 遗留代码类型
+│   │   │   ├── recipe.ts                    # 配方类型：IRecipe/IDemand
+│   │   │   ├── settings.ts                  # 设置类型：IRecipeSettings/ISpeedSettings
+│   │   │   └── stack.ts                     # 堆叠类型：IStackConfig/ICloneResult
+│   │   ├── utils/                           # 工具函数
+│   │   │   ├── BinaryReader.ts              # 二进制读取器：蓝图解码用
+│   │   │   ├── BinaryWriter.ts              # 二进制写入器：蓝图编码用
+│   │   │   ├── BlueprintDecoder.ts          # 蓝图解码器：蓝图字符串→JSON
+│   │   │   ├── BlueprintEncoder.ts          # 蓝图编码器：JSON→蓝图字符串
+│   │   │   ├── IndexMapper.ts               # 索引映射器：堆叠时索引重映射
+│   │   │   ├── index.ts                     # 工具导出
+│   │   │   ├── md5.ts                       # MD5哈希：蓝图校验
+│   │   │   ├── storage.ts                   # 存储工具：localStorage封装
+│   │   │   ├── unitConverter.ts             # 单位转换器
+│   │   │   └── validator.ts                 # 验证器：数据校验
+│   │   ├── workers/                         # Web Worker
+│   │   │   ├── CalculatorWorkerService.ts   # Worker服务：Worker生命周期管理
+│   │   │   ├── calculator.worker.ts         # 计算Worker：后台计算逻辑
+│   │   │   ├── index.ts                     # Worker导出
+│   │   │   └── types.ts                     # Worker类型定义
+│   │   └── bridge.ts                        # 遗留代码桥接层：新旧代码交互
+│   ├── i18n/                                # 国际化
+│   │   ├── index.ts                         # i18n配置：语言检测、切换
+│   │   └── locales/                         # 语言文件
+│   │       ├── en-US.ts                     # 英文翻译
+│   │       └── zh-CN.ts                     # 简体中文翻译
+│   ├── stores/                              # Pinia状态管理
+│   │   └── blueprint.ts                     # 蓝图状态：需求列表、计算结果、设置
+│   ├── utils/                               # 通用工具
+│   │   ├── desensitize.ts                   # 数据脱敏：敏感信息处理
+│   │   ├── errorReporter.ts                 # 错误上报：错误收集、上报
+│   │   ├── format.ts                        # 格式化工具：数字格式化
+│   │   ├── logger.ts                        # 日志工具：分级日志、脱敏
+│   │   ├── validators.ts                    # 验证器：通用验证函数
+│   │   └── webVitals.ts                     # 性能监控：LCP/FID/CLS等指标
+│   ├── App.vue                              # 根组件：应用布局、全局组件
+│   ├── main.ts                              # 入口文件：Vue应用初始化
+│   └── shims.d.ts                           # 类型声明垫片
+├── .dockerignore                            # Docker忽略文件
+├── .env.development                         # 开发环境变量
+├── .env.example                             # 环境变量示例
+├── .env.production                          # 生产环境变量
+├── .eslintignore                            # ESLint忽略文件
+├── .eslintrc.cjs                            # ESLint配置
+├── .gitignore                               # Git忽略文件
+├── .prettierignore                          # Prettier忽略文件
+├── .prettierrc                              # Prettier配置
+├── Dockerfile                               # Docker镜像构建
+├── LICENSE                                  # 开源许可证
+├── README.md                                # 项目说明文档
+├── docker-compose.yml                       # Docker Compose配置
+├── favicon.ico                              # 网站图标
+├── index.html                               # HTML入口
+├── nginx.conf                               # Nginx配置
+├── package-lock.json                        # 依赖锁定文件
+├── package.json                             # 项目配置：依赖、脚本
+├── playwright.config.ts                     # E2E测试配置
+├── tsconfig.json                            # TypeScript配置
+├── tsconfig.node.json                       # Node TypeScript配置
+├── vercel.json                              # Vercel部署配置
+├── vite.config.ts                           # Vite构建配置
+├── vitest.config.ts                         # Vitest测试配置
+└── vitest.shims.d.ts                        # Vitest类型垫片
 ```
 
 ## 架构设计

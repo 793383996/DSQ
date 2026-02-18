@@ -1,3 +1,21 @@
+/**
+ * BuildingGenerator类型定义
+ *
+ * 定义：
+ * - IBuildingGeneratorConfig: 建筑生成器配置
+ * - IBuildingLayout: 建筑布局
+ * - ISorterInfo: 分拣器信息
+ * - ISorterMap: 分拣器映射
+ * - BuildingArray: 建筑数组
+ * - IOccupiedArea: 占用区域
+ * - ISubRecipe: 子配方
+ * - IBuildingGenerateResult: 建筑生成结果
+ *
+ * 上游使用：
+ * - generators/building/*.ts: 各类建筑生成器
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ * - services/BlueprintService.ts: 蓝图服务
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../types/blueprint'
 
 export interface IBuildingGeneratorConfig {

@@ -1,3 +1,23 @@
+/**
+ * Calculator类型定义
+ *
+ * 功能：
+ * - 定义计算上下文类型
+ * - 定义消耗项和产出项类型
+ * - 定义计算配置类型
+ *
+ * 定义：
+ * - IConsumptionEntry: 消耗项
+ * - IProductionEntry: 产出项
+ * - ICalculationConfig: 计算配置
+ * - ICalculationContext: 计算上下文接口
+ * - ICalculationState: 计算状态
+ *
+ * 上游使用：
+ * - core/services/CalculatorService.ts: 计算服务
+ * - core/services/CalculationContext.ts: 计算上下文
+ * - core/services/RecipeCalculator.ts: 配方计算器
+ */
 import type { IRecipeSettings, ISpeedSettings, IProductivitySettings } from './settings'
 import type { IRecipeItem, IDemandItem } from './recipe'
 

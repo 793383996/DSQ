@@ -1,3 +1,26 @@
+<!--
+ * ResponsiveContainer - 响应式容器组件
+ *
+ * 功能：
+ * - 提供响应式最大宽度和内边距
+ * - 根据断点自动调整容器尺寸
+ * - 支持流式布局（100%宽度）
+ *
+ * Props：
+ * - maxWidth: 各断点的最大宽度配置
+ * - padding: 各断点的内边距配置
+ * - fluid: 是否流式布局
+ *
+ * 上游调用：
+ * - App.vue: 页面主容器
+ * - 其他需要响应式容器的组件
+ *
+ * 下游依赖：
+ * - composables/useBreakpoints.ts: 断点检测
+ *
+ * 断点顺序：
+ * - xs < sm < md < lg < xl < 2xl
+ -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useBreakpoints, type Breakpoint } from '@/composables/useBreakpoints'

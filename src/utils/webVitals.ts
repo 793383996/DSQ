@@ -1,3 +1,31 @@
+/**
+ * WebVitals - 性能指标采集工具
+ *
+ * 功能：
+ * - 采集Web性能指标（LCP/FID/CLS/TTFB/INP/FCP）
+ * - 评估性能等级（good/needs-improvement/poor）
+ * - 支持性能数据上报
+ *
+ * 主要指标：
+ * - LCP: 最大内容绘制时间
+ * - FID: 首次输入延迟
+ * - CLS: 累积布局偏移
+ * - TTFB: 首字节时间
+ * - INP: 交互到下一次绘制
+ * - FCP: 首次内容绘制
+ *
+ * 主要方法：
+ * - collectMetrics(): 采集性能指标
+ * - getReport(): 获取性能报告
+ * - observePerformance(): 监听性能变化
+ *
+ * 上游调用：
+ * - main.ts: 应用入口
+ * - App.vue: 主应用组件
+ *
+ * 阈值标准：
+ * - 基于Google Web Vitals标准
+ */
 export interface PerformanceMetric {
   name: string
   value: number

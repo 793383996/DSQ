@@ -1,3 +1,26 @@
+<!--
+ * PWAUpdateBanner - PWA更新提示横幅组件
+ *
+ * 功能：
+ * - 检测Service Worker更新并提示用户
+ * - 支持稍后更新和立即刷新
+ * - 支持离线就绪提示
+ *
+ * 主要方法：
+ * - dismiss(): 关闭更新提示
+ * - refresh(): 执行Service Worker更新并刷新页面
+ *
+ * 上游调用：
+ * - App.vue: 作为PWA更新提示入口
+ *
+ * 下游依赖：
+ * - virtual:pwa-register: registerSW() 注册Service Worker
+ * - utils/logger.ts: 日志记录
+ *
+ * 生命周期：
+ * - onMounted: 注册SW回调
+ * - onUnmounted: 清理回调引用
+ -->
 <template>
   <Teleport to="body">
     <Transition name="pwa-update">

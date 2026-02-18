@@ -1,3 +1,21 @@
+/**
+ * LabSorterStrategy - 研究站分拣器策略
+ *
+ * 功能：
+ * - 计算矩阵研究站的分拣器位置
+ * - 支持多种槽位索引（10/11等）
+ * - 处理建筑旋转
+ *
+ * 主要方法：
+ * - getCategory(): 获取建筑类型（lab）
+ * - calculate(context): 计算分拣器位置
+ *
+ * 上游调用：
+ * - generators/sorter/SorterPositionCalculator.ts: 分拣器位置计算器
+ *
+ * 下游依赖：
+ * - generators/sorter/SorterPositionStrategy.ts: 分拣器位置策略基类
+ */
 import type { ICoordinate } from '../../../types/blueprint'
 import {
   SorterPositionStrategy,

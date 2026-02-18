@@ -1,3 +1,27 @@
+/**
+ * ConnectionBuilder - 连接构建器
+ *
+ * 功能：
+ * - 构建分拣器与传送带的连接
+ * - 计算每条传送带的分拣器数量
+ * - 处理堆叠层的连接调整
+ *
+ * 主要方法：
+ * - connectSortersToConveyor(buildings, sorters, conveyorStartIndex, itemSummary): 连接分拣器到传送带
+ * - updateConfig(config): 更新配置
+ * - calculateSortersPerNode(): 计算每节点分拣器数量
+ *
+ * 上游调用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ *
+ * 下游依赖：
+ * - types/blueprint.ts: 蓝图类型定义
+ * - types/buildingGenerator.ts: 建筑生成器类型定义
+ *
+ * 连接规则：
+ * - 每条传送带最多连接maxSorterNumOneBelt个分拣器
+ * - 堆叠层时分拣器数量按层数均分
+ */
 import type { IBlueprintBuilding } from '../../types/blueprint'
 import type { ISorterMap, ISorterInfo } from '../types/buildingGenerator'
 

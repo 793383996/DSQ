@@ -1,3 +1,21 @@
+/**
+ * Worker类型定义
+ *
+ * 定义：
+ * - IWorkerCalculateRequest: 计算请求
+ * - IWorkerCalculateResponse: 计算响应
+ * - IWorkerInitRequest: 初始化请求
+ * - IWorkerInitResponse: 初始化响应
+ * - WorkerRequest: Worker请求联合类型
+ * - WorkerResponse: Worker响应联合类型
+ *
+ * 上游使用：
+ * - workers/CalculatorWorkerService.ts: Worker服务
+ * - workers/calculator.worker.ts: Worker实现
+ *
+ * 下游依赖：
+ * - types/settings.ts: 设置类型定义
+ */
 import type { IRawRecipe } from '../types/settings'
 
 export interface IWorkerCalculateRequest {

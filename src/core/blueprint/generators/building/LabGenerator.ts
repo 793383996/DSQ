@@ -1,3 +1,28 @@
+/**
+ * LabGenerator - 研究站生成器
+ *
+ * 功能：
+ * - 生成研究站类建筑（矩阵研究站、自演化研究站）
+ * - 计算研究站布局和占用区域
+ * - 生成分拣器连接
+ * - 支持研究站多层堆叠
+ *
+ * 主要方法：
+ * - getCategory(): 获取建筑类型（lab）
+ * - calculateBuildingArea(compactLayout): 计算建筑区域
+ * - generate(params): 生成研究站建筑
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - generators/building/BaseBuildingGenerator.ts: 建筑生成器基类
+ * - generators/SorterGenerator.ts: 分拣器生成器
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 建筑尺寸：
+ * - 7x6格，占用面积42格
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type {
   IBuildingLayout,

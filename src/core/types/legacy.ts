@@ -1,4 +1,25 @@
 /**
+ * Legacy类型定义
+ *
+ * 功能：
+ * - 定义遗留代码接口类型
+ * - 描述data.js和blueprint.js中的数据结构
+ * - 提供遗留代码兼容层
+ *
+ * 定义：
+ * - ILegacyDataItem: 遗留数据项
+ * - ILegacyIcon: 遗留图标
+ * - ILegacyGameData: 遗留游戏数据
+ * - ILegacyXhItem: 遗留消耗项
+ * - ILegacyOutItem: 遗留产出项
+ * - ILegacySettings: 遗留设置
+ * - ILegacyWindow: 遗留窗口接口
+ *
+ * 上游使用：
+ * - core/legacy/data.js: 遗留数据模块
+ * - core/bridge.ts: 状态同步桥
+ */
+/**
  * 遗留模块类型定义
  *
  * 这些类型定义用于描述 data.js 和 blueprint.js 中的遗留代码接口

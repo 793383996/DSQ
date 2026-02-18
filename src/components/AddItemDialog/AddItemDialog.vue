@@ -1,3 +1,28 @@
+<!--
+ * AddItemDialog - 添加物品对话框组件
+ *
+ * 功能：
+ * - 提供物品搜索和分类筛选功能（组件/建筑两个分类）
+ * - 支持物品图标加载和显示
+ * - 支持数量输入和确认添加
+ *
+ * 主要方法：
+ * - loadItems(): 加载可选物品列表
+ * - selectItem(item): 选择物品
+ * - confirm(): 确认添加物品到需求列表
+ * - close(): 关闭对话框
+ *
+ * 上游调用：
+ * - App.vue: 通过v-model控制对话框显示
+ *
+ * 下游依赖：
+ * - core/bridge.ts: getSelectableItemsWithIcons() 获取物品列表
+ * - stores/blueprint.ts: 通过emit将选中物品传递给父组件
+ *
+ * 事件：
+ * - @update:modelValue: 更新对话框显示状态
+ * - @confirm: 确认添加物品 { name: string, num: number }
+ -->
 <template>
   <Teleport to="body">
     <div v-if="visible" class="dialog-overlay" @click.self="close">

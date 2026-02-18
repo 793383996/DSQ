@@ -1,3 +1,27 @@
+/**
+ * Validators - 表单验证工具
+ *
+ * 功能：
+ * - 提供表单字段验证函数
+ * - 支持链式验证组合
+ * - 返回验证结果和错误信息
+ *
+ * 主要方法：
+ * - required(message): 必填验证
+ * - minLength(min, message): 最小长度验证
+ * - maxLength(max, message): 最大长度验证
+ * - pattern(regex, message): 正则验证
+ * - range(min, max, message): 范围验证
+ * - compose(...validators): 组合多个验证器
+ *
+ * 上游调用：
+ * - components/AddItemDialog.vue: 添加物品对话框
+ * - components/ConfigPanel.vue: 配置面板
+ *
+ * 验证结果：
+ * - valid: 是否有效
+ * - errors: 错误信息数组
+ */
 export interface ValidationResult {
   valid: boolean
   errors: string[]

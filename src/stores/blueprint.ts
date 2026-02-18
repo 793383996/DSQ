@@ -1,3 +1,44 @@
+/**
+ * BlueprintStore - 蓝图状态存储
+ *
+ * 功能：
+ * - 管理需求列表和排除列表
+ * - 管理机器设置（制造台、熔炉、化工厂等）
+ * - 管理增产剂设置
+ * - 管理计算结果（消耗列表、产出列表）
+ * - 管理配方设置、速度设置、生产力设置
+ * - 支持状态持久化和快照
+ *
+ * 主要状态：
+ * - demandList: 需求列表
+ * - excludeList: 排除列表
+ * - machineSettings: 机器设置
+ * - consumptionList: 消耗列表
+ * - productionList: 产出列表
+ * - recipeSettings: 配方设置
+ * - speedSettings: 速度设置
+ * - productivitySettings: 生产力设置
+ *
+ * 主要方法：
+ * - addDemand(name, num): 添加需求
+ * - removeDemand(name): 移除需求
+ * - toggleExclude(name): 切换排除状态
+ * - setMachineSettings(settings): 设置机器设置
+ * - runCalculation(): 执行计算
+ * - createSnapshot(): 创建状态快照
+ * - restoreSnapshot(snapshot): 恢复状态快照
+ *
+ * 上游调用：
+ * - App.vue: 主应用组件
+ * - components/DemandList.vue: 需求列表组件
+ * - components/ConfigPanel.vue: 配置面板组件
+ * - components/ResultTable.vue: 结果表格组件
+ *
+ * 下游依赖：
+ * - core/bridge.ts: 状态同步桥
+ * - core/services/CalculatorService.ts: 计算服务
+ * - core/config/app.config.ts: 应用配置
+ */
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { logger } from '../utils/logger'

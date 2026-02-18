@@ -1,3 +1,43 @@
+/**
+ * UpdateAllService - 更新服务
+ *
+ * 功能：
+ * - 执行完整的计算流程
+ * - 协调RecipeCalculator进行配方计算
+ * - 处理机器信息和增产剂设置
+ * - 生成结果列表和统计信息
+ * - 处理临界光子/轨道采集器特殊逻辑
+ *
+ * 主要方法：
+ * - updateAll(options): 执行完整计算
+ * - getMachineInfo(recipe, settings, settingsTime): 获取机器信息
+ * - getState(): 获取计算状态
+ * - fixCriticalPhotonSpeed(): 修正临界光子速度
+ * - fixOrbitalCollector(): 修正轨道采集器
+ *
+ * 上游调用：
+ * - core/services/CalculatorService.ts: 计算服务
+ * - core/workers/calculator.worker.ts: Worker计算
+ *
+ * 下游依赖：
+ * - core/services/RecipeCalculator.ts: 配方计算器
+ * - core/types/settings.ts: 设置类型定义
+ * - core/types/recipe.ts: 配方类型定义
+ * - utils/logger.ts: 日志记录
+ * - composables/useToast.ts: 消息提示
+ *
+ * 计算流程：
+ * 1. 初始化RecipeCalculator
+ * 2. 设置排除列表
+ * 3. 修正临界光子速度
+ * 4. 修正轨道采集器
+ * 5. 执行loadNumber递归计算
+ * 6. 执行fixGzSpeed修正光栅石
+ * 7. 计算value2（设备数量）
+ * 8. 执行checkResult检查溢出
+ * 9. 执行mergeMul合并多产出
+ * 10. 生成结果列表
+ */
 import {
   RecipeCalculator,
   type ICalculationState,

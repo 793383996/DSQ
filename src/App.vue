@@ -1,3 +1,38 @@
+<!--
+ * App - 应用主组件
+ *
+ * 功能：
+ * - 应用入口组件，协调所有子组件
+ * - 管理计算流程和状态同步
+ * - 处理用户交互事件
+ * - 初始化遗留数据加载
+ *
+ * 主要方法：
+ * - runCalculation(retryCount): 执行计算逻辑
+ * - fixCalculation(): 修正计算
+ * - handleAddDemand(item): 添加需求
+ * - handleToggleExclude(item): 切换排除状态
+ * - handleAddItem(item): 添加物品
+ *
+ * 上游调用：
+ * - main.ts: 应用入口
+ *
+ * 下游依赖：
+ * - stores/blueprint.ts: 状态管理
+ * - core/bridge.ts: 遗留代码桥接
+ * - core/services/CalculatorService.ts: 计算服务
+ * - components/*: 所有UI组件
+ *
+ * 子组件：
+ * - ControlPanel: 控制面板
+ * - DemandList: 需求列表
+ * - ResultTable: 结果表格
+ * - ConfigPanel: 配置面板
+ * - AddItemDialog: 添加物品对话框
+ * - ErrorBoundary: 错误边界
+ * - LocaleSwitcher: 语言切换
+ * - PWAUpdateBanner: PWA更新提示
+ -->
 <template>
   <ErrorBoundary>
     <div id="app">

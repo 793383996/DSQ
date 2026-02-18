@@ -1,3 +1,32 @@
+/**
+ * LayoutCalculator - 布局计算器
+ *
+ * 功能：
+ * - 计算建筑的占用区域
+ * - 计算蓝图整体尺寸
+ * - 计算建筑布局位置
+ * - 支持紧凑布局模式
+ *
+ * 主要方法：
+ * - calculateBuildingArea(building, yaw, compactLayout): 计算建筑占用区域
+ * - calculateBlueprintArea(buildings, spacing): 计算蓝图整体区域
+ * - calculateLayout(building, index, yaw, offsetX, offsetY): 计算建筑布局
+ * - getOccupiedArea(): 获取占用区域列表
+ * - reset(): 重置状态
+ *
+ * 上游调用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
+ * - generators/building/*.ts: 各类建筑生成器
+ *
+ * 下游依赖：
+ * - types/buildingGenerator.ts: 建筑生成器类型定义
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 布局规则：
+ * - 根据建筑朝向(yaw)旋转占用区域
+ * - 紧凑布局时建筑间距为0
+ * - 非紧凑布局时建筑间距为1
+ */
 import type { IBuildingLayout, IOccupiedArea } from '../types/buildingGenerator'
 import type { IBuildingData } from '../../types/blueprint'
 

@@ -1,3 +1,36 @@
+/**
+ * BuildingGenerator - 建筑生成器基类
+ *
+ * 功能：
+ * - 生成生产建筑的基础模板
+ * - 管理建筑索引和占用区域
+ * - 维护分拣器映射
+ * - 提供建筑布局基础功能
+ *
+ * 主要方法：
+ * - getBuildingTemplate(): 获取建筑模板
+ * - getBuildings(): 获取生成的建筑列表
+ * - getSorters(): 获取分拣器映射
+ * - getBuildingArray(): 获取建筑数组
+ * - getOccupiedArea(): 获取占用区域
+ * - getBlueprintSize(): 获取蓝图尺寸
+ * - updateConfig(config): 更新配置
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - types/blueprint.ts: 蓝图类型定义
+ * - types/buildingGenerator.ts: 建筑生成器类型定义
+ *
+ * 子类：
+ * - AssemblerGenerator: 制造台生成器
+ * - SmelterGenerator: 熔炉生成器
+ * - LabGenerator: 研究站生成器
+ * - RefineryGenerator: 精炼厂生成器
+ * - PlantGenerator: 化工厂生成器
+ * - ColliderGenerator: 对撞机生成器
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../types/blueprint'
 import type {
   IBuildingGeneratorConfig,

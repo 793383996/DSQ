@@ -1,3 +1,35 @@
+/**
+ * ErrorReporter - 错误上报工具
+ *
+ * 功能：
+ * - 捕获全局JavaScript错误
+ * - 捕获未处理的Promise拒绝
+ * - 捕获Vue组件错误
+ * - 记录用户行为面包屑
+ * - 支持错误采样和上报
+ *
+ * 主要方法：
+ * - init(config): 初始化错误上报器
+ * - captureError(error, context): 捕获错误
+ * - addBreadcrumb(breadcrumb): 添加面包屑
+ * - setUser(user): 设置用户信息
+ *
+ * 上游调用：
+ * - main.ts: 应用入口
+ * - App.vue: 主应用组件
+ *
+ * 错误类型：
+ * - error: JavaScript错误
+ * - unhandledrejection: 未处理的Promise拒绝
+ * - vue: Vue组件错误
+ * - custom: 自定义错误
+ *
+ * 配置项：
+ * - dsn: 数据源名称
+ * - environment: 环境标识
+ * - maxBreadcrumbs: 最大面包屑数量
+ * - sampleRate: 采样率
+ */
 export interface ErrorReport {
   message: string
   stack?: string

@@ -1,3 +1,27 @@
+/**
+ * SprayCoaterConveyorBuilder - 喷涂机传送带构建器
+ *
+ * 功能：
+ * - 构建喷涂机相关的传送带
+ * - 处理自喷涂逻辑
+ * - 管理喷涂机位置列表
+ *
+ * 主要方法：
+ * - buildSprayCoaterConveyors(params): 构建喷涂机传送带
+ * - setBuildingIndex(index): 设置建筑索引
+ * - getBuildingIndex(): 获取当前建筑索引
+ *
+ * 上游调用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ *
+ * 下游依赖：
+ * - generators/conveyor/ConveyorNodeBuilder.ts: 传送带节点构建器
+ * - types/conveyorGenerator.ts: 传送带类型定义
+ *
+ * 喷涂机规则：
+ * - 自喷涂模式：喷涂机使用自身喷涂的增产剂
+ * - 非自喷涂模式：喷涂机使用外部供应的增产剂
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import { ConveyorNodeBuilder, type IBuildingMapForConveyor } from './ConveyorNodeBuilder'
 import type { IConveyorGeneratorConfig } from '../../types/conveyorGenerator'

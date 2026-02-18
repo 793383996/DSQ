@@ -1,3 +1,27 @@
+/**
+ * AssemblerGenerator - 制造台生成器
+ *
+ * 功能：
+ * - 生成制造台类建筑（制作台Mk.Ⅰ/Ⅱ/Ⅲ、重组式制造台）
+ * - 计算制造台布局和占用区域
+ * - 生成分拣器连接
+ *
+ * 主要方法：
+ * - getCategory(): 获取建筑类型（assembling）
+ * - calculateBuildingArea(compactLayout): 计算建筑区域
+ * - generate(params): 生成制造台建筑
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - generators/building/BaseBuildingGenerator.ts: 建筑生成器基类
+ * - generators/SorterGenerator.ts: 分拣器生成器
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 建筑尺寸：
+ * - 4x4格，占用面积16格
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type {
   IBuildingLayout,

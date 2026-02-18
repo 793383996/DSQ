@@ -1,3 +1,24 @@
+<!--
+ * Skeleton - 骨架屏基础组件
+ *
+ * 功能：
+ * - 显示内容加载前的占位骨架
+ * - 支持多种变体：文本/圆形/矩形
+ * - 支持多种动画：脉冲/波浪/无动画
+ * - 支持多行显示
+ *
+ * Props：
+ * - width: 宽度（字符串或数字）
+ * - height: 高度（字符串或数字）
+ * - variant: 变体类型 text/circular/rectangular
+ * - animation: 动画类型 pulse/wave/none
+ * - rows: 行数
+ *
+ * 上游调用：
+ * - SkeletonCard.vue: 卡片骨架
+ * - SkeletonTable.vue: 表格骨架
+ * - 其他需要加载占位的组件
+ -->
 <script setup lang="ts">
 import { computed } from 'vue'
 

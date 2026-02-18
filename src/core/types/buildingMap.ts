@@ -1,3 +1,29 @@
+/**
+ * BuildingMap类型定义
+ *
+ * 功能：
+ * - 定义建筑映射类型
+ * - 提供建筑查询函数
+ * - 导出建筑分类和类型常量
+ *
+ * 主要方法：
+ * - getBuildingByName(name): 按名称获取建筑
+ * - getBuildingByItemId(itemId): 按物品ID获取建筑
+ * - getProductionSpeed(name): 获取生产速度
+ *
+ * 常量：
+ * - PRODUCTION_CATEGORY: 生产分类（熔炉、制作台、化工厂等）
+ * - BUILDING_TYPE: 建筑类型（生产、分拣器、传送带）
+ *
+ * 上游使用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图服务
+ * - core/services/RecipeCalculator.ts: 配方计算器
+ *
+ * 下游依赖：
+ * - core/data/buildingMap.json: 建筑数据
+ * - core/data/productionCategory.json: 生产分类数据
+ * - core/data/buildingType.json: 建筑类型数据
+ */
 import type { IBuildingData, IBuildingInfo } from './blueprint'
 import buildingMapData from '../data/buildingMap.json'
 import productionCategoryData from '../data/productionCategory.json'

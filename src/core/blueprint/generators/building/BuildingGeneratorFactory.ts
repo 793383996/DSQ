@@ -1,3 +1,37 @@
+/**
+ * BuildingGeneratorFactory - 建筑生成器工厂
+ *
+ * 功能：
+ * - 根据建筑类型创建对应的生成器
+ * - 注册和管理所有建筑生成器
+ * - 提供建筑区域计算接口
+ *
+ * 主要方法：
+ * - getGenerator(category): 获取指定类型的生成器
+ * - hasGenerator(category): 检查是否有指定类型的生成器
+ * - calculateBuildingArea(category, compactLayout): 计算建筑区域
+ * - registerGenerators(): 注册所有生成器
+ *
+ * 上游调用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
+ *
+ * 下游依赖：
+ * - generators/building/BaseBuildingGenerator.ts: 建筑生成器基类
+ * - generators/building/SmelterGenerator.ts: 熔炉生成器
+ * - generators/building/AssemblerGenerator.ts: 制造台生成器
+ * - generators/building/PlantGenerator.ts: 化工厂生成器
+ * - generators/building/RefineryGenerator.ts: 精炼厂生成器
+ * - generators/building/ColliderGenerator.ts: 对撞机生成器
+ * - generators/building/LabGenerator.ts: 研究站生成器
+ *
+ * 建筑类型映射：
+ * - smelter(0): 熔炉类
+ * - assembling(1): 制造台类
+ * - plant(2): 化工厂类
+ * - refinery(3): 精炼厂类
+ * - collider(4): 对撞机类
+ * - lab(5): 研究站类
+ */
 import type {
   IBuildingGeneratorConfig,
   IBuildingLayout,

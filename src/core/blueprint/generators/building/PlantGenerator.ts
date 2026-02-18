@@ -1,3 +1,27 @@
+/**
+ * PlantGenerator - 化工厂生成器
+ *
+ * 功能：
+ * - 生成化工厂类建筑（化工厂、量子化工厂）
+ * - 计算化工厂布局和占用区域
+ * - 生成分拣器连接
+ *
+ * 主要方法：
+ * - getCategory(): 获取建筑类型（plant）
+ * - calculateBuildingArea(compactLayout): 计算建筑区域
+ * - generate(params): 生成化工厂建筑
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - generators/building/BaseBuildingGenerator.ts: 建筑生成器基类
+ * - generators/SorterGenerator.ts: 分拣器生成器
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 建筑尺寸：
+ * - 8x6格，占用面积48格
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type {
   IBuildingLayout,

@@ -1,3 +1,34 @@
+/**
+ * SorterGenerator - 分拣器生成器
+ *
+ * 功能：
+ * - 计算分拣器的位置和朝向
+ * - 根据建筑类型确定分拣器槽位偏移
+ * - 支持多种建筑类型：熔炉/制造台/化工厂/研究站/对撞机
+ *
+ * 主要方法：
+ * - calculateSorterLocalOffsetAndYaw(buildingOffset, type, slotIndex, rotate): 计算分拣器偏移和朝向
+ * - calculateSmelterAssemblingOffset(): 熔炉/制造台偏移计算
+ * - calculatePlantOffset(): 化工厂偏移计算
+ * - calculateRefineryOffset(): 精炼厂偏移计算
+ * - calculateColliderOffset(): 对撞机偏移计算
+ * - calculateLabOffset(): 研究站偏移计算
+ *
+ * 上游调用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ *
+ * 下游依赖：
+ * - types/blueprint.ts: 蓝图类型定义
+ * - types/buildingGenerator.ts: 建筑生成器类型定义
+ *
+ * 建筑类型分类：
+ * - smelter: 熔炉类
+ * - assembling: 制造台类
+ * - plant: 化工厂类
+ * - refinery: 精炼厂类
+ * - collider: 对撞机类
+ * - lab: 研究站类
+ */
 import type { ICoordinate } from '../../types/blueprint'
 import type { ISorterInfo, ISorterMap } from '../types/buildingGenerator'
 

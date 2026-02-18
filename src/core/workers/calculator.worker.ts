@@ -1,3 +1,32 @@
+/**
+ * CalculatorWorker - 计算Worker
+ *
+ * 功能：
+ * - 在独立线程执行配方计算
+ * - 避免阻塞主线程
+ * - 支持大数据量计算
+ * - 实现与legacy代码相同的计算逻辑
+ *
+ * 主要方法：
+ * - loadNumber(itemName, n): 递归计算物品需求
+ * - addXH(name, value): 添加消耗项
+ * - addOut(name, value): 添加产出项
+ * - fixGzSpeed(): 修正光栅石速度
+ * - fixCriticalPhotonSpeed(): 修正临界光子速度
+ * - fixOrbitalCollector(): 修正轨道采集器
+ *
+ * 上游调用：
+ * - workers/CalculatorWorkerService.ts: Worker服务
+ *
+ * 下游依赖：
+ * - workers/types.ts: Worker类型定义
+ *
+ * 消息类型：
+ * - init: 初始化Worker
+ * - calculate: 执行计算
+ * - result: 返回结果
+ * - error: 返回错误
+ */
 import type {
   IWorkerCalculateRequest,
   IWorkerCalculateResponse,

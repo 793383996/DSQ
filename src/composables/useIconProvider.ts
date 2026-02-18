@@ -1,3 +1,33 @@
+/**
+ * useIconProvider - 图标提供者组合式函数
+ *
+ * 功能：
+ * - 提供物品图标加载和缓存
+ * - 支持从远程服务器获取图标
+ * - 支持从legacy window.icons获取图标
+ * - 支持Base64格式图标缓存
+ *
+ * 主要方法：
+ * - getIcon(name): 获取图标（优先legacy，再缓存）
+ * - loadIconByName(name): 异步加载图标
+ * - preloadIcons(names): 批量预加载图标
+ * - hasIcon(name): 检查图标是否存在
+ * - clearCache(): 清空缓存
+ *
+ * 上游调用：
+ * - components/DemandList.vue: 显示需求物品图标
+ * - components/ResultTable.vue: 显示结果物品图标
+ * - components/AddItemDialog.vue: 显示物品选择图标
+ *
+ * 下游依赖：
+ * - core/data/index.ts: itemMap物品映射
+ * - utils/logger.ts: 日志记录
+ *
+ * 图标来源优先级：
+ * 1. window.icons (legacy已加载)
+ * 2. 本地缓存
+ * 3. 远程服务器 (https://icon.dspbh.cn/dse/)
+ */
 import { ref, shallowRef } from 'vue'
 import { itemMap, getItemRemark } from '../core/data'
 import { logger } from '../utils/logger'

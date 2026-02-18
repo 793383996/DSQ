@@ -1,3 +1,37 @@
+/**
+ * I18n - 国际化模块
+ *
+ * 功能：
+ * - 提供多语言支持（中文/英文）
+ * - 管理语言切换和持久化
+ * - 验证语言包完整性
+ * - 支持语言变更回调
+ *
+ * 主要方法：
+ * - getI18n(): 获取i18n实例
+ * - setLocale(locale): 设置语言
+ * - getLocale(): 获取当前语言
+ * - useCurrentLocale(): 响应式当前语言
+ * - onLocaleChange(callback): 监听语言变更
+ * - destroyI18n(): 销毁i18n实例
+ *
+ * 上游调用：
+ * - main.ts: 应用入口
+ * - components/LocaleSwitcher.vue: 语言切换组件
+ *
+ * 下游依赖：
+ * - i18n/locales/zh-CN.ts: 中文语言包
+ * - i18n/locales/en-US.ts: 英文语言包
+ *
+ * 支持语言：
+ * - zh-CN: 简体中文
+ * - en-US: 英语
+ *
+ * 语言检测顺序：
+ * 1. localStorage存储
+ * 2. 浏览器语言
+ * 3. 默认英语
+ */
 import { createI18n } from 'vue-i18n'
 import { ref, readonly, type Ref } from 'vue'
 import zhCN from './locales/zh-CN'

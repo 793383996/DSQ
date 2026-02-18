@@ -1,3 +1,24 @@
+<!--
+ * LocaleSwitcher - 语言切换组件
+ *
+ * 功能：
+ * - 提供语言切换下拉选择框
+ * - 支持简体中文和英文切换
+ * - 自动保存语言偏好到localStorage
+ *
+ * 主要方法：
+ * - handleChange(event): 处理语言切换事件
+ *
+ * 上游调用：
+ * - App.vue: 显示在页面头部
+ *
+ * 下游依赖：
+ * - i18n/index.ts: useCurrentLocale(), setLocale() 语言管理
+ *
+ * 支持语言：
+ * - zh-CN: 简体中文
+ * - en-US: English
+ -->
 <template>
   <div class="locale-switcher">
     <select :value="currentLocale" class="locale-select" @change="handleChange">

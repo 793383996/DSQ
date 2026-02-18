@@ -1,3 +1,42 @@
+/**
+ * RecipeCalculator - 配方计算器
+ *
+ * 功能：
+ * - 执行配方递归计算
+ * - 管理消耗列表(xhList)和产出列表(outList)
+ * - 处理增产剂效果计算
+ * - 支持多产出配方合并
+ * - 支持临界光子特殊处理
+ *
+ * 主要方法：
+ * - find(name, options): 查找配方
+ * - loadNumber(itemName, n, options): 递归计算物品需求
+ * - checkResultWithMachineInfo(getMachineInfo, settingsPf, settings, defaultAccValue): 检查结果溢出
+ * - fixGzSpeed(settingsTime, settingsPf): 修正光栅石速度
+ * - mergeMul(): 合并多产出配方
+ * - getPfs(productName): 获取产品所有可选配方
+ * - clearState(): 清空状态
+ * - getState(): 获取当前状态
+ *
+ * 上游调用：
+ * - core/services/UpdateAllService.ts: 更新服务
+ * - core/workers/calculator.worker.ts: Worker计算
+ *
+ * 下游依赖：
+ * - core/types/settings.ts: 设置类型定义
+ * - utils/logger.ts: 日志记录
+ *
+ * 状态结构：
+ * - xhList: 消耗列表
+ * - outList: 产出列表
+ * - xhMap: 消耗映射（快速查找）
+ * - outMap: 产出映射（快速查找）
+ * - igNames: 排除列表
+ *
+ * 递归深度控制：
+ * - 默认最大深度200
+ * - 超过深度时记录警告并返回
+ */
 import type { IRawRecipe } from '../types/settings'
 import { logger } from '../../utils/logger'
 

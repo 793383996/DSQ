@@ -1,3 +1,19 @@
+/**
+ * ConveyorGenerator类型定义
+ *
+ * 定义：
+ * - IItemSummary: 物品摘要
+ * - IItemSummaryEntry: 物品摘要条目
+ * - IConveyorGeneratorConfig: 传送带生成器配置
+ * - IConveyorNode: 传送带节点
+ * - IConveyorGenerateResult: 传送带生成结果
+ * - IBeltSegment: 传送带段
+ *
+ * 上游使用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ * - generators/ItemSummaryCalculator.ts: 物品摘要计算器
+ * - services/BlueprintService.ts: 蓝图服务
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../types/blueprint'
 import type { ISorterMap } from './buildingGenerator'
 

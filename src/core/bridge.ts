@@ -1,3 +1,31 @@
+/**
+ * Bridge - 遗留代码桥接模块
+ *
+ * 功能：
+ * - 加载和初始化遗留模块（data.js、blueprint.js）
+ * - 提供遗留代码与新代码的接口适配
+ * - 同步状态到遗留代码
+ * - 提供配方索引就绪通知
+ *
+ * 主要方法：
+ * - initLegacyBridge(): 初始化遗留桥接
+ * - loadLegacyModules(): 加载遗留模块
+ * - syncStateToLegacy(state): 同步状态到遗留代码
+ * - isGameDataLoaded(): 检查游戏数据是否加载
+ * - notifyRecipeIndexReady(): 通知配方索引就绪
+ * - waitForRecipeIndexReady(): 等待配方索引就绪
+ *
+ * 上游调用：
+ * - main.ts: 应用入口
+ * - stores/blueprint.ts: 状态存储
+ *
+ * 下游依赖：
+ * - core/legacy/data.js: 遗留数据模块
+ * - core/legacy/blueprint.js: 遗留蓝图模块
+ * - core/adapters/RecipeAdapter.ts: 配方适配器
+ * - core/adapters/SettingsAdapter.ts: 设置适配器
+ * - core/adapters/BlueprintAdapter.ts: 蓝图适配器
+ */
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
 import { settingsAdapter } from './adapters/SettingsAdapter'

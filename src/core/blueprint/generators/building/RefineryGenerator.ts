@@ -1,3 +1,28 @@
+/**
+ * RefineryGenerator - 精炼厂生成器
+ *
+ * 功能：
+ * - 生成精炼厂类建筑（原油精炼厂）
+ * - 计算精炼厂布局和占用区域
+ * - 生成分拣器连接
+ *
+ * 主要方法：
+ * - getCategory(): 获取建筑类型（refinery）
+ * - calculateBuildingArea(compactLayout): 计算建筑区域
+ * - generate(params): 生成精炼厂建筑
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - generators/building/BaseBuildingGenerator.ts: 建筑生成器基类
+ * - generators/SorterGenerator.ts: 分拣器生成器
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 建筑尺寸：
+ * - 紧凑布局：7x5格，占用面积30格
+ * - 非紧凑布局：更大尺寸
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type {
   IBuildingLayout,

@@ -1,4 +1,28 @@
 /**
+ * Recipe类型定义
+ *
+ * 功能：
+ * - 定义计算结果项类型
+ * - 定义机器选项和增产剂选项类型
+ * - 定义需求项类型
+ * - 定义配方项类型
+ *
+ * 定义：
+ * - IResultItem: 计算结果项（消耗项）
+ * - IResultItemOutput: 计算结果项（产出项）
+ * - IMachineOption: 机器选项
+ * - IProductivityOption: 增产剂选项
+ * - IDemand: 需求项
+ * - IDemandItem: 需求项（计算用）
+ * - IRecipeItem: 配方项
+ * - IConsumptionItem: 消耗项
+ *
+ * 上游使用：
+ * - core/services/UpdateAllService.ts: 更新服务
+ * - components/ResultTable.vue: 结果表格组件
+ * - stores/blueprint.ts: 状态存储
+ */
+/**
  * 计算结果项 - 消耗项
  */
 export interface IResultItem {

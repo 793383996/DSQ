@@ -1,13 +1,30 @@
-import { logger } from '../../utils/logger'
-
 /**
- * localStorage 封装工具
+ * Storage - localStorage封装工具
  *
- * 架构师注：
- * - 提供类型安全的 localStorage 访问
+ * 功能：
+ * - 提供类型安全的localStorage访问
  * - 处理隐私模式下的异常
  * - 支持版本化的数据存储
+ * - 自动序列化/反序列化JSON
+ *
+ * 主要方法：
+ * - setItem<T>(key, value): 安全存储数据
+ * - getItem<T>(key, defaultValue): 安全读取数据
+ * - removeItem(key): 删除数据
+ * - clear(): 清空所有数据
+ *
+ * 上游调用：
+ * - stores/*.ts: Pinia状态存储
+ * - composables/*.ts: 组合式函数
+ *
+ * 下游依赖：
+ * - utils/logger.ts: 日志记录
+ *
+ * 架构师注：
+ * - 所有键名自动添加dsq_前缀
+ * - 隐私模式下优雅降级
  */
+import { logger } from '../../utils/logger'
 
 const PREFIX = 'dsq_'
 

@@ -1,3 +1,38 @@
+/**
+ * SettingsAdapter - 设置适配器
+ *
+ * 功能：
+ * - 管理配方设置、速度设置、增产剂设置
+ * - 封装对window.settings/settings_time/settings_pf的访问
+ * - 提供类型安全的读写接口
+ * - 自动同步到localStorage
+ *
+ * 主要方法：
+ * - init(): 初始化设置（从遗留代码加载）
+ * - getRecipeSetting(recipeId): 获取配方设置
+ * - getRecipeMachine(recipeId): 获取配方选中的机器
+ * - setRecipeMachine(recipeId, machineName): 设置配方机器
+ * - getSpeedSetting(machineName): 获取机器速度
+ * - setSpeedSetting(machineName, speed): 设置机器速度
+ * - getProductivitySetting(itemName): 获取增产剂设置
+ * - loadFromStorage(): 从localStorage加载
+ * - saveToStorage(): 保存到localStorage
+ *
+ * 上游调用：
+ * - core/bridge.ts: 初始化设置
+ * - core/services/CalculatorService.ts: 获取配方设置
+ * - components/ConfigPanel.vue: 保存设置
+ *
+ * 下游依赖：
+ * - core/types/settings.ts: 设置类型定义
+ * - core/config/app.config.ts: 应用配置
+ * - utils/logger.ts: 日志记录
+ *
+ * 设置类型：
+ * - settings: 配方级设置，key为配方ID
+ * - settings_time: 机器速度设置，key为机器名称
+ * - settings_pf: 增产剂设置，key为物品名称
+ */
 import type {
   IRecipeSettings,
   ISpeedSettings,

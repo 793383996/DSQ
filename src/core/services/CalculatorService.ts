@@ -1,3 +1,39 @@
+/**
+ * CalculatorService - 计算服务
+ *
+ * 功能：
+ * - 封装update_all计算逻辑
+ * - 支持状态快照和验证，防止异步计算期间状态被修改
+ * - 支持Web Worker非阻塞计算
+ * - 提供计算上下文和统计信息
+ *
+ * 主要方法：
+ * - calculate(demands, excludes): 执行计算（简化版本）
+ * - calculateWithOptions(demands, options): 执行计算（带状态同步控制）
+ * - calculateWithEngine(demands, excludes, singleMakes): 使用新计算引擎
+ * - calculateWithWorker(demands, excludes, singleMakes, options): 使用Worker执行计算
+ * - getConsumption(): 获取消耗列表
+ * - getProduction(): 获取产出列表
+ * - getStats(): 获取计算统计信息
+ *
+ * 上游调用：
+ * - App.vue: runCalculation()
+ * - core/bridge.ts: runCalculation()
+ *
+ * 下游依赖：
+ * - core/services/CalculationContext.ts: 计算上下文
+ * - core/services/UpdateAllService.ts: 更新服务
+ * - core/adapters/RecipeAdapter.ts: 配方适配器
+ * - core/adapters/SettingsAdapter.ts: 设置适配器
+ * - core/workers/CalculatorWorkerService.ts: Worker服务
+ * - core/bridge.ts: 状态同步
+ *
+ * 架构师注：
+ * - 核心算法保持不变，仅做外围包装
+ * - update_all 函数视为黑盒，禁止修改内部递归逻辑
+ * - 所有计算结果通过 CalculationContext 封装
+ * - 输入输出格式与原 bridge.runCalculation 完全一致
+ */
 import type { IDemand, ILegacyCalculationResult, ILegacyApp } from '../types/recipe'
 import type { IRawRecipe } from '../types/settings'
 import type { LegacyWindow } from '../types/legacy'

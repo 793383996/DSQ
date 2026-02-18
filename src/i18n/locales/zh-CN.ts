@@ -1,3 +1,23 @@
+/**
+ * zh-CN - 简体中文语言包
+ *
+ * 功能：
+ * - 提供简体中文界面文本
+ * - 包含所有UI组件的中文翻译
+ *
+ * 模块：
+ * - app: 应用标题和副标题
+ * - common: 通用文本（加载、错误、确认等）
+ * - controlPanel: 控制面板文本
+ * - resultTable: 结果表格文本
+ * - configPanel: 配置面板文本
+ * - demandList: 需求列表文本
+ * - blueprint: 蓝图生成文本
+ * - errors: 错误信息文本
+ *
+ * 上游使用：
+ * - i18n/index.ts: 国际化模块入口
+ */
 export default {
   app: {
     title: '戴森球计划量产量化计算器',

@@ -1,3 +1,23 @@
+<!--
+ * SkeletonTable - 表格骨架屏组件
+ *
+ * 功能：
+ * - 显示表格加载前的占位骨架
+ * - 支持配置行数和列数
+ * - 支持显示/隐藏表头
+ *
+ * Props：
+ * - rows: 行数（默认5）
+ * - columns: 列数（默认4）
+ * - showHeader: 是否显示表头
+ *
+ * 上游调用：
+ * - App.vue: 表格数据加载时显示
+ * - ResultTable.vue: 结果加载占位
+ *
+ * 下游依赖：
+ * - Skeleton.vue: 基础骨架组件
+ -->
 <script setup lang="ts">
 import Skeleton from './Skeleton.vue'
 

@@ -1,3 +1,30 @@
+<!--
+ * ControlPanel - 控制面板组件
+ *
+ * 功能：
+ * - 产量输入：每分钟产量设置
+ * - 设备数量输入：直接设置设备数量
+ * - 添加需求按钮：触发添加物品对话框
+ * - 设置按钮：打开配置面板
+ * - 修正计算按钮：重新计算
+ *
+ * 主要方法：
+ * - updateProductionPerMinute(e): 更新每分钟产量
+ * - updateMachineCount(e): 更新设备数量
+ * - handleAdd(): 触发添加物品事件
+ *
+ * 上游调用：
+ * - App.vue: 作为控制栏入口
+ *
+ * 下游依赖：
+ * - stores/blueprint.ts: 状态管理
+ * - core/bridge.ts: legacySetProductionSettings() 设置产量参数
+ *
+ * 事件：
+ * - @open-settings: 打开设置面板
+ * - @fix-calculation: 修正计算
+ * - @add-item: 添加物品
+ -->
 <template>
   <div class="control-bar">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px">

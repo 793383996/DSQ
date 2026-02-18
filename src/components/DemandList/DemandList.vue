@@ -1,3 +1,29 @@
+<!--
+ * DemandList - 需求列表组件
+ *
+ * 功能：
+ * - 显示已添加的需求物品列表
+ * - 支持物品数量编辑（点击数量进入编辑模式）
+ * - 支持删除单个物品（右键图标或点击删除按钮）
+ * - 支持重置所有需求
+ *
+ * 主要方法：
+ * - getItemIcon(name): 获取物品图标
+ * - startEdit(index): 开始编辑数量
+ * - submitEdit(): 提交编辑
+ * - removeItem(index): 删除物品
+ * - resetAll(): 重置所有需求
+ *
+ * 上游调用：
+ * - App.vue: 显示需求列表
+ *
+ * 下游依赖：
+ * - stores/blueprint.ts: demandList状态管理
+ * - composables/useIconProvider.ts: 获取物品图标
+ *
+ * 事件：
+ * - @demand-changed: 需求变化时触发
+ -->
 <template>
   <div v-if="store.demandList.length > 0" class="demand-list">
     <div class="demand-header">

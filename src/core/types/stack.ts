@@ -1,3 +1,25 @@
+/**
+ * Stack类型定义
+ *
+ * 功能：
+ * - 定义建筑堆叠配置类型
+ * - 定义克隆过滤器和结果类型
+ * - 定义索引重映射规则类型
+ * - 定义物品汇总类型
+ *
+ * 定义：
+ * - IStackConfig: 堆叠配置
+ * - ICloneFilter: 克隆过滤器
+ * - ICloneResult: 克隆结果
+ * - IIndexRemapRule: 索引重映射规则
+ * - ISubRecipeBuilding: 子配方建筑
+ * - IItemSummary: 物品汇总
+ * - ISorterInfo: 分拣器信息
+ *
+ * 上游使用：
+ * - core/blueprint/services/StackService.ts: 堆叠服务
+ * - core/blueprint/services/BlueprintService.ts: 蓝图服务
+ */
 import type { IBlueprintBuilding } from './blueprint'
 
 export interface IStackConfig {

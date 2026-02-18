@@ -1,10 +1,32 @@
 /**
+ * UnitConverter - 单位转换工具
+ *
+ * 功能：
+ * - 游戏内单位与显示单位转换
+ * - 秒/分钟速率转换
+ * - 数字格式化和解析
+ *
+ * 主要方法：
+ * - perSecondToPerMinute(value): 秒速率转分钟速率
+ * - perMinuteToPerSecond(value): 分钟速率转秒速率
+ * - formatNumber(value, decimals): 格式化数字
+ * - parseNumber(value): 解析数字字符串
+ * - calculatePerMinute(baseAmount, time): 计算每分钟产量
+ *
+ * 上游调用：
+ * - core/services/UpdateAllService.ts: 更新服务
+ * - components/ResultTable.vue: 结果表格组件
+ *
+ * 单位说明：
+ * - 游戏内单位: 个/秒
+ * - 显示单位: 个/min
+ */
+/**
  * 单位转换工具
  *
  * 游戏内单位: 个/秒
  * 显示单位: 个/min
  */
-
 export const SECONDS_PER_MINUTE = 60
 
 /**

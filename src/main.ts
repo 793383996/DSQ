@@ -1,3 +1,39 @@
+/**
+ * Main - 应用入口模块
+ *
+ * 功能：
+ * - 初始化Vue应用
+ * - 加载遗留模块（data.js、blueprint.js）
+ * - 初始化日志、错误上报、性能监控
+ * - 注册全局错误处理器
+ * - 管理页面可见性状态
+ * - 清理应用资源
+ *
+ * 初始化流程：
+ * 1. 初始化日志器
+ * 2. 初始化错误上报器
+ * 3. 初始化性能监控
+ * 4. 初始化遗留桥接
+ * 5. 创建Vue应用和Pinia
+ * 6. 挂载Toast组件
+ * 7. 加载遗留模块
+ * 8. 挂载应用
+ *
+ * 主要导出：
+ * - onVisibilityChange(callback): 监听页面可见性变化
+ * - getPageVisibility(): 获取页面可见性状态
+ *
+ * 上游调用：
+ * - index.html: HTML入口
+ *
+ * 下游依赖：
+ * - App.vue: 主应用组件
+ * - core/bridge.ts: 遗留桥接
+ * - utils/logger.ts: 日志工具
+ * - utils/errorReporter.ts: 错误上报
+ * - utils/webVitals.ts: 性能监控
+ * - i18n/index.ts: 国际化
+ */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'

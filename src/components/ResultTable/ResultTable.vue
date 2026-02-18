@@ -1,3 +1,32 @@
+<!--
+ * ResultTable - 结果表格组件
+ *
+ * 功能：
+ * - 显示计算结果列表（物品/建筑/产量/设备数量）
+ * - 支持添加到需求列表
+ * - 支持排除/恢复物品
+ * - 支持加载状态和错误状态显示
+ *
+ * 主要方法：
+ * - getItemIcon(name): 获取物品图标
+ * - getBuildingName(item): 获取建筑名称
+ * - addToDemand(item): 添加到需求
+ * - excludeItem(item): 排除物品
+ * - includeItem(item): 恢复物品
+ *
+ * 上游调用：
+ * - App.vue: 显示生产/消耗结果
+ *
+ * 下游依赖：
+ * - stores/blueprint.ts: excludeList状态
+ * - composables/useIconProvider.ts: 图标获取
+ * - utils/format.ts: 数字格式化
+ *
+ * 事件：
+ * - @add-demand: 添加需求
+ * - @toggle-exclude: 切换排除状态
+ * - @retry: 重试计算
+ -->
 <template>
   <div class="result-table-container">
     <div v-if="isLoading" class="loading-state">

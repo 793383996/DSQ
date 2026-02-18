@@ -1,3 +1,32 @@
+/**
+ * useMeta - 页面元数据管理组合式函数
+ *
+ * 功能：
+ * - 管理页面title和meta标签
+ * - 支持OG标签和Twitter卡片
+ * - 支持canonical链接
+ * - 支持响应式更新
+ *
+ * 主要方法：
+ * - useMeta(options): 设置页面元数据
+ * - setDocumentTitle(title, suffix): 设置文档标题
+ * - setPageDescription(description): 设置页面描述
+ * - setPageKeywords(keywords): 设置关键词
+ * - setCanonicalUrl(url): 设置规范链接
+ * - resetMeta(): 重置为默认元数据
+ *
+ * 上游调用：
+ * - App.vue: 设置应用元数据
+ * - 其他需要SEO优化的页面
+ *
+ * 支持的元数据：
+ * - title: 页面标题
+ * - description: 页面描述
+ * - keywords: 关键词数组
+ * - ogImage: Open Graph图片
+ * - ogUrl: Open Graph URL
+ * - canonical: 规范链接
+ */
 import { watch, onMounted, onUnmounted } from 'vue'
 import type { MaybeRef } from 'vue'
 import { unref } from 'vue'

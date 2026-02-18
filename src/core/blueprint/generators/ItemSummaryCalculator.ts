@@ -1,3 +1,32 @@
+/**
+ * ItemSummaryCalculator - 物品摘要计算器
+ *
+ * 功能：
+ * - 计算配方的物品输入输出摘要
+ * - 处理增产剂效果计算
+ * - 支持堆叠层数缩放
+ * - 处理副产品优先级
+ *
+ * 主要方法：
+ * - calculate(subRecipes, buildingMap, productionCategory): 计算物品摘要
+ * - updateConfig(config): 更新配置
+ * - calculateExtraRate(acceleratorMode): 计算增产剂加成
+ *
+ * 上游调用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
+ *
+ * 下游依赖：
+ * - types/conveyorGenerator.ts: 传送带类型定义
+ * - types/buildingGenerator.ts: 建筑生成器类型定义
+ * - types/blueprint.ts: 蓝图类型定义
+ * - generators/SorterGenerator.ts: 分拣器生成器（PRODUCTION_CATEGORY）
+ *
+ * 增产剂优先级：
+ * - Mk3 > Mk2 > Mk1
+ *
+ * 副产品优先级：
+ * - 精炼油 > 氢 > 石墨烯 > 氘
+ */
 import type { IItemSummary, IItemSummaryEntry } from '../types/conveyorGenerator'
 import type { ISubRecipe, ISorterMap } from '../types/buildingGenerator'
 import type { IBuildingData } from '../../types/blueprint'

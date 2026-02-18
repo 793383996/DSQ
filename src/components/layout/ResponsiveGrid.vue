@@ -1,3 +1,23 @@
+<!--
+ * ResponsiveGrid - 响应式网格布局组件
+ *
+ * 功能：
+ * - 提供响应式网格布局
+ * - 根据断点自动调整列数和间距
+ * - 支持自定义最大宽度
+ *
+ * Props：
+ * - columns: 各断点的列数配置
+ * - gap: 各断点的间距配置
+ * - maxWidth: 最大宽度
+ *
+ * 上游调用：
+ * - App.vue: 结果表格网格布局
+ * - 其他需要网格布局的组件
+ *
+ * 下游依赖：
+ * - composables/useBreakpoints.ts: 断点检测
+ -->
 <script setup lang="ts">
 import { computed, provide, inject, type InjectionKey } from 'vue'
 import { useBreakpoints, type Breakpoint } from '@/composables/useBreakpoints'

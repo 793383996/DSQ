@@ -1,3 +1,33 @@
+/**
+ * RecipeAdapter - 配方适配器
+ *
+ * 功能：
+ * - 将简写数据转换为语义化接口
+ * - 复用data.js已构建的索引，避免双重索引
+ * - 提供配方查询接口（按产物/原料/ID）
+ *
+ * 主要方法：
+ * - loadFromRawData(rawData): 从原始数据加载配方
+ * - findByProductName(name): 按产物名称查找配方
+ * - findByInputName(name): 按原料名称查找配方
+ * - findById(id): 按ID查找配方
+ * - getAllRecipes(): 获取所有配方
+ * - isLoaded(): 检查是否已加载
+ * - reset(): 重置适配器
+ *
+ * 上游调用：
+ * - core/bridge.ts: 初始化时加载数据
+ * - core/services/CalculatorService.ts: 查询配方
+ *
+ * 下游依赖：
+ * - core/types/recipe.ts: 配方类型定义
+ * - utils/logger.ts: 日志记录
+ *
+ * 架构师注：
+ * - 此类为只读适配器，不修改原始数据
+ * - 复用 data.js 已构建的索引，避免双重索引
+ * - 所有对 window.data 的访问必须通过此适配器进行
+ */
 import type { IRecipe, IRecipeItem, IRecipeIndex } from '../types/recipe'
 import type { IRawRecipe } from '../types/settings'
 import { logger } from '../../utils/logger'

@@ -1,3 +1,32 @@
+/**
+ * BaseBuildingGenerator - 建筑生成器基类
+ *
+ * 功能：
+ * - 提供建筑生成的通用接口和基础实现
+ * - 管理建筑上下文（索引、建筑列表、分拣器映射等）
+ * - 提供分拣器生成辅助方法
+ * - 定义建筑生成参数和分拣器生成参数接口
+ *
+ * 主要方法：
+ * - generate(params): 生成建筑（抽象方法，子类实现）
+ * - generateSorters(params): 生成分拣器
+ * - createBuildingTemplate(index): 创建建筑模板
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - types/blueprint.ts: 蓝图类型定义
+ * - types/buildingGenerator.ts: 建筑生成器类型定义
+ *
+ * 子类：
+ * - AssemblerGenerator: 制造台生成器
+ * - SmelterGenerator: 熔炉生成器
+ * - LabGenerator: 研究站生成器
+ * - RefineryGenerator: 精炼厂生成器
+ * - PlantGenerator: 化工厂生成器
+ * - ColliderGenerator: 对撞机生成器
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type {
   IBuildingGeneratorConfig,

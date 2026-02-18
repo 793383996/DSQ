@@ -1,3 +1,28 @@
+<!--
+ * Toast - 消息提示组件
+ *
+ * 功能：
+ * - 显示操作结果提示（成功/错误/警告/信息）
+ * - 支持加载状态提示
+ * - 支持自动消失和手动关闭
+ * - 支持多个消息同时显示
+ *
+ * 主要方法：
+ * - success(message, duration): 显示成功提示
+ * - error(message, duration): 显示错误提示
+ * - warning(message, duration): 显示警告提示
+ * - info(message, duration): 显示信息提示
+ * - loading(message): 显示加载提示
+ * - hide(id): 隐藏指定提示
+ *
+ * 上游调用：
+ * - App.vue: 全局Toast实例
+ * - composables/useToast.ts: 通过provide/inject使用
+ *
+ * 特性：
+ * - 使用Teleport渲染到body
+ * - 支持TransitionGroup动画
+ -->
 <template>
   <Teleport to="body">
     <TransitionGroup name="toast" tag="div" class="toast-container">

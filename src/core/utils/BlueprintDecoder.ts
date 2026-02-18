@@ -1,3 +1,31 @@
+/**
+ * BlueprintDecoder - 蓝图解码器
+ *
+ * 功能：
+ * - 将游戏蓝图字符串解码为数据结构
+ * - 使用pako进行gzip解压
+ * - 使用BinaryReader读取二进制数据
+ * - 解析建筑参数
+ *
+ * 主要方法：
+ * - decodeBlueprintString(str): 解码蓝图字符串
+ * - decodeBuilding(reader): 解码单个建筑
+ * - decodeArea(reader): 解码区域
+ * - decodeHeader(reader): 解码头信息
+ *
+ * 上游调用：
+ * - core/adapters/BlueprintAdapter.ts: 蓝图适配器
+ *
+ * 下游依赖：
+ * - utils/BinaryReader.ts: 二进制读取器
+ * - utils/BlueprintEncoder.ts: 共享常量和类型
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 解码格式：
+ * - 头信息：版本、时间戳、建筑数量等
+ * - 区域信息：区域索引、大小等
+ * - 建筑信息：位置、朝向、配方等
+ */
 import pako from 'pako'
 import { BinaryReader } from './BinaryReader'
 import type {

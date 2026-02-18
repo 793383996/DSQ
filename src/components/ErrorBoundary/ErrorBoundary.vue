@@ -1,3 +1,29 @@
+<!--
+ * ErrorBoundary - 错误边界组件
+ *
+ * 功能：
+ * - 捕获子组件的渲染错误
+ * - 显示友好的错误提示界面
+ * - 支持重试和刷新页面
+ * - 开发环境显示详细错误堆栈
+ *
+ * 主要方法：
+ * - onErrorCaptured(): Vue错误捕获钩子
+ * - resetError(): 重置错误状态并重新渲染
+ * - refreshPage(): 刷新页面
+ *
+ * 上游调用：
+ * - App.vue: 包裹整个应用，作为顶层错误边界
+ *
+ * 下游依赖：
+ * - utils/logger.ts: 日志记录
+ * - utils/errorReporter.ts: 错误上报
+ *
+ * 特性：
+ * - 使用slot渲染正常内容
+ * - 捕获错误后显示fallback UI
+ * - retryKey用于强制重新渲染
+ -->
 <template>
   <slot v-if="!hasError" :key="retryKey" />
   <div v-else class="error-boundary">

@@ -1,3 +1,33 @@
+/**
+ * Logger - 结构化日志工具
+ *
+ * 功能：
+ * - 提供分级日志记录（debug/info/warn/error）
+ * - 支持敏感数据脱敏
+ * - 支持日志缓冲和批量上报
+ * - 支持远程日志服务
+ *
+ * 主要方法：
+ * - init(config): 初始化日志器
+ * - debug(message, context): 调试日志
+ * - info(message, context): 信息日志
+ * - warn(message, context): 警告日志
+ * - error(message, context): 错误日志
+ * - flush(): 刷新日志缓冲
+ *
+ * 上游调用：
+ * - 全项目通用日志记录
+ *
+ * 下游依赖：
+ * - utils/desensitize.ts: 敏感数据脱敏
+ *
+ * 配置项：
+ * - minLevel: 最低日志级别
+ * - enableConsole: 启用控制台输出
+ * - enableRemote: 启用远程上报
+ * - bufferSize: 缓冲区大小
+ * - flushInterval: 刷新间隔
+ */
 import { desensitizeValue, desensitizeString } from './desensitize'
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'

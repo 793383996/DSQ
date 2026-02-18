@@ -1,3 +1,25 @@
+/**
+ * IndexMapper - 索引映射工具
+ *
+ * 功能：
+ * - 构建建筑索引映射表
+ * - 重映射输出/输入索引
+ * - 应用Z轴偏移
+ * - 克隆建筑并重映射索引
+ *
+ * 主要方法：
+ * - buildIndexMap(buildings, startIndex): 构建索引映射
+ * - remapOutputIndex(outputObjIdx, indexMap): 重映射输出索引
+ * - remapInputIndex(inputObjIdx, layer, foundationStartIndex, indexMap): 重映射输入索引
+ * - applyZOffset(building, zOffset): 应用Z轴偏移
+ * - cloneBuildingWithRemap(base, newIndex, zOffset, layer, foundationStartIndex, indexMap): 克隆并重映射
+ *
+ * 上游调用：
+ * - core/services/StackService.ts: 堆叠服务
+ *
+ * 下游依赖：
+ * - types/blueprint.ts: 蓝图类型定义
+ */
 import type { IBlueprintBuilding } from '../types/blueprint'
 
 export function buildIndexMap(

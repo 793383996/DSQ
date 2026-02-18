@@ -1,3 +1,24 @@
+/**
+ * BuildingMapAdapter - 建筑映射适配器
+ *
+ * 功能：
+ * - 将完整建筑映射转换为传送带生成器所需格式
+ * - 验证必要建筑是否存在
+ * - 提供建筑映射类型转换
+ *
+ * 主要方法：
+ * - adaptBuildingMapForConveyor(buildingMap): 适配传送带建筑映射
+ * - hasRequiredConveyorBuildings(buildingMap): 检查传送带建筑
+ * - hasRequiredSprayCoaterBuilding(buildingMap): 检查喷涂机建筑
+ *
+ * 上游调用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ * - generators/conveyor/*.ts: 传送带构建器
+ *
+ * 下游依赖：
+ * - types/blueprint.ts: 蓝图类型定义
+ * - generators/conveyor/ConveyorNodeBuilder.ts: 传送带节点构建器类型
+ */
 import type { IBuildingData } from '../../types/blueprint'
 import type { IBuildingMapForConveyor } from '../generators/conveyor/ConveyorNodeBuilder'
 

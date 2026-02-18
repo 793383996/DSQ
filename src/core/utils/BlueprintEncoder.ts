@@ -1,3 +1,31 @@
+/**
+ * BlueprintEncoder - 蓝图编码器
+ *
+ * 功能：
+ * - 将蓝图数据结构编码为游戏可识别的字符串
+ * - 使用pako进行gzip压缩
+ * - 使用BinaryWriter写入二进制数据
+ * - 计算MD5校验和
+ *
+ * 主要方法：
+ * - encodeBlueprintData(data): 编码蓝图数据
+ * - encodeBuilding(building, writer): 编码单个建筑
+ * - encodeArea(area, writer): 编码区域
+ * - encodeHeader(header, writer): 编码头信息
+ *
+ * 上游调用：
+ * - core/adapters/BlueprintAdapter.ts: 蓝图适配器
+ *
+ * 下游依赖：
+ * - utils/BinaryWriter.ts: 二进制写入器
+ * - utils/md5.ts: MD5计算
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 编码格式：
+ * - 头信息：版本、时间戳、建筑数量等
+ * - 区域信息：区域索引、大小等
+ * - 建筑信息：位置、朝向、配方等
+ */
 import pako from 'pako'
 import { BinaryWriter } from './BinaryWriter'
 import { md5Hex } from './md5'

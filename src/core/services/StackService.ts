@@ -1,3 +1,37 @@
+/**
+ * StackService - 堆叠服务
+ *
+ * 功能：
+ * - 将蓝图建筑堆叠到多层
+ * - 自动生成地基连接
+ * - 处理建筑索引重映射
+ * - 过滤不可克隆的建筑（Lab、传送带、喷涂机）
+ *
+ * 主要方法：
+ * - reduceBuildingNum(subRecipes): 减少建筑数量（堆叠后）
+ * - scaleItemSummary(itemSummary): 缩放物品摘要
+ * - scaleSorters(sorters): 缩放分拣器
+ * - getSortersPerNode(): 获取每节点分拣器数量
+ * - getZOffset(layer): 获取层Z偏移
+ * - cloneToStackLayers(baseBuildings, currentBuildingIndex): 克隆到堆叠层
+ * - createCloneFilter(baseBuildings): 创建克隆过滤器
+ * - isCloneable(building, filter): 检查建筑是否可克隆
+ *
+ * 上游调用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
+ *
+ * 下游依赖：
+ * - core/types/stack.ts: 堆叠类型定义
+ * - core/types/blueprint.ts: 蓝图类型定义
+ * - core/utils/IndexMapper.ts: 索引映射工具
+ * - core/types/buildingMap.ts: 建筑映射
+ *
+ * 堆叠规则：
+ * - Lab不参与堆叠
+ * - 传送带不参与堆叠
+ * - 喷涂机不参与堆叠
+ * - 与Lab连接的建筑不参与堆叠
+ */
 import type {
   IStackConfig,
   ISubRecipe,

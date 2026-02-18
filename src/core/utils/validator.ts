@@ -1,3 +1,23 @@
+/**
+ * Validator - 配方验证工具
+ *
+ * 功能：
+ * - 验证配方数据完整性
+ * - 检查必要字段是否存在
+ * - 验证数值范围有效性
+ *
+ * 主要方法：
+ * - validateRecipe(recipe): 验证单个配方
+ * - validateRecipes(recipes): 批量验证配方
+ * - validateBuilding(building): 验证建筑数据
+ *
+ * 上游调用：
+ * - core/adapters/RecipeAdapter.ts: 配方适配器
+ * - core/data/recipeLoader.ts: 配方加载器
+ *
+ * 下游依赖：
+ * - types/settings.ts: 设置类型定义
+ */
 import type { IRawRecipe } from '../types/settings'
 
 export function validateRecipe(recipe: IRawRecipe): string[] {

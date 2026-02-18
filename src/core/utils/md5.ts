@@ -1,33 +1,174 @@
+/**
+ * MD5 - MD5哈希计算工具
+ *
+ * 功能：
+ * - 计算字符串的MD5哈希值
+ * - 计算二进制数据的MD5哈希值
+ * - 支持十六进制输出
+ *
+ * 主要方法：
+ * - md5Hex(str): 计算字符串的MD5十六进制值
+ * - md5Binary(data): 计算二进制数据的MD5值
+ *
+ * 上游调用：
+ * - core/utils/BlueprintEncoder.ts: 蓝图编码器
+ *
+ * 实现说明：
+ * - 基于RFC 1321标准实现
+ * - 使用预计算的K和S常量表
+ */
 const K = Int32Array.of(
-  0xd76aa478, 0xe8d7b756, 0x242070db, 0xc1bdceee,
-  0xf57c0faf, 0x4787c62a, 0xa8304623, 0xfd469501,
-  0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
-  0x6b9f1122, 0xfd987193, 0xa679438e, 0x39b40821,
-  0xf61e2562, 0xc040b340, 0x265e5a51, 0xc9b6c7aa,
-  0xd62f105d, 0x02443453, 0xd8a1e681, 0xe7d3fbc8,
-  0x21f1cde6, 0xc33707d6, 0xf4d50d87, 0x475a14ed,
-  0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
-  0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
-  0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
-  0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
-  0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
-  0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
-  0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
-  0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
-  0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+  0xd76aa478,
+  0xe8d7b756,
+  0x242070db,
+  0xc1bdceee,
+  0xf57c0faf,
+  0x4787c62a,
+  0xa8304623,
+  0xfd469501,
+  0x698098d8,
+  0x8b44f7af,
+  0xffff5bb1,
+  0x895cd7be,
+  0x6b9f1122,
+  0xfd987193,
+  0xa679438e,
+  0x39b40821,
+  0xf61e2562,
+  0xc040b340,
+  0x265e5a51,
+  0xc9b6c7aa,
+  0xd62f105d,
+  0x02443453,
+  0xd8a1e681,
+  0xe7d3fbc8,
+  0x21f1cde6,
+  0xc33707d6,
+  0xf4d50d87,
+  0x475a14ed,
+  0xa9e3e905,
+  0xfcefa3f8,
+  0x676f02d9,
+  0x8d2a4c8a,
+  0xfffa3942,
+  0x8771f681,
+  0x6d9d6122,
+  0xfde5380c,
+  0xa4beea44,
+  0x4bdecfa9,
+  0xf6bb4b60,
+  0xbebfbc70,
+  0x289b7ec6,
+  0xeaa127fa,
+  0xd4ef3085,
+  0x04881d05,
+  0xd9d4d039,
+  0xe6db99e5,
+  0x1fa27cf8,
+  0xc4ac5665,
+  0xf4292244,
+  0x432aff97,
+  0xab9423a7,
+  0xfc93a039,
+  0x655b59c3,
+  0x8f0ccc92,
+  0xffeff47d,
+  0x85845dd1,
+  0x6fa87e4f,
+  0xfe2ce6e0,
+  0xa3014314,
+  0x4e0811a1,
+  0xf7537e82,
+  0xbd3af235,
+  0x2ad7d2bb,
+  0xeb86d391
 )
 
 const S = Uint8Array.of(
-  7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
-  5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-  4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
-  6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+  7,
+  12,
+  17,
+  22,
+  7,
+  12,
+  17,
+  22,
+  7,
+  12,
+  17,
+  22,
+  7,
+  12,
+  17,
+  22,
+  5,
+  9,
+  14,
+  20,
+  5,
+  9,
+  14,
+  20,
+  5,
+  9,
+  14,
+  20,
+  5,
+  9,
+  14,
+  20,
+  4,
+  11,
+  16,
+  23,
+  4,
+  11,
+  16,
+  23,
+  4,
+  11,
+  16,
+  23,
+  4,
+  11,
+  16,
+  23,
+  6,
+  10,
+  15,
+  21,
+  6,
+  10,
+  15,
+  21,
+  6,
+  10,
+  15,
+  21,
+  6,
+  10,
+  15,
+  21
 )
 
 const INIT_MD5F = new DataView(
   Uint8Array.of(
-    0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xdc, 0xef,
-    0xfe, 0xdc, 0xba, 0x98, 0x46, 0x57, 0x32, 0x10
+    0x01,
+    0x23,
+    0x45,
+    0x67,
+    0x89,
+    0xab,
+    0xdc,
+    0xef,
+    0xfe,
+    0xdc,
+    0xba,
+    0x98,
+    0x46,
+    0x57,
+    0x32,
+    0x10
   ).buffer
 )
 
@@ -88,9 +229,7 @@ export function md5Digest(data: ArrayBuffer): ArrayBuffer {
     updateBlock(s, new DataView(data, i, BLOCK_SIZE))
   }
 
-  const last = new ArrayBuffer(
-    Math.ceil((data.byteLength - i + 9) / BLOCK_SIZE) * BLOCK_SIZE
-  )
+  const last = new ArrayBuffer(Math.ceil((data.byteLength - i + 9) / BLOCK_SIZE) * BLOCK_SIZE)
   const dataView = new Uint8Array(data)
   const lastView = new DataView(last)
 
@@ -118,10 +257,10 @@ export function md5Hex(data: ArrayBuffer): string {
   const digest = md5Digest(data)
   const view = new Uint8Array(digest)
   const hexBytes: string[] = new Array(view.length)
-  
+
   for (let i = 0; i < view.length; i++) {
     hexBytes[i] = view[i].toString(16).toUpperCase().padStart(2, '0')
   }
-  
+
   return hexBytes.join('')
 }

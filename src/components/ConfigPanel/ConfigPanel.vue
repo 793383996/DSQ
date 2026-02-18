@@ -1,3 +1,27 @@
+<!--
+ * ConfigPanel - 配置面板组件
+ *
+ * 功能：
+ * - 设备类型配置：制造台/熔炉/化工厂/研究站选择
+ * - 增产剂配置：类型和效果选择
+ * - 速度配置：采矿机/分馏塔/临界光子等速度设置
+ * - 蓝图配置：传送带等级/分拣器等级/堆叠层数等
+ * - 显示设置：隐藏原料等
+ *
+ * 主要方法：
+ * - loadSettingsFromStorage(): 从localStorage加载设置
+ * - saveSettingsToStorage(): 保存设置到localStorage
+ * - saveSettings(): 保存所有设置到store和legacy
+ * - resetSettings(): 重置为默认设置
+ * - close(): 关闭面板
+ *
+ * 上游调用：
+ * - App.vue: 通过v-model控制面板显示
+ *
+ * 下游依赖：
+ * - stores/blueprint.ts: 机器设置状态管理
+ * - core/bridge.ts: legacyUpdateMachineSettings/Config/SpeedSettings
+ -->
 <template>
   <div v-if="visible" class="config-panel-overlay" @click.self="close">
     <div class="config-panel">

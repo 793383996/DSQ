@@ -1,3 +1,28 @@
+/**
+ * ColliderGenerator - 对撞机生成器
+ *
+ * 功能：
+ * - 生成对撞机类建筑（粒子对撞机）
+ * - 计算对撞机布局和占用区域
+ * - 生成分拣器连接
+ *
+ * 主要方法：
+ * - getCategory(): 获取建筑类型（collider）
+ * - calculateBuildingArea(compactLayout): 计算建筑区域
+ * - generate(params): 生成对撞机建筑
+ *
+ * 上游调用：
+ * - generators/building/BuildingGeneratorFactory.ts: 建筑生成器工厂
+ *
+ * 下游依赖：
+ * - generators/building/BaseBuildingGenerator.ts: 建筑生成器基类
+ * - generators/SorterGenerator.ts: 分拣器生成器
+ * - types/blueprint.ts: 蓝图类型定义
+ *
+ * 建筑尺寸：
+ * - 紧凑布局：11x6格，占用面积66格
+ * - 非紧凑布局：更大尺寸
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type {
   IBuildingLayout,

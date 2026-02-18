@@ -1,3 +1,25 @@
+<!--
+ * SkeletonCard - 卡片骨架屏组件
+ *
+ * 功能：
+ * - 显示卡片加载前的占位骨架
+ * - 支持头部/头像/图片/内容/底部区域
+ * - 可配置显示行数
+ *
+ * Props：
+ * - showHeader: 是否显示头部
+ * - showAvatar: 是否显示头像
+ * - showImage: 是否显示图片区域
+ * - lines: 内容行数
+ * - showFooter: 是否显示底部
+ *
+ * 上游调用：
+ * - App.vue: 数据加载时显示
+ * - 其他需要卡片占位的组件
+ *
+ * 下游依赖：
+ * - Skeleton.vue: 基础骨架组件
+ -->
 <script setup lang="ts">
 import Skeleton from './Skeleton.vue'
 

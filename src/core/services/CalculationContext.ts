@@ -1,3 +1,35 @@
+/**
+ * CalculationContext - 计算上下文
+ *
+ * 功能：
+ * - 管理计算过程中的状态和数据
+ * - 跟踪消耗和产出
+ * - 管理排除列表和需求列表
+ * - 提供递归深度控制
+ * - 提供计时功能
+ *
+ * 主要方法：
+ * - addConsumption(name, value): 添加消耗
+ * - addProduction(name, value): 添加产出
+ * - getConsumption(name): 获取消耗值
+ * - getProduction(name): 获取产出值
+ * - isExcluded(name): 检查是否被排除
+ * - enterRecursion()/exitRecursion(): 递归深度控制
+ * - startTimer()/stopTimer(): 计时控制
+ * - reset(): 重置上下文
+ * - getStats(): 获取统计信息
+ * - toLegacyFormat(): 转换为遗留格式
+ *
+ * 上游调用：
+ * - core/services/CalculatorService.ts: 计算服务
+ * - core/services/UpdateAllService.ts: 更新服务
+ *
+ * 下游依赖：
+ * - core/types/calculator.ts: 计算类型定义
+ * - core/types/settings.ts: 设置类型定义
+ * - core/types/recipe.ts: 配方类型定义
+ * - utils/logger.ts: 日志记录
+ */
 import type {
   ICalculationContext,
   ICalculationConfig,

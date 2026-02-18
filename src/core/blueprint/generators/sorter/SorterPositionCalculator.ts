@@ -1,3 +1,27 @@
+/**
+ * SorterPositionCalculator - 分拣器位置计算器
+ *
+ * 功能：
+ * - 根据建筑类型计算分拣器位置
+ * - 使用策略模式支持不同建筑类型
+ * - 管理分拣器位置策略注册
+ *
+ * 主要方法：
+ * - calculate(buildingOffset, category, slotIndex, rotate): 计算分拣器位置
+ * - registerStrategies(): 注册所有策略
+ *
+ * 上游调用：
+ * - generators/ConveyorGenerator.ts: 传送带生成器
+ * - generators/building/*.ts: 各类建筑生成器
+ *
+ * 下游依赖：
+ * - generators/sorter/SorterPositionStrategy.ts: 分拣器位置策略基类
+ * - generators/sorter/SmelterAssemblerSorterStrategy.ts: 熔炉/制造台策略
+ * - generators/sorter/PlantSorterStrategy.ts: 化工厂策略
+ * - generators/sorter/RefinerySorterStrategy.ts: 精炼厂策略
+ * - generators/sorter/ColliderSorterStrategy.ts: 对撞机策略
+ * - generators/sorter/LabSorterStrategy.ts: 研究站策略
+ */
 import type { ICoordinate } from '../../../types/blueprint'
 import {
   SorterPositionStrategy,

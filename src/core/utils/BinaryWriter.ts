@@ -1,3 +1,29 @@
+/**
+ * BinaryWriter - 二进制写入器
+ *
+ * 功能：
+ * - 提供二进制数据写入接口
+ * - 支持多种数据类型（int8/16/32, uint8/16/32, float等）
+ * - 支持字符串写入（UTF-8编码）
+ * - 支持位置重置和获取
+ *
+ * 主要方法：
+ * - setUint8(value): 写入无符号8位整数
+ * - setInt8(value): 写入有符号8位整数
+ * - setInt16(value): 写入有符号16位整数
+ * - setUint16(value): 写入无符号16位整数
+ * - setInt32(value): 写入有符号32位整数
+ * - setUint32(value): 写入无符号32位整数
+ * - setFloat32(value): 写入32位浮点数
+ * - setFloat64(value): 写入64位浮点数
+ * - writeString(str): 写入字符串
+ *
+ * 上游调用：
+ * - core/utils/BlueprintEncoder.ts: 蓝图编码器
+ *
+ * 字节序：
+ * - 使用小端序（little-endian）
+ */
 export class BinaryWriter {
   private view: DataView
   private pos: number = 0
@@ -11,11 +37,7 @@ export class BinaryWriter {
   }
 
   getView(length: number): DataView {
-    const r = new DataView(
-      this.view.buffer,
-      this.view.byteOffset + this.pos,
-      length
-    )
+    const r = new DataView(this.view.buffer, this.view.byteOffset + this.pos, length)
     this.pos += length
     return r
   }

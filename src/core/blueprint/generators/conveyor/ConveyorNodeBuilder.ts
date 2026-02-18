@@ -1,3 +1,25 @@
+/**
+ * ConveyorNodeBuilder - 传送带节点构建器
+ *
+ * 功能：
+ * - 构建单个传送带节点
+ * - 选择合适的传送带等级（Mk1/Mk3）
+ * - 设置传送带参数（图标、数量）
+ *
+ * 主要方法：
+ * - selectConveyorBelt(rate, fromBuildingNum): 选择传送带类型
+ * - buildNode(params): 构建传送带节点
+ * - setBuildingIndex(index): 设置建筑索引
+ * - getBuildingIndex(): 获取当前建筑索引
+ *
+ * 上游调用：
+ * - generators/conveyor/ConveyorConnectionBuilder.ts: 传送带连接构建器
+ * - generators/conveyor/SprayCoaterConveyorBuilder.ts: 喷涂机传送带构建器
+ *
+ * 下游依赖：
+ * - types/conveyorGenerator.ts: 传送带类型定义
+ * - types/blueprint.ts: 蓝图类型定义
+ */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
 import type { IConveyorGeneratorConfig } from '../../types/conveyorGenerator'
 import {

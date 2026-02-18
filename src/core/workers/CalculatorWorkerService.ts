@@ -1,3 +1,32 @@
+/**
+ * CalculatorWorkerService - 计算Worker服务
+ *
+ * 功能：
+ * - 管理Web Worker生命周期
+ * - 发送计算请求到Worker
+ * - 处理Worker响应和超时
+ * - 支持Worker初始化和复用
+ *
+ * 主要方法：
+ * - calculate(options): 执行计算
+ * - initWorker(): 初始化Worker
+ * - terminate(): 终止Worker
+ * - getStatus(): 获取Worker状态
+ *
+ * 上游调用：
+ * - core/services/CalculatorService.ts: 计算服务
+ *
+ * 下游依赖：
+ * - workers/calculator.worker.ts: Worker实现
+ * - workers/types.ts: Worker类型定义
+ *
+ * Worker状态：
+ * - idle: 空闲
+ * - initializing: 初始化中
+ * - ready: 就绪
+ * - calculating: 计算中
+ * - error: 错误
+ */
 import type { IDemand } from '../types/recipe'
 import type { IRawRecipe } from '../types/settings'
 import type {

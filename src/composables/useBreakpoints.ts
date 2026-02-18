@@ -1,3 +1,32 @@
+/**
+ * useBreakpoints - 响应式断点检测组合式函数
+ *
+ * 功能：
+ * - 检测当前窗口宽度对应的断点
+ * - 提供各种断点判断方法
+ * - 支持自定义断点配置
+ *
+ * 主要导出：
+ * - useBreakpoints(): 断点检测主函数
+ * - useMediaQuery(): 媒体查询检测
+ * - useResponsiveValue(): 响应式值获取
+ *
+ * 断点定义：
+ * - xs: 0-639px
+ * - sm: 640-767px
+ * - md: 768-1023px
+ * - lg: 1024-1279px
+ * - xl: 1280-1535px
+ * - 2xl: 1536px+
+ *
+ * 上游调用：
+ * - components/layout/*.vue: 响应式布局组件
+ * - 其他需要断点检测的组件
+ *
+ * 特性：
+ * - 全局共享resize监听器，避免重复监听
+ * - 引用计数管理监听器生命周期
+ */
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
 export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'

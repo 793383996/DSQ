@@ -1,3 +1,27 @@
+<!--
+ * BlueprintGenerator - 蓝图生成器组件
+ *
+ * 功能：
+ * - 根据计算结果生成可导入游戏的蓝图字符串
+ * - 支持蓝图字符串复制到剪贴板
+ * - 支持蓝图文件下载
+ *
+ * 主要方法：
+ * - generateBlueprint(): 生成蓝图字符串
+ * - copyToClipboard(text): 复制到剪贴板
+ * - createDownloadUrl(text): 创建下载链接
+ *
+ * 上游调用：
+ * - App.vue: 作为蓝图生成入口
+ *
+ * 下游依赖：
+ * - core/bridge.ts: generateBlueprintWithAdapter() 调用蓝图生成服务
+ * - stores/blueprint.ts: 获取需求列表和计算结果
+ * - composables/useToast.ts: 显示操作结果提示
+ *
+ * 生成条件：
+ * - demandList.length > 0 且 resultItems.length > 0
+ -->
 <template>
   <div class="blueprint-generator">
     <button class="generate-btn" :disabled="!canGenerate" @click="generateBlueprint">

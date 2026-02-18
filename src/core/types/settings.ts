@@ -1,4 +1,26 @@
 /**
+ * Settings类型定义
+ *
+ * 功能：
+ * - 定义配方设置、速度设置、增产剂设置类型
+ * - 定义机器设置项类型
+ * - 定义原始配方数据类型
+ *
+ * 定义：
+ * - IMachineSetting: 机器设置项
+ * - IRecipeSettings: 配方级设置映射
+ * - IRecipeSetting: 配方配置
+ * - ISpeedSettings: 速度设置映射
+ * - IProductivitySettings: 增产剂设置映射
+ * - IRawRecipe: 原始配方数据
+ * - IRawRecipeItem: 配方物品项
+ *
+ * 上游使用：
+ * - core/services/RecipeCalculator.ts: 配方计算器
+ * - core/services/UpdateAllService.ts: 更新服务
+ * - core/adapters/SettingsAdapter.ts: 设置适配器
+ */
+/**
  * 机器设置项
  */
 export interface IMachineSetting {

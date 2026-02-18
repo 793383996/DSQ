@@ -1,3 +1,26 @@
+/**
+ * Blueprint类型定义
+ *
+ * 功能：
+ * - 定义蓝图数据结构类型
+ * - 定义建筑数据类型
+ * - 定义物品映射类型
+ * - 定义坐标和布局类型
+ *
+ * 定义：
+ * - IBlueprintData: 蓝图数据
+ * - IBlueprintBuilding: 蓝图建筑
+ * - IBlueprintArea: 蓝图区域
+ * - IBlueprintHeader: 蓝图头信息
+ * - IBuildingData: 建筑数据
+ * - IItemData: 物品数据
+ * - ICoordinate: 坐标
+ *
+ * 上游使用：
+ * - core/blueprint/services/BlueprintService.ts: 蓝图服务
+ * - core/utils/BlueprintEncoder.ts: 蓝图编码器
+ * - core/utils/BlueprintDecoder.ts: 蓝图解码器
+ */
 export interface IItemData {
   name: string
   iconId: number
