@@ -245,7 +245,8 @@ export class UpdateAllService {
     // 它修改临界光子配方的t值和引力透镜需求，loadNumber使用修改后的值
     // 新代码原位置在loadNumber之后，导致计算结果错误
     // P6-4修复：传入settings和defaultAccType/defaultAccValue，使用配方级设置
-    this.fixCriticalPhotonSpeed(settingsTime, settings, defaultAccType, defaultAccValue)
+    // P9-1修复：传入settingsPf参数，支持用户选择的配方
+    this.fixCriticalPhotonSpeed(settingsTime, settings, defaultAccType, defaultAccValue, settingsPf)
 
     // P3-2修复：添加递归深度超限回调，通知用户
     let depthExceededShown = false
@@ -299,7 +300,8 @@ export class UpdateAllService {
       // P2-3修复：fixGzSpeed在loadNumber之后、checkResult之前调用
       // 老代码calculator.js中的fixGzSpeed处理光栅石的采矿机速度
       // 注意：临界光子的fixGzSpeed已在loadNumber之前调用，此处只处理光栅石
-      this.fixGzSpeed(settingsTime)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      this.fixGzSpeed(settingsTime, settingsPf)
 
       // P0-1修复：mergeMul已被老代码注释掉，checkResult会处理这种情况
       // 老代码注释：//mergeMul();//处理合并 多个产出使用了同一个配方 ,暂时弃用，checkResult会处理这种情况
@@ -309,13 +311,20 @@ export class UpdateAllService {
       // 老代码顺序：计算value2 -> checkResult
       // 新代码原顺序：checkResult -> buildResult中计算value2（错误！）
       // 修复：先计算value2，再调用checkResult
-      this.calculateValue2(settings, settingsTime, defaultAccType, defaultAccValue)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      this.calculateValue2(settings, settingsTime, defaultAccType, defaultAccValue, settingsPf)
 
       // P3-1修复：使用checkResultWithMachineInfo，传入机器信息
       // 老代码checkResult需要访问机器信息(speed, time)
-      this.calculator!.checkResultWithMachineInfo(recipe => {
-        return this.getMachineInfo(recipe, settings, settingsTime)
-      })
+      // P9-1修复：传入settingsPf、settings、defaultAccValue参数，确保使用用户选择的配方
+      this.calculator!.checkResultWithMachineInfo(
+        recipe => {
+          return this.getMachineInfo(recipe, settings, settingsTime)
+        },
+        settingsPf,
+        settings,
+        defaultAccValue
+      )
 
       // P6-3修复：checkResult后的value2修正，与老代码data.js对齐
       // 老代码在checkResult之后遍历xh_list，将value<0的条目的value2设为0
@@ -334,7 +343,8 @@ export class UpdateAllService {
         settingsTime,
         defaultAccType,
         defaultAccValue,
-        hideSource
+        hideSource,
+        settingsPf
       )
     } catch (error) {
       this.calculator!.clearState()
@@ -418,17 +428,26 @@ export class UpdateAllService {
   // P2-2修复：处理临界光子的射线接收塔配方
   // 老代码Scripts/data.js中的fixGzSpeed函数
   // P6-4修复：老代码使用临界光子配方的增产剂设置，而非全局默认设置
+  // P9-1修复：使用calculator.find查找临界光子配方，支持settingsPf用户选择
   private fixCriticalPhotonSpeed(
     settingsTime: Record<string, number>,
     settings: Record<string, { m?: string; accType?: string; accValue?: string }>,
     defaultAccType: string,
-    defaultAccValue: string
+    defaultAccValue: string,
+    settingsPf: Record<string, string | number> = {}
   ): void {
     // 老代码逻辑：根据增产剂设置计算fixedGzSpeed，修改配方的t值和引力透镜需求
     // 每分钟需求: 引力透镜=0.1*接收塔=0.1*光子需求量/光子产量
     // 光子产量: 12(透镜×200%)/15(增产Ⅰ×250%)/18(增产Ⅱ×300%)/24(增产Ⅲ×400%)
 
-    const criticalPhotonRecipe = this.recipes.find(r => r.s?.[0]?.name === '临界光子')
+    // P9-1修复：使用calculator.find查找临界光子配方，支持settingsPf用户选择
+    // 老代码：item = find("临界光子", true);
+    const criticalPhotonRecipe = this.calculator!.find('临界光子', {
+      normalizeRecipe: true,
+      settingsPf,
+      settings,
+      defaultAccValue
+    })
     if (!criticalPhotonRecipe || !criticalPhotonRecipe.m) return
 
     const mArray = Array.isArray(criticalPhotonRecipe.m) ? criticalPhotonRecipe.m : []
@@ -489,10 +508,14 @@ export class UpdateAllService {
 
   // P2-3修复：处理光栅石的采矿机速度
   // 老代码calculator.js中的fixGzSpeed函数
-  private fixGzSpeed(settingsTime: Record<string, number>): void {
+  // P9-1修复：添加settingsPf参数，确保使用用户选择的配方
+  private fixGzSpeed(
+    settingsTime: Record<string, number>,
+    settingsPf: Record<string, string | number> = {}
+  ): void {
     // 委托给RecipeCalculator的fixGzSpeed方法
     // 光栅石由采矿机生产时，需要根据采矿机速度修正计算结果
-    this.calculator!.fixGzSpeed(settingsTime)
+    this.calculator!.fixGzSpeed(settingsTime, settingsPf)
   }
 
   private getMachineInfo(
@@ -529,18 +552,21 @@ export class UpdateAllService {
 
   // P5-1修复：添加calculateValue2方法，在checkResult之前计算value2
   // 老代码在checkResult之前计算value2，checkResult依赖value2进行溢出检测
+  // P9-1修复：添加settingsPf参数，确保使用用户选择的配方
   private calculateValue2(
     settings: Record<string, { m?: string; accType?: string; accValue?: string }>,
     settingsTime: Record<string, number>,
     defaultAccType: string,
-    defaultAccValue: string
+    defaultAccValue: string,
+    settingsPf: Record<string, string | number> = {}
   ): void {
     const state = this.calculator!.getState()
 
     for (const xh of state.xhList) {
       if (!xh.value || xh.value <= 0) continue
 
-      const recipe = this.calculator!.find(xh.name)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      const recipe = this.calculator!.find(xh.name, { settingsPf, settings, defaultAccValue })
       if (!recipe) continue
 
       const recipeSettings = settings[recipe.id?.toString() || '']
@@ -589,7 +615,8 @@ export class UpdateAllService {
     settingsTime: Record<string, number>,
     defaultAccType: string,
     defaultAccValue: string,
-    hideSource: boolean
+    hideSource: boolean,
+    settingsPf: Record<string, string | number> = {}
   ): ICalculationResult {
     const state = this.calculator!.getState()
     const items: IResultItem[] = []
@@ -612,7 +639,8 @@ export class UpdateAllService {
     for (const xh of state.xhList) {
       if (!xh.value) continue
 
-      const recipe = this.calculator!.find(xh.name)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      const recipe = this.calculator!.find(xh.name, { settingsPf, settings, defaultAccValue })
       if (!recipe) continue
 
       const recipeSettings = settings[recipe.id?.toString() || '']
@@ -779,7 +807,8 @@ export class UpdateAllService {
     let totalAcc = 0
     for (const xh of state.xhList) {
       if (!xh.value) continue
-      const recipe = this.calculator!.find(xh.name)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      const recipe = this.calculator!.find(xh.name, { settingsPf, settings, defaultAccValue })
       if (!recipe) continue
       const recipeSettings = settings[recipe.id?.toString() || '']
       const accValue = recipeSettings?.accValue || defaultAccValue
@@ -802,7 +831,8 @@ export class UpdateAllService {
     // 老代码逻辑：遍历 out_list，生成 items2 用于显示多余产出
     for (const out of state.outList) {
       if (!out.value) continue
-      const recipe = this.calculator!.find(out.name)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      const recipe = this.calculator!.find(out.name, { settingsPf, settings, defaultAccValue })
       if (!recipe) continue
       const machineInfo = this.getMachineInfo(recipe, settings, settingsTime)
 

@@ -352,61 +352,25 @@ export class RecipeCalculator {
   }
 
   checkResult(): void {
-    // P3-1修复：重写checkResult逻辑，与老代码data.js checkResult函数对齐
-    // 老代码逻辑：当设备产出超过需求时，减少设备数量(value2)并增加产出(out_list)
-    // 注意：此方法需要配合UpdateAllService.checkResultWithMachineInfo使用
-    // 因为checkResult需要访问机器信息(speed, time)，而RecipeCalculator不持有这些信息
-
-    // 此处保留简化版本的checkResult，用于处理基本的溢出情况
-    // 完整的checkResult逻辑在UpdateAllService中实现
-    const isOverflow = (item: IRawRecipe): boolean => {
-      if (!item.s) return false
-      for (let j = 0; j < item.s.length; j++) {
-        const s = item.s[j]
-        const out = this.findOut(s.name)
-        if (out === null) continue
-        if (out < 0) {
-          return true
-        }
-      }
-      return false
-    }
-
-    for (let i = 0; i < this.state.xhList.length; i++) {
-      const xh = this.state.xhList[i]
-      if (!xh.value) continue
-      const itemName = xh.name
-      const item = this.find(itemName)
-      if (!item || !item.s) continue
-
-      if (isOverflow(item)) {
-        const need = xh.value
-        let produce = 0
-        for (let j = 0; j < item.s.length; j++) {
-          const s = item.s[j]
-          if (s.name === itemName) {
-            produce = (xh.value * (s.n || 1)) / (item.n || 1)
-            break
-          }
-        }
-
-        if (produce > 0) {
-          const ratio = need / produce
-          if (ratio > 0 && ratio < 1) {
-            xh.value = produce
-            xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
-          }
-        }
-      }
-    }
+    // 架构师注：此方法已废弃，请使用 checkResultWithMachineInfo
+    // 原因：checkResult需要访问机器信息(speed, time)，而RecipeCalculator不持有这些信息
+    // UpdateAllService调用的是checkResultWithMachineInfo，传入必要的机器信息
+    // 此方法保留仅为向后兼容，实际不执行任何操作
+    logger.warn(
+      '[RecipeCalculator] checkResult() is deprecated, use checkResultWithMachineInfo() instead'
+    )
   }
 
   // P3-1修复：添加checkResultWithMachineInfo方法，实现完整的checkResult逻辑
   // 此方法由UpdateAllService调用，传入必要的机器信息
   // P6-2修复：修正循环条件，与老代码data.js checkResult函数对齐
   // 老代码不跳过value2<=0的条目，而是检查value2>0作为while循环条件
+  // P9-1修复：添加settingsPf参数，确保使用用户选择的配方
   checkResultWithMachineInfo(
-    getMachineInfo: (recipe: IRawRecipe) => { speed: number; t: number }
+    getMachineInfo: (recipe: IRawRecipe) => { speed: number; t: number },
+    settingsPf: Record<string, string | number> = {},
+    settings: Record<string, { accType?: string; accValue?: string }> = {},
+    defaultAccValue: string = '无'
   ): void {
     const isOverflow = (
       item: IRawRecipe,
@@ -431,7 +395,8 @@ export class RecipeCalculator {
       // if (xh_list[i].value2 < 1) { nn = xh_list[i].value2; }
       if (!xh.value) continue
 
-      const item = this.find(xh.name)
+      // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+      const item = this.find(xh.name, { settingsPf, settings, defaultAccValue })
       if (!item || !item.s) continue
 
       const info = getMachineInfo(item)
@@ -462,7 +427,11 @@ export class RecipeCalculator {
     }
   }
 
-  fixGzSpeed(settingsTime: Record<string, number> = {}): void {
+  // P9-1修复：添加settingsPf参数，确保使用用户选择的配方
+  fixGzSpeed(
+    settingsTime: Record<string, number> = {},
+    settingsPf: Record<string, string | number> = {}
+  ): void {
     // P1-2修复：添加fixGzSpeed方法，与worker版本保持一致
     // 光栅石由采矿机生产时，需要根据采矿机速度修正计算结果
     let gzItem: { name: string; value: number } | null = null
@@ -474,7 +443,8 @@ export class RecipeCalculator {
     }
     if (!gzItem) return
 
-    const gzRecipe = this.find('光栅石')
+    // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
+    const gzRecipe = this.find('光栅石', { settingsPf })
     if (!gzRecipe) return
 
     // 使用mName而非m检查机器类型，m是数组类型
