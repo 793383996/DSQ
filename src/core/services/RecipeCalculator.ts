@@ -441,9 +441,10 @@ export class RecipeCalculator {
         nn = xh.value2
       }
 
-      // P6-2修复：老代码while循环条件是 xh_list[i].value2 > 0
+      // P6-2修复：老代码while循环条件是 isOverflow && value2 > 0
+      // 老代码先检查isOverflow，再检查value2 > 0
       // 如果value2不存在或<=0，while循环不会执行，但不会跳过整个条目
-      while ((xh.value2 || 0) > 0 && isOverflow(item, info, nn)) {
+      while (isOverflow(item, info, nn) && (xh.value2 || 0) > 0) {
         if ((xh.value2 || 0) < 1) {
           nn = xh.value2!
         }
@@ -561,5 +562,22 @@ export class RecipeCalculator {
       if (type === '增产剂Mk.Ⅲ') return 1.25
     }
     return 1
+  }
+
+  // P7-1修复：添加getPfs方法，获取指定产品的所有可选配方
+  // 与老代码data.js getPfs函数对齐
+  getPfs(productName: string): IRawRecipe[] {
+    const indices = this.recipeIndexByProduct[productName]
+    if (!indices || indices.length === 0) {
+      return []
+    }
+    const result: IRawRecipe[] = []
+    for (const idx of indices) {
+      const recipe = this.recipes[idx]
+      if (recipe) {
+        result.push(structuredClone(recipe))
+      }
+    }
+    return result
   }
 }

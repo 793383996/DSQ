@@ -28,6 +28,24 @@ export interface ICalculationResult {
   igNames: string[]
 }
 
+export interface IMachineOptionItem {
+  class: string
+  itemName: string
+  href: string
+  name: string
+  title: string
+  showName: string
+}
+
+export interface IAccOptionItem {
+  class: string
+  itemName: string
+  href: string
+  name: string
+  title: string
+  showName: string
+}
+
 export interface IResultItem {
   name: string
   number1: string
@@ -40,10 +58,10 @@ export interface IResultItem {
   speedClass?: string
   rowClass?: string
   machineName: string
-  m: unknown[]
-  pf: unknown[]
-  accType: unknown[]
-  accValue: unknown[]
+  m: IMachineOptionItem[]
+  pf: IMachineOptionItem[]
+  accType: IAccOptionItem[]
+  accValue: IAccOptionItem[]
   accTotal: string
   numberOther?: string
 }
@@ -123,6 +141,14 @@ export class UpdateAllService {
   private pointLength: number = 3
   private isInitialized: boolean = false
   private initPromise: Promise<void> | null = null
+  // P7-3修复：添加singleList存储独立生产结果
+  private singleList: Array<{
+    id: number
+    number: number
+    name: string
+    mName: string
+    value: number
+  }> = []
 
   constructor() {
     // 延迟初始化：不在构造函数中初始化，避免 window.data 未加载问题
@@ -206,6 +232,8 @@ export class UpdateAllService {
     this.pointLength = pointLength
     this.calculator!.clearState()
     this.calculator!.setIgNames(excludes)
+    // P7-3修复：清空singleList
+    this.singleList = []
 
     // P0-3修复：doSpeed1必须在loadNumber之前调用，与老代码对齐
     // 老代码在f_init中调用doSpeed1，修改data数组的t值
@@ -216,7 +244,8 @@ export class UpdateAllService {
     // 老代码Scripts/data.js update_all函数第一行就是fixGzSpeed()
     // 它修改临界光子配方的t值和引力透镜需求，loadNumber使用修改后的值
     // 新代码原位置在loadNumber之后，导致计算结果错误
-    this.fixCriticalPhotonSpeed(settingsTime)
+    // P6-4修复：传入settings和defaultAccType/defaultAccValue，使用配方级设置
+    this.fixCriticalPhotonSpeed(settingsTime, settings, defaultAccType, defaultAccValue)
 
     // P3-2修复：添加递归深度超限回调，通知用户
     let depthExceededShown = false
@@ -245,7 +274,15 @@ export class UpdateAllService {
           ((60 * sm.number * machineInfo.speed) / (recipe.t || 1)).toFixed(6)
         )
 
+        // P7-3修复：填充singleList，与老代码data.js update_all函数对齐
         for (const output of recipe.s) {
+          this.singleList.push({
+            id: sm.id,
+            number: sm.number,
+            name: output.name,
+            mName: machineInfo.name,
+            value: times * (output.n || 1)
+          })
           this.calculator!.loadNumber(output.name, -1 * times * (output.n || 1), loadOptions)
         }
         if (recipe.q) {
@@ -380,7 +417,13 @@ export class UpdateAllService {
 
   // P2-2修复：处理临界光子的射线接收塔配方
   // 老代码Scripts/data.js中的fixGzSpeed函数
-  private fixCriticalPhotonSpeed(settingsTime: Record<string, number>): void {
+  // P6-4修复：老代码使用临界光子配方的增产剂设置，而非全局默认设置
+  private fixCriticalPhotonSpeed(
+    settingsTime: Record<string, number>,
+    settings: Record<string, { m?: string; accType?: string; accValue?: string }>,
+    defaultAccType: string,
+    defaultAccValue: string
+  ): void {
     // 老代码逻辑：根据增产剂设置计算fixedGzSpeed，修改配方的t值和引力透镜需求
     // 每分钟需求: 引力透镜=0.1*接收塔=0.1*光子需求量/光子产量
     // 光子产量: 12(透镜×200%)/15(增产Ⅰ×250%)/18(增产Ⅱ×300%)/24(增产Ⅲ×400%)
@@ -396,10 +439,13 @@ export class UpdateAllService {
     const lensInput = criticalPhotonRecipe.q?.find(q => q.name === '引力透镜')
     if (!lensInput) return
 
-    // 从全局设置获取默认增产剂
-    const win = window as unknown as { defaultAccType?: string; defaultAccValue?: string }
-    const defaultAccType = win.defaultAccType || '增产剂Mk.Ⅰ'
-    const defaultAccValue = win.defaultAccValue || '无'
+    // P6-4修复：老代码使用临界光子配方的增产剂设置
+    // 老代码：item = find("临界光子", true);
+    //        accType = (settings[item.id] || {}).accType || defaultAccType;
+    //        accValue = (settings[item.id] || {}).accValue || defaultAccValue;
+    const recipeSettings = settings[criticalPhotonRecipe.id?.toString() || '']
+    const accType = recipeSettings?.accType || defaultAccType
+    const accValue = recipeSettings?.accValue || defaultAccValue
 
     // 计算fixedGzSpeed
     let fixedGzSpeed: number
@@ -409,8 +455,8 @@ export class UpdateAllService {
       fixedGzSpeed = gzSpeedSetting
     } else {
       // 根据增产剂设置计算
-      if (defaultAccValue === '加速') {
-        switch (defaultAccType) {
+      if (accValue === '加速') {
+        switch (accType) {
           case '增产剂Mk.Ⅰ':
             fixedGzSpeed = 15
             break
@@ -504,10 +550,11 @@ export class UpdateAllService {
       let accValue = recipeSettings?.accValue || defaultAccValue
 
       // 架构师注：accValue 修正逻辑与老代码 data.js update_all 函数对齐
+      // 老代码在value2计算时只检查item.q.length == 0，不检查noExtra === null
       if (accValue === '增产' && recipe.noExtra) {
         accValue = '无'
       }
-      if (!recipe.q || recipe.q.length === 0 || recipe.noExtra === null) {
+      if (!recipe.q || recipe.q.length === 0) {
         accValue = '无'
       }
 
@@ -524,13 +571,14 @@ export class UpdateAllService {
         }
       }
 
+      // P7-4修复：value2计算逻辑与老代码data.js完全对齐
+      // 老代码：先计算基础value2，再根据条件应用getAccSpeed和fixValue2Times
+      xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (recipe.n || 1)
+
       if (recipe.name !== '临界光子' || recipe.mName !== '射线接收塔') {
-        xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (recipe.n || 1)
         xh.value2 = (xh.value2 / RecipeCalculator.getAccSpeed(accType, accValue)) * fixValue2Times
-      } else {
-        xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (recipe.n || 1)
-        xh.value2 = xh.value2 / RecipeCalculator.getAccSpeed(accType, accValue)
       }
+      // 临界光子（射线接收塔）不应用getAccSpeed和fixValue2Times，保持基础value2
     }
   }
 
@@ -603,6 +651,93 @@ export class UpdateAllService {
         accTotal: (xh.accTotal || 0).toFixed(2)
       }
 
+      // P7-1修复：填充pf数组（可选配方列表）
+      const pfRecipes = this.calculator!.getPfs(xh.name)
+      for (const pfRecipe of pfRecipes) {
+        const isSelected = recipe.id === pfRecipe.id
+        item.pf.push({
+          class: isSelected ? 'pf selected' : 'pf',
+          itemName: xh.name,
+          href: isSelected
+            ? 'javascript:void(0)'
+            : `javascript:selectPf("${xh.name}","${pfRecipe.id}")`,
+          name: pfRecipe.name || '',
+          title: this.getPfTitle(pfRecipe, isSelected ? machineInfo : null),
+          showName: pfRecipe.name || ''
+        })
+      }
+
+      // P7-1修复：填充m数组（可选设备列表）
+      const mArray = Array.isArray(recipe.m) ? recipe.m : []
+      for (const m of mArray) {
+        const isSelected = machineInfo.name === m.name
+        let title = `设备速度:${(m.speed || 1).toFixed(this.pointLength)}`
+        const showName = (m.name || '').replace('制作台', '')
+        if (showName === '采矿机') {
+          title += ' 采矿机按6个矿脉计算(因所限传送带速度最高30)'
+        }
+        if (showName === '大型采矿机') {
+          title += ' 大型采矿机按20个矿脉计算'
+        }
+        if (showName === '矿脉') {
+          title += ' (速度最高30)'
+        }
+        item.m.push({
+          class: isSelected ? 'm selected' : 'm',
+          itemName: xh.name,
+          href: isSelected
+            ? 'javascript:void(0)'
+            : `javascript:selectM("${recipe.id}","${m.name}")`,
+          name: m.name || '',
+          title,
+          showName
+        })
+      }
+
+      // P7-1修复：填充accType数组（增产剂类型选项）
+      const currentAccType = recipeSettings?.accType || defaultAccType
+      const currentAccValue = recipeSettings?.accValue || defaultAccValue
+      const accTypes = ['增产剂Mk.Ⅰ', '增产剂Mk.Ⅱ', '增产剂Mk.Ⅲ']
+      for (const accT of accTypes) {
+        const isSelected = accT === currentAccType
+        item.accType.push({
+          class: isSelected ? 'm selected' : 'm',
+          itemName: xh.name,
+          href: isSelected
+            ? 'javascript:void(0)'
+            : `javascript:selectAccType("${recipe.id}","${accT}")`,
+          name: accT,
+          title: accT,
+          showName: accT.replace('增产剂', '')
+        })
+      }
+
+      // P7-1修复：填充accValue数组（增产剂效果选项）
+      const accValues = ['无', '加速', '增产']
+      let effectiveAccValue = currentAccValue
+      if (effectiveAccValue === '增产' && recipe.noExtra) {
+        effectiveAccValue = '无'
+      }
+      if (!recipe.q || recipe.q.length === 0 || recipe.noExtra === null) {
+        effectiveAccValue = '无'
+      }
+      for (const accV of accValues) {
+        if (accV !== '无' && (!recipe.q || recipe.q.length === 0 || recipe.noExtra === null))
+          continue
+        if (accV === '增产' && recipe.noExtra) continue
+        const isSelected = accV === effectiveAccValue
+        item.accValue.push({
+          class: isSelected ? 'm selected' : 'm',
+          itemName: xh.name,
+          href: isSelected
+            ? 'javascript:void(0)'
+            : `javascript:selectAccValue("${recipe.id}","${accV}")`,
+          name: accV,
+          title: accV,
+          showName: accV
+        })
+      }
+
       if (xh.name === '太阳帆') {
         item.numberOther = `(可供 ${(xh.value / 20).toFixed(this.pointLength)} 电磁轨道弹射器)`
       } else if (xh.name === '小型运载火箭') {
@@ -619,24 +754,49 @@ export class UpdateAllService {
       const energyMultiplier = getEnergyMultiplier(accType, accValue)
       const energy = baseEnergy * energyMultiplier
 
+      // P7-2修复：total计算使用Math.ceil，与老代码对齐
+      const totalValue2 = Math.ceil(xh.value2 || 0)
       const totalItem = total.find(t => t.name === machineInfo.name)
       if (totalItem) {
-        totalItem.value += xh.value2 || 0
-        totalItem.energy = (totalItem.energy || 0) + energy * (xh.value2 || 0)
-        totalItem.space = (totalItem.space || 0) + space * (xh.value2 || 0)
+        totalItem.value += totalValue2
+        totalItem.energy = (totalItem.energy || 0) + energy * totalValue2
+        totalItem.space = (totalItem.space || 0) + space * totalValue2
       } else {
         total.push({
           name: machineInfo.name,
-          value: xh.value2 || 0,
-          energy: energy * (xh.value2 || 0),
-          space: space * (xh.value2 || 0)
+          value: totalValue2,
+          energy: energy * totalValue2,
+          space: space * totalValue2
         })
       }
     }
 
     const totalEnergy = total.reduce((sum, t) => sum + (t.energy || 0), 0)
     const totalSpace = total.reduce((sum, t) => sum + (t.space || 0), 0)
-    const totalAcc = state.xhList.reduce((sum, xh) => sum + (xh.accTotal || 0), 0)
+    // P8-1修复：totalAcc计算逻辑与老代码data.js对齐
+    // 老代码：只有当accValue != "无"时才累加accTotal
+    // 新代码原逻辑：无条件累加所有accTotal，导致增产剂消耗计算错误
+    let totalAcc = 0
+    for (const xh of state.xhList) {
+      if (!xh.value) continue
+      const recipe = this.calculator!.find(xh.name)
+      if (!recipe) continue
+      const recipeSettings = settings[recipe.id?.toString() || '']
+      const accValue = recipeSettings?.accValue || defaultAccValue
+      // 架构师注：老代码检查info.accValue，info是getValue的结果
+      // getValue返回的accValue已经过修正（noExtra、q.length等）
+      // 此处需要使用修正后的effectiveAccValue
+      let effectiveAccValue = accValue
+      if (effectiveAccValue === '增产' && recipe.noExtra) {
+        effectiveAccValue = '无'
+      }
+      if (!recipe.q || recipe.q.length === 0 || recipe.noExtra === null) {
+        effectiveAccValue = '无'
+      }
+      if (effectiveAccValue !== '无') {
+        totalAcc += xh.accTotal || 0
+      }
+    }
 
     // 架构师注：items2 处理 out_list（副产品/多余产出）
     // 老代码逻辑：遍历 out_list，生成 items2 用于显示多余产出
@@ -665,6 +825,34 @@ export class UpdateAllService {
       items2.push(outItem)
     }
 
+    // P7-3修复：处理items0（独立生产结果），与老代码data.js update_all函数对齐
+    for (const single of this.singleList) {
+      if (!single.value) continue
+      const recipe = this.recipes[single.id]
+      if (!recipe) continue
+      const machineInfo = this.getMachineInfo(recipe, settings, settingsTime)
+
+      const singleItem: IResultItem = {
+        name: single.name,
+        number1: single.value.toFixed(this.pointLength),
+        number2: single.number.toFixed(this.pointLength),
+        number2full: single.number.toFixed(this.pointLength),
+        number2img: '',
+        time: machineInfo.time.toFixed(this.pointLength),
+        t: machineInfo.t.toFixed(this.pointLength),
+        speed: machineInfo.speed.toFixed(this.pointLength),
+        speedClass: machineInfo.isChange ? 'time time2' : 'time',
+        rowClass: 'singlerow',
+        machineName: single.mName,
+        m: [],
+        pf: [],
+        accType: [],
+        accValue: [],
+        accTotal: '0.00'
+      }
+      items0.push(singleItem)
+    }
+
     return {
       items,
       items0,
@@ -680,6 +868,38 @@ export class UpdateAllService {
       })),
       igNames: excludes
     }
+  }
+
+  // P7-1修复：添加getPfTitle方法，生成配方标题
+  // 与老代码data.js getPfTitle函数对齐
+  private getPfTitle(recipe: IRawRecipe, machineInfo: IMachineInfo | null): string {
+    const parts: string[] = []
+
+    // 原料
+    if (recipe.q) {
+      for (const q of recipe.q) {
+        parts.push(`${q.name}×${q.n || 1}`)
+      }
+    }
+
+    if (recipe.q && recipe.q.length > 0) {
+      parts.push('→')
+    }
+
+    // 产出
+    if (recipe.s) {
+      for (const s of recipe.s) {
+        parts.push(`${s.name}×${s.n || 1}`)
+      }
+    }
+
+    parts.push(`(${(recipe.t || 1).toFixed(1)}s)`)
+
+    if (machineInfo) {
+      parts.push(`[${machineInfo.name}]`)
+    }
+
+    return parts.join(' ')
   }
 
   getState(): ICalculationState | null {
