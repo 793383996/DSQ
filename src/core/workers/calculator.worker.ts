@@ -4,21 +4,9 @@ import type {
   IWorkerInitRequest,
   IWorkerInitResponse
 } from './types'
+import type { IRawRecipe } from '../types/settings'
 
-interface ILegacyRecipeItem {
-  name: string
-  n?: number
-}
-
-interface ILegacyRecipe {
-  id: number
-  s: ILegacyRecipeItem[]
-  q: ILegacyRecipeItem[]
-  t: number
-  m?: string | Array<{ name: string; speed: number }>
-  noExtra?: boolean | null
-  group?: string
-}
+type ILegacyRecipe = IRawRecipe
 
 let recipes: ILegacyRecipe[] = []
 let settings: Record<number, { accType?: string; accValue?: string; m?: string }> = {}
@@ -44,6 +32,9 @@ let xhMap: Record<string, IInternalItem> = {}
 let outMap: Record<string, IInternalItem> = {}
 let ig_names: string[] = []
 let loadNumberDepth = 0
+
+// P6-4修复：添加轨道采集器t值缓存
+let orbitalCollectorTCache: Map<string, number> = new Map()
 
 function addXH(name: string, value: number): void {
   const item = xhMap[name]
@@ -80,42 +71,214 @@ function findOut(name: string): number | null {
 }
 
 function checkResult(): void {
+  // P0-2修复：重写checkResult逻辑，与老代码data.js checkResult函数对齐
+  // 老代码逻辑：当设备产出超过需求时，减少设备数量(value2)并增加产出(out_list)
   for (let i = 0; i < xh_list.length; i++) {
     const xh = xh_list[i]
-    if (!xh.value) continue
-    const itemName = xh.name
-    const item = find(itemName, false)
-    if (!item) continue
+    if (!xh.value2 || xh.value2 <= 0) continue
 
+    const item = find(xh.name, false)
+    if (!item || !item.s) continue
+
+    // 获取机器信息
+    const machineInfo = getMachineInfo(item)
+    let nn = 1
+    if (xh.value2 < 1) {
+      nn = xh.value2
+    }
+
+    // 检查是否溢出：任何产物的out值<0表示产出超过需求
     let isOverflow = false
     for (let j = 0; j < item.s.length; j++) {
-      const s = item.s[j]
-      const out = findOut(s.name)
+      const out = findOut(item.s[j].name)
       if (out === null) continue
-      if (out < 0) {
+      // 老代码逻辑：mn = ((nn * 60) / item.t) * info.speed * (item.s[j].n || 1)
+      const mn = ((nn * 60) / machineInfo.t) * machineInfo.speed * (item.s[j].n || 1)
+      if (out > -1 * mn) continue
+      isOverflow = true
+      break
+    }
+
+    // 老代码逻辑：while循环减少设备数量直到不溢出
+    while (isOverflow && xh.value2 > 0) {
+      if (xh.value2 < 1) {
+        nn = xh.value2
+      }
+      xh.value2 = xh.value2 - nn
+
+      // 将减少的设备产出添加到out_list
+      for (let j = 0; j < item.s.length; j++) {
+        const mn = ((nn * 60) / machineInfo.t) * machineInfo.speed * (item.s[j].n || 1)
+        addOut(item.s[j].name, mn)
+      }
+
+      if (xh.value2 < 1) {
+        nn = xh.value2
+      }
+
+      // 重新检查是否溢出
+      isOverflow = false
+      for (let j = 0; j < item.s.length; j++) {
+        const out = findOut(item.s[j].name)
+        if (out === null) continue
+        const mn = ((nn * 60) / machineInfo.t) * machineInfo.speed * (item.s[j].n || 1)
+        if (out > -1 * mn) continue
         isOverflow = true
         break
       }
     }
+  }
+}
 
-    if (isOverflow) {
-      let produce = 0
-      for (let j = 0; j < item.s.length; j++) {
-        const s = item.s[j]
-        if (s.name === itemName) {
-          produce = (xh.value * (s.n || 1)) / (item.n || 1)
-          break
-        }
-      }
+// P0-1修复：添加getMachineInfo函数，获取机器信息
+// P6-4修复：添加轨道采集器t值缓存支持，与主线程UpdateAllService对齐
+function getMachineInfo(item: IInternalRecipe): { speed: number; t: number } {
+  const mArray = Array.isArray(item.m) ? item.m : []
+  const machineName = mArray[0]?.name || item.mName || ''
+  const machine =
+    mArray.find((m: { name: string; speed: number }) => m.name === machineName) || mArray[0]
 
-      if (produce > 0) {
-        const ratio = xh.value / produce
-        if (ratio > 0 && ratio < 1) {
-          xh.value = produce
-          xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
+  const baseSpeed = machine?.speed || 1
+  const customSpeed = settingsTime[machineName]
+  const speed = customSpeed !== undefined ? customSpeed : baseSpeed
+
+  let recipeT = item.t || 1
+  // P6-4修复：轨道采集器使用缓存的t值
+  // 老代码doSpeed1直接修改data数组的t值，新代码使用缓存机制
+  if (machineName === '轨道采集器(气态)' || machineName === '轨道采集器(巨冰)') {
+    const cacheKey = `${item.id}-${item.s?.[0]?.name || ''}`
+    const cachedT = orbitalCollectorTCache.get(cacheKey)
+    if (cachedT !== undefined) {
+      recipeT = cachedT
+    }
+  }
+
+  return { speed, t: recipeT }
+}
+
+// P0-2修复：添加calculateValue2函数，在checkResult之前计算value2
+function calculateValue2(): void {
+  for (let i = 0; i < xh_list.length; i++) {
+    const xh = xh_list[i]
+    if (!xh.value || xh.value <= 0) continue
+
+    const item = find(xh.name, false)
+    if (!item || !item.s) continue
+
+    const machineInfo = getMachineInfo(item)
+
+    // 获取增产剂设置
+    const itemId = item.id
+    const itemSettings = itemId !== undefined ? settings[itemId] : undefined
+    const accType = itemSettings?.accType || defaultAccType
+    let accValue = itemSettings?.accValue || defaultAccValue
+
+    // 架构师注：accValue 修正逻辑与老代码对齐
+    if (accValue === '增产' && item.noExtra) {
+      accValue = '无'
+    }
+    if (!item.q || item.q.length === 0 || item.noExtra === null) {
+      accValue = '无'
+    }
+
+    // 计算fixValue2Times
+    let fixValue2Times = 1
+    if (item.q) {
+      for (let j = 0; j < item.q.length; j++) {
+        if (item.q[j].name === xh.name) {
+          const recipeN = item.n || 1
+          const inputN = item.q[j].n || 0
+          if (recipeN > inputN) {
+            fixValue2Times = recipeN / (recipeN - inputN)
+          }
         }
       }
     }
+
+    // 计算value2
+    xh.value2 = xh.value / (1 / machineInfo.t) / 60 / (item.n || 1)
+    xh.value2 = (xh.value2 / getAccSpeed(accType, accValue)) * fixValue2Times
+  }
+}
+
+// P0-1修复：添加getAccSpeed函数
+function getAccSpeed(type: string, value: string): number {
+  if (value === '加速') {
+    if (type === '增产剂Mk.Ⅰ') return 1.25
+    if (type === '增产剂Mk.Ⅱ') return 1.5
+    if (type === '增产剂Mk.Ⅲ') return 2
+  } else if (value === '增产') {
+    if (type === '增产剂Mk.Ⅰ') return 1.125
+    if (type === '增产剂Mk.Ⅱ') return 1.2
+    if (type === '增产剂Mk.Ⅲ') return 1.25
+  }
+  return 1
+}
+
+// P0-2修复：添加mergeMul函数，处理同一配方的多个产出合并
+function getXhs(itemId: number): IInternalItem[] {
+  const result: IInternalItem[] = []
+  for (let i = 0; i < xh_list.length; i++) {
+    const xh = xh_list[i]
+    if (!xh.value) continue
+    const item = find(xh.name, false)
+    if (item && item.id === itemId) {
+      result.push(xh)
+    }
+  }
+  return result
+}
+
+function doMergeMul(xhs: IInternalItem[]): void {
+  let maxValue2Index = -1
+  let max = 0
+  for (let i = 0; i < xhs.length; i++) {
+    const v2 = xhs[i].value2 || 0
+    if (v2 > max) {
+      max = v2
+      maxValue2Index = i
+    }
+  }
+
+  for (let i = 0; i < xhs.length; i++) {
+    if (i !== maxValue2Index && (xhs[i].value2 || 0) > 0) {
+      const number = xhs[i].value
+      xhs[i].value2 = 0
+      const item = find(xhs[i].name, false)
+      if (!item) continue
+      for (let j = 0; j < item.s.length; j++) {
+        addOut(item.s[j].name, (number * (item.s[j].n || 1)) / (item.n || 1))
+      }
+    }
+  }
+}
+
+// P0-2修复：mergeMul已被老代码注释掉，保留实现但标记为未使用
+// 老代码注释：//mergeMul();//处理合并 多个产出使用了同一个配方 ,暂时弃用，checkResult会处理这种情况
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _mergeMul(): void {
+  const ids: number[] = []
+  const groups: IInternalItem[][] = []
+
+  for (let i = 0; i < xh_list.length; i++) {
+    const xh = xh_list[i]
+    if (!xh.value) continue
+    const item = find(xh.name, false)
+    if (!item) continue
+
+    const itemId = item.id
+    if (itemId === undefined) continue
+    if (ids.indexOf(itemId) !== -1) continue
+
+    const xhs = getXhs(itemId)
+    if (xhs.length > 1) {
+      groups.push(xhs)
+      ids.push(itemId)
+    }
+  }
+
+  for (let i = 0; i < groups.length; i++) {
+    doMergeMul(groups[i])
   }
 }
 
@@ -132,8 +295,9 @@ function fixGzSpeed(): void {
   const gzRecipe = find('光栅石', false)
   if (!gzRecipe) return
 
-  const machine = gzRecipe.m
-  if (typeof machine !== 'string' || machine !== '采矿机') return
+  // P0-1修复：使用mName而非m检查机器类型，与主线程版本保持一致
+  // m是数组类型，mName是字符串类型，用于标识机器类别
+  if (gzRecipe.mName !== '采矿机') return
 
   const gzValue = gzItem.value
   if (gzValue <= 0) return
@@ -143,12 +307,13 @@ function fixGzSpeed(): void {
 }
 
 interface IInternalRecipe {
-  id: number
+  id?: number
   s: Array<{ name: string; n: number }>
   q: Array<{ name: string; n: number }>
   t: number
   n: number
   m?: string | Array<{ name: string; speed: number }>
+  mName?: string
   noExtra?: boolean | null
 }
 
@@ -156,11 +321,12 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
   function get(item: ILegacyRecipe): IInternalRecipe | null {
     const o: IInternalRecipe = {
       id: item.id,
-      s: item.s.map(s => ({ name: s.name, n: s.n ?? 1 })),
-      q: item.q.map(q => ({ name: q.name, n: q.n ?? 1 })),
+      s: item.s?.map(s => ({ name: s.name, n: s.n ?? 1 })) || [],
+      q: item.q?.map(q => ({ name: q.name, n: q.n ?? 1 })) || [],
       t: item.t || 1,
       n: 1,
       m: item.m,
+      mName: item.mName,
       noExtra: item.noExtra ?? undefined
     }
 
@@ -208,7 +374,9 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
 
   const pf = settingsPf[name]
   if (pf !== undefined) {
-    const item = recipes[pf]
+    // P1-3修复：处理string/number类型，与RecipeCalculator保持一致
+    const pfValue = typeof pf === 'number' ? pf : parseInt(String(pf), 10)
+    const item = recipes[pfValue]
     if (item) return get(item)
   }
 
@@ -220,7 +388,9 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
       const item = recipes[idx]
       if (!item) continue
 
-      const accValue = (settings[item.id] || {}).accValue || defaultAccValue
+      // P1-1修复：item.id可能为undefined，需要类型安全检查
+      const accValue =
+        (item.id !== undefined ? settings[item.id] : undefined)?.accValue || defaultAccValue
       if (accValue === '增产' && item.noExtra) continue
 
       const result = get(item)
@@ -231,6 +401,8 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
 
   for (let i = 0; i < recipes.length; i++) {
     const item = recipes[i]
+    // P1-1修复：item.s可能为undefined，需要类型安全检查
+    if (!item.s) continue
     for (let j = 0; j < item.s.length; j++) {
       if (item.s[j].name === name) {
         return get(item)
@@ -272,9 +444,33 @@ function loadNumber(itemName: string, n: number): void {
       }
     }
 
-    const accType = (settings[item.id] || {}).accType || defaultAccType
-    let accValue = (settings[item.id] || {}).accValue || defaultAccValue
+    // P1-1修复：settings key类型兼容处理，支持数字和字符串key
+    // 遗留代码使用数字key，新代码可能使用字符串key
+    const itemId = item.id
+    const getItemSetting = (): { accType?: string; accValue?: string } | undefined => {
+      if (itemId !== undefined) {
+        // 先尝试数字key，再尝试字符串key
+        return settings[itemId] || settings[String(itemId) as unknown as keyof typeof settings]
+      }
+      return undefined
+    }
+
+    const itemSettings = getItemSetting()
+    const accType = itemSettings?.accType || defaultAccType
+    let accValue = itemSettings?.accValue || defaultAccValue
     let accTotal = 0
+
+    // 架构师注：accValue 修正逻辑与老代码 calculator.js loadNumber 函数对齐
+    // 老代码在循环内检查，但逻辑等效于循环外检查
+    // 老代码逻辑：accValue == '增产' && item.noExtra → '无'
+    // 老代码逻辑：item.q.length == 0 || item.noExtra === null → '无'
+    // 注意：noExtra === null 表示无效果（如能量枢纽充能），不应使用增产剂
+    if (accValue === '增产' && item.noExtra) {
+      accValue = '无'
+    }
+    if (!item.q || item.q.length === 0 || item.noExtra === null) {
+      accValue = '无'
+    }
 
     for (let i = 0; item.q && i < item.q.length; i++) {
       const q = item.q[i]
@@ -298,8 +494,6 @@ function loadNumber(itemName: string, n: number): void {
         }
 
         if (selfAcc) tm = tm * v - 1
-        if (accValue === '增产' && item.noExtra) accValue = '无'
-        if (item.q.length === 0 || item.noExtra === null) accValue = '无'
 
         if (accValue === '加速') {
           accTotal += r / tm
@@ -317,27 +511,25 @@ function loadNumber(itemName: string, n: number): void {
         const outValue = findOut(q.name)
         if (outValue !== null && outValue < 0) {
           const abs_out = Math.abs(outValue)
-          if (abs_out > r) {
+          if (abs_out >= r) {
             addOut(q.name, r)
-            loadNumberDepth--
-            return
+            continue
           } else {
             addOut(q.name, abs_out)
             r = r - abs_out
           }
         }
-        loadNumber(q.name, r)
+        if (r > 0) {
+          loadNumber(q.name, r)
+        }
       }
     }
 
     if (accTotal > 0) {
       addAccTotal(itemName, accTotal)
     }
-    loadNumberDepth--
   } finally {
-    if (loadNumberDepth > 0) {
-      loadNumberDepth--
-    }
+    loadNumberDepth--
   }
 }
 
@@ -372,13 +564,33 @@ function calculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
   selfAcc = data.selfAcc ?? false
   isAddSelfAccP = data.isAddSelfAccP ?? false
 
+  // P6-4修复：初始化轨道采集器t值缓存
+  orbitalCollectorTCache = new Map()
+  if (data.orbitalCollectorTCache) {
+    for (const [key, value] of Object.entries(data.orbitalCollectorTCache)) {
+      orbitalCollectorTCache.set(key, value)
+    }
+  }
+
   try {
-    fixGzSpeed()
+    // P0-3修复：doSpeed1逻辑已在主线程UpdateAllService中处理
+    // Worker版本通过settingsTime参数获取已计算的速度设置
 
     for (let i = 0; i < data.demands.length; i++) {
       const d = data.demands[i]
       loadNumber(d.name, d.num)
     }
+
+    // P0-2修复：fixGzSpeed在calculateValue2之前调用，与老代码对齐
+    fixGzSpeed()
+
+    // P0-1修复：mergeMul已被老代码注释掉，checkResult会处理这种情况
+    // 老代码注释：//mergeMul();//处理合并 多个产出使用了同一个配方 ,暂时弃用，checkResult会处理这种情况
+    // mergeMul()
+
+    // P0-2修复：calculateValue2必须在checkResult之前调用
+    // 老代码顺序：计算value2 -> checkResult
+    calculateValue2()
 
     checkResult()
 

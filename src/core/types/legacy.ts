@@ -69,6 +69,9 @@ export interface ILegacyWindow {
   icons: Record<string, string>
   xh_list: ILegacyXhItem[]
   out_list: ILegacyOutItem[]
+  // P2-1修复：添加xhMap和outMap类型定义
+  xhMap?: Record<string, ILegacyXhItem>
+  outMap?: Record<string, ILegacyOutItem>
   items0: unknown[]
   items: unknown[]
   totalDisplay: unknown[]

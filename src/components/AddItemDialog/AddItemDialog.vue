@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   getSelectableItemsWithIcons,
   waitForLegacyData,
@@ -191,6 +191,13 @@ watch(searchKeyword, val => {
   debounceTimer = setTimeout(() => {
     debouncedKeyword.value = val
   }, 150)
+})
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
 })
 
 watch(

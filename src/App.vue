@@ -156,13 +156,18 @@ onMounted(async () => {
     const handleGameDataLoaded = () => {
       store.checkIconsLoaded()
       window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
+      if (loadTimeoutId !== null) {
+        clearTimeout(loadTimeoutId)
+        loadTimeoutId = null
+      }
       logger.log('[App] Game icons loaded via event')
     }
     window.addEventListener('gameDataLoaded', handleGameDataLoaded)
 
     // 保留超时保护
-    setTimeout(() => {
+    let loadTimeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
+      loadTimeoutId = null
       if (!store.isIconsLoaded) {
         logger.warn('[App] Game icons load timeout')
       }
@@ -194,6 +199,11 @@ async function runCalculation(retryCount: number = 0) {
     return
   }
 
+  if (isCalculating.value) {
+    logger.log('[App] Calculation already in progress, skipping')
+    return
+  }
+
   isCalculating.value = true
   calculationError.value = null
   store.setCalculating(true)
@@ -218,7 +228,21 @@ async function runCalculation(retryCount: number = 0) {
       excludes,
       onStateSnapshot: () => snapshot,
       validateState: s => store.validateSnapshot(s),
-      throwOnStateChange: true
+      throwOnStateChange: true,
+      selfAcc: store.machineSettings.selfAcc ?? false,
+      isAddSelfAccP: store.machineSettings.isAddSelfAccP ?? false,
+      // P1-2修复：传递完整的machineSettings，包括设备类型设置
+      machineSettings: {
+        modeIn: store.machineSettings.modeIn,
+        furnace: store.machineSettings.furnace,
+        chemical: store.machineSettings.chemical,
+        research: store.machineSettings.research,
+        accType: store.machineSettings.accType,
+        accValue: store.machineSettings.accValue,
+        hideSource: store.machineSettings.hideSource,
+        selfAcc: store.machineSettings.selfAcc,
+        isAddSelfAccP: store.machineSettings.isAddSelfAccP
+      }
     })
 
     if (result && result.items) {

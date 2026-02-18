@@ -332,6 +332,7 @@ interface AllSettings {
   accValue: string
   research: string
   selfAcc: boolean
+  isAddSelfAccP: boolean
   oreSpeed: number
   largeMinerSpeed: number
   fractionatorSpeed: number
@@ -364,6 +365,7 @@ const settings = reactive<AllSettings>({
   accValue: '无',
   research: '矩阵研究站',
   selfAcc: false,
+  isAddSelfAccP: false,
   oreSpeed: 100,
   largeMinerSpeed: 100,
   fractionatorSpeed: 18,
@@ -450,6 +452,8 @@ function saveSettings() {
   store.setMachineSetting('accType', settings.accType)
   store.setMachineSetting('accValue', settings.accValue)
   store.setMachineSetting('research', settings.research)
+  store.setMachineSetting('selfAcc', settings.selfAcc)
+  store.setMachineSetting('isAddSelfAccP', settings.isAddSelfAccP)
 
   legacyUpdateMachineSettings({
     modeIn: settings.modeIn,
@@ -503,7 +507,9 @@ function resetSettings() {
     chemical: '化工厂',
     accType: '增产剂Mk.Ⅰ',
     accValue: '无',
-    research: '矩阵研究站'
+    research: '矩阵研究站',
+    selfAcc: false,
+    isAddSelfAccP: false
   }
   store.loadMachineSettings(defaultMachineSettings)
 
@@ -515,6 +521,7 @@ function resetSettings() {
   settings.accValue = '无'
   settings.research = '矩阵研究站'
   settings.selfAcc = false
+  settings.isAddSelfAccP = false
   settings.oreSpeed = 100
   settings.largeMinerSpeed = 100
   settings.fractionatorSpeed = 18

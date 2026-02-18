@@ -3,6 +3,9 @@ import type { IRawRecipe } from '../types/settings'
 import type { LegacyWindow } from '../types/legacy'
 import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
+import { settingsAdapter } from '../adapters/SettingsAdapter'
+import { updateAllService } from './UpdateAllService'
+import { syncStateToLegacy, clearLegacyState } from '../bridge'
 import { logger } from '../../utils/logger'
 
 export interface CalculationOptions {
@@ -11,6 +14,20 @@ export interface CalculationOptions {
   validateState?: (snapshot: IStateSnapshot) => boolean
   throwOnStateChange?: boolean
   useNewEngine?: boolean
+  selfAcc?: boolean
+  isAddSelfAccP?: boolean
+  // P1-2修复：扩展machineSettings类型，包含设备类型设置
+  machineSettings?: {
+    modeIn?: string
+    furnace?: string
+    chemical?: string
+    research?: string
+    accType?: string
+    accValue?: string
+    hideSource?: boolean
+    selfAcc?: boolean
+    isAddSelfAccP?: boolean
+  }
 }
 
 export interface IStateSnapshot {
@@ -33,44 +50,6 @@ export class StateChangedDuringCalculationError extends Error {
     super(`State changed during calculation (version ${version})`)
     this.name = 'StateChangedDuringCalculationError'
   }
-}
-
-function clearLegacyGlobalState(): void {
-  const w = window as unknown as Record<string, unknown>
-  if (w.xh_list && Array.isArray(w.xh_list)) w.xh_list.length = 0
-  if (w.out_list && Array.isArray(w.out_list)) w.out_list.length = 0
-  if (w.single_list && Array.isArray(w.single_list)) w.single_list.length = 0
-  if (w.ig_names && Array.isArray(w.ig_names)) w.ig_names.length = 0
-  if (w.xhMap && typeof w.xhMap === 'object') {
-    Object.keys(w.xhMap).forEach(key => {
-      delete (w.xhMap as Record<string, unknown>)[key]
-    })
-  }
-  if (w.outMap && typeof w.outMap === 'object') {
-    Object.keys(w.outMap).forEach(key => {
-      delete (w.outMap as Record<string, unknown>)[key]
-    })
-  }
-  if (w.total && Array.isArray(w.total)) w.total.length = 0
-  w.totalAcc = 0
-}
-
-// P0-2修复：等待update_all函数可用，带超时和重试机制
-const MAX_WAIT_UPDATE_ALL_MS = 5000
-const WAIT_INTERVAL_MS = 100
-
-async function waitForUpdateAll(): Promise<() => void> {
-  const win = window as unknown as LegacyWindow
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < MAX_WAIT_UPDATE_ALL_MS) {
-    if (typeof win.update_all === 'function') {
-      return win.update_all as () => void
-    }
-    await new Promise(resolve => setTimeout(resolve, WAIT_INTERVAL_MS))
-  }
-
-  throw new Error('计算引擎初始化超时，请刷新页面重试')
 }
 
 /**
@@ -112,11 +91,9 @@ export class CalculatorService {
    * 1. 递增计算版本号
    * 2. 获取状态快照（如果提供了 onStateSnapshot）
    * 3. 清理遗留全局状态
-   * 4. 设置 window.xqs 和 window.ig_names
-   * 5. 调用 window.update_all() 执行计算
-   * 6. 从 window.app 提取结果
-   * 7. 验证状态一致性（如果提供了 validateState）
-   * 8. 填充 CalculationContext
+   * 4. 使用 UpdateAllService 执行计算
+   * 5. 验证状态一致性（如果提供了 validateState）
+   * 6. 填充 CalculationContext
    *
    * @param demands 需求列表
    * @param options 计算选项
@@ -135,11 +112,17 @@ export class CalculatorService {
       snapshot = options.onStateSnapshot()
     }
 
-    clearLegacyGlobalState()
+    clearLegacyState()
 
-    const win = window as unknown as LegacyWindow
-    const winRaw = window as unknown as Record<string, unknown>
+    // P0-2修复：传递machineSettings确保legacy全局变量同步
+    syncStateToLegacy({
+      demandList: demands,
+      excludeList: options.excludes || [],
+      machineSettings: options.machineSettings
+    })
+
     if (!recipeAdapter.isLoaded()) {
+      const winRaw = window as unknown as Record<string, unknown>
       if (winRaw.data && winRaw.recipeIndexByProduct) {
         recipeAdapter.loadFromRawData(winRaw.data as IRawRecipe[])
       } else {
@@ -148,34 +131,28 @@ export class CalculatorService {
       }
     }
 
-    if (!win.app) {
-      logger.error('[CalculatorService] window.app not initialized')
-      throw new Error('应用状态未初始化，请刷新页面重试')
-    }
-
     const excludes = options.excludes || []
 
-    win.xqs = win.xqs || []
-    win.xqs.length = 0
-    demands.forEach(d => {
-      win.xqs!.push({
-        name: d.name,
-        value: d.num,
-        number: d.num,
-        item: { name: d.name }
-      })
-    })
-
-    win.ig_names = win.ig_names || []
-    win.ig_names.length = 0
-    excludes.forEach(name => {
-      win.ig_names!.push(name)
-    })
-
     try {
-      // P0-2修复：使用等待机制确保update_all可用
-      const updateAll = await waitForUpdateAll()
-      updateAll()
+      const settings = settingsAdapter.getAllRecipeSettings()
+      const settingsTime = settingsAdapter.getAllSpeedSettings()
+      // P1-2修复：保持settingsPf原始类型(number)，RecipeCalculator.find已正确处理类型
+      const settingsPf = settingsAdapter.getAllProductivitySettings()
+      const win = window as unknown as LegacyWindow
+
+      const calcResult = await updateAllService.updateAll({
+        demands,
+        excludes,
+        settings,
+        settingsTime,
+        settingsPf,
+        defaultAccType: win.defaultAccType || '增产剂Mk.Ⅰ',
+        defaultAccValue: win.defaultAccValue || '无',
+        hideSource: win.hideSource?.checked ?? false,
+        pointLength: parseInt(win.pointLength?.value || '3'),
+        selfAcc: options.selfAcc ?? win.selfAcc?.checked ?? false,
+        isAddSelfAccP: options.isAddSelfAccP ?? win.isAddSelfAccP?.checked ?? false
+      })
 
       if (snapshot && options.validateState) {
         if (!options.validateState(snapshot)) {
@@ -187,15 +164,37 @@ export class CalculatorService {
         }
       }
 
-      const result = this.extractResults()
-      result.xqs = demands.map(d => ({
-        name: d.name,
-        num: d.num,
-        item: { name: d.name }
-      }))
-      result.ig_names = [...excludes]
+      const result: ILegacyCalculationResult = {
+        items: calcResult.items as unknown as ILegacyCalculationResult['items'],
+        items2: calcResult.items2 as unknown as ILegacyCalculationResult['items2'],
+        items0: calcResult.items0 as unknown as ILegacyCalculationResult['items0'],
+        total: calcResult.total.map(t => ({
+          name: t.name,
+          number: t.value,
+          energy: t.energy,
+          space: t.space
+        })),
+        totalEnergy: calcResult.totalEnergy,
+        totalSpace: calcResult.totalSpace,
+        totalAcc: calcResult.totalAcc,
+        xqs: calcResult.xqs.map(x => ({ name: x.name, num: x.number, item: x.item })),
+        ig_names: calcResult.igNames
+      }
 
-      this.fillContext()
+      const state = updateAllService.getState()
+      if (state) {
+        state.xhList.forEach(item => {
+          if (item.value && item.value > 0) {
+            this.context.addConsumption(item.name, item.value)
+          }
+        })
+        state.outList.forEach(item => {
+          if (item.value) {
+            this.context.addProduction(item.name, item.value)
+          }
+        })
+      }
+
       this.context.stopTimer()
 
       logger.log(
@@ -211,46 +210,71 @@ export class CalculatorService {
   }
 
   /**
-   * 从 window.app 提取计算结果
+   * 使用新计算引擎执行计算
    *
-   * 注意：结果在 window.app 中，不是 window.items
+   * 架构师注：
+   * - 此方法已迁移到使用 UpdateAllService
+   * - 与 calculate 方法行为一致，返回格式略有不同
+   * - 向后兼容遗留调用方式
+   *
+   * @param demands 需求列表
+   * @param excludes 排除列表
+   * @param singleMakes 独立生产列表（暂未实现）
+   * @returns 计算结果
    */
-  private extractResults(): ILegacyCalculationResult {
-    const win = window as unknown as Record<string, unknown>
-    const app = (win.app || {}) as Partial<ILegacyApp>
+  async calculateWithEngine(
+    demands: IDemand[],
+    excludes: string[] = [],
+    _singleMakes: Array<{ id: number; number: number }> = []
+  ): Promise<IEngineCalculationResult> {
+    const version = ++this.calculationVersion
+    this.context.reset()
+    this.context.startTimer()
 
-    return {
-      items: app.items || [],
-      items2: app.items2 || [],
-      items0: app.items0 || [],
-      total: app.total || [],
-      totalEnergy: app.totalEnergy || '0',
-      totalSpace: app.totalSpace || 0,
-      totalAcc: app.totalAcc || '0',
-      xqs: app.xqs || [],
-      ig_names: (win.ig_names || []) as string[]
+    if (!recipeAdapter.isLoaded()) {
+      logger.error('[CalculatorService] RecipeAdapter not initialized')
+      throw new Error('配方数据未初始化，请刷新页面重试')
     }
-  }
 
-  /**
-   * 填充 CalculationContext 数据
-   */
-  private fillContext(): void {
-    const win = window as unknown as Record<string, unknown>
-    const xhList = (win.xh_list || []) as Array<{ name: string; value: number }>
-    const outList = (win.out_list || []) as Array<{ name: string; value: number }>
+    try {
+      const settings = settingsAdapter.getAllRecipeSettings()
+      const settingsTime = settingsAdapter.getAllSpeedSettings()
+      // P1-2修复：保持settingsPf原始类型(number)，RecipeCalculator.find已正确处理类型
+      const settingsPf = settingsAdapter.getAllProductivitySettings()
+      const win = window as unknown as LegacyWindow
 
-    xhList.forEach(item => {
-      if (item.value && item.value > 0) {
-        this.context.addConsumption(item.name, item.value)
+      const calcResult = await updateAllService.updateAll({
+        demands,
+        excludes,
+        settings,
+        settingsTime,
+        settingsPf,
+        defaultAccType: win.defaultAccType || '增产剂Mk.Ⅰ',
+        defaultAccValue: win.defaultAccValue || '无',
+        hideSource: win.hideSource?.checked ?? false,
+        pointLength: parseInt(win.pointLength?.value || '3')
+      })
+
+      const state = updateAllService.getState()
+      const result: IEngineCalculationResult = {
+        success: true,
+        xh_list: state?.xhList || [],
+        out_list: state?.outList || [],
+        xhMap: state?.xhMap || {},
+        outMap: state?.outMap || {}
       }
-    })
 
-    outList.forEach(item => {
-      if (item.value) {
-        this.context.addProduction(item.name, item.value)
-      }
-    })
+      this.context.stopTimer()
+      logger.log(
+        `[CalculatorService] calculateWithEngine v${version} completed in ${this.context.elapsedTime.toFixed(2)}ms`
+      )
+
+      return result
+    } catch (error) {
+      this.context.stopTimer()
+      logger.error(`[CalculatorService] calculateWithEngine failed:`, error)
+      throw error
+    }
   }
 
   /**
@@ -275,114 +299,6 @@ export class CalculatorService {
   }
 
   /**
-   * 使用新计算引擎执行计算
-   *
-   * 架构师注：
-   * - 此方法使用calculatorEngine闭包封装版本
-   * - 状态隔离，支持并发计算
-   * - 向后兼容遗留调用方式
-   *
-   * @param demands 需求列表
-   * @param excludes 排除列表
-   * @param singleMakes 独立生产列表
-   * @returns 计算结果
-   */
-  async calculateWithEngine(
-    demands: IDemand[],
-    excludes: string[] = [],
-    singleMakes: Array<{ id: number; number: number }> = []
-  ): Promise<IEngineCalculationResult> {
-    const version = ++this.calculationVersion
-    this.context.reset()
-    this.context.startTimer()
-
-    if (!recipeAdapter.isLoaded()) {
-      logger.error('[CalculatorService] RecipeAdapter not initialized')
-      throw new Error('配方数据未初始化，请刷新页面重试')
-    }
-
-    try {
-      const win = window as unknown as Record<string, unknown>
-      const createCalculator = win.createCalculator as
-        | ((options?: { maxDepth?: number; defaultAccType?: string; defaultAccValue?: string }) => {
-            calculate: (
-              demands: Array<{
-                name: string
-                num?: number
-                item?: { name: string }
-                number?: number
-              }>,
-              excludes: string[],
-              singleMakes: Array<{ id: number; number: number }>
-            ) => IEngineCalculationResult
-          })
-        | undefined
-
-      if (typeof createCalculator !== 'function') {
-        logger.warn('[CalculatorService] createCalculator not available, falling back to legacy')
-        const legacyResult = await this.calculate(demands, excludes)
-        const win = window as unknown as Record<string, unknown>
-        return {
-          success: true,
-          xh_list: (win.xh_list || []) as Array<{
-            name: string
-            value: number
-            value2?: number
-            accTotal?: number
-          }>,
-          out_list: (win.out_list || []) as Array<{ name: string; value: number; value2?: number }>,
-          xhMap: (win.xhMap || {}) as Record<string, { name: string; value: number }>,
-          outMap: (win.outMap || {}) as Record<string, { name: string; value: number }>
-        }
-      }
-
-      const calculator = createCalculator({
-        maxDepth: 200,
-        defaultAccType: (win.defaultAccType as string) || '增产剂Mk.Ⅰ',
-        defaultAccValue: (win.defaultAccValue as string) || '无'
-      })
-
-      const formattedDemands = demands.map(d => ({
-        name: d.name,
-        num: d.num,
-        item: { name: d.name },
-        number: d.num
-      }))
-
-      const result = calculator.calculate(
-        formattedDemands,
-        excludes,
-        singleMakes
-      ) as IEngineCalculationResult
-
-      if (result.success) {
-        result.xh_list.forEach(item => {
-          if (item.value && item.value > 0) {
-            this.context.addConsumption(item.name, item.value)
-          }
-        })
-
-        result.out_list.forEach(item => {
-          if (item.value) {
-            this.context.addProduction(item.name, item.value)
-          }
-        })
-      }
-
-      this.context.stopTimer()
-      logger.log(
-        `[CalculatorService] calculateWithEngine v${version} completed in ${this.context.elapsedTime.toFixed(2)}ms`
-      )
-
-      return result
-    } catch (error) {
-      this.context.stopTimer()
-      logger.error(`[CalculatorService] calculateWithEngine v${version} failed:`, error)
-      throw error
-    }
-  }
-
-  /**
    * 使用 Web Worker 执行计算（非阻塞）
    *
    * 架构师注：
@@ -398,7 +314,13 @@ export class CalculatorService {
   async calculateWithWorker(
     demands: IDemand[],
     excludes: string[] = [],
-    singleMakes: Array<{ id: number; number: number }> = []
+    singleMakes: Array<{ id: number; number: number }> = [],
+    // P1-2修复：扩展options类型以支持完整的machineSettings
+    options: {
+      selfAcc?: boolean
+      isAddSelfAccP?: boolean
+      machineSettings?: CalculationOptions['machineSettings']
+    } = {}
   ): Promise<IEngineCalculationResult> {
     const version = ++this.calculationVersion
     this.context.reset()
@@ -410,6 +332,25 @@ export class CalculatorService {
     }
 
     try {
+      // P1-1修复：Worker计算前同步状态到legacy全局变量
+      // P1-2修复：合并options和machineSettings
+      const ms = options.machineSettings || {}
+      syncStateToLegacy({
+        demandList: demands,
+        excludeList: excludes,
+        machineSettings: {
+          modeIn: ms.modeIn,
+          furnace: ms.furnace,
+          chemical: ms.chemical,
+          research: ms.research,
+          accType: ms.accType,
+          accValue: ms.accValue,
+          hideSource: ms.hideSource,
+          selfAcc: options.selfAcc ?? ms.selfAcc,
+          isAddSelfAccP: options.isAddSelfAccP ?? ms.isAddSelfAccP
+        }
+      })
+
       const { calculatorWorkerService } = await import('../workers/CalculatorWorkerService')
 
       if (!calculatorWorkerService.isAvailable()) {
@@ -420,7 +361,9 @@ export class CalculatorService {
       const result = await calculatorWorkerService.calculate({
         demands,
         excludes,
-        singleMakes
+        singleMakes,
+        selfAcc: options.selfAcc,
+        isAddSelfAccP: options.isAddSelfAccP
       })
 
       if (result.success) {

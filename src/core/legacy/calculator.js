@@ -1,6 +1,18 @@
 /**
  * 计算引擎模块 - 从 data.js 拆分
  *
+ * @deprecated 此模块已废弃，请使用 RecipeCalculator.ts
+ *
+ * 废弃原因：
+ * - 新架构使用 RecipeCalculator.ts 作为主计算引擎
+ * - 此模块仅作为遗留代码兼容层存在
+ * - 计划在 Phase 9 完成后移除
+ *
+ * 迁移路径：
+ * - legacy/calculator.js → src/core/services/RecipeCalculator.ts
+ * - window.loadNumber → RecipeCalculator.loadNumber()
+ * - window.find → RecipeCalculator.find()
+ *
  * 职责：
  * - 配方查找 (find)
  * - 需求计算 (loadNumber)
@@ -9,30 +21,51 @@
  * 架构师注：
  * - 此模块仅包含纯计算逻辑，不包含UI渲染
  * - data.js 中的 update_all 仍保留完整逻辑，但调用此模块的核心函数
- * - 保持全局变量挂载到window，确保向后兼容
- * - 关键修复：所有状态变量直接使用window对象，避免引用断裂
- *
- * @deprecated 此模块已迁移到 calculatorEngine.js 闭包封装版本
- * 新代码请使用 createCalculator() 工厂函数创建独立计算器实例
- * 此模块仅为向后兼容保留
+ * - 关键修复：所有状态变量直接操作window对象，避免ES模块变量与window引用断裂
+ * - window对象是唯一的状态源，模块内部不再维护独立的状态变量
  */
-
-var xh_list = window.xh_list || []
-var out_list = window.out_list || []
-var xhMap = window.xhMap || {}
-var outMap = window.outMap || {}
-var ig_names = window.ig_names || []
-
-window.xh_list = xh_list
-window.out_list = out_list
-window.xhMap = xhMap
-window.outMap = outMap
-window.ig_names = ig_names
 
 var loadNumberDepth = 0
 var maxLoadNumberDepth = 200
 
+function getXhList() {
+  if (!window.xh_list) {
+    window.xh_list = []
+  }
+  return window.xh_list
+}
+
+function getOutList() {
+  if (!window.out_list) {
+    window.out_list = []
+  }
+  return window.out_list
+}
+
+function getXhMap() {
+  if (!window.xhMap) {
+    window.xhMap = {}
+  }
+  return window.xhMap
+}
+
+function getOutMap() {
+  if (!window.outMap) {
+    window.outMap = {}
+  }
+  return window.outMap
+}
+
+function getIgNames() {
+  if (!window.ig_names) {
+    window.ig_names = []
+  }
+  return window.ig_names
+}
+
 function addXH(name, value) {
+  var xhMap = getXhMap()
+  var xh_list = getXhList()
   var item = xhMap[name]
   if (item) {
     item.value += value
@@ -44,6 +77,7 @@ function addXH(name, value) {
 }
 
 function addAccTotal(name, value) {
+  var xhMap = getXhMap()
   var item = xhMap[name]
   if (item) {
     item.accTotal = (item.accTotal || 0) + value
@@ -51,6 +85,8 @@ function addAccTotal(name, value) {
 }
 
 function addOut(name, value) {
+  var outMap = getOutMap()
+  var out_list = getOutList()
   var item = outMap[name]
   if (item) {
     item.value += value
@@ -62,6 +98,7 @@ function addOut(name, value) {
 }
 
 function findOut(name) {
+  var outMap = getOutMap()
   var item = outMap[name]
   return item ? item.value : null
 }
@@ -150,10 +187,13 @@ function find(name, normalize_recipe) {
 }
 
 function loadNumber(itemName, n) {
+  var ig_names = getIgNames()
   loadNumberDepth++
   if (loadNumberDepth > maxLoadNumberDepth) {
     loadNumberDepth--
-    window.cocoMessage.warning('配方递归深度超限，可能存在循环依赖: ' + itemName, 5000)
+    if (window.cocoMessage && window.cocoMessage.warning) {
+      window.cocoMessage.warning('配方递归深度超限，可能存在循环依赖: ' + itemName, 5000)
+    }
     return
   }
   try {
@@ -219,7 +259,22 @@ function loadNumber(itemName, n) {
           }
         }
 
-        loadNumber(q.name, r)
+        // P0-1修复：添加outMap消费逻辑，与worker版本保持一致
+        // 检查副产品是否可以抵消当前需求，避免重复计算
+        var outValue = findOut(q.name)
+        if (outValue !== null && outValue < 0) {
+          var absOut = Math.abs(outValue)
+          if (absOut >= r) {
+            addOut(q.name, r)
+            continue
+          } else {
+            addOut(q.name, absOut)
+            r = r - absOut
+          }
+        }
+        if (r > 0) {
+          loadNumber(q.name, r)
+        }
       }
     }
     addAccTotal(itemName, accTotal)
@@ -230,6 +285,7 @@ function loadNumber(itemName, n) {
 }
 
 function getXhs(itemId) {
+  var xh_list = getXhList()
   var xhs = []
   for (var i = 0; i < xh_list.length; i++) {
     var xh = xh_list[i]
@@ -262,6 +318,7 @@ function doMergeMul(xhs) {
 }
 
 function mergeMul() {
+  var xh_list = getXhList()
   var gs = []
   var ids = []
   for (var i = 0; i < xh_list.length; i++) {
@@ -284,6 +341,7 @@ function mergeMul() {
 }
 
 function checkResult() {
+  var xh_list = getXhList()
   function isOverflow(item, info, nn) {
     for (var j = 0; j < item.s.length; j++) {
       var s = item.s[j]
@@ -316,16 +374,20 @@ function checkResult() {
         }
       }
 
-      var ratio = need / produce
-      if (ratio > 0 && ratio < 1) {
-        xh.value = produce
-        xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
+      // P0-1修复：防止除零，与新代码保持一致
+      if (produce > 0) {
+        var ratio = need / produce
+        if (ratio > 0 && ratio < 1) {
+          xh.value = produce
+          xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
+        }
       }
     }
   }
 }
 
 function fixGzSpeed() {
+  var xh_list = getXhList()
   var gzItem = null
   for (var i = 0; i < xh_list.length; i++) {
     if (xh_list[i].name == '光栅石') {
@@ -338,8 +400,9 @@ function fixGzSpeed() {
   var gzRecipe = find('光栅石')
   if (!gzRecipe) return
 
-  var machine = gzRecipe.m
-  if (machine != '采矿机') return
+  // P0-1修复：使用mName而非m检查机器类型
+  // f_initData会将m转换为数组，mName保留原始字符串类型
+  if (gzRecipe.mName != '采矿机') return
 
   var gzValue = gzItem.value
   if (gzValue <= 0) return
@@ -364,6 +427,11 @@ function getAccSpeed(type, value) {
 }
 
 function clearCalculatorState() {
+  var xh_list = getXhList()
+  var out_list = getOutList()
+  var xhMap = getXhMap()
+  var outMap = getOutMap()
+
   xh_list.length = 0
   out_list.length = 0
   Object.keys(xhMap).forEach(function (key) {
@@ -377,10 +445,12 @@ function clearCalculatorState() {
 
 function clearAllState() {
   clearCalculatorState()
+  var ig_names = getIgNames()
   ig_names.length = 0
 }
 
 function setIgNames(names) {
+  var ig_names = getIgNames()
   ig_names.length = 0
   if (names && names.length) {
     for (var i = 0; i < names.length; i++) {
@@ -389,20 +459,15 @@ function setIgNames(names) {
   }
 }
 
-window.xh_list = xh_list
-window.out_list = out_list
-window.xhMap = xhMap
-window.outMap = outMap
-window.ig_names = ig_names
 window.find = find
 window.loadNumber = loadNumber
 
 export {
-  xh_list,
-  out_list,
-  xhMap,
-  outMap,
-  ig_names,
+  getXhList,
+  getOutList,
+  getXhMap,
+  getOutMap,
+  getIgNames,
   addXH,
   addAccTotal,
   addOut,

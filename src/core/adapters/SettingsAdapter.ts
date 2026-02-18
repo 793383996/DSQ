@@ -19,7 +19,6 @@ declare global {
     loadSetting: () => void
     loadSettingTime: () => void
     loadSettingPf: () => void
-    update_all: () => void
   }
 }
 
@@ -71,33 +70,35 @@ export class SettingsAdapter {
 
   /**
    * 获取配方设置
+   * P1-1修复：支持数字和字符串key，遗留代码使用数字key
    */
-  getRecipeSetting(recipeId: string): IRecipeSetting | undefined {
-    return this.recipeSettings[recipeId]
+  getRecipeSetting(recipeId: string | number): IRecipeSetting | undefined {
+    // JavaScript对象key会自动转换为字符串，但显式处理更安全
+    const key = String(recipeId)
+    return this.recipeSettings[key]
   }
 
   /**
    * 获取配方选中的机器
    */
-  getRecipeMachine(recipeId: string): string | undefined {
-    return this.recipeSettings[recipeId]?.m
+  getRecipeMachine(recipeId: string | number): string | undefined {
+    const key = String(recipeId)
+    return this.recipeSettings[key]?.m
   }
 
   /**
    * 设置配方选中的机器
    */
-  setRecipeMachine(recipeId: string, machineName: string): void {
-    if (!this.recipeSettings[recipeId]) {
-      this.recipeSettings[recipeId] = {}
+  setRecipeMachine(recipeId: string | number, machineName: string): void {
+    const key = String(recipeId)
+    if (!this.recipeSettings[key]) {
+      this.recipeSettings[key] = {}
     }
-    this.recipeSettings[recipeId].m = machineName
+    this.recipeSettings[key].m = machineName
     if (typeof window !== 'undefined') {
-      window.settings[recipeId] = this.recipeSettings[recipeId]
+      window.settings[key] = this.recipeSettings[key]
       if (typeof window.saveSetting === 'function') {
         window.saveSetting()
-      }
-      if (typeof window.update_all === 'function') {
-        window.update_all()
       }
     }
   }
@@ -105,25 +106,24 @@ export class SettingsAdapter {
   /**
    * 获取配方增产剂类型
    */
-  getRecipeAccType(recipeId: string): string | undefined {
-    return this.recipeSettings[recipeId]?.accType
+  getRecipeAccType(recipeId: string | number): string | undefined {
+    const key = String(recipeId)
+    return this.recipeSettings[key]?.accType
   }
 
   /**
    * 设置配方增产剂类型
    */
-  setRecipeAccType(recipeId: string, accType: string): void {
-    if (!this.recipeSettings[recipeId]) {
-      this.recipeSettings[recipeId] = {}
+  setRecipeAccType(recipeId: string | number, accType: string): void {
+    const key = String(recipeId)
+    if (!this.recipeSettings[key]) {
+      this.recipeSettings[key] = {}
     }
-    this.recipeSettings[recipeId].accType = accType
+    this.recipeSettings[key].accType = accType
     if (typeof window !== 'undefined') {
-      window.settings[recipeId] = this.recipeSettings[recipeId]
+      window.settings[key] = this.recipeSettings[key]
       if (typeof window.saveSetting === 'function') {
         window.saveSetting()
-      }
-      if (typeof window.update_all === 'function') {
-        window.update_all()
       }
     }
   }
@@ -131,25 +131,24 @@ export class SettingsAdapter {
   /**
    * 获取配方增产剂效果
    */
-  getRecipeAccValue(recipeId: string): string | undefined {
-    return this.recipeSettings[recipeId]?.accValue
+  getRecipeAccValue(recipeId: string | number): string | undefined {
+    const key = String(recipeId)
+    return this.recipeSettings[key]?.accValue
   }
 
   /**
    * 设置配方增产剂效果
    */
-  setRecipeAccValue(recipeId: string, accValue: string): void {
-    if (!this.recipeSettings[recipeId]) {
-      this.recipeSettings[recipeId] = {}
+  setRecipeAccValue(recipeId: string | number, accValue: string): void {
+    const key = String(recipeId)
+    if (!this.recipeSettings[key]) {
+      this.recipeSettings[key] = {}
     }
-    this.recipeSettings[recipeId].accValue = accValue
+    this.recipeSettings[key].accValue = accValue
     if (typeof window !== 'undefined') {
-      window.settings[recipeId] = this.recipeSettings[recipeId]
+      window.settings[key] = this.recipeSettings[key]
       if (typeof window.saveSetting === 'function') {
         window.saveSetting()
-      }
-      if (typeof window.update_all === 'function') {
-        window.update_all()
       }
     }
   }
@@ -178,9 +177,6 @@ export class SettingsAdapter {
       if (typeof window.saveSettingTime === 'function') {
         window.saveSettingTime()
       }
-      if (typeof window.update_all === 'function') {
-        window.update_all()
-      }
     }
   }
 
@@ -207,9 +203,6 @@ export class SettingsAdapter {
       window.settings_pf[itemName] = recipeIndex
       if (typeof window.saveSettingPf === 'function') {
         window.saveSettingPf()
-      }
-      if (typeof window.update_all === 'function') {
-        window.update_all()
       }
     }
   }

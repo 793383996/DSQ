@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { calculatorService } from '../services/CalculatorService'
+import { updateAllService } from '../services/UpdateAllService'
 import type { IDemand } from '../types/recipe'
 import { testRecipeData } from './test-data'
 
@@ -13,6 +14,7 @@ declare global {
     ig_names: string[]
     xh_list: any[]
     out_list: any[]
+    recipeIndexByProduct: Record<string, number[]>
   }
 }
 
@@ -62,6 +64,28 @@ describe('CalculatorService', () => {
     if (!recipeAdapter.isLoaded()) {
       recipeAdapter.loadFromRawData(testRecipeData as any)
     }
+
+    // 初始化 window 数据供 UpdateAllService 使用
+    if (typeof window !== 'undefined') {
+      window.data = testRecipeData as any
+      // 构建 recipeIndexByProduct
+      const recipeIndexByProduct: Record<string, number[]> = {}
+      testRecipeData.forEach((item, i) => {
+        if (item.s) {
+          item.s.forEach((output: any) => {
+            if (!recipeIndexByProduct[output.name]) {
+              recipeIndexByProduct[output.name] = []
+            }
+            recipeIndexByProduct[output.name].push(i)
+          })
+        }
+      })
+      window.recipeIndexByProduct = recipeIndexByProduct
+      window.xqs = []
+      window.ig_names = []
+      window.xh_list = []
+      window.out_list = []
+    }
   })
 
   testCases.forEach(({ name, demand, expectedMinResults }) => {
@@ -69,7 +93,7 @@ describe('CalculatorService', () => {
       try {
         const result = await calculatorService.calculate([demand], [])
         expect(result.items.length).toBeGreaterThanOrEqual(expectedMinResults)
-        
+
         const targetResult = result.items.find((r: any) => r.name === demand.name)
         expect(targetResult).toBeDefined()
         expect(parseFloat(targetResult!.number1)).toBeGreaterThan(0)
@@ -105,7 +129,7 @@ describe('CalculatorService', () => {
 
 describe('Baseline Regression Tests', () => {
   const baselineResults: Record<string, any> = {
-    '电力感应塔_60': {
+    电力感应塔_60: {
       expectedInputs: ['铁块', '磁线圈'],
       machineType: '制作台'
     }
@@ -127,7 +151,7 @@ describe('Baseline Regression Tests', () => {
 
       const recipe = recipes[0]
       const inputNames = recipe.inputs.map(i => i.name)
-      
+
       baseline.expectedInputs.forEach((expectedInput: string) => {
         expect(inputNames).toContain(expectedInput)
       })

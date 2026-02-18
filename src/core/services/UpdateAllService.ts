@@ -1,0 +1,694 @@
+import {
+  RecipeCalculator,
+  type ICalculationState,
+  type ILoadNumberOptions
+} from './RecipeCalculator'
+import type { IRawRecipe } from '../types/settings'
+import type { IDemand } from '../types/recipe'
+import { logger } from '../../utils/logger'
+import { cocoMessageProxy } from '../../composables/useToast'
+
+export interface IMachineInfo {
+  name: string
+  speed: number
+  time: number
+  t: number
+  isChange?: boolean
+}
+
+export interface ICalculationResult {
+  items: IResultItem[]
+  items0: IResultItem[]
+  items2: IResultItem[]
+  total: ITotalItem[]
+  totalEnergy: string
+  totalSpace: number
+  totalAcc: string
+  xqs: Array<{ name: string; number: number; item: { name: string } }>
+  igNames: string[]
+}
+
+export interface IResultItem {
+  name: string
+  number1: string
+  number2: string
+  number2full?: string
+  number2img?: string
+  time: string
+  t: string
+  speed: string
+  speedClass?: string
+  rowClass?: string
+  machineName: string
+  m: unknown[]
+  pf: unknown[]
+  accType: unknown[]
+  accValue: unknown[]
+  accTotal: string
+  numberOther?: string
+}
+
+export interface ITotalItem {
+  name: string
+  value: number
+  energy?: number
+  space?: number
+}
+
+export interface IUpdateAllOptions {
+  demands: IDemand[]
+  excludes: string[]
+  singleMakes?: Array<{ id: number; number: number }>
+  settings?: Record<string, { m?: string; accType?: string; accValue?: string }>
+  settingsTime?: Record<string, number>
+  settingsPf?: Record<string, string | number>
+  defaultAccType?: string
+  defaultAccValue?: string
+  hideSource?: boolean
+  pointLength?: number
+  selfAcc?: boolean
+  isAddSelfAccP?: boolean
+}
+
+const ENERGY_DATA: Record<string, number> = {
+  电弧熔炉: 360,
+  位面熔炉: 720,
+  负熵熔炉: 1440,
+  '制作台Mk.Ⅰ': 270,
+  '制作台Mk.Ⅱ': 360,
+  '制作台Mk.Ⅲ': 540,
+  重组式制造台: 1080,
+  化工厂: 540,
+  量子化工厂: 1080,
+  原油精炼厂: 1440,
+  粒子对撞机: 8640,
+  矩阵研究站: 360,
+  自演化研究站: 1080,
+  射线接收塔: 3600,
+  分馏塔: 360,
+  采矿机: 252,
+  大型采矿机: 2940,
+  原油萃取站: 1080,
+  抽水机: 180,
+  轨道采集器: 0,
+  能量枢纽: 0
+}
+
+const SPACE_DATA: Record<string, number> = {
+  电弧熔炉: 9,
+  位面熔炉: 9,
+  负熵熔炉: 9,
+  '制作台Mk.Ⅰ': 9,
+  '制作台Mk.Ⅱ': 9,
+  '制作台Mk.Ⅲ': 9,
+  重组式制造台: 9,
+  化工厂: 12,
+  量子化工厂: 12,
+  原油精炼厂: 18,
+  粒子对撞机: 16,
+  矩阵研究站: 9,
+  自演化研究站: 9,
+  射线接收塔: 4,
+  分馏塔: 4,
+  采矿机: 24,
+  大型采矿机: 160,
+  原油萃取站: 16,
+  抽水机: 4
+}
+
+export class UpdateAllService {
+  private calculator: RecipeCalculator | null = null
+  private recipes: IRawRecipe[] = []
+  private recipeIndexByProduct: Record<string, number[]> = {}
+  private pointLength: number = 3
+  private isInitialized: boolean = false
+  private initPromise: Promise<void> | null = null
+
+  constructor() {
+    // 延迟初始化：不在构造函数中初始化，避免 window.data 未加载问题
+  }
+
+  private async initializeCalculator(): Promise<void> {
+    if (this.isInitialized && this.calculator) {
+      return
+    }
+
+    if (this.initPromise) {
+      return this.initPromise
+    }
+
+    this.initPromise = (async () => {
+      try {
+        if (typeof window === 'undefined') {
+          throw new Error('Window not available')
+        }
+
+        // P1-1修复：等待 legacy 数据加载完成，并验证索引有效性
+        const maxWait = 10000
+        const startTime = Date.now()
+        while (
+          (!window.data ||
+            !window.recipeIndexByProduct ||
+            Object.keys(window.recipeIndexByProduct).length === 0) &&
+          Date.now() - startTime < maxWait
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+
+        if (!window.data || !window.recipeIndexByProduct) {
+          throw new Error('Recipe data not loaded after timeout')
+        }
+
+        this.recipes = window.data
+        this.recipeIndexByProduct = window.recipeIndexByProduct
+        this.calculator = new RecipeCalculator(this.recipes, this.recipeIndexByProduct)
+        this.isInitialized = true
+
+        logger.log('[UpdateAllService] Calculator initialized successfully')
+      } catch (error) {
+        logger.error('[UpdateAllService] Failed to initialize calculator:', error)
+        throw error
+      } finally {
+        this.initPromise = null
+      }
+    })()
+
+    return this.initPromise
+  }
+
+  private async ensureCalculator(): Promise<void> {
+    if (!this.calculator || !this.isInitialized) {
+      await this.initializeCalculator()
+    }
+    if (!this.calculator) {
+      throw new Error('RecipeCalculator not initialized')
+    }
+  }
+
+  async updateAll(options: IUpdateAllOptions): Promise<ICalculationResult> {
+    await this.ensureCalculator()
+
+    const {
+      demands,
+      excludes,
+      singleMakes = [],
+      settings = {},
+      settingsTime = {},
+      settingsPf = {},
+      defaultAccType = '增产剂Mk.Ⅰ',
+      defaultAccValue = '无',
+      hideSource = false,
+      pointLength = 3,
+      selfAcc = false,
+      isAddSelfAccP = false
+    } = options
+
+    this.pointLength = pointLength
+    this.calculator!.clearState()
+    this.calculator!.setIgNames(excludes)
+
+    // P0-3修复：doSpeed1必须在loadNumber之前调用，与老代码对齐
+    // 老代码在f_init中调用doSpeed1，修改data数组的t值
+    // 新代码使用缓存机制，需要在loadNumber之前初始化缓存
+    this.doSpeed1(settingsTime)
+
+    // P6-1修复：fixCriticalPhotonSpeed必须在loadNumber之前调用
+    // 老代码Scripts/data.js update_all函数第一行就是fixGzSpeed()
+    // 它修改临界光子配方的t值和引力透镜需求，loadNumber使用修改后的值
+    // 新代码原位置在loadNumber之后，导致计算结果错误
+    this.fixCriticalPhotonSpeed(settingsTime)
+
+    // P3-2修复：添加递归深度超限回调，通知用户
+    let depthExceededShown = false
+    const loadOptions: ILoadNumberOptions = {
+      settings,
+      settingsPf,
+      defaultAccType,
+      defaultAccValue,
+      selfAcc,
+      isAddSelfAccP,
+      onDepthExceeded: (itemName: string, _depth: number) => {
+        if (!depthExceededShown) {
+          depthExceededShown = true
+          cocoMessageProxy(`配方递归深度超限，可能存在循环依赖: ${itemName}`, 'warning')
+        }
+      }
+    }
+
+    try {
+      for (const sm of singleMakes) {
+        const recipe = this.recipes[sm.id]
+        if (!recipe || !recipe.s) continue
+
+        const machineInfo = this.getMachineInfo(recipe, settings, settingsTime)
+        const times = parseFloat(
+          ((60 * sm.number * machineInfo.speed) / (recipe.t || 1)).toFixed(6)
+        )
+
+        for (const output of recipe.s) {
+          this.calculator!.loadNumber(output.name, -1 * times * (output.n || 1), loadOptions)
+        }
+        if (recipe.q) {
+          for (const input of recipe.q) {
+            this.calculator!.loadNumber(input.name, times * (input.n || 1), loadOptions)
+          }
+        }
+      }
+
+      for (const demand of demands) {
+        this.calculator!.loadNumber(demand.name, demand.num, loadOptions)
+      }
+
+      // P2-3修复：fixGzSpeed在loadNumber之后、checkResult之前调用
+      // 老代码calculator.js中的fixGzSpeed处理光栅石的采矿机速度
+      // 注意：临界光子的fixGzSpeed已在loadNumber之前调用，此处只处理光栅石
+      this.fixGzSpeed(settingsTime)
+
+      // P0-1修复：mergeMul已被老代码注释掉，checkResult会处理这种情况
+      // 老代码注释：//mergeMul();//处理合并 多个产出使用了同一个配方 ,暂时弃用，checkResult会处理这种情况
+      // this.calculator!.mergeMul()
+
+      // P5-1修复：时序问题 - value2必须在checkResult之前计算
+      // 老代码顺序：计算value2 -> checkResult
+      // 新代码原顺序：checkResult -> buildResult中计算value2（错误！）
+      // 修复：先计算value2，再调用checkResult
+      this.calculateValue2(settings, settingsTime, defaultAccType, defaultAccValue)
+
+      // P3-1修复：使用checkResultWithMachineInfo，传入机器信息
+      // 老代码checkResult需要访问机器信息(speed, time)
+      this.calculator!.checkResultWithMachineInfo(recipe => {
+        return this.getMachineInfo(recipe, settings, settingsTime)
+      })
+
+      // P6-3修复：checkResult后的value2修正，与老代码data.js对齐
+      // 老代码在checkResult之后遍历xh_list，将value<0的条目的value2设为0
+      const state = this.calculator!.getState()
+      for (const xh of state.xhList) {
+        if (!xh.value) continue
+        if (xh.value < 0) {
+          xh.value2 = 0
+        }
+      }
+
+      return this.buildResult(
+        demands,
+        excludes,
+        settings,
+        settingsTime,
+        defaultAccType,
+        defaultAccValue,
+        hideSource
+      )
+    } catch (error) {
+      this.calculator!.clearState()
+      logger.error('[UpdateAllService] Calculation error:', error)
+      throw error
+    }
+  }
+
+  private orbitalCollectorTCache: Map<string, number> = new Map()
+
+  private doSpeed1(settingsTime: Record<string, number>): void {
+    const st = settingsTime || {}
+    // P0-4修复：键名与老代码data.js doSpeed1函数完全对齐
+    // 老代码：speed1_1 = st['轨道采集器(气态)_氢'] = 氢(气态) 默认1
+    // 老代码：speed1_2 = st['轨道采集器(气态)_重氢'] = 重氢 默认0.02
+    // 老代码：speed1_3 = st['轨道采集器(巨冰)_氢'] = 氢(巨冰) 默认0.5
+    // 老代码：speed1_4 = st['轨道采集器(巨冰)_可燃冰'] = 可燃冰 默认0.5
+    // 老代码：ore = st['采矿机_效率'] = 采矿作业速度 默认100
+    const speed1_1 = st['轨道采集器(气态)_氢'] || 1
+    const speed1_2 = st['轨道采集器(气态)_重氢'] || 0.02
+    const speed1_3 = st['轨道采集器(巨冰)_氢'] || 0.5
+    const speed1_4 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
+    const ore = st['采矿机_效率'] || 100
+
+    const getSum = (value1: number, value2: number, p1: number, p2: number): number => {
+      let sum = 60 * value1 * 0.01 * ore * 8
+      const per = (value1 * p1) / (value1 * p1 + value2 * p2)
+      sum -= (60 * 30 * per) / p1
+      return sum
+    }
+
+    this.orbitalCollectorTCache.clear()
+
+    for (const recipe of this.recipes) {
+      if (
+        recipe.s &&
+        (recipe.s[0]?.name === '氢' ||
+          recipe.s[0]?.name === '重氢' ||
+          recipe.s[0]?.name === '可燃冰')
+      ) {
+        if (recipe.m && Array.isArray(recipe.m)) {
+          for (let i = 0; i < recipe.m.length; i++) {
+            const cacheKey = `${recipe.id}-${recipe.s[0].name}`
+            if (recipe.m[i].name === '轨道采集器(气态)') {
+              if (recipe.s[0].name === '氢') {
+                this.orbitalCollectorTCache.set(
+                  cacheKey,
+                  1 / (getSum(speed1_1, speed1_2, 8, 8) / 60)
+                )
+              } else if (recipe.s[0].name === '重氢') {
+                this.orbitalCollectorTCache.set(
+                  cacheKey,
+                  1 / (getSum(speed1_2, speed1_1, 8, 8) / 60)
+                )
+              }
+            }
+            if (recipe.m[i].name === '轨道采集器(巨冰)') {
+              if (recipe.s[0].name === '氢') {
+                this.orbitalCollectorTCache.set(
+                  cacheKey,
+                  1 / (getSum(speed1_4, speed1_3, 8, 4.8) / 60)
+                )
+              } else if (recipe.s[0].name === '可燃冰') {
+                this.orbitalCollectorTCache.set(
+                  cacheKey,
+                  1 / (getSum(speed1_3, speed1_4, 4.8, 8) / 60)
+                )
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  getOrbitalCollectorT(recipeId: number | undefined, productName: string): number | undefined {
+    if (recipeId === undefined) return undefined
+    return this.orbitalCollectorTCache.get(`${recipeId}-${productName}`)
+  }
+
+  // P2-2修复：处理临界光子的射线接收塔配方
+  // 老代码Scripts/data.js中的fixGzSpeed函数
+  private fixCriticalPhotonSpeed(settingsTime: Record<string, number>): void {
+    // 老代码逻辑：根据增产剂设置计算fixedGzSpeed，修改配方的t值和引力透镜需求
+    // 每分钟需求: 引力透镜=0.1*接收塔=0.1*光子需求量/光子产量
+    // 光子产量: 12(透镜×200%)/15(增产Ⅰ×250%)/18(增产Ⅱ×300%)/24(增产Ⅲ×400%)
+
+    const criticalPhotonRecipe = this.recipes.find(r => r.s?.[0]?.name === '临界光子')
+    if (!criticalPhotonRecipe || !criticalPhotonRecipe.m) return
+
+    const mArray = Array.isArray(criticalPhotonRecipe.m) ? criticalPhotonRecipe.m : []
+    const rayReceiver = mArray.find(m => m.name === '射线接收塔')
+    if (!rayReceiver) return
+
+    // 检查是否有引力透镜输入
+    const lensInput = criticalPhotonRecipe.q?.find(q => q.name === '引力透镜')
+    if (!lensInput) return
+
+    // 从全局设置获取默认增产剂
+    const win = window as unknown as { defaultAccType?: string; defaultAccValue?: string }
+    const defaultAccType = win.defaultAccType || '增产剂Mk.Ⅰ'
+    const defaultAccValue = win.defaultAccValue || '无'
+
+    // 计算fixedGzSpeed
+    let fixedGzSpeed: number
+    const gzSpeedSetting = settingsTime['射线接收塔']
+    if (gzSpeedSetting !== undefined) {
+      // 用户手动设置了射线接收塔速度
+      fixedGzSpeed = gzSpeedSetting
+    } else {
+      // 根据增产剂设置计算
+      if (defaultAccValue === '加速') {
+        switch (defaultAccType) {
+          case '增产剂Mk.Ⅰ':
+            fixedGzSpeed = 15
+            break
+          case '增产剂Mk.Ⅱ':
+            fixedGzSpeed = 18
+            break
+          case '增产剂Mk.Ⅲ':
+            fixedGzSpeed = 24
+            break
+          default:
+            fixedGzSpeed = 12
+        }
+      } else {
+        fixedGzSpeed = 12
+      }
+    }
+
+    // 修改引力透镜需求
+    if (lensInput) {
+      lensInput.n = parseFloat((0.1 / fixedGzSpeed).toFixed(6))
+    }
+
+    // 修改配方t值
+    if (criticalPhotonRecipe.q && criticalPhotonRecipe.q.length > 0) {
+      criticalPhotonRecipe.t = 60 / fixedGzSpeed
+    } else {
+      criticalPhotonRecipe.t = 10
+    }
+  }
+
+  // P2-3修复：处理光栅石的采矿机速度
+  // 老代码calculator.js中的fixGzSpeed函数
+  private fixGzSpeed(settingsTime: Record<string, number>): void {
+    // 委托给RecipeCalculator的fixGzSpeed方法
+    // 光栅石由采矿机生产时，需要根据采矿机速度修正计算结果
+    this.calculator!.fixGzSpeed(settingsTime)
+  }
+
+  private getMachineInfo(
+    recipe: IRawRecipe,
+    settings: Record<string, { m?: string }>,
+    settingsTime: Record<string, number>
+  ): IMachineInfo {
+    const recipeSettings = settings[recipe.id?.toString() || '']
+    const mArray = Array.isArray(recipe.m) ? recipe.m : []
+    const machineName = recipeSettings?.m || mArray[0]?.name || recipe.mName || ''
+    const machine =
+      mArray.find((m: { name: string; speed: number }) => m.name === machineName) || mArray[0]
+
+    const baseSpeed = machine?.speed || 1
+    const customSpeed = settingsTime[machineName]
+    const speed = customSpeed !== undefined ? customSpeed : baseSpeed
+
+    let recipeT = recipe.t || 1
+    if (machineName === '轨道采集器(气态)' || machineName === '轨道采集器(巨冰)') {
+      const cachedT = this.getOrbitalCollectorT(recipe.id, recipe.s?.[0]?.name || '')
+      if (cachedT !== undefined) {
+        recipeT = cachedT
+      }
+    }
+
+    return {
+      name: machineName,
+      speed,
+      time: recipeT / speed,
+      t: recipeT,
+      isChange: customSpeed !== undefined
+    }
+  }
+
+  // P5-1修复：添加calculateValue2方法，在checkResult之前计算value2
+  // 老代码在checkResult之前计算value2，checkResult依赖value2进行溢出检测
+  private calculateValue2(
+    settings: Record<string, { m?: string; accType?: string; accValue?: string }>,
+    settingsTime: Record<string, number>,
+    defaultAccType: string,
+    defaultAccValue: string
+  ): void {
+    const state = this.calculator!.getState()
+
+    for (const xh of state.xhList) {
+      if (!xh.value || xh.value <= 0) continue
+
+      const recipe = this.calculator!.find(xh.name)
+      if (!recipe) continue
+
+      const recipeSettings = settings[recipe.id?.toString() || '']
+      const machineInfo = this.getMachineInfo(recipe, settings, settingsTime)
+
+      const accType = recipeSettings?.accType || defaultAccType
+      let accValue = recipeSettings?.accValue || defaultAccValue
+
+      // 架构师注：accValue 修正逻辑与老代码 data.js update_all 函数对齐
+      if (accValue === '增产' && recipe.noExtra) {
+        accValue = '无'
+      }
+      if (!recipe.q || recipe.q.length === 0 || recipe.noExtra === null) {
+        accValue = '无'
+      }
+
+      let fixValue2Times = 1
+      if (recipe.q) {
+        for (let j = 0; j < recipe.q.length; j++) {
+          if (recipe.q[j].name === xh.name) {
+            const recipeN = recipe.n || 1
+            const inputN = recipe.q[j].n || 0
+            if (recipeN > inputN) {
+              fixValue2Times = recipeN / (recipeN - inputN)
+            }
+          }
+        }
+      }
+
+      if (recipe.name !== '临界光子' || recipe.mName !== '射线接收塔') {
+        xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (recipe.n || 1)
+        xh.value2 = (xh.value2 / RecipeCalculator.getAccSpeed(accType, accValue)) * fixValue2Times
+      } else {
+        xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (recipe.n || 1)
+        xh.value2 = xh.value2 / RecipeCalculator.getAccSpeed(accType, accValue)
+      }
+    }
+  }
+
+  private buildResult(
+    demands: IDemand[],
+    excludes: string[],
+    settings: Record<string, { m?: string; accType?: string; accValue?: string }>,
+    settingsTime: Record<string, number>,
+    defaultAccType: string,
+    defaultAccValue: string,
+    hideSource: boolean
+  ): ICalculationResult {
+    const state = this.calculator!.getState()
+    const items: IResultItem[] = []
+    const items0: IResultItem[] = []
+    const items2: IResultItem[] = []
+    const total: ITotalItem[] = []
+
+    const isXqs = (name: string): boolean => {
+      return demands.some(d => d.name === name)
+    }
+
+    const getEnergyMultiplier = (accType: string, accValue: string): number => {
+      if (accValue === '无') return 1
+      if (accType === '增产剂Mk.Ⅰ') return 1.3
+      if (accType === '增产剂Mk.Ⅱ') return 1.7
+      if (accType === '增产剂Mk.Ⅲ') return 2.5
+      return 1
+    }
+
+    for (const xh of state.xhList) {
+      if (!xh.value) continue
+
+      const recipe = this.calculator!.find(xh.name)
+      if (!recipe) continue
+
+      const recipeSettings = settings[recipe.id?.toString() || '']
+      const machineInfo = this.getMachineInfo(recipe, settings, settingsTime)
+
+      if (hideSource && (!recipe.q || recipe.q.length === 0)) {
+        continue
+      }
+
+      // P5-1修复：value2已在calculateValue2中计算，此处不再重复计算
+      // 原代码在此处计算value2，但checkResult需要使用value2，导致时序错误
+
+      const specialItems = ['精炼油', '氢', '石墨烯', '重氢']
+      const number2Value = xh.value2
+        ? xh.value2.toFixed(this.pointLength)
+        : specialItems.includes(xh.name)
+          ? (0.0).toFixed(this.pointLength)
+          : ''
+
+      const item: IResultItem = {
+        name: xh.name,
+        number1: xh.value.toFixed(this.pointLength),
+        number2: number2Value,
+        number2full: number2Value,
+        number2img: '',
+        time: machineInfo.time.toFixed(this.pointLength),
+        t: machineInfo.t.toFixed(this.pointLength),
+        speed: machineInfo.speed.toFixed(this.pointLength),
+        speedClass: machineInfo.isChange ? 'time time2' : 'time',
+        rowClass: isXqs(xh.name) ? 'xqsrow' : '',
+        machineName: machineInfo.name,
+        m: [],
+        pf: [],
+        accType: [],
+        accValue: [],
+        accTotal: (xh.accTotal || 0).toFixed(2)
+      }
+
+      if (xh.name === '太阳帆') {
+        item.numberOther = `(可供 ${(xh.value / 20).toFixed(this.pointLength)} 电磁轨道弹射器)`
+      } else if (xh.name === '小型运载火箭') {
+        item.numberOther = `(可供 ${(xh.value / 5).toFixed(this.pointLength)} 垂直发射井)`
+      }
+
+      items.push(item)
+
+      const baseEnergy = ENERGY_DATA[machineInfo.name] || 0
+      const space = SPACE_DATA[machineInfo.name] || 0
+
+      const accType = recipeSettings?.accType || defaultAccType
+      const accValue = recipeSettings?.accValue || defaultAccValue
+      const energyMultiplier = getEnergyMultiplier(accType, accValue)
+      const energy = baseEnergy * energyMultiplier
+
+      const totalItem = total.find(t => t.name === machineInfo.name)
+      if (totalItem) {
+        totalItem.value += xh.value2 || 0
+        totalItem.energy = (totalItem.energy || 0) + energy * (xh.value2 || 0)
+        totalItem.space = (totalItem.space || 0) + space * (xh.value2 || 0)
+      } else {
+        total.push({
+          name: machineInfo.name,
+          value: xh.value2 || 0,
+          energy: energy * (xh.value2 || 0),
+          space: space * (xh.value2 || 0)
+        })
+      }
+    }
+
+    const totalEnergy = total.reduce((sum, t) => sum + (t.energy || 0), 0)
+    const totalSpace = total.reduce((sum, t) => sum + (t.space || 0), 0)
+    const totalAcc = state.xhList.reduce((sum, xh) => sum + (xh.accTotal || 0), 0)
+
+    // 架构师注：items2 处理 out_list（副产品/多余产出）
+    // 老代码逻辑：遍历 out_list，生成 items2 用于显示多余产出
+    for (const out of state.outList) {
+      if (!out.value) continue
+      const recipe = this.calculator!.find(out.name)
+      if (!recipe) continue
+      const machineInfo = this.getMachineInfo(recipe, settings, settingsTime)
+
+      const outItem: IResultItem = {
+        name: out.name,
+        number1: out.value.toFixed(this.pointLength),
+        number2: '',
+        time: machineInfo.time.toFixed(this.pointLength),
+        t: machineInfo.t.toFixed(this.pointLength),
+        speed: machineInfo.speed.toFixed(this.pointLength),
+        speedClass: machineInfo.isChange ? 'time time2' : 'time',
+        rowClass: 'outrow',
+        machineName: machineInfo.name,
+        m: [],
+        pf: [],
+        accType: [],
+        accValue: [],
+        accTotal: '0.00'
+      }
+      items2.push(outItem)
+    }
+
+    return {
+      items,
+      items0,
+      items2,
+      total,
+      totalEnergy: totalEnergy.toFixed(0),
+      totalSpace,
+      totalAcc: totalAcc.toFixed(2),
+      xqs: demands.map(d => ({
+        name: d.name,
+        number: d.num,
+        item: { name: d.name }
+      })),
+      igNames: excludes
+    }
+  }
+
+  getState(): ICalculationState | null {
+    return this.calculator?.getState() || null
+  }
+
+  clearState(): void {
+    this.calculator?.clearState()
+  }
+}
+
+export const updateAllService = new UpdateAllService()

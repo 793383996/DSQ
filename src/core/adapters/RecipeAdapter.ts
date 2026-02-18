@@ -57,13 +57,14 @@ export class RecipeAdapter {
    */
   private transformRecipe(raw: IRawRecipe, idx: number): IRecipe {
     const firstOutput = raw.s?.[0]
+    const machineType = typeof raw.m === 'string' ? raw.m : raw.mName || '未知设备'
     return {
       id: `recipe_${idx}`,
       name: firstOutput?.name || `未知配方_${idx}`,
       outputs: this.transformItems(raw.s || []),
       inputs: this.transformItems(raw.q || []),
       time: raw.t ?? 1,
-      machineType: raw.m || '未知设备',
+      machineType,
       group: raw.group,
       noExtra: raw.noExtra
     }

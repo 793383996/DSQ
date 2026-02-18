@@ -18,6 +18,9 @@ export interface MachineSettings {
   accType: string
   accValue: string
   research: string
+  selfAcc?: boolean
+  isAddSelfAccP?: boolean
+  hideSource?: boolean
 }
 
 export interface IStateSnapshot {
@@ -45,7 +48,10 @@ function loadPersistedSettings(): MachineSettings {
     chemical: '化工厂',
     accType: '增产剂Mk.Ⅰ',
     accValue: '无',
-    research: '矩阵研究站'
+    research: '矩阵研究站',
+    selfAcc: false,
+    isAddSelfAccP: false,
+    hideSource: false
   }
 }
 
@@ -87,7 +93,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
 
   // P0-3修复：监听状态变化自动同步
   watch(
-    [demandList, excludeList],
+    [demandList, excludeList, machineSettings],
     () => {
       doSyncToLegacy()
     },
@@ -97,7 +103,8 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   // P1-2修复：设置变更回调机制（带防抖）
   const settingsChangeCallbacks: Set<() => void> = new Set()
   let settingsChangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
-  const SETTINGS_CHANGE_DEBOUNCE_MS = 300
+  // P1-2修复：防抖时间从300ms减少到100ms，提升用户体验
+  const SETTINGS_CHANGE_DEBOUNCE_MS = 100
 
   function onSettingsChange(callback: () => void): () => void {
     settingsChangeCallbacks.add(callback)
@@ -128,14 +135,20 @@ export const useBlueprintStore = defineStore('blueprint', () => {
 
   function syncRecipeSettings(settings: IRecipeSettings) {
     recipeSettings.value = { ...settings }
+    // P1-2修复：配方设置变更时通知监听者
+    notifySettingsChange()
   }
 
   function syncSpeedSettings(settings: ISpeedSettings) {
     speedSettings.value = { ...settings }
+    // P1-2修复：速度设置变更时通知监听者
+    notifySettingsChange()
   }
 
   function syncProductivitySettings(settings: IProductivitySettings) {
     productivitySettings.value = { ...settings }
+    // P1-2修复：增产剂设置变更时通知监听者
+    notifySettingsChange()
   }
 
   function syncAllSettings(

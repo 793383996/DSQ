@@ -1,11 +1,11 @@
-import type { IRecipe } from '../types/recipe'
+import type { IRawRecipe } from '../types/settings'
 
 export interface IWorkerCalculateRequest {
   type: 'calculate'
   id: number
   demands: Array<{ name: string; num: number }>
   excludes: string[]
-  recipes: IRecipe[]
+  recipes: IRawRecipe[]
   settings: Record<number, { accType?: string; accValue?: string; m?: string }>
   settingsPf: Record<string, number>
   settingsTime: Record<string, number>
@@ -15,6 +15,8 @@ export interface IWorkerCalculateRequest {
   singleMakes?: Array<{ id: number; number: number }>
   selfAcc?: boolean
   isAddSelfAccP?: boolean
+  // P6-4修复：添加轨道采集器t值缓存
+  orbitalCollectorTCache?: Record<string, number>
 }
 
 export interface IWorkerCalculateResponse {
@@ -32,7 +34,7 @@ export interface IWorkerCalculateResponse {
 
 export interface IWorkerInitRequest {
   type: 'init'
-  recipes: IRecipe[]
+  recipes: IRawRecipe[]
   settings: Record<number, { accType?: string; accValue?: string; m?: string }>
   settingsPf: Record<string, number>
   settingsTime: Record<string, number>

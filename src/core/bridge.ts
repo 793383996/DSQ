@@ -12,6 +12,7 @@ import { logger } from '../utils/logger'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 import type { IRawRecipe } from './types/settings'
 import { itemMap } from './types/itemMap'
+import { buildingMap } from './types/buildingMap'
 
 let dataModule: unknown = null
 let blueprintModule: unknown = null
@@ -25,6 +26,12 @@ let recipeIndexReadyPromise: Promise<void> | null = null
 const RECIPE_INDEX_TIMEOUT_MS = 10000
 
 function getRecipeIndexReadyPromise(): Promise<void> {
+  // P2-2修复：如果已经ready，直接返回resolved Promise
+  // 避免竞态条件：notify可能在Promise创建前被调用
+  if (recipeIndexReady) {
+    return Promise.resolve()
+  }
+
   if (recipeIndexReadyPromise) return recipeIndexReadyPromise
 
   recipeIndexReadyPromise = new Promise<void>(resolve => {
@@ -84,8 +91,7 @@ async function loadLegacyModules() {
       storageManagerMod,
       recipeHelperMod,
       configDataMod,
-      settingsHelperMod,
-      calculatorEngineMod
+      settingsHelperMod
     ] = await Promise.all([
       import('./legacy/data'),
       import('./legacy/blueprint'),
@@ -95,8 +101,7 @@ async function loadLegacyModules() {
       import('./legacy/storageManager'),
       import('./legacy/recipeHelper'),
       import('./legacy/configData'),
-      import('./legacy/settingsHelper'),
-      import('./legacy/calculatorEngine')
+      import('./legacy/settingsHelper')
     ])
     dataModule = dataMod
     blueprintModule = blueprintMod
@@ -105,6 +110,7 @@ async function loadLegacyModules() {
 
     const win = getWin()
     ;(win as any).itemMap = itemMap
+    ;(win as any).buildingMap = buildingMap
 
     await getRecipeIndexReadyPromise()
 
@@ -134,16 +140,19 @@ export interface LegacyGlobals {
 export interface StateSyncMap {
   demandList: Array<{ name: string; num?: number; number?: number }>
   excludeList: string[]
-  machineSettings: MachineSettings
+  machineSettings?: MachineSettings
 }
 
 export interface MachineSettings {
-  modeIn: string
-  furnace: string
-  chemical: string
-  accType: string
-  accValue: string
-  research: string
+  modeIn?: string
+  furnace?: string
+  chemical?: string
+  accType?: string
+  accValue?: string
+  research?: string
+  hideSource?: boolean
+  selfAcc?: boolean
+  isAddSelfAccP?: boolean
 }
 
 export interface BlueprintConfig {
@@ -277,10 +286,6 @@ export function legacyUpdateMachineSettings(config: MachineConfigSettings): void
   if (typeof win.saveSetting === 'function') {
     win.saveSetting()
   }
-
-  if (typeof win.update_all === 'function') {
-    win.update_all()
-  }
 }
 
 export function legacyGetMachineSettings(): MachineConfigSettings {
@@ -315,6 +320,58 @@ export function syncStateToLegacy(state: StateSyncMap): void {
   state.excludeList.forEach(name => {
     win.ig_names!.push(name)
   })
+
+  // P0-2修复：同步machineSettings到legacy全局变量
+  if (state.machineSettings) {
+    const ms = state.machineSettings
+    if (ms.accType !== undefined) {
+      win.defaultAccType = ms.accType
+    }
+    if (ms.accValue !== undefined) {
+      win.defaultAccValue = ms.accValue
+    }
+    if (ms.hideSource !== undefined && win.hideSource) {
+      win.hideSource.checked = ms.hideSource
+    }
+    if (ms.selfAcc !== undefined && win.selfAcc) {
+      win.selfAcc.checked = ms.selfAcc
+    }
+    if (ms.isAddSelfAccP !== undefined && win.isAddSelfAccP) {
+      win.isAddSelfAccP.checked = ms.isAddSelfAccP
+    }
+
+    // P3-1修复：只在设置不存在时才设置默认值，避免覆盖用户自定义设置
+    // 用户可能在UI中为特定配方设置了不同的设备或增产剂
+    if (win.data && win.settings) {
+      const data = win.data as ILegacyDataItem[]
+      const settings = win.settings
+      data.forEach((item: ILegacyDataItem) => {
+        if (!settings[item.id]) {
+          settings[item.id] = {}
+        }
+        // 只在用户未设置设备时才设置默认设备
+        if (item.mName === '制作台' && ms.modeIn !== undefined && !settings[item.id].m) {
+          settings[item.id].m = ms.modeIn
+        }
+        if (item.mName === '冶炼设备' && ms.furnace !== undefined && !settings[item.id].m) {
+          settings[item.id].m = ms.furnace
+        }
+        if (item.mName === '化工设备' && ms.chemical !== undefined && !settings[item.id].m) {
+          settings[item.id].m = ms.chemical
+        }
+        if (item.mName === '研究站' && ms.research !== undefined && !settings[item.id].m) {
+          settings[item.id].m = ms.research
+        }
+        // 只在用户未设置增产剂时才设置默认增产剂
+        if (ms.accType !== undefined && !settings[item.id].accType) {
+          settings[item.id].accType = ms.accType
+        }
+        if (ms.accValue !== undefined && !settings[item.id].accValue) {
+          settings[item.id].accValue = ms.accValue
+        }
+      })
+    }
+  }
 }
 
 export function clearLegacyState(): void {
@@ -323,6 +380,14 @@ export function clearLegacyState(): void {
   if (win.out_list) win.out_list.length = 0
   if (win.xqs) win.xqs.length = 0
   if (win.ig_names) win.ig_names.length = 0
+  // P2-1修复：清空xhMap和outMap，避免状态残留导致计算错误
+  // 遗留代码的calculator.js使用window.xhMap/outMap作为缓存
+  if (win.xhMap) {
+    Object.keys(win.xhMap).forEach(key => delete win.xhMap![key])
+  }
+  if (win.outMap) {
+    Object.keys(win.outMap).forEach(key => delete win.outMap![key])
+  }
 }
 
 export async function runCalculation(): Promise<unknown> {
@@ -496,12 +561,21 @@ export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
   if (!win.settings_time) win.settings_time = {}
   const settingsTime = win.settings_time
 
+  // P0-4修复：键名与老代码data.js doSpeed1函数完全对齐
+  // 老代码：speed1_1 = st['轨道采集器(气态)_氢']，对应气态巨行星采集氢
+  // 老代码：speed1_2 = st['轨道采集器(气态)_重氢']，对应气态巨行星采集重氢
+  // 老代码：speed1_3 = st['轨道采集器(巨冰)_氢']，对应巨冰行星采集氢
+  // 老代码：speed1_4 = st['轨道采集器(巨冰)_可燃冰']，对应巨冰行星采集可燃冰
+  // 老代码：ore = st['采矿机_效率']
+  settingsTime['采矿机_效率'] = speeds.oreSpeed
   settingsTime['采矿机'] = (speeds.oreSpeed / 100) * 0.5 * 6
   settingsTime['大型采矿机'] = (speeds.oreSpeed / 100) * 1 * 20
   settingsTime['分馏塔'] = speeds.fractionatorSpeed
   settingsTime['原油萃取站'] = speeds.oilSpeed
-  settingsTime['轨道采集器(气态)'] = speeds.orbitalHydrogenGas
-  settingsTime['轨道采集器(巨冰)'] = speeds.orbitalHydrogenIce
+  settingsTime['轨道采集器(气态)_氢'] = speeds.orbitalHydrogenGas
+  settingsTime['轨道采集器(气态)_重氢'] = speeds.orbitalDeuterium
+  settingsTime['轨道采集器(巨冰)_氢'] = speeds.orbitalHydrogenIce
+  settingsTime['轨道采集器(巨冰)_可燃冰'] = speeds.orbitalFireIce
   settingsTime['射线接收塔'] = speeds.criticalPhotonSpeed
 
   if (typeof win.saveSettingTime === 'function') {
@@ -510,10 +584,6 @@ export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
 
   if (win.pointLength) {
     win.pointLength.value = String(speeds.pointLength)
-  }
-
-  if (typeof win.update_all === 'function') {
-    win.update_all()
   }
 }
 
@@ -530,10 +600,6 @@ export function legacyUpdateLogisticsSettings(logistics: LogisticsSettings): voi
     极速传送带: 1800
   }
   win.beltSpeed = beltSpeedMap[logistics.beltType] || 1800
-
-  if (typeof win.update_all === 'function') {
-    win.update_all()
-  }
 }
 
 export function legacyGetLogisticsSettings(): LogisticsSettings {
@@ -554,8 +620,9 @@ export function legacyGetSpeedSettings(): SpeedSettings {
     fractionatorSpeed: settingsTime['分馏塔'] || 18,
     largeMinerSpeed: Math.round(((settingsTime['大型采矿机'] || 20) / 1 / 20) * 100),
     oilSpeed: settingsTime['原油萃取站'] || 4,
-    orbitalDeuterium: 0.02,
-    orbitalFireIce: 0.5,
+    // P0-4修复：从settings_time读取重氢和可燃冰的值
+    orbitalDeuterium: settingsTime['轨道采集器(气态)_重氢'] || 0.02,
+    orbitalFireIce: settingsTime['轨道采集器(巨冰)_可燃冰'] || 0.5,
     orbitalHydrogenIce: settingsTime['轨道采集器(巨冰)'] || 0.5,
     orbitalHydrogenGas: settingsTime['轨道采集器(气态)'] || 1,
     criticalPhotonSpeed: settingsTime['射线接收塔'] || 5,
@@ -690,7 +757,6 @@ export function getIconData(): { [key: string]: string } {
 export function isLegacyDataLoaded(): boolean {
   const win = getWin()
   return (
-    typeof win.update_all === 'function' &&
     typeof win.find === 'function' &&
     Array.isArray(win.data) &&
     win.recipeIndexByProduct !== undefined &&

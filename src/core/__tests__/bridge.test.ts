@@ -499,7 +499,7 @@ describe('bridge', () => {
       expect(window.saveSettingTime).toHaveBeenCalled()
     })
 
-    it('should call update_all if available', () => {
+    it('should not call update_all (removed from legacy)', () => {
       window.update_all = vi.fn()
 
       legacyUpdateSpeedSettings({
@@ -515,7 +515,7 @@ describe('bridge', () => {
         pointLength: 1
       })
 
-      expect(window.update_all).toHaveBeenCalled()
+      expect(window.update_all).not.toHaveBeenCalled()
     })
   })
 

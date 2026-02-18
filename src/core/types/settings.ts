@@ -123,10 +123,14 @@ export interface ICalculationResultItem {
  * 原始配方数据格式 (data.js 中的格式)
  */
 export interface IRawRecipe {
+  id?: number
+  name?: string
   s?: Array<{ name: string; n?: number }>
   q?: Array<{ name: string; n?: number }>
   t?: number
-  m?: string
+  m?: string | Array<{ name: string; speed: number }>
+  mName?: string
+  n?: number
   group?: string
   noExtra?: boolean | null
 }

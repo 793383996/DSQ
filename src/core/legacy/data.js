@@ -16,11 +16,11 @@ import {
 } from './storageManager.js'
 import { getGroup, getPfs, getPfsByQ } from './recipeHelper.js'
 import {
-  xh_list,
-  out_list,
-  xhMap,
-  outMap,
-  ig_names,
+  getXhList,
+  getOutList,
+  getXhMap,
+  getOutMap,
+  getIgNames,
   addXH,
   addAccTotal,
   addOut,
@@ -308,8 +308,19 @@ function addItem(item, number) {
 //     update_all();
 // }
 
+/**
+ * @deprecated 遗留 Vue 1.x ViewModel 对象
+ * 新架构使用 Vue 3 + Pinia，不再需要此对象
+ * 保留仅作为向后兼容，计划在 Phase 9 完成后移除
+ *
+ * 迁移路径：
+ * - app.items/items2/items0 → store.resultItems
+ * - app.xqs → store.demandList
+ * - app.ig_names → store.excludeList
+ * - app.total/totalEnergy/totalSpace/totalAcc → store 计算属性
+ */
 var app = null
-// 这里加入了一些用法和一些变量，用于处理“设备数量”处的输入框
+// 这里加入了一些用法和一些变量，用于处理"设备数量"处的输入框
 function f_init() {
   app = {
     totalEnergy: 0,
@@ -453,6 +464,11 @@ function update_all() {
   var outResult = []
   clearCalculatorState()
   single_list = []
+
+  // 通过getter函数获取状态，确保与window对象同步
+  var xh_list = getXhList()
+  var out_list = getOutList()
+  var ig_names = getIgNames()
 
   try {
     fixGzSpeed()
@@ -764,21 +780,19 @@ function update_all() {
   app.totalAcc = totalAcc.toFixed(2)
 }
 /**
- * @deprecated 已迁移到 calculatorEngine.js
- * 新代码请使用 createCalculator().loadNumber() 或 window.createCalculator().loadNumber()
- * 此函数仅为向后兼容保留
+ * 核心计算函数 - 通过 calculator.js 模块实现
+ * @deprecated 新架构请使用 CalculatorService.calculateWithOptions()
+ * 此暴露仅作为遗留代码兼容层，计划在 Phase 9 完成后移除
  */
 window.update_all = update_all
 /**
- * @deprecated 已迁移到 calculatorEngine.js
- * 新代码请使用 createCalculator().loadNumber() 或 window.createCalculator().loadNumber()
- * 此函数仅为向后兼容保留
+ * 核心计算函数 - 通过 calculator.js 模块实现
+ * @deprecated 新架构请使用 RecipeCalculator.loadNumber()
  */
 window.loadNumber = loadNumber
 /**
- * @deprecated 已迁移到 calculatorEngine.js
- * 新代码请使用 createCalculator().find() 或 window.createCalculator().find()
- * 此函数仅为向后兼容保留
+ * 核心计算函数 - 通过 calculator.js 模块实现
+ * @deprecated 新架构请使用 RecipeCalculator.find()
  */
 window.find = find
 window.generateBlueprint = generateBlueprint
@@ -1198,13 +1212,13 @@ export {
   app,
   f_init,
   single_list,
-  xh_list,
-  out_list,
+  getXhList as xh_list,
+  getOutList as out_list,
   addXH,
   addAccTotal,
   addOut,
   findOut,
-  ig_names,
+  getIgNames as ig_names,
   loadNumber,
   getXhs,
   doMergeMul,

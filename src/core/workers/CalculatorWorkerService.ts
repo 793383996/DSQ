@@ -1,4 +1,5 @@
-import type { IRecipe, IDemand } from '../types/recipe'
+import type { IDemand } from '../types/recipe'
+import type { IRawRecipe } from '../types/settings'
 import type {
   IWorkerCalculateRequest,
   IWorkerCalculateResponse,
@@ -13,6 +14,8 @@ export interface IWorkerCalculateOptions {
   excludes: string[]
   singleMakes?: Array<{ id: number; number: number }>
   timeout?: number
+  selfAcc?: boolean
+  isAddSelfAccP?: boolean
 }
 
 export interface IWorkerResult {
@@ -129,7 +132,7 @@ export class CalculatorWorkerService {
   }
 
   async init(options: {
-    recipes: IRecipe[]
+    recipes: IRawRecipe[]
     settings: Record<number, { accType?: string; accValue?: string; m?: string }>
     settingsPf: Record<string, number>
     settingsTime: Record<string, number>
@@ -209,7 +212,7 @@ export class CalculatorWorkerService {
     }
 
     const win = window as unknown as Record<string, unknown>
-    const recipes = (win.data || []) as IRecipe[]
+    const recipes = (win.data || []) as IRawRecipe[]
     const settings = (win.settings || {}) as Record<
       number,
       { accType?: string; accValue?: string; m?: string }
@@ -229,6 +232,9 @@ export class CalculatorWorkerService {
       settingsTime,
       recipeIndexByProduct
     })
+
+    // P6-4修复：计算轨道采集器t值缓存，与UpdateAllService.doSpeed1对齐
+    const orbitalCollectorTCache = this.calculateOrbitalCollectorTCache(recipes, settingsTime)
 
     return new Promise((resolve, reject) => {
       this.pendingResolve = resolve
@@ -251,8 +257,11 @@ export class CalculatorWorkerService {
         defaultAccType: (win.defaultAccType as string) || '增产剂Mk.Ⅰ',
         defaultAccValue: (win.defaultAccValue as string) || '无',
         singleMakes: options.singleMakes,
-        selfAcc: (win.selfAcc as { checked: boolean })?.checked ?? false,
-        isAddSelfAccP: (win.isAddSelfAccP as { checked: boolean })?.checked ?? false
+        selfAcc: options.selfAcc ?? (win.selfAcc as { checked: boolean })?.checked ?? false,
+        isAddSelfAccP:
+          options.isAddSelfAccP ?? (win.isAddSelfAccP as { checked: boolean })?.checked ?? false,
+        // P6-4修复：传递轨道采集器t值缓存
+        orbitalCollectorTCache
       }
 
       this.worker!.postMessage(request)
@@ -271,6 +280,60 @@ export class CalculatorWorkerService {
         originalResolve(result)
       }
     })
+  }
+
+  // P6-4修复：计算轨道采集器t值缓存，与UpdateAllService.doSpeed1逻辑对齐
+  private calculateOrbitalCollectorTCache(
+    recipes: IRawRecipe[],
+    settingsTime: Record<string, number>
+  ): Record<string, number> {
+    const st = settingsTime || {}
+    const speed1_1 = st['轨道采集器(气态)'] || 1
+    const speed1_2 = st['轨道采集器(气态)_重氢'] || 0.02
+    const speed1_4 = st['轨道采集器(巨冰)'] || 0.5
+    const speed1_3 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
+    const oreSpeed = st['采矿机'] || 3
+    const ore = (oreSpeed / 0.5 / 6) * 100
+
+    const getSum = (value1: number, value2: number, p1: number, p2: number): number => {
+      let sum = 60 * value1 * 0.01 * ore * 8
+      const per = (value1 * p1) / (value1 * p1 + value2 * p2)
+      sum -= (60 * 30 * per) / p1
+      return sum
+    }
+
+    const cache: Record<string, number> = {}
+
+    for (const recipe of recipes) {
+      if (
+        recipe.s &&
+        (recipe.s[0]?.name === '氢' ||
+          recipe.s[0]?.name === '重氢' ||
+          recipe.s[0]?.name === '可燃冰')
+      ) {
+        if (recipe.m && Array.isArray(recipe.m)) {
+          for (let i = 0; i < recipe.m.length; i++) {
+            const cacheKey = `${recipe.id}-${recipe.s[0].name}`
+            if (recipe.m[i].name === '轨道采集器(气态)') {
+              if (recipe.s[0].name === '氢') {
+                cache[cacheKey] = 1 / (getSum(speed1_1, speed1_2, 8, 8) / 60)
+              } else if (recipe.s[0].name === '重氢') {
+                cache[cacheKey] = 1 / (getSum(speed1_2, speed1_1, 8, 8) / 60)
+              }
+            }
+            if (recipe.m[i].name === '轨道采集器(巨冰)') {
+              if (recipe.s[0].name === '氢') {
+                cache[cacheKey] = 1 / (getSum(speed1_4, speed1_3, 8, 4.8) / 60)
+              } else if (recipe.s[0].name === '可燃冰') {
+                cache[cacheKey] = 1 / (getSum(speed1_3, speed1_4, 4.8, 8) / 60)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return cache
   }
 
   getStatus(): WorkerStatus {
