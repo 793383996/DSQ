@@ -36,6 +36,9 @@ export class RecipeCalculator {
   private recipeIndexByProduct: Record<string, number[]>
   private loadNumberDepth: number = 0
   private maxLoadNumberDepth: number
+  // P10-1修复：添加临界光子缓存，支持从UpdateAllService传入
+  private criticalPhotonTCache: number | null = null
+  private criticalPhotonLensNCache: number | null = null
 
   constructor(
     recipes: IRawRecipe[],
@@ -46,6 +49,12 @@ export class RecipeCalculator {
     this.recipeIndexByProduct = recipeIndexByProduct
     this.maxLoadNumberDepth = maxDepth
     this.state = this.createEmptyState()
+  }
+
+  // P10-1修复：设置临界光子缓存值
+  setCriticalPhotonCache(t: number | null, lensN: number | null): void {
+    this.criticalPhotonTCache = t
+    this.criticalPhotonLensNCache = lensN
   }
 
   private createEmptyState(): ICalculationState {
@@ -116,6 +125,20 @@ export class RecipeCalculator {
     const getRecipe = (item: IRawRecipe): IRawRecipe | null => {
       const o = structuredClone(item)
       if (!o.s) return null
+
+      // P10-1修复：应用临界光子缓存值
+      // 老代码直接修改data数组，新代码使用缓存机制
+      if (o.name === '临界光子' && o.mName === '射线接收塔') {
+        if (this.criticalPhotonTCache !== null) {
+          o.t = this.criticalPhotonTCache
+        }
+        if (this.criticalPhotonLensNCache !== null && o.q) {
+          const lensInput = o.q.find(q => q.name === '引力透镜')
+          if (lensInput) {
+            lensInput.n = this.criticalPhotonLensNCache
+          }
+        }
+      }
 
       if (normalizeRecipe) {
         for (let i = 0; i < o.s.length; i++) {

@@ -236,6 +236,19 @@ export class CalculatorWorkerService {
     // P6-4修复：计算轨道采集器t值缓存，与UpdateAllService.doSpeed1对齐
     const orbitalCollectorTCache = this.calculateOrbitalCollectorTCache(recipes, settingsTime)
 
+    // P10-1修复：计算临界光子缓存值，与UpdateAllService.fixCriticalPhotonSpeed对齐
+    const defaultAccType = (win.defaultAccType as string) || '增产剂Mk.Ⅰ'
+    const defaultAccValue = (win.defaultAccValue as string) || '无'
+    const criticalPhotonCache = this.calculateCriticalPhotonCache(
+      settings,
+      settingsTime,
+      settingsPf,
+      recipes,
+      recipeIndexByProduct,
+      defaultAccType,
+      defaultAccValue
+    )
+
     return new Promise((resolve, reject) => {
       this.pendingResolve = resolve
       this.pendingReject = reject
@@ -254,14 +267,17 @@ export class CalculatorWorkerService {
         settingsPf,
         settingsTime,
         recipeIndexByProduct,
-        defaultAccType: (win.defaultAccType as string) || '增产剂Mk.Ⅰ',
-        defaultAccValue: (win.defaultAccValue as string) || '无',
+        defaultAccType,
+        defaultAccValue,
         singleMakes: options.singleMakes,
         selfAcc: options.selfAcc ?? (win.selfAcc as { checked: boolean })?.checked ?? false,
         isAddSelfAccP:
           options.isAddSelfAccP ?? (win.isAddSelfAccP as { checked: boolean })?.checked ?? false,
         // P6-4修复：传递轨道采集器t值缓存
-        orbitalCollectorTCache
+        orbitalCollectorTCache,
+        // P10-1修复：传递临界光子缓存值
+        criticalPhotonTCache: criticalPhotonCache.t ?? undefined,
+        criticalPhotonLensNCache: criticalPhotonCache.lensN ?? undefined
       }
 
       this.worker!.postMessage(request)
@@ -338,6 +354,85 @@ export class CalculatorWorkerService {
     }
 
     return cache
+  }
+
+  // P10-1修复：计算临界光子缓存值，与UpdateAllService.fixCriticalPhotonSpeed逻辑对齐
+  // 老代码Scripts/data.js中的fixGzSpeed函数
+  private calculateCriticalPhotonCache(
+    settings: Record<number, { accType?: string; accValue?: string }>,
+    settingsTime: Record<string, number>,
+    settingsPf: Record<string, number>,
+    recipes: IRawRecipe[],
+    recipeIndexByProduct: Record<string, number[]>,
+    defaultAccType: string,
+    defaultAccValue: string
+  ): { t: number | null; lensN: number | null } {
+    // 查找临界光子配方
+    const indices = recipeIndexByProduct['临界光子']
+    if (!indices || indices.length === 0) {
+      return { t: null, lensN: null }
+    }
+
+    // 检查用户选择的配方
+    const pf = settingsPf['临界光子']
+    let criticalPhotonRecipe: IRawRecipe | null = null
+    if (pf !== undefined) {
+      criticalPhotonRecipe = recipes[pf] || null
+    } else {
+      criticalPhotonRecipe = recipes[indices[0]] || null
+    }
+
+    if (!criticalPhotonRecipe || !criticalPhotonRecipe.m) {
+      return { t: null, lensN: null }
+    }
+
+    const mArray = Array.isArray(criticalPhotonRecipe.m) ? criticalPhotonRecipe.m : []
+    const rayReceiver = mArray.find(m => m.name === '射线接收塔')
+    if (!rayReceiver) {
+      return { t: null, lensN: null }
+    }
+
+    // 检查是否有引力透镜输入
+    const lensInput = criticalPhotonRecipe.q?.find(q => q.name === '引力透镜')
+    if (!lensInput) {
+      return { t: null, lensN: null }
+    }
+
+    // 获取增产剂设置
+    const recipeSettings =
+      criticalPhotonRecipe.id !== undefined ? settings[criticalPhotonRecipe.id] : undefined
+    const accType = recipeSettings?.accType || defaultAccType
+    const accValue = recipeSettings?.accValue || defaultAccValue
+
+    // 计算fixedGzSpeed
+    let fixedGzSpeed: number
+    const gzSpeedSetting = settingsTime['射线接收塔']
+    if (gzSpeedSetting !== undefined) {
+      fixedGzSpeed = gzSpeedSetting
+    } else {
+      if (accValue === '加速') {
+        switch (accType) {
+          case '增产剂Mk.Ⅰ':
+            fixedGzSpeed = 15
+            break
+          case '增产剂Mk.Ⅱ':
+            fixedGzSpeed = 18
+            break
+          case '增产剂Mk.Ⅲ':
+            fixedGzSpeed = 24
+            break
+          default:
+            fixedGzSpeed = 12
+        }
+      } else {
+        fixedGzSpeed = 12
+      }
+    }
+
+    return {
+      t: 60 / fixedGzSpeed,
+      lensN: parseFloat((0.1 / fixedGzSpeed).toFixed(6))
+    }
   }
 
   getStatus(): WorkerStatus {

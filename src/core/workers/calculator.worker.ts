@@ -35,6 +35,9 @@ let loadNumberDepth = 0
 
 // P6-4修复：添加轨道采集器t值缓存
 let orbitalCollectorTCache: Map<string, number> = new Map()
+// P10-1修复：添加临界光子缓存
+let criticalPhotonTCache: number | null = null
+let criticalPhotonLensNCache: number | null = null
 
 function addXH(name: string, value: number): void {
   const item = xhMap[name]
@@ -330,6 +333,20 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
       noExtra: item.noExtra ?? undefined
     }
 
+    // P10-1修复：应用临界光子缓存值
+    // 老代码直接修改data数组，新代码使用缓存机制
+    if (item.name === '临界光子' && item.mName === '射线接收塔') {
+      if (criticalPhotonTCache !== null) {
+        o.t = criticalPhotonTCache
+      }
+      if (criticalPhotonLensNCache !== null && o.q) {
+        const lensInput = o.q.find(q => q.name === '引力透镜')
+        if (lensInput) {
+          lensInput.n = criticalPhotonLensNCache
+        }
+      }
+    }
+
     if (normalize_recipe) {
       for (let i = 0; i < o.s.length; i++) {
         o.s[i].n = o.s[i].n || 1
@@ -571,6 +588,10 @@ function calculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
       orbitalCollectorTCache.set(key, value)
     }
   }
+
+  // P10-1修复：初始化临界光子缓存
+  criticalPhotonTCache = data.criticalPhotonTCache ?? null
+  criticalPhotonLensNCache = data.criticalPhotonLensNCache ?? null
 
   try {
     // P0-3修复：doSpeed1逻辑已在主线程UpdateAllService中处理

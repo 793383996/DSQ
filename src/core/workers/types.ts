@@ -17,6 +17,9 @@ export interface IWorkerCalculateRequest {
   isAddSelfAccP?: boolean
   // P6-4修复：添加轨道采集器t值缓存
   orbitalCollectorTCache?: Record<string, number>
+  // P10-1修复：添加临界光子缓存
+  criticalPhotonTCache?: number
+  criticalPhotonLensNCache?: number
 }
 
 export interface IWorkerCalculateResponse {

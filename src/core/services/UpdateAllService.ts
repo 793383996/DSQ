@@ -149,6 +149,10 @@ export class UpdateAllService {
     mName: string
     value: number
   }> = []
+  // P10-1修复：添加临界光子t值缓存，解决fixCriticalPhotonSpeed修改克隆对象无效的问题
+  // 老代码直接修改data数组，新代码使用缓存机制
+  private criticalPhotonTCache: number | null = null
+  private criticalPhotonLensNCache: number | null = null
 
   constructor() {
     // 延迟初始化：不在构造函数中初始化，避免 window.data 未加载问题
@@ -247,6 +251,13 @@ export class UpdateAllService {
     // P6-4修复：传入settings和defaultAccType/defaultAccValue，使用配方级设置
     // P9-1修复：传入settingsPf参数，支持用户选择的配方
     this.fixCriticalPhotonSpeed(settingsTime, settings, defaultAccType, defaultAccValue, settingsPf)
+
+    // P10-1修复：将临界光子缓存值传递给RecipeCalculator
+    // RecipeCalculator的find方法会使用这些缓存值
+    this.calculator!.setCriticalPhotonCache(
+      this.criticalPhotonTCache,
+      this.criticalPhotonLensNCache
+    )
 
     // P3-2修复：添加递归深度超限回调，通知用户
     let depthExceededShown = false
@@ -428,6 +439,7 @@ export class UpdateAllService {
   // 老代码Scripts/data.js中的fixGzSpeed函数
   // P6-4修复：老代码使用临界光子配方的增产剂设置，而非全局默认设置
   // P9-1修复：使用calculator.find查找临界光子配方，支持settingsPf用户选择
+  // P10-1修复：使用缓存机制，解决修改克隆对象无效的问题
   private fixCriticalPhotonSpeed(
     settingsTime: Record<string, number>,
     settings: Record<string, { m?: string; accType?: string; accValue?: string }>,
@@ -438,6 +450,10 @@ export class UpdateAllService {
     // 老代码逻辑：根据增产剂设置计算fixedGzSpeed，修改配方的t值和引力透镜需求
     // 每分钟需求: 引力透镜=0.1*接收塔=0.1*光子需求量/光子产量
     // 光子产量: 12(透镜×200%)/15(增产Ⅰ×250%)/18(增产Ⅱ×300%)/24(增产Ⅲ×400%)
+
+    // P10-1修复：重置缓存
+    this.criticalPhotonTCache = null
+    this.criticalPhotonLensNCache = null
 
     // P9-1修复：使用calculator.find查找临界光子配方，支持settingsPf用户选择
     // 老代码：item = find("临界光子", true);
@@ -492,17 +508,20 @@ export class UpdateAllService {
       }
     }
 
-    // 修改引力透镜需求
-    if (lensInput) {
-      lensInput.n = parseFloat((0.1 / fixedGzSpeed).toFixed(6))
-    }
+    // P10-1修复：使用缓存机制，而非修改克隆对象
+    // 老代码直接修改data数组，新代码使用缓存
+    this.criticalPhotonLensNCache = parseFloat((0.1 / fixedGzSpeed).toFixed(6))
+    this.criticalPhotonTCache = 60 / fixedGzSpeed
+  }
 
-    // 修改配方t值
-    if (criticalPhotonRecipe.q && criticalPhotonRecipe.q.length > 0) {
-      criticalPhotonRecipe.t = 60 / fixedGzSpeed
-    } else {
-      criticalPhotonRecipe.t = 10
-    }
+  // P10-1修复：获取临界光子配方的缓存t值
+  getCriticalPhotonT(): number | null {
+    return this.criticalPhotonTCache
+  }
+
+  // P10-1修复：获取临界光子配方的缓存引力透镜需求
+  getCriticalPhotonLensN(): number | null {
+    return this.criticalPhotonLensNCache
   }
 
   // P2-3修复：处理光栅石的采矿机速度
@@ -536,6 +555,14 @@ export class UpdateAllService {
     if (machineName === '轨道采集器(气态)' || machineName === '轨道采集器(巨冰)') {
       const cachedT = this.getOrbitalCollectorT(recipe.id, recipe.s?.[0]?.name || '')
       if (cachedT !== undefined) {
+        recipeT = cachedT
+      }
+    }
+    // P10-1修复：使用缓存的临界光子t值
+    // 老代码直接修改data数组，新代码使用缓存机制
+    if (recipe.name === '临界光子' && machineName === '射线接收塔') {
+      const cachedT = this.criticalPhotonTCache
+      if (cachedT !== null) {
         recipeT = cachedT
       }
     }

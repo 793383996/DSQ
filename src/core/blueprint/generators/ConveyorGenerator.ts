@@ -129,6 +129,10 @@ export class ConveyorGenerator {
     this.buildingArray = []
     this.sprayCoaterOffsetList = []
     this.buildingIndex = -1
+    this.occupiedAreaX = 0
+    this.occupiedAreaY = 0
+    this.conveyorStartOffsetX = 0
+    this.lastProductionBuildingType = 0
   }
 
   fullReset(): void {
