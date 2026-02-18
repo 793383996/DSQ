@@ -74,10 +74,11 @@ function findOut(name: string): number | null {
 }
 
 function checkResult(): void {
-  // P0-2修复：重写checkResult逻辑，与老代码data.js checkResult函数对齐
-  // 老代码逻辑：当设备产出超过需求时，减少设备数量(value2)并增加产出(out_list)
+  // P11-2修复：与老代码data.js checkResult函数完全对齐（第5472行）
+  // 老代码逻辑：isOverflow检查所有产物都有out且out <= -mn才溢出
+  // 使用while循环逐步调整value2，而非ratio一次性调整
 
-  // P6-5修复：isOverflow函数与老代码完全对齐
+  // P11-2修复：isOverflow逻辑与老代码data.js完全对齐
   // 老代码：如果任何产物的out为null，返回false（不溢出）
   // 老代码：如果任何产物满足out > -mn，返回false（不溢出）
   // 只有所有产物都有out且都满足out <= -mn时，才返回true（溢出）
@@ -104,10 +105,12 @@ function checkResult(): void {
 
     const machineInfo = getMachineInfo(item)
     let nn = 1
+    // P11-2修复：老代码检查value2 < 1，不是value2 <= 0
     if (xh.value2 !== undefined && xh.value2 < 1) {
       nn = xh.value2
     }
 
+    // P11-2修复：老代码while循环条件是 isOverflow && value2 > 0
     while (isOverflow(item, machineInfo, nn) && (xh.value2 || 0) > 0) {
       if ((xh.value2 || 0) < 1) {
         nn = xh.value2!
@@ -169,11 +172,12 @@ function calculateValue2(): void {
     const accType = itemSettings?.accType || defaultAccType
     let accValue = itemSettings?.accValue || defaultAccValue
 
-    // 架构师注：accValue 修正逻辑与老代码对齐
+    // 架构师注：accValue 修正逻辑与老代码data.js update_all函数对齐
+    // 老代码在value2计算时只检查item.q.length == 0，不检查noExtra === null
     if (accValue === '增产' && item.noExtra) {
       accValue = '无'
     }
-    if (!item.q || item.q.length === 0 || item.noExtra === null) {
+    if (!item.q || item.q.length === 0) {
       accValue = '无'
     }
 

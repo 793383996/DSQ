@@ -386,8 +386,9 @@ export class RecipeCalculator {
 
   // P3-1修复：添加checkResultWithMachineInfo方法，实现完整的checkResult逻辑
   // 此方法由UpdateAllService调用，传入必要的机器信息
-  // P6-2修复：修正循环条件，与老代码data.js checkResult函数对齐
-  // 老代码不跳过value2<=0的条目，而是检查value2>0作为while循环条件
+  // P11-2修复：与老代码data.js checkResult函数完全对齐（第5472行）
+  // 老代码逻辑：isOverflow检查所有产物都有out且out <= -mn才溢出
+  // 使用while循环逐步调整value2，而非ratio一次性调整
   // P9-1修复：添加settingsPf参数，确保使用用户选择的配方
   checkResultWithMachineInfo(
     getMachineInfo: (recipe: IRawRecipe) => { speed: number; t: number },
@@ -395,6 +396,10 @@ export class RecipeCalculator {
     settings: Record<string, { accType?: string; accValue?: string }> = {},
     defaultAccValue: string = '无'
   ): void {
+    // P11-2修复：isOverflow逻辑与老代码data.js完全对齐
+    // 老代码：如果任何产物的out为null，返回false（不溢出）
+    // 老代码：如果任何产物满足out > -mn，返回false（不溢出）
+    // 只有所有产物都有out且都满足out <= -mn时，才返回true（溢出）
     const isOverflow = (
       item: IRawRecipe,
       info: { speed: number; t: number },
@@ -404,7 +409,6 @@ export class RecipeCalculator {
       for (let j = 0; j < item.s.length; j++) {
         const out = this.findOut(item.s[j].name)
         if (out === null) return false
-        // 老代码逻辑：mn = ((nn * 60) / item.t) * info.speed * (item.s[j].n || 1)
         const mn = ((nn * 60) / info.t) * info.speed * (item.s[j].n || 1)
         if (out > -1 * mn) return false
       }
@@ -413,9 +417,6 @@ export class RecipeCalculator {
 
     for (let i = 0; i < this.state.xhList.length; i++) {
       const xh = this.state.xhList[i]
-      // P6-2修复：老代码不检查value2是否存在，直接使用
-      // 老代码：var number = xh_list[i].value; var nn = 1;
-      // if (xh_list[i].value2 < 1) { nn = xh_list[i].value2; }
       if (!xh.value) continue
 
       // P9-1修复：传入settingsPf参数，确保使用用户选择的配方
@@ -424,14 +425,13 @@ export class RecipeCalculator {
 
       const info = getMachineInfo(item)
       let nn = 1
-      // P6-2修复：老代码检查value2 < 1，不是value2 <= 0
+      // P11-2修复：老代码检查value2 < 1，不是value2 <= 0
       if (xh.value2 !== undefined && xh.value2 < 1) {
         nn = xh.value2
       }
 
-      // P6-2修复：老代码while循环条件是 isOverflow && value2 > 0
+      // P11-2修复：老代码while循环条件是 isOverflow && value2 > 0
       // 老代码先检查isOverflow，再检查value2 > 0
-      // 如果value2不存在或<=0，while循环不会执行，但不会跳过整个条目
       while (isOverflow(item, info, nn) && (xh.value2 || 0) > 0) {
         if ((xh.value2 || 0) < 1) {
           nn = xh.value2!
