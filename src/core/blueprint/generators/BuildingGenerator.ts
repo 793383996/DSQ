@@ -15,7 +15,7 @@ export class BuildingGenerator {
   private buildings: IBlueprintBuilding[] = []
   private sorters: ISorterMap = {}
   private buildingArray: BuildingArray = []
-  private buildingIndex: number = 0
+  private buildingIndex: number = -1
   private occupiedArea: IOccupiedArea[] = []
   private blueprintSize: { x: number; y: number } = { x: 0, y: 0 }
   private sprayCoaterOffsetList: ICoordinate[] = []
@@ -89,7 +89,7 @@ export class BuildingGenerator {
     this.buildings = []
     this.sorters = {}
     this.buildingArray = []
-    this.buildingIndex = 0
+    this.buildingIndex = -1
     this.occupiedArea = []
     this.blueprintSize = { x: 0, y: 0 }
     this.sprayCoaterOffsetList = []

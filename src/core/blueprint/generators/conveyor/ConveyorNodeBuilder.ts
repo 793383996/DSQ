@@ -27,7 +27,7 @@ export interface IBuildingMapForConveyor {
 }
 
 export class ConveyorNodeBuilder {
-  private buildingIndex: number = 0
+  private buildingIndex: number = -1
   private config: IConveyorGeneratorConfig
   private buildingMap: IBuildingMapForConveyor
 

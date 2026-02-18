@@ -73,58 +73,51 @@ function findOut(name: string): number | null {
 function checkResult(): void {
   // P0-2修复：重写checkResult逻辑，与老代码data.js checkResult函数对齐
   // 老代码逻辑：当设备产出超过需求时，减少设备数量(value2)并增加产出(out_list)
+
+  // P6-5修复：isOverflow函数与老代码完全对齐
+  // 老代码：如果任何产物的out为null，返回false（不溢出）
+  // 老代码：如果任何产物满足out > -mn，返回false（不溢出）
+  // 只有所有产物都有out且都满足out <= -mn时，才返回true（溢出）
+  const isOverflow = (
+    item: IInternalRecipe,
+    info: { speed: number; t: number },
+    nn: number
+  ): boolean => {
+    for (let j = 0; j < item.s.length; j++) {
+      const out = findOut(item.s[j].name)
+      if (out === null) return false
+      const mn = ((nn * 60) / info.t) * info.speed * (item.s[j].n || 1)
+      if (out > -1 * mn) return false
+    }
+    return true
+  }
+
   for (let i = 0; i < xh_list.length; i++) {
     const xh = xh_list[i]
-    if (!xh.value2 || xh.value2 <= 0) continue
+    if (!xh.value) continue
 
     const item = find(xh.name, false)
     if (!item || !item.s) continue
 
-    // 获取机器信息
     const machineInfo = getMachineInfo(item)
     let nn = 1
-    if (xh.value2 < 1) {
+    if (xh.value2 !== undefined && xh.value2 < 1) {
       nn = xh.value2
     }
 
-    // 检查是否溢出：任何产物的out值<0表示产出超过需求
-    let isOverflow = false
-    for (let j = 0; j < item.s.length; j++) {
-      const out = findOut(item.s[j].name)
-      if (out === null) continue
-      // 老代码逻辑：mn = ((nn * 60) / item.t) * info.speed * (item.s[j].n || 1)
-      const mn = ((nn * 60) / machineInfo.t) * machineInfo.speed * (item.s[j].n || 1)
-      if (out > -1 * mn) continue
-      isOverflow = true
-      break
-    }
-
-    // 老代码逻辑：while循环减少设备数量直到不溢出
-    while (isOverflow && xh.value2 > 0) {
-      if (xh.value2 < 1) {
-        nn = xh.value2
+    while (isOverflow(item, machineInfo, nn) && (xh.value2 || 0) > 0) {
+      if ((xh.value2 || 0) < 1) {
+        nn = xh.value2!
       }
-      xh.value2 = xh.value2 - nn
+      xh.value2 = (xh.value2 || 0) - nn
 
-      // 将减少的设备产出添加到out_list
       for (let j = 0; j < item.s.length; j++) {
         const mn = ((nn * 60) / machineInfo.t) * machineInfo.speed * (item.s[j].n || 1)
         addOut(item.s[j].name, mn)
       }
 
-      if (xh.value2 < 1) {
-        nn = xh.value2
-      }
-
-      // 重新检查是否溢出
-      isOverflow = false
-      for (let j = 0; j < item.s.length; j++) {
-        const out = findOut(item.s[j].name)
-        if (out === null) continue
-        const mn = ((nn * 60) / machineInfo.t) * machineInfo.speed * (item.s[j].n || 1)
-        if (out > -1 * mn) continue
-        isOverflow = true
-        break
+      if ((xh.value2 || 0) < 1) {
+        nn = xh.value2 || 0
       }
     }
   }
@@ -195,9 +188,16 @@ function calculateValue2(): void {
       }
     }
 
-    // 计算value2
+    // P7-4修复：value2计算逻辑与老代码data.js完全对齐
+    // 老代码：先计算基础value2，再根据条件应用getAccSpeed和fixValue2Times
     xh.value2 = xh.value / (1 / machineInfo.t) / 60 / (item.n || 1)
-    xh.value2 = (xh.value2 / getAccSpeed(accType, accValue)) * fixValue2Times
+
+    // 架构师注：老代码用item.name检查产物名称，但新代码IInternalRecipe没有name属性
+    // 老代码的item.name实际上是主产物名称，这里用xh.name代替
+    // 临界光子（射线接收塔）不应用getAccSpeed和fixValue2Times，保持基础value2
+    if (xh.name !== '临界光子' || item.mName !== '射线接收塔') {
+      xh.value2 = (xh.value2 / getAccSpeed(accType, accValue)) * fixValue2Times
+    }
   }
 }
 

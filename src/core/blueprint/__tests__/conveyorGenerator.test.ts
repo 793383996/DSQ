@@ -201,7 +201,7 @@ describe('ConveyorGenerator', () => {
         count: '10.0'
       })
 
-      expect(node.index).toBe(1)
+      expect(node.index).toBe(0)
       expect(node.areaIndex).toBe(0)
       expect(node.itemId).toBe(2003)
       expect(node.modelIndex).toBe(2102)
@@ -217,8 +217,8 @@ describe('ConveyorGenerator', () => {
       const node1 = generator.newConveyorNode(offset, [0, 0], conveyor, 10, 1, null)
       const node2 = generator.newConveyorNode(offset, [0, 0], conveyor, 11, 1, null)
 
-      expect(node1.index).toBe(1)
-      expect(node2.index).toBe(2)
+      expect(node1.index).toBe(0)
+      expect(node2.index).toBe(1)
     })
   })
 
@@ -291,7 +291,7 @@ describe('ConveyorGenerator', () => {
       expect(generator.getBuildings().length).toBe(0)
 
       generator.reset()
-      expect(generator.getBuildingIndex()).toBe(1)
+      expect(generator.getBuildingIndex()).toBe(-1)
     })
   })
 

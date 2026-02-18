@@ -16,7 +16,7 @@ describe('BuildingGenerator', () => {
       const template = generator.getBuildingTemplate()
 
       expect(template).toBeDefined()
-      expect(template.index).toBe(1)
+      expect(template.index).toBe(0)
       expect(template.areaIndex).toBe(0)
       expect(template.yaw).toEqual([0, 0])
       expect(template.itemId).toBe(0)
@@ -31,9 +31,9 @@ describe('BuildingGenerator', () => {
       const t2 = generator.getBuildingTemplate()
       const t3 = generator.getBuildingTemplate()
 
-      expect(t1.index).toBe(1)
-      expect(t2.index).toBe(2)
-      expect(t3.index).toBe(3)
+      expect(t1.index).toBe(0)
+      expect(t2.index).toBe(1)
+      expect(t3.index).toBe(2)
     })
   })
 
@@ -124,7 +124,7 @@ describe('BuildingGenerator', () => {
 
       generator.reset()
 
-      expect(generator.getBuildingIndex()).toBe(0)
+      expect(generator.getBuildingIndex()).toBe(-1)
       expect(generator.getBuildings().length).toBe(0)
       expect(Object.keys(generator.getSorters()).length).toBe(0)
       expect(generator.getBlueprintSize()).toEqual({ x: 0, y: 0 })

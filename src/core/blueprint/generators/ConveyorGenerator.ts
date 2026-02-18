@@ -50,7 +50,7 @@ interface IExtendedSorterInfo {
 
 export class ConveyorGenerator {
   private buildings: IBlueprintBuilding[] = []
-  private buildingIndex: number = 0
+  private buildingIndex: number = -1
   private occupiedAreaX: number = 0
   private occupiedAreaY: number = 0
   private conveyorStartOffsetX: number = 0
@@ -128,11 +128,12 @@ export class ConveyorGenerator {
     this.buildings = []
     this.buildingArray = []
     this.sprayCoaterOffsetList = []
+    this.buildingIndex = -1
   }
 
   fullReset(): void {
     this.reset()
-    this.buildingIndex = 0
+    this.buildingIndex = -1
     this.occupiedAreaX = 0
     this.occupiedAreaY = 0
     this.conveyorStartOffsetX = 0

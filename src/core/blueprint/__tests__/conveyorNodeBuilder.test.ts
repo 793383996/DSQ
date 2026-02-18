@@ -33,7 +33,7 @@ describe('ConveyorNodeBuilder', () => {
         parameters: null
       })
 
-      expect(node.index).toBe(1)
+      expect(node.index).toBe(0)
       expect(node.areaIndex).toBe(0)
       expect(node.localOffset).toEqual([
         { x: 5, y: 10, z: 1 },
@@ -72,9 +72,9 @@ describe('ConveyorNodeBuilder', () => {
         parameters: null
       })
 
-      expect(node1.index).toBe(1)
-      expect(node2.index).toBe(2)
-      expect(builder.getBuildingIndex()).toBe(2)
+      expect(node1.index).toBe(0)
+      expect(node2.index).toBe(1)
+      expect(builder.getBuildingIndex()).toBe(1)
     })
 
     it('should include parameters when provided', () => {
