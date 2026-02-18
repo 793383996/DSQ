@@ -12,6 +12,7 @@ import {
 } from '../types/conveyorGenerator'
 import type { ISorterMap, ISorterInfo } from '../types/buildingGenerator'
 import { SorterGenerator, PRODUCTION_CATEGORY, type ProductionCategory } from './SorterGenerator'
+import { logger } from '../../../utils/logger'
 
 export interface IBuildingMap {
   [key: string]: {
@@ -315,7 +316,7 @@ export class ConveyorGenerator {
       for (let totalDoneRate = 0; itemEntry.rate - totalDoneRate > zero; ) {
         totalIterations++
         if (totalIterations > maxIterations) {
-          console.error(
+          logger.error(
             `[ConveyorGenerator] 死循环检测: item=${itemName}, rate=${itemEntry.rate}, totalDoneRate=${totalDoneRate}`
           )
           break

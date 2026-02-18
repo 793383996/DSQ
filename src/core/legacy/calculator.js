@@ -340,18 +340,23 @@ function mergeMul() {
   }
 }
 
+// P11-2修复：与老代码Scripts/data.js checkResult函数完全对齐（第5472行）
+// 老代码逻辑：isOverflow检查所有产物都有out且out <= -mn才溢出
+// 使用while循环逐步调整value2，而非ratio一次性调整
 function checkResult() {
   var xh_list = getXhList()
+  // P11-2修复：isOverflow逻辑与老代码Scripts/data.js完全对齐
+  // 老代码：如果任何产物的out为null，返回false（不溢出）
+  // 老代码：如果任何产物满足out > -mn，返回false（不溢出）
+  // 只有所有产物都有out且都满足out <= -mn时，才返回true（溢出）
   function isOverflow(item, info, nn) {
     for (var j = 0; j < item.s.length; j++) {
-      var s = item.s[j]
-      var out = findOut(s.name)
-      if (out === null) continue
-      if (out < 0) {
-        return true
-      }
+      var out = findOut(item.s[j].name)
+      if (out === null) return false
+      var mn = ((nn * 60) / item.t) * info.speed * (item.s[j].n || 1)
+      if (out > -1 * mn) return false
     }
-    return false
+    return true
   }
 
   for (var i = 0; i < xh_list.length; i++) {
@@ -363,24 +368,27 @@ function checkResult() {
     var info = window.getValue ? window.getValue(itemName) : null
     if (!info) continue
 
-    if (isOverflow(item, info, xh.value)) {
-      var need = xh.value
-      var produce = 0
+    var nn = 1
+    // P11-2修复：老代码检查value2 < 1，不是value2 <= 0
+    if (xh.value2 !== undefined && xh.value2 < 1) {
+      nn = xh.value2
+    }
+
+    // P11-2修复：老代码while循环条件是 isOverflow && value2 > 0
+    // 老代码先检查isOverflow，再检查value2 > 0
+    while (isOverflow(item, info, nn) && (xh.value2 || 0) > 0) {
+      if ((xh.value2 || 0) < 1) {
+        nn = xh.value2
+      }
+      xh.value2 = (xh.value2 || 0) - nn
+
       for (var j = 0; j < item.s.length; j++) {
-        var s = item.s[j]
-        if (s.name == itemName) {
-          produce = (xh.value * (s.n || 1)) / (item.n || 1)
-          break
-        }
+        var mn = ((nn * 60) / item.t) * info.speed * (item.s[j].n || 1)
+        addOut(item.s[j].name, mn)
       }
 
-      // P0-1修复：防止除零，与新代码保持一致
-      if (produce > 0) {
-        var ratio = need / produce
-        if (ratio > 0 && ratio < 1) {
-          xh.value = produce
-          xh.value2 = xh.value2 ? xh.value2 * ratio : xh.value * (1 - ratio)
-        }
+      if ((xh.value2 || 0) < 1) {
+        nn = xh.value2 || 0
       }
     }
   }
