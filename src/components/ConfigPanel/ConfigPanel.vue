@@ -413,6 +413,39 @@ const settings = reactive<AllSettings>({
   xyRatio: 2
 })
 
+const SETTINGS_COMMENTS: Record<keyof AllSettings, string> = {
+  hideSource: '隐藏原材料来源显示',
+  modeIn: '制作台默认型号，可选：制作台Mk.Ⅰ/制作台Mk.Ⅱ/制作台Mk.Ⅲ/重组式制造台',
+  furnace: '熔炉默认型号，可选：电弧熔炉/位面熔炉/负熵熔炉',
+  chemical: '化工厂默认型号，可选：化工厂/量子化工厂',
+  accType: '增产剂默认型号，可选：增产剂Mk.Ⅰ/增产剂Mk.Ⅱ/增产剂Mk.Ⅲ',
+  accValue: '增产剂效果类型，可选：无/增产/加速',
+  research: '研究站默认型号，可选：矩阵研究站/自演化研究站',
+  selfAcc: '是否启用自喷涂功能，蓝图生成时自动添加喷涂机',
+  isAddSelfAccP: '是否在蓝图预览中显示自喷涂增产剂物品',
+  oreSpeed: '普通矿机采矿速度(个/s)，默认100',
+  largeMinerSpeed: '大型矿机采矿速度(个/s)，默认100',
+  fractionatorSpeed: '分馏塔分馏速度(个/s)，默认18',
+  oilSpeed: '原油抽采速度(个/s)，默认4',
+  criticalPhotonSpeed: '临界光子生成速度(个/s)，默认5',
+  orbitalDeuterium: '轨道采集器-氘采集速度，默认0.02',
+  orbitalFireIce: '轨道采集器-可燃冰采集速度，默认0.5',
+  orbitalHydrogenIce: '轨道采集器-冰原采集速度，默认0.5',
+  orbitalHydrogenGas: '轨道采集器-气态氢采集速度，默认1',
+  pointLength: '蓝图标记点长度，用于蓝图预览显示',
+  beltType: '传送带默认型号，可选：传送带/高速传送带/极速传送带',
+  logisticStack: '物流运输堆叠层数，影响运输效率',
+  onlyConveyorBeltMk3: '是否仅使用Mk3传送带，true时跳过Mk1/Mk2直接使用Mk3',
+  onlySorterMk3: '是否仅使用Mk3分拣器，true时跳过Mk1直接使用Mk3',
+  useSorterMk4: '是否使用Mk4分拣器(集装分拣器)，需要与onlySorterMk3互斥',
+  generateTeslaTower: '是否在蓝图中生成电力感应塔',
+  teslaTowerLineInterval: '电力感应塔线路间隔，控制塔的排列密度',
+  conveyorBeltStackLayer: '传送带堆叠层数，用于计算传送带最大承载能力(速度×层数)',
+  maxLabLayers: '研究站最大堆叠层数，影响研究站垂直布局',
+  stackLayers: '蓝图堆叠层数，1表示不堆叠，>1表示多层堆叠蓝图',
+  xyRatio: '蓝图X/Y轴比例，控制蓝图布局的长宽比'
+}
+
 const STORAGE_KEY = 'dsq_all_settings'
 
 function loadSettingsFromStorage() {
