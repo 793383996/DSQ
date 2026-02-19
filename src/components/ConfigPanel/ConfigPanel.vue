@@ -789,6 +789,7 @@ function resetSettings() {
 
 .config-row input[type='number'] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .config-row .unit {
