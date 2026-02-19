@@ -25,6 +25,14 @@
  * @see ConveyorGenerator - 完整版传送带生成器
  */
 import type { IBlueprintBuilding, ICoordinate } from '../../../types/blueprint'
+import type {
+  IItemSummaryEntry,
+  IItemSummary,
+  IConveyorGeneratorConfig
+} from '../../types/conveyorGenerator'
+import { DEFAULT_CONVEYOR_GENERATOR_CONFIG } from '../../types/conveyorGenerator'
+import type { ISorterMap } from '../../types/buildingGenerator'
+import { ConveyorNodeBuilder, type IBuildingMapForConveyor } from './ConveyorNodeBuilder'
 export interface IConnectionBuildParams {
   itemName: string
   itemEntry: IItemSummaryEntry

@@ -160,7 +160,8 @@ function checkResult(): void {
 
 // P0-1修复：添加getMachineInfo函数，获取机器信息
 // P6-4修复：添加轨道采集器t值缓存支持，与主线程UpdateAllService对齐
-function getMachineInfo(item: IInternalRecipe): { speed: number; t: number } {
+// P16-1修复：返回time属性（t / speed），与老代码info.time对齐
+function getMachineInfo(item: IInternalRecipe): { speed: number; t: number; time: number } {
   const mArray = Array.isArray(item.m) ? item.m : []
   const machineName = mArray[0]?.name || item.mName || ''
   const machine =
@@ -181,10 +182,13 @@ function getMachineInfo(item: IInternalRecipe): { speed: number; t: number } {
     }
   }
 
-  return { speed, t: recipeT }
+  return { speed, t: recipeT, time: recipeT / speed }
 }
 
 // P0-2修复：添加calculateValue2函数，在checkResult之前计算value2
+// P16-1修复：使用machineInfo.time而非machineInfo.t，与老代码对齐
+// 老代码：xh.value2 = xh.value / (1 / info.time) / 60 / (item.n || 1)
+// info.time是配方时间除以设备速度后的值，对应machineInfo.time
 function calculateValue2(): void {
   for (let i = 0; i < xh_list.length; i++) {
     const xh = xh_list[i]
@@ -210,11 +214,14 @@ function calculateValue2(): void {
       accValue = '无'
     }
 
-    // 计算fixValue2Times
+    // P16-1修复：fixValue2Times计算逻辑与老代码完全对齐
+    // 老代码：检查item.q[j].name === item.name（item.name是find返回的主产物名称）
+    // Worker版本：item通过Object.assign获得name属性，item.name === xh.name
     let fixValue2Times = 1
     if (item.q) {
+      const itemName = (item as IInternalRecipe & { name?: string }).name || xh.name
       for (let j = 0; j < item.q.length; j++) {
-        if (item.q[j].name === xh.name) {
+        if (item.q[j].name === itemName) {
           const recipeN = item.n || 1
           const inputN = item.q[j].n || 0
           if (recipeN > inputN) {
@@ -225,8 +232,10 @@ function calculateValue2(): void {
     }
 
     // P7-4修复：value2计算逻辑与老代码data.js完全对齐
-    // 老代码：先计算基础value2，再根据条件应用getAccSpeed和fixValue2Times
-    xh.value2 = xh.value / (1 / machineInfo.t) / 60 / (item.n || 1)
+    // P16-1修复：使用machineInfo.time而非machineInfo.t
+    // 老代码：xh.value2 = xh.value / (1 / info.time) / 60 / (item.n || 1)
+    // info.time = recipe.t / speed，对应machineInfo.time
+    xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (item.n || 1)
 
     // 架构师注：老代码用item.name检查产物名称，但新代码IInternalRecipe没有name属性
     // 老代码的item.name实际上是主产物名称，这里用xh.name代替
@@ -368,7 +377,9 @@ function find(name: string, normalize_recipe: boolean): IInternalRecipe | null {
 
     // P10-1修复：应用临界光子缓存值
     // 老代码直接修改data数组，新代码使用缓存机制
-    if (item.name === '临界光子' && item.mName === '射线接收塔') {
+    // P12-1修复：使用item.s[0].name检查临界光子，因为原始配方对象没有name属性
+    const mainProductName = item.s?.[0]?.name
+    if (mainProductName === '临界光子' && item.mName === '射线接收塔') {
       if (criticalPhotonTCache !== null) {
         o.t = criticalPhotonTCache
       }

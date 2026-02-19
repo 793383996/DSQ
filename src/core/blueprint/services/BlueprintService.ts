@@ -574,11 +574,11 @@ export class BlueprintService {
         : lastOccupiedArea
     const conveyorStartOffsetX = lastOccupiedArea?.x2 || 0
     this.conveyorGenerator.setConveyorStartOffsetX(conveyorStartOffsetX)
+    this.conveyorGenerator.setOccupiedAreaX((lastOccupiedArea?.x2 || 0) + 1)
     lastOccupiedArea.x2++
     if (prevOccupiedArea && this.occupiedArea.length >= 2) {
       prevOccupiedArea.y2++
     }
-    this.conveyorGenerator.setOccupiedAreaX(lastOccupiedArea?.x2 || 0)
     this.conveyorGenerator.setOccupiedAreaY(prevOccupiedArea?.y2 || 0)
     this.conveyorGenerator.setBuildingArray(this.buildingArray)
     this.conveyorGenerator.setSprayCoaterOffsetList(this.sprayCoaterOffsetList)
@@ -596,8 +596,12 @@ export class BlueprintService {
     this.buildingIndex = this.conveyorGenerator.getBuildingIndex()
     this.sprayCoaterOffsetList = this.conveyorGenerator.getSprayCoaterOffsetList()
     const updatedOccupiedAreaX = this.conveyorGenerator.getOccupiedAreaX()
-    if (lastOccupiedArea && updatedOccupiedAreaX > lastOccupiedArea.x2) {
+    const updatedOccupiedAreaY = this.conveyorGenerator.getOccupiedAreaY()
+    if (lastOccupiedArea && updatedOccupiedAreaX > 0) {
       lastOccupiedArea.x2 = updatedOccupiedAreaX
+    }
+    if (prevOccupiedArea && updatedOccupiedAreaY > prevOccupiedArea.y2) {
+      prevOccupiedArea.y2 = updatedOccupiedAreaY
     }
 
     return conveyorBuildings

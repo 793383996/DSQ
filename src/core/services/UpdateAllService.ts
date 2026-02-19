@@ -299,6 +299,10 @@ export class UpdateAllService {
       this.criticalPhotonLensNCache
     )
 
+    // P0-1修复：将轨道采集器缓存值传递给RecipeCalculator
+    // 老代码doSpeed1直接修改data数组的t值，新代码使用缓存机制
+    this.calculator!.setOrbitalCollectorCache(this.orbitalCollectorTCache)
+
     // P3-2修复：添加递归深度超限回调，通知用户
     let depthExceededShown = false
     const loadOptions: ILoadNumberOptions = {
@@ -408,15 +412,13 @@ export class UpdateAllService {
 
   private doSpeed1(settingsTime: Record<string, number>): void {
     const st = settingsTime || {}
-    // P0-4修复：键名与老代码data.js doSpeed1函数完全对齐
-    // 老代码HTML: speed1_1 = 氢(气态) 默认1, speed1_2 = 重氢 默认0.02
-    // 老代码HTML: speed1_3 = 可燃冰 默认0.5, speed1_4 = 氢(巨冰) 默认0.5
-    // 架构师注：老代码变量名speed1_3对应可燃冰，speed1_4对应氢(巨冰)
-    // 新代码键名需正确映射：轨道采集器(巨冰)_可燃冰 → speed1_3，轨道采集器(巨冰)_氢 → speed1_4
+    // P13-1修复：键名与老代码data.js doSpeed1函数完全对齐
+    // 老代码data.js: speed1_3 = st['轨道采集器(巨冰)_氢'], speed1_4 = st['轨道采集器(巨冰)_可燃冰']
+    // 注意：老代码变量命名与HTML注释不一致，以实际代码为准
     const speed1_1 = st['轨道采集器(气态)_氢'] || 1
     const speed1_2 = st['轨道采集器(气态)_重氢'] || 0.02
-    const speed1_3 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
-    const speed1_4 = st['轨道采集器(巨冰)_氢'] || 0.5
+    const speed1_3 = st['轨道采集器(巨冰)_氢'] || 0.5
+    const speed1_4 = st['轨道采集器(巨冰)_可燃冰'] || 0.5
     const ore = st['采矿机_效率'] || 100
 
     const getSum = (value1: number, value2: number, p1: number, p2: number): number => {
@@ -511,7 +513,7 @@ export class UpdateAllService {
 
     // 检查是否有引力透镜输入
     const lensInput = criticalPhotonRecipe.q?.find(q => q.name === '引力透镜')
-    if (!lensInput) return
+    const hasLensInput = !!lensInput
 
     // P6-4修复：老代码使用临界光子配方的增产剂设置
     // 老代码：item = find("临界光子", true);
@@ -521,37 +523,51 @@ export class UpdateAllService {
     const accType = recipeSettings?.accType || defaultAccType
     const accValue = recipeSettings?.accValue || defaultAccValue
 
-    // 计算fixedGzSpeed
+    // P14-1修复：支持manualGzSpeed手动输入临界光子速度
+    // 老代码：if (manualGzSpeed) { fixedGzSpeed = parseFloat($("#gzSpeed").val()); }
+    const manualGzSpeed = settingsTime['临界光子_手动速度']
     let fixedGzSpeed: number
-    const gzSpeedSetting = settingsTime['射线接收塔']
-    if (gzSpeedSetting !== undefined) {
-      // 用户手动设置了射线接收塔速度
-      fixedGzSpeed = gzSpeedSetting
+    if (manualGzSpeed !== undefined && manualGzSpeed > 0) {
+      // P14-1修复：用户手动输入临界光子每分钟产量
+      fixedGzSpeed = manualGzSpeed
     } else {
-      // 根据增产剂设置计算
-      if (accValue === '加速') {
-        switch (accType) {
-          case '增产剂Mk.Ⅰ':
-            fixedGzSpeed = 15
-            break
-          case '增产剂Mk.Ⅱ':
-            fixedGzSpeed = 18
-            break
-          case '增产剂Mk.Ⅲ':
-            fixedGzSpeed = 24
-            break
-          default:
-            fixedGzSpeed = 12
-        }
+      const gzSpeedSetting = settingsTime['射线接收塔']
+      if (gzSpeedSetting !== undefined) {
+        // 用户手动设置了射线接收塔速度
+        fixedGzSpeed = gzSpeedSetting
       } else {
-        fixedGzSpeed = 12
+        // 根据增产剂设置计算
+        if (accValue === '加速') {
+          switch (accType) {
+            case '增产剂Mk.Ⅰ':
+              fixedGzSpeed = 15
+              break
+            case '增产剂Mk.Ⅱ':
+              fixedGzSpeed = 18
+              break
+            case '增产剂Mk.Ⅲ':
+              fixedGzSpeed = 24
+              break
+            default:
+              fixedGzSpeed = 12
+          }
+        } else {
+          fixedGzSpeed = 12
+        }
       }
     }
 
     // P10-1修复：使用缓存机制，而非修改克隆对象
     // 老代码直接修改data数组，新代码使用缓存
-    this.criticalPhotonLensNCache = parseFloat((0.1 / fixedGzSpeed).toFixed(6))
-    this.criticalPhotonTCache = 60 / fixedGzSpeed
+    // P15-1修复：老代码逻辑 this.t = this.q && this.q.length ? 60 / fixedGzSpeed : 10;
+    // 无原料时t值默认为10
+    if (hasLensInput) {
+      this.criticalPhotonLensNCache = parseFloat((0.1 / fixedGzSpeed).toFixed(6))
+      this.criticalPhotonTCache = 60 / fixedGzSpeed
+    } else {
+      this.criticalPhotonLensNCache = null
+      this.criticalPhotonTCache = 10
+    }
   }
 
   // P10-1修复：获取临界光子配方的缓存t值
@@ -600,7 +616,9 @@ export class UpdateAllService {
     }
     // P10-1修复：使用缓存的临界光子t值
     // 老代码直接修改data数组，新代码使用缓存机制
-    if (recipe.name === '临界光子' && machineName === '射线接收塔') {
+    // P12-1修复：使用recipe.s[0].name检查临界光子，因为IRawRecipe.name是可选属性
+    const mainProductName = recipe.s?.[0]?.name
+    if (mainProductName === '临界光子' && machineName === '射线接收塔') {
       const cachedT = this.criticalPhotonTCache
       if (cachedT !== null) {
         recipeT = cachedT
@@ -650,10 +668,14 @@ export class UpdateAllService {
         accValue = '无'
       }
 
+      // P16-1修复：fixValue2Times计算逻辑与老代码完全对齐
+      // 老代码：检查item.q[j].name === item.name（item.name是find返回的主产物名称）
+      // find返回的recipe通过Object.assign获得name属性
       let fixValue2Times = 1
       if (recipe.q) {
+        const recipeName = recipe.name || xh.name
         for (let j = 0; j < recipe.q.length; j++) {
-          if (recipe.q[j].name === xh.name) {
+          if (recipe.q[j].name === recipeName) {
             const recipeN = recipe.n || 1
             const inputN = recipe.q[j].n || 0
             if (recipeN > inputN) {
@@ -667,7 +689,9 @@ export class UpdateAllService {
       // 老代码：先计算基础value2，再根据条件应用getAccSpeed和fixValue2Times
       xh.value2 = xh.value / (1 / machineInfo.time) / 60 / (recipe.n || 1)
 
-      if (recipe.name !== '临界光子' || recipe.mName !== '射线接收塔') {
+      // P12-1修复：使用recipe.s[0].name检查临界光子，因为IRawRecipe.name是可选属性
+      const mainProductName = recipe.s?.[0]?.name
+      if (mainProductName !== '临界光子' || recipe.mName !== '射线接收塔') {
         xh.value2 = (xh.value2 / RecipeCalculator.getAccSpeed(accType, accValue)) * fixValue2Times
       }
       // 临界光子（射线接收塔）不应用getAccSpeed和fixValue2Times，保持基础value2

@@ -84,6 +84,7 @@ export class ConveyorGenerator {
   private buildingIndex: number = -1
   private occupiedAreaX: number = 0
   private occupiedAreaY: number = 0
+  private maxOccupiedY: number = 0
   private conveyorStartOffsetX: number = 0
   private config: IConveyorGeneratorConfig
   private buildingMap: IBuildingMap
@@ -151,6 +152,10 @@ export class ConveyorGenerator {
     return this.occupiedAreaX
   }
 
+  getOccupiedAreaY(): number {
+    return this.maxOccupiedY
+  }
+
   getSprayCoaterOffsetList(): ICoordinate[] {
     return this.sprayCoaterOffsetList
   }
@@ -162,6 +167,7 @@ export class ConveyorGenerator {
     this.buildingIndex = -1
     this.occupiedAreaX = 0
     this.occupiedAreaY = 0
+    this.maxOccupiedY = 0
     this.conveyorStartOffsetX = 0
     this.lastProductionBuildingType = 0
   }
@@ -171,6 +177,7 @@ export class ConveyorGenerator {
     this.buildingIndex = -1
     this.occupiedAreaX = 0
     this.occupiedAreaY = 0
+    this.maxOccupiedY = 0
     this.conveyorStartOffsetX = 0
     this.lastProductionBuildingType = 0
   }
@@ -407,6 +414,8 @@ export class ConveyorGenerator {
         doneSorterNum = 0
 
         if (itemEntry.toBuildingNum !== 0 && itemSorters?.input) {
+          // P1-修复：使用英文名称匹配，与老代码blueprint.js对齐
+          // 老代码使用英文名称'hydrogen', 'refinedOil'，配方ID 58=X射线裂解(制氢)，121=重整精炼(制精炼油)
           if (['hydrogen', 'refinedOil'].includes(itemName) && itemEntry.toBuildingNum !== 0) {
             const reorderedInput: ISorterInfo[] = []
             const refineryInputs: ISorterInfo[] = []
@@ -839,7 +848,11 @@ export class ConveyorGenerator {
         let findNext = false
         for (let delta = 2; !findNext; delta += 2) {
           if (delta > nowSpray.y) {
-            throw new Error('generate sprayCoater error: cannot find next spray coater')
+            // P2-修复：喷涂机排线错误时优雅处理，与老代码blueprint.js对齐
+            // 老代码使用cocoMessage.error提示用户，然后抛出异常
+            // 新代码使用logger.error记录，返回已生成的建筑，不中断整个蓝图生成
+            logger.error('[ConveyorGenerator] 喷涂剂排线错误，无法找到下一个喷涂机位置')
+            return result
           }
           for (const spray of reversedList) {
             if (spray.y === nowSpray.y - delta) {
@@ -970,7 +983,6 @@ export class ConveyorGenerator {
     needSprayCoater: boolean,
     result: IBlueprintBuilding[]
   ): void {
-    this.occupiedAreaX += 1
     const buildingX = this.occupiedAreaX
     let buildingY = this.occupiedAreaY
     const buildingZ = 0
@@ -1162,6 +1174,9 @@ export class ConveyorGenerator {
 
     if (buildingX > 0) {
       this.occupiedAreaX = buildingX
+    }
+    if (buildingY > this.maxOccupiedY) {
+      this.maxOccupiedY = buildingY
     }
   }
 

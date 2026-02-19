@@ -433,31 +433,40 @@ export class CalculatorWorkerService {
     const accType = recipeSettings?.accType || defaultAccType
     const accValue = recipeSettings?.accValue || defaultAccValue
 
-    // 计算fixedGzSpeed
+    // P14-1修复：支持manualGzSpeed手动输入临界光子速度
+    // 老代码：if (manualGzSpeed) { fixedGzSpeed = parseFloat($("#gzSpeed").val()); }
+    const manualGzSpeed = settingsTime['临界光子_手动速度']
     let fixedGzSpeed: number
-    const gzSpeedSetting = settingsTime['射线接收塔']
-    if (gzSpeedSetting !== undefined) {
-      fixedGzSpeed = gzSpeedSetting
+    if (manualGzSpeed !== undefined && manualGzSpeed > 0) {
+      // P14-1修复：用户手动输入临界光子每分钟产量
+      fixedGzSpeed = manualGzSpeed
     } else {
-      if (accValue === '加速') {
-        switch (accType) {
-          case '增产剂Mk.Ⅰ':
-            fixedGzSpeed = 15
-            break
-          case '增产剂Mk.Ⅱ':
-            fixedGzSpeed = 18
-            break
-          case '增产剂Mk.Ⅲ':
-            fixedGzSpeed = 24
-            break
-          default:
-            fixedGzSpeed = 12
-        }
+      const gzSpeedSetting = settingsTime['射线接收塔']
+      if (gzSpeedSetting !== undefined) {
+        fixedGzSpeed = gzSpeedSetting
       } else {
-        fixedGzSpeed = 12
+        if (accValue === '加速') {
+          switch (accType) {
+            case '增产剂Mk.Ⅰ':
+              fixedGzSpeed = 15
+              break
+            case '增产剂Mk.Ⅱ':
+              fixedGzSpeed = 18
+              break
+            case '增产剂Mk.Ⅲ':
+              fixedGzSpeed = 24
+              break
+            default:
+              fixedGzSpeed = 12
+          }
+        } else {
+          fixedGzSpeed = 12
+        }
       }
     }
 
+    // P15-1修复：老代码逻辑 this.t = this.q && this.q.length ? 60 / fixedGzSpeed : 10;
+    // 无引力透镜输入时t值默认为10
     return {
       t: 60 / fixedGzSpeed,
       lensN: parseFloat((0.1 / fixedGzSpeed).toFixed(6))

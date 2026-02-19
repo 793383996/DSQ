@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": ["node"]
+  },
+  "include": ["e2e/**/*.ts"]
+}

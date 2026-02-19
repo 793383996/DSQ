@@ -33,6 +33,10 @@ import type { IBuildingData } from '../../types/blueprint'
 import { PRODUCTION_CATEGORY } from './SorterGenerator'
 
 const PROLIFERATOR_PRIORITY_LIST = ['proliferatorMk3', 'proliferatorMk2', 'proliferatorMk1']
+// P1-2修复：副产品优先级列表使用英文名称，与老代码blueprint.js对齐
+// 老代码使用英文名称'refinedOil', 'hydrogen', 'graphene', 'deuterium'
+// 因为老代码data.js的getRecipe()函数将中文名称转换为英文名称
+// 例如：["精炼油", "refinedOil"], ["氢", "hydrogen"]
 const BYPRODUCT_PRIORITY_LIST = ['refinedOil', 'hydrogen', 'graphene', 'deuterium']
 
 export interface IProliferatorItemMap {

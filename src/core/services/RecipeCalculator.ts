@@ -78,6 +78,9 @@ export class RecipeCalculator {
   // P10-1修复：添加临界光子缓存，支持从UpdateAllService传入
   private criticalPhotonTCache: number | null = null
   private criticalPhotonLensNCache: number | null = null
+  // P0-1修复：添加轨道采集器缓存，支持从UpdateAllService传入
+  // 老代码doSpeed1直接修改data数组的t值，新代码使用缓存机制
+  private orbitalCollectorTCache: Map<string, number> = new Map()
 
   constructor(
     recipes: IRawRecipe[],
@@ -94,6 +97,11 @@ export class RecipeCalculator {
   setCriticalPhotonCache(t: number | null, lensN: number | null): void {
     this.criticalPhotonTCache = t
     this.criticalPhotonLensNCache = lensN
+  }
+
+  // P0-1修复：设置轨道采集器缓存值
+  setOrbitalCollectorCache(cache: Map<string, number>): void {
+    this.orbitalCollectorTCache = cache
   }
 
   private createEmptyState(): ICalculationState {
@@ -167,7 +175,9 @@ export class RecipeCalculator {
 
       // P10-1修复：应用临界光子缓存值
       // 老代码直接修改data数组，新代码使用缓存机制
-      if (o.name === '临界光子' && o.mName === '射线接收塔') {
+      // P12-1修复：使用o.s[0].name检查临界光子，因为原始配方对象没有name属性
+      const mainProductName = o.s?.[0]?.name
+      if (mainProductName === '临界光子' && o.mName === '射线接收塔') {
         if (this.criticalPhotonTCache !== null) {
           o.t = this.criticalPhotonTCache
         }
@@ -176,6 +186,17 @@ export class RecipeCalculator {
           if (lensInput) {
             lensInput.n = this.criticalPhotonLensNCache
           }
+        }
+      }
+
+      // P0-1修复：应用轨道采集器缓存值
+      // 老代码doSpeed1直接修改data数组的t值，新代码使用缓存机制
+      // 轨道采集器生产氢/重氢/可燃冰时，需要根据用户设置的速度计算实际t值
+      if (mainProductName === '氢' || mainProductName === '重氢' || mainProductName === '可燃冰') {
+        const cacheKey = `${o.id}-${mainProductName}`
+        const cachedT = this.orbitalCollectorTCache.get(cacheKey)
+        if (cachedT !== undefined) {
+          o.t = cachedT
         }
       }
 
