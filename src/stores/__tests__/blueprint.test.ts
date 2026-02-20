@@ -3,7 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useBlueprintStore } from '../blueprint'
 import { APP_CONFIG } from '../../core/config/app.config'
 
-const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.MACHINE_SETTINGS + APP_CONFIG.VERSION
+const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.DEFAULT_MACHINE_SETTINGS + APP_CONFIG.VERSION
 
 describe('BlueprintStore', () => {
   beforeEach(() => {

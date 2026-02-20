@@ -21,7 +21,8 @@ export const APP_CONFIG = {
   STORAGE_KEYS: {
     MACHINE_SETTINGS: 'machine_settings',
     SPEED_SETTINGS: 'machine_settings_time',
-    PF_SETTINGS: 'machine_settings_pf'
+    PF_SETTINGS: 'machine_settings_pf',
+    DEFAULT_MACHINE_SETTINGS: 'default_machine_settings'
   }
 } as const
 

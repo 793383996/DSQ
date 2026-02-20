@@ -232,10 +232,6 @@ export class CalculatorWorkerService {
       throw new Error('Worker not available')
     }
 
-    if (this.status !== 'ready') {
-      throw new Error(`Worker not ready (status: ${this.status})`)
-    }
-
     if (!this.worker) {
       throw new Error('Worker not initialized')
     }

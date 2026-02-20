@@ -72,7 +72,7 @@ export interface IStateSnapshot {
 
 export type ResultItem = IConsumptionItem | IResultItemOutput
 
-const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.MACHINE_SETTINGS + APP_CONFIG.VERSION
+const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.DEFAULT_MACHINE_SETTINGS + APP_CONFIG.VERSION
 
 function loadPersistedSettings(): MachineSettings {
   try {
@@ -113,26 +113,51 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   const hasDemand = computed(() => demandList.value.length > 0)
   const demandCount = computed(() => demandList.value.length)
 
-  // P0-3修复：自动同步store状态到legacy全局变量
   let syncEnabled = false
+  let lastSyncVersion = 0
+  let isSyncing = false
+
   function enableSync() {
     syncEnabled = true
   }
 
-  function doSyncToLegacy() {
-    if (!syncEnabled) return
+  function doSyncToLegacy(force: boolean = false): boolean {
+    if (!syncEnabled) return false
+    if (isSyncing) return false
+
+    if (!force && lastSyncVersion === demandVersion.value) {
+      return false
+    }
+
+    isSyncing = true
     try {
       syncStateToLegacy({
         demandList: demandList.value,
         excludeList: excludeList.value,
         machineSettings: machineSettings.value
       })
+      lastSyncVersion = demandVersion.value
+      return true
     } catch (e) {
       logger.warn('[Store] Failed to sync to legacy:', e)
+      return false
+    } finally {
+      isSyncing = false
     }
   }
 
-  // P0-3修复：监听状态变化自动同步
+  function forceSyncToLegacy(): void {
+    doSyncToLegacy(true)
+  }
+
+  function getSyncStatus(): { enabled: boolean; lastVersion: number; currentVersion: number } {
+    return {
+      enabled: syncEnabled,
+      lastVersion: lastSyncVersion,
+      currentVersion: demandVersion.value
+    }
+  }
+
   watch(
     [demandList, excludeList, machineSettings],
     () => {
@@ -327,6 +352,8 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     syncProductivitySettings,
     syncAllSettings,
     enableSync,
+    forceSyncToLegacy,
+    getSyncStatus,
     onSettingsChange
   }
 })

@@ -81,12 +81,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
-import {
-  isLegacyDataLoaded,
-  waitForLegacyData,
-  isGameDataLoaded,
-  syncStateToLegacy
-} from './core/bridge'
+import { isLegacyDataLoaded, waitForLegacyData, isGameDataLoaded } from './core/bridge'
 import type { LegacyWindow } from './core/types/legacy'
 import {
   calculatorService,
@@ -244,13 +239,8 @@ async function runCalculation(retryCount: number = 0) {
   store.setCalculating(true)
 
   try {
-    // P0-2修复：计算前强制同步状态到legacy，确保watch的异步更新已完成
     await nextTick()
-    syncStateToLegacy({
-      demandList: store.demandList,
-      excludeList: store.excludeList,
-      machineSettings: store.machineSettings
-    })
+    store.forceSyncToLegacy()
 
     const snapshot = store.createSnapshot()
     const demands = snapshot.demandList.map(d => ({
@@ -266,7 +256,6 @@ async function runCalculation(retryCount: number = 0) {
       throwOnStateChange: true,
       selfAcc: store.machineSettings.selfAcc ?? false,
       isAddSelfAccP: store.machineSettings.isAddSelfAccP ?? false,
-      // P1-2修复：传递完整的machineSettings，包括设备类型设置
       machineSettings: {
         modeIn: store.machineSettings.modeIn,
         furnace: store.machineSettings.furnace,
@@ -291,10 +280,13 @@ async function runCalculation(retryCount: number = 0) {
     }
   } catch (error: unknown) {
     if (error instanceof StateChangedDuringCalculationError && retryCount < 3) {
-      logger.log(`[App] State changed, retrying calculation (${retryCount + 1}/3)`)
+      const adaptiveDelay = Math.min(100, 10 * Math.pow(2, retryCount))
+      logger.warn(
+        `[App] State changed during calculation (version ${error.version}), retrying (${retryCount + 1}/3) with ${adaptiveDelay}ms delay`
+      )
       isCalculating.value = false
       store.setCalculating(false)
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise(resolve => setTimeout(resolve, adaptiveDelay))
       return runCalculation(retryCount + 1)
     }
     const err = error as Error

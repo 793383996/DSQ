@@ -49,18 +49,15 @@ declare global {
  * - 所有对 window.data 的访问必须通过此适配器进行
  */
 export class RecipeAdapter {
-  private recipes: IRecipe[] = []
+  private rawRecipes: IRawRecipe[] = []
   private index: IRecipeIndex = {
     byProduct: new Map(),
     byInput: new Map(),
     byId: new Map()
   }
   private loaded: boolean = false
+  private recipeCache: Map<number, IRecipe> = new Map()
 
-  /**
-   * 从原始数据加载配方
-   * @param rawData 原始简写格式数据 (window.data)
-   */
   loadFromRawData(rawData: IRawRecipe[]): void {
     if (this.loaded) {
       logger.warn('[RecipeAdapter] Data already loaded, skipping reload')
@@ -72,19 +69,29 @@ export class RecipeAdapter {
       return
     }
 
-    this.recipes = rawData.map((item, idx) => this.transformRecipe(item, idx))
-
-    // 复用 data.js 已构建的索引，避免双重索引
+    this.rawRecipes = rawData
     this.reuseExistingIndex()
-
     this.loaded = true
 
-    logger.log(`[RecipeAdapter] Loaded ${this.recipes.length} recipes (reused existing index)`)
+    logger.log(
+      `[RecipeAdapter] Loaded ${this.rawRecipes.length} recipes (reused existing index, lazy transform)`
+    )
   }
 
-  /**
-   * 转换单个配方
-   */
+  private getRecipe(idx: number): IRecipe | null {
+    if (idx < 0 || idx >= this.rawRecipes.length) return null
+
+    const cached = this.recipeCache.get(idx)
+    if (cached) return cached
+
+    const raw = this.rawRecipes[idx]
+    if (!raw) return null
+
+    const recipe = this.transformRecipe(raw, idx)
+    this.recipeCache.set(idx, recipe)
+    return recipe
+  }
+
   private transformRecipe(raw: IRawRecipe, idx: number): IRecipe {
     const firstOutput = raw.s?.[0]
     const machineType = typeof raw.m === 'string' ? raw.m : raw.mName || '未知设备'
@@ -100,9 +107,6 @@ export class RecipeAdapter {
     }
   }
 
-  /**
-   * 转换物品列表
-   */
   private transformItems(items: Array<{ name: string; n?: number }>): IRecipeItem[] {
     return items.map(item => ({
       name: item.name,
@@ -110,9 +114,6 @@ export class RecipeAdapter {
     }))
   }
 
-  /**
-   * 复用 data.js 已构建的索引
-   */
   private reuseExistingIndex(): void {
     if (typeof window === 'undefined') {
       this.buildIndex()
@@ -124,36 +125,44 @@ export class RecipeAdapter {
 
     if (productIndex && materialIndex) {
       Object.entries(productIndex).forEach(([name, indices]) => {
-        const recipes = (indices as number[]).map(idx => this.recipes[idx]).filter(Boolean)
+        const recipes = (indices as number[])
+          .map(idx => this.getRecipe(idx))
+          .filter((r): r is IRecipe => r !== null)
         if (recipes.length > 0) {
           this.index.byProduct.set(name, recipes)
         }
       })
 
       Object.entries(materialIndex).forEach(([name, indices]) => {
-        const recipes = (indices as number[]).map(idx => this.recipes[idx]).filter(Boolean)
+        const recipes = (indices as number[])
+          .map(idx => this.getRecipe(idx))
+          .filter((r): r is IRecipe => r !== null)
         if (recipes.length > 0) {
           this.index.byInput.set(name, recipes)
         }
       })
 
-      this.recipes.forEach(recipe => {
-        this.index.byId.set(recipe.id, recipe)
-      })
+      for (let idx = 0; idx < this.rawRecipes.length; idx++) {
+        const recipe = this.getRecipe(idx)
+        if (recipe) {
+          this.index.byId.set(recipe.id, recipe)
+        }
+      }
     } else {
       this.buildIndex()
     }
   }
 
-  /**
-   * 构建索引 - 测试环境回退方案
-   */
   private buildIndex(): void {
     this.index.byProduct.clear()
     this.index.byInput.clear()
     this.index.byId.clear()
+    this.recipeCache.clear()
 
-    this.recipes.forEach(recipe => {
+    this.rawRecipes.forEach((raw, idx) => {
+      const recipe = this.transformRecipe(raw, idx)
+      this.recipeCache.set(idx, recipe)
+
       recipe.outputs.forEach(output => {
         const list = this.index.byProduct.get(output.name) || []
         list.push(recipe)
@@ -191,32 +200,26 @@ export class RecipeAdapter {
     return this.index.byId.get(id)
   }
 
-  /**
-   * 获取所有配方
-   */
   getAllRecipes(): IRecipe[] {
-    return [...this.recipes]
+    const recipes: IRecipe[] = []
+    for (let idx = 0; idx < this.rawRecipes.length; idx++) {
+      const recipe = this.getRecipe(idx)
+      if (recipe) recipes.push(recipe)
+    }
+    return recipes
   }
 
-  /**
-   * 获取配方数量
-   */
   getRecipeCount(): number {
-    return this.recipes.length
+    return this.rawRecipes.length
   }
 
-  /**
-   * 检查是否已加载
-   */
   isLoaded(): boolean {
     return this.loaded
   }
 
-  /**
-   * 重置适配器 (用于测试)
-   */
   reset(): void {
-    this.recipes = []
+    this.rawRecipes = []
+    this.recipeCache.clear()
     this.index.byProduct.clear()
     this.index.byInput.clear()
     this.index.byId.clear()

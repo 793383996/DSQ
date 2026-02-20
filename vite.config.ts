@@ -119,6 +119,21 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 * 30
               }
             }
+          },
+          {
+            urlPattern:
+              /\/assets\/(data|calculator|blueprint|storageManager|recipeHelper|configData|settingsHelper|iconLoader)-[a-zA-Z0-9_-]+\.js$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'legacy-modules-cache',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 7
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
           }
         ]
       },
