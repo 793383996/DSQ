@@ -84,6 +84,7 @@ import { useBlueprintStore } from './stores/blueprint'
 import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
 import { iconService } from './core/services/IconService'
 import { initializationService } from './core/services/InitializationService'
+import { APP_CONFIG } from './core/config/app.config'
 import type { LegacyWindow } from './core/types/legacy'
 import {
   calculatorService,
@@ -153,7 +154,9 @@ onMounted(async () => {
   })
 
   // P1修复：使用 initializationService 等待计算就绪
-  const readyResult = await initializationService.waitForCalculationReady(15000)
+  const readyResult = await initializationService.waitForCalculationReady(
+    APP_CONFIG.TIMEOUTS.CALCULATION_READY
+  )
   isDataReady.value = readyResult.ready
 
   if (!readyResult.ready) {
@@ -165,18 +168,32 @@ onMounted(async () => {
   logger.log('[App] Calculation ready, initializing store from legacy state')
 
   const win = getWin()
+
+  const legacyDemands: Array<{ name: string; num: number }> = []
   if (win.xqs && win.xqs.length > 0) {
     win.xqs.forEach(item => {
       const name = item.item?.name || item.name
       const num = item.number || item.num || 1
-      store.addDemand(name, num)
+      legacyDemands.push({ name, num })
     })
   }
 
+  const legacyExcludes: string[] = []
   if (win.ig_names && win.ig_names.length > 0) {
     win.ig_names.forEach((name: string) => {
-      store.addExclude(name)
+      legacyExcludes.push(name)
     })
+  }
+
+  if (legacyDemands.length > 0 || legacyExcludes.length > 0) {
+    store.loadFromLegacy(legacyDemands, legacyExcludes)
+    logger.log(
+      '[App] Loaded from legacy:',
+      legacyDemands.length,
+      'demands,',
+      legacyExcludes.length,
+      'excludes'
+    )
   }
 
   if (iconService.isLoaded()) {
@@ -200,7 +217,7 @@ onMounted(async () => {
       if (!store.isIconsLoaded) {
         logger.warn('[App] Game icons load timeout')
       }
-    }, 30000)
+    }, APP_CONFIG.TIMEOUTS.ICONS_LOAD)
 
     iconService
       .loadIconData()
@@ -296,8 +313,6 @@ async function runCalculation(retryCount: number = 0) {
       logger.warn(
         `[App] State changed during calculation (version ${error.version}), retrying (${retryCount + 1}/3) with ${adaptiveDelay}ms delay`
       )
-      isCalculating.value = false
-      store.setCalculating(false)
       await new Promise(resolve => setTimeout(resolve, adaptiveDelay))
       return runCalculation(retryCount + 1)
     }

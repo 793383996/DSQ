@@ -1,23 +1,19 @@
 /**
- * BlueprintStore - 蓝图状态存储
+ * BlueprintStore - 蓝图状态存储（兼容层）
  *
  * 功能：
- * - 管理需求列表和排除列表
- * - 管理机器设置（制造台、熔炉、化工厂等）
- * - 管理增产剂设置
- * - 管理计算结果（消耗列表、产出列表）
- * - 管理配方设置、速度设置、生产力设置
- * - 支持状态持久化和快照
+ * - 提供向后兼容的API
+ * - 内部委托给专门的子Store
+ * - 保持原有接口不变
+ * - 支持渐进式迁移
  *
- * 主要状态：
- * - demandList: 需求列表
- * - excludeList: 排除列表
- * - machineSettings: 机器设置
- * - consumptionList: 消耗列表
- * - productionList: 产出列表
- * - recipeSettings: 配方设置
- * - speedSettings: 速度设置
- * - productivitySettings: 生产力设置
+ * 架构说明：
+ * - 此Store作为兼容层，内部使用新的子Store
+ * - demandStore: 需求管理
+ * - settingsStore: 设置管理
+ * - calculationStore: 计算状态管理
+ * - 原有代码无需修改，继续使用此Store
+ * - 新代码可以直接使用子Store获得更好的类型安全
  *
  * 主要方法：
  * - addDemand(name, num): 添加需求
@@ -35,34 +31,24 @@
  * - components/ResultTable.vue: 结果表格组件
  *
  * 下游依赖：
+ * - stores/demand.ts: 需求Store
+ * - stores/settings.ts: 设置Store
+ * - stores/calculation.ts: 计算Store
  * - core/bridge.ts: 状态同步桥
  * - core/services/CalculatorService.ts: 计算服务
  * - core/config/app.config.ts: 应用配置
  */
+
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { logger } from '../utils/logger'
 import type { IConsumptionItem, IResultItemOutput } from '../core/types/recipe'
 import type { IRecipeSettings, ISpeedSettings, IProductivitySettings } from '../core/types/settings'
 import { APP_CONFIG } from '../core/config/app.config'
-import { isGameDataLoaded, syncStateToLegacy } from '../core/bridge'
-
-export interface DemandItem {
-  name: string
-  num: number
-}
-
-export interface MachineSettings {
-  modeIn: string
-  furnace: string
-  chemical: string
-  accType: string
-  accValue: string
-  research: string
-  selfAcc?: boolean
-  isAddSelfAccP?: boolean
-  hideSource?: boolean
-}
+import { isGameDataLoaded } from '../core/bridge'
+import { useDemandStore, type DemandItem, type IStateSnapshot as IDemandSnapshot } from './demand'
+import { useSettingsStore, type MachineSettings } from './settings'
+import { useCalculationStore, type ResultItem, CalcState } from './calculation'
 
 export interface IStateSnapshot {
   demandVersion: number
@@ -70,148 +56,52 @@ export interface IStateSnapshot {
   excludeList: string[]
 }
 
-export type ResultItem = IConsumptionItem | IResultItemOutput
-
-const SETTINGS_STORAGE_KEY = APP_CONFIG.STORAGE_KEYS.DEFAULT_MACHINE_SETTINGS + APP_CONFIG.VERSION
-
-function loadPersistedSettings(): MachineSettings {
-  try {
-    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY)
-    if (saved) {
-      return JSON.parse(saved)
-    }
-  } catch (e) {
-    logger.warn('Failed to load persisted settings:', e)
-  }
-  return {
-    modeIn: '制作台Mk.Ⅰ',
-    furnace: '电弧熔炉',
-    chemical: '化工厂',
-    accType: '增产剂Mk.Ⅰ',
-    accValue: '无',
-    research: '矩阵研究站',
-    selfAcc: false,
-    isAddSelfAccP: false,
-    hideSource: false
-  }
-}
-
 export const useBlueprintStore = defineStore('blueprint', () => {
-  const demandList = ref<DemandItem[]>([])
-  const excludeList = ref<string[]>([])
-  const machineSettings = ref<MachineSettings>(loadPersistedSettings())
-  const resultItems = ref<ResultItem[]>([])
-  const isCalculating = ref(false)
-  const calculationError = ref<string | null>(null)
-  const demandVersion = ref(0)
+  const demandStore = useDemandStore()
+  const settingsStore = useSettingsStore()
+  const calculationStore = useCalculationStore()
+
+  const demandList = computed(() => demandStore.demandList)
+  const excludeList = computed(() => demandStore.excludeList)
+  const machineSettings = computed(() => settingsStore.machineSettings)
+  const resultItems = computed(() => calculationStore.resultItems)
+  const isCalculating = computed(() => calculationStore.isCalculating)
+  const calculationError = computed(() => {
+    const err = calculationStore.error
+    return err ? err.message : null
+  })
+  const demandVersion = computed(() => demandStore.demandVersion)
   const isIconsLoaded = ref(false)
 
-  const recipeSettings = ref<IRecipeSettings>({})
-  const speedSettings = ref<ISpeedSettings>({})
-  const productivitySettings = ref<IProductivitySettings>({})
+  const recipeSettings = computed(() => settingsStore.recipeSettings)
+  const speedSettings = computed(() => settingsStore.speedSettings)
+  const productivitySettings = computed(() => settingsStore.productivitySettings)
 
-  const hasDemand = computed(() => demandList.value.length > 0)
-  const demandCount = computed(() => demandList.value.length)
-
-  let syncEnabled = false
-  let lastSyncVersion = 0
-  let isSyncing = false
-  // P2修复：添加同步防抖，避免频繁同步
-  let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null
-  const SYNC_DEBOUNCE_MS = 16 // 约60fps，减少延迟同时避免过度同步
+  const hasDemand = computed(() => demandStore.hasDemand)
+  const demandCount = computed(() => demandStore.demandCount)
 
   function enableSync() {
-    syncEnabled = true
+    demandStore.enableSync()
   }
 
-  function doSyncToLegacy(force: boolean = false): boolean {
-    if (!syncEnabled) return false
-    if (isSyncing) return false
-
-    if (!force && lastSyncVersion === demandVersion.value) {
-      return false
-    }
-
-    isSyncing = true
-    try {
-      syncStateToLegacy({
-        demandList: demandList.value,
-        excludeList: excludeList.value,
-        machineSettings: machineSettings.value
-      })
-      lastSyncVersion = demandVersion.value
-      return true
-    } catch (e) {
-      logger.warn('[Store] Failed to sync to legacy:', e)
-      return false
-    } finally {
-      isSyncing = false
-    }
+  async function doSyncToLegacy(force: boolean = false): Promise<boolean> {
+    return demandStore.forceSyncToLegacy()
   }
 
-  // P2修复：带防抖的同步方法，用于 watch 触发
-  function debouncedSyncToLegacy(): void {
-    if (syncDebounceTimer) {
-      clearTimeout(syncDebounceTimer)
-    }
-    syncDebounceTimer = setTimeout(() => {
-      syncDebounceTimer = null
-      doSyncToLegacy()
-    }, SYNC_DEBOUNCE_MS)
-  }
-
-  function forceSyncToLegacy(): void {
-    // P2修复：强制同步时清除防抖定时器
-    if (syncDebounceTimer) {
-      clearTimeout(syncDebounceTimer)
-      syncDebounceTimer = null
-    }
-    doSyncToLegacy(true)
+  async function forceSyncToLegacy(): Promise<boolean> {
+    return demandStore.forceSyncToLegacy()
   }
 
   function getSyncStatus(): { enabled: boolean; lastVersion: number; currentVersion: number } {
-    return {
-      enabled: syncEnabled,
-      lastVersion: lastSyncVersion,
-      currentVersion: demandVersion.value
-    }
+    return demandStore.getSyncStatus()
   }
-
-  // P2修复：使用防抖同步，减少频繁触发
-  watch(
-    [demandList, excludeList, machineSettings],
-    () => {
-      debouncedSyncToLegacy()
-    },
-    { deep: true }
-  )
-
-  // P1-2修复：设置变更回调机制（带防抖）
-  const settingsChangeCallbacks: Set<() => void> = new Set()
-  let settingsChangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
-  // P1-2修复：防抖时间从300ms减少到100ms，提升用户体验
-  const SETTINGS_CHANGE_DEBOUNCE_MS = 100
 
   function onSettingsChange(callback: () => void): () => void {
-    settingsChangeCallbacks.add(callback)
-    return () => settingsChangeCallbacks.delete(callback)
+    return settingsStore.onSettingsChange(callback)
   }
 
-  function notifySettingsChange() {
-    // P1-2修复：防抖处理，避免频繁触发计算
-    if (settingsChangeDebounceTimer) {
-      clearTimeout(settingsChangeDebounceTimer)
-    }
-    settingsChangeDebounceTimer = setTimeout(() => {
-      settingsChangeDebounceTimer = null
-      settingsChangeCallbacks.forEach(cb => {
-        try {
-          cb()
-        } catch (e) {
-          logger.warn('[Store] Settings change callback error:', e)
-        }
-      })
-    }, SETTINGS_CHANGE_DEBOUNCE_MS)
+  function loadFromLegacy(legacyDemands: DemandItem[], legacyExcludes: string[]): void {
+    demandStore.loadFromLegacy(legacyDemands, legacyExcludes)
   }
 
   function checkIconsLoaded() {
@@ -220,21 +110,15 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   }
 
   function syncRecipeSettings(settings: IRecipeSettings) {
-    recipeSettings.value = { ...settings }
-    // P1-2修复：配方设置变更时通知监听者
-    notifySettingsChange()
+    settingsStore.syncRecipeSettings(settings)
   }
 
   function syncSpeedSettings(settings: ISpeedSettings) {
-    speedSettings.value = { ...settings }
-    // P1-2修复：速度设置变更时通知监听者
-    notifySettingsChange()
+    settingsStore.syncSpeedSettings(settings)
   }
 
   function syncProductivitySettings(settings: IProductivitySettings) {
-    productivitySettings.value = { ...settings }
-    // P1-2修复：增产剂设置变更时通知监听者
-    notifySettingsChange()
+    settingsStore.syncProductivitySettings(settings)
   }
 
   function syncAllSettings(
@@ -242,101 +126,73 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     speed: ISpeedSettings,
     prod: IProductivitySettings
   ) {
-    recipeSettings.value = { ...recipe }
-    speedSettings.value = { ...speed }
-    productivitySettings.value = { ...prod }
+    settingsStore.syncAllSettings(recipe, speed, prod)
   }
 
   function addDemand(name: string, num: number = 1) {
-    const existing = demandList.value.find(item => item.name === name)
-    if (existing) {
-      existing.num += num
-    } else {
-      demandList.value.push({ name, num })
-    }
-    demandVersion.value++
+    demandStore.addDemand(name, num)
   }
 
   function removeDemand(name: string) {
-    demandList.value = demandList.value.filter(item => item.name !== name)
-    demandVersion.value++
+    demandStore.removeDemand(name)
   }
 
   function updateDemand(name: string, num: number) {
-    const item = demandList.value.find(item => item.name === name)
-    if (item) {
-      item.num = Math.max(1, num)
-      demandVersion.value++
-    }
+    demandStore.updateDemand(name, num)
   }
 
   function addExclude(name: string) {
-    if (!excludeList.value.includes(name)) {
-      excludeList.value.push(name)
-      demandVersion.value++
-    }
+    demandStore.addExclude(name)
   }
 
   function removeExclude(name: string) {
-    const idx = excludeList.value.indexOf(name)
-    if (idx !== -1) {
-      excludeList.value.splice(idx, 1)
-      demandVersion.value++
-    }
+    demandStore.removeExclude(name)
   }
 
   function createSnapshot(): IStateSnapshot {
-    return {
-      demandVersion: demandVersion.value,
-      demandList: demandList.value.map(d => ({ ...d })),
-      excludeList: [...excludeList.value]
-    }
+    return demandStore.createSnapshot()
   }
 
   function validateSnapshot(snapshot: IStateSnapshot): boolean {
-    return snapshot.demandVersion === demandVersion.value
+    return demandStore.validateSnapshot(snapshot)
   }
 
   function setMachineSetting<K extends keyof MachineSettings>(key: K, value: MachineSettings[K]) {
-    machineSettings.value[key] = value
-    persistSettings()
-    // P1-2修复：设置变更时通知监听者
-    notifySettingsChange()
+    settingsStore.setMachineSetting(key, value)
   }
 
   function loadMachineSettings(settings: MachineSettings) {
-    machineSettings.value = { ...settings }
-    persistSettings()
-    // P1-2修复：设置变更时通知监听者
-    notifySettingsChange()
-  }
-
-  function persistSettings() {
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(machineSettings.value))
-    } catch (e) {
-      logger.warn('Failed to persist settings:', e)
-    }
+    settingsStore.loadMachineSettings(settings)
   }
 
   function setCalculating(calculating: boolean) {
-    isCalculating.value = calculating
+    if (calculating) {
+      if (calculationStore.canTransition(CalcState.PREPARING)) {
+        calculationStore.setPreparing()
+        calculationStore.setCalculating()
+      } else {
+        logger.warn('[BlueprintStore] Cannot start calculation: invalid state transition')
+      }
+    } else {
+      calculationStore.forceReset()
+    }
   }
 
   function setResultItems(items: ResultItem[]) {
-    resultItems.value = items
+    calculationStore.setResultItems(items)
   }
 
   function setError(error: string | null) {
-    calculationError.value = error
+    if (error) {
+      calculationStore.setError(error)
+    } else {
+      calculationStore.clearError()
+    }
   }
 
   function clearAll() {
-    demandList.value = []
-    excludeList.value = []
-    resultItems.value = []
-    calculationError.value = null
-    demandVersion.value++
+    demandStore.clearAll()
+    calculationStore.reset()
   }
 
   return {
@@ -374,6 +230,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     enableSync,
     forceSyncToLegacy,
     getSyncStatus,
-    onSettingsChange
+    onSettingsChange,
+    loadFromLegacy
   }
 })

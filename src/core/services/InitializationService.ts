@@ -33,6 +33,7 @@
  * - P1修复：新增 isCalculationReady() 方法，确保计算前数据已就绪
  */
 import { logger } from '../../utils/logger'
+import { APP_CONFIG } from '../config/app.config'
 
 export enum InitState {
   IDLE = 'IDLE',
@@ -147,7 +148,7 @@ class InitializationService {
     return () => this.errorListeners.delete(listener)
   }
 
-  async waitReady(timeout: number = 30000): Promise<void> {
+  async waitReady(timeout: number = APP_CONFIG.TIMEOUTS.INITIALIZATION): Promise<void> {
     if (this.currentState === InitState.READY) {
       return Promise.resolve()
     }
@@ -277,7 +278,7 @@ class InitializationService {
   }
 
   async waitForCalculationReady(
-    timeout: number = 30000
+    timeout: number = APP_CONFIG.TIMEOUTS.CALCULATION_READY
   ): Promise<{ ready: boolean; reason?: string }> {
     const checkReady = () => this.isCalculationReady()
 

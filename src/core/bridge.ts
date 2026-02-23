@@ -28,6 +28,7 @@
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
 import { settingsAdapter } from './adapters/SettingsAdapter'
+import { legacyDataAdapter } from './adapters/LegacyDataAdapter'
 import {
   generateBlueprintWithNewService,
   ILegacyRecipe,
@@ -38,6 +39,7 @@ import { recipeDataBuilder, IRecipeBuildResult } from './services/RecipeDataBuil
 import { iconService } from './services/IconService'
 import { initializationService, InitState } from './services/InitializationService'
 import { logger } from '../utils/logger'
+import { APP_CONFIG } from './config/app.config'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 import type { IRawRecipe } from './types/settings'
 import type { IConsumptionItem, IResultItemOutput } from './types/recipe'
@@ -52,8 +54,6 @@ let legacyModulesPromise: Promise<unknown> | null = null
 let recipeIndexReady: boolean = false
 let recipeIndexReadyResolve: (() => void) | null = null
 let recipeIndexReadyPromise: Promise<void> | null = null
-
-const RECIPE_INDEX_TIMEOUT_MS = 10000
 
 function getRecipeIndexReadyPromise(): Promise<void> {
   // P2-2修复：如果已经ready，直接返回resolved Promise
@@ -72,7 +72,7 @@ function getRecipeIndexReadyPromise(): Promise<void> {
         logger.warn('[bridge] Recipe index ready timeout, proceeding anyway')
         resolve()
       }
-    }, RECIPE_INDEX_TIMEOUT_MS)
+    }, APP_CONFIG.TIMEOUTS.RECIPE_INDEX)
 
     const originalResolve = resolve
     recipeIndexReadyResolve = () => {
@@ -334,115 +334,27 @@ export function legacyGetMachineSettings(): MachineConfigSettings {
 }
 
 export function syncStateToLegacy(state: StateSyncMap): void {
-  const win = getWin()
-
-  win.xqs = win.xqs || []
-  win.xqs.length = 0
-  state.demandList.forEach(d => {
-    win.xqs!.push({
-      name: d.name,
-      value: d.num || d.number || 1,
-      number: d.num || d.number || 1,
-      item: { name: d.name }
-    })
-  })
-
-  win.ig_names = win.ig_names || []
-  win.ig_names.length = 0
-  state.excludeList.forEach(name => {
-    win.ig_names!.push(name)
-  })
-
-  // P0-2修复：同步machineSettings到legacy全局变量
-  if (state.machineSettings) {
-    const ms = state.machineSettings
-    if (ms.accType !== undefined) {
-      win.defaultAccType = ms.accType
-    }
-    if (ms.accValue !== undefined) {
-      win.defaultAccValue = ms.accValue
-    }
-    if (ms.hideSource !== undefined && win.hideSource) {
-      win.hideSource.checked = ms.hideSource
-    }
-    if (ms.selfAcc !== undefined && win.selfAcc) {
-      win.selfAcc.checked = ms.selfAcc
-    }
-    if (ms.isAddSelfAccP !== undefined && win.isAddSelfAccP) {
-      win.isAddSelfAccP.checked = ms.isAddSelfAccP
-    }
-
-    // P3-1修复：只在设置不存在时才设置默认值，避免覆盖用户自定义设置
-    // 用户可能在UI中为特定配方设置了不同的设备或增产剂
-    if (win.data && win.settings) {
-      const data = win.data as ILegacyDataItem[]
-      const settings = win.settings
-      data.forEach((item: ILegacyDataItem) => {
-        if (!settings[item.id]) {
-          settings[item.id] = {}
-        }
-        // 只在用户未设置设备时才设置默认设备
-        if (item.mName === '制作台' && ms.modeIn !== undefined && !settings[item.id].m) {
-          settings[item.id].m = ms.modeIn
-        }
-        if (item.mName === '冶炼设备' && ms.furnace !== undefined && !settings[item.id].m) {
-          settings[item.id].m = ms.furnace
-        }
-        if (item.mName === '化工设备' && ms.chemical !== undefined && !settings[item.id].m) {
-          settings[item.id].m = ms.chemical
-        }
-        if (item.mName === '研究站' && ms.research !== undefined && !settings[item.id].m) {
-          settings[item.id].m = ms.research
-        }
-        // 只在用户未设置增产剂时才设置默认增产剂
-        if (ms.accType !== undefined && !settings[item.id].accType) {
-          settings[item.id].accType = ms.accType
-        }
-        if (ms.accValue !== undefined && !settings[item.id].accValue) {
-          settings[item.id].accValue = ms.accValue
-        }
-      })
-    }
-  }
+  legacyDataAdapter.syncStateToLegacy(state)
 }
 
 export function clearLegacyState(): void {
-  const win = getWin()
-  if (win.xh_list) win.xh_list.length = 0
-  if (win.out_list) win.out_list.length = 0
-  if (win.xqs) win.xqs.length = 0
-  if (win.ig_names) win.ig_names.length = 0
-  // P2-1修复：清空xhMap和outMap，避免状态残留导致计算错误
-  // 遗留代码的calculator.js使用window.xhMap/outMap作为缓存
-  if (win.xhMap) {
-    Object.keys(win.xhMap).forEach(key => delete win.xhMap![key])
-  }
-  if (win.outMap) {
-    Object.keys(win.outMap).forEach(key => delete win.outMap![key])
-  }
+  legacyDataAdapter.clearLegacyState()
 }
 
-export async function runCalculation(): Promise<unknown> {
-  try {
-    clearLegacyState()
-    const win = getWin()
-    if (typeof win.loadNumber === 'function') {
-      return await win.loadNumber()
-    }
-    throw new Error('loadNumber function not found')
-  } catch (error) {
-    logger.error('Calculation failed:', error)
-    cocoMessageProxy('计算失败，请检查配置', 'error')
-    throw error
-  }
+export function legacyUpdateMachineSettings(config: MachineConfigSettings): void {
+  legacyDataAdapter.updateMachineSettings(config)
+}
+
+export function legacyGetMachineSettings(): MachineConfigSettings {
+  return legacyDataAdapter.getMachineSettings()
 }
 
 export function legacyFind(name: string, normalize_recipe?: boolean): ILegacyDataItem | null {
-  const win = getWin()
-  if (typeof win.find === 'function') {
-    return win.find(name, normalize_recipe)
-  }
-  return null
+  return legacyDataAdapter.findItem(name, normalize_recipe)
+}
+
+export function isGameDataLoaded(): boolean {
+  return legacyDataAdapter.isGameDataLoaded()
 }
 
 /**
