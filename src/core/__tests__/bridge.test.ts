@@ -20,7 +20,7 @@ import {
   isGameDataLoaded
 } from '../bridge'
 import { iconService } from '../services/IconService'
-import type { ILegacySettings } from '../types/legacy'
+import type { IRecipeSettings } from '../types/settings'
 
 declare global {
   interface Window {
@@ -50,7 +50,8 @@ declare global {
     hideSource: { checked: boolean }
     txtnumber: { value: string }
     selmaince: { value: string }
-    settingsLocal: Record<string, ILegacySettings>
+    settings: IRecipeSettings
+    settingsLocal?: IRecipeSettings
     defaultAccType: string | undefined
     defaultAccValue: string | undefined
     data: Array<{ id: number; mName: string }>
@@ -80,6 +81,7 @@ describe('bridge', () => {
     window.xh_list = []
     window.out_list = []
     window.settings_time = {}
+    window.settings = {}
     window.settingsLocal = {}
     window.data = []
     window.game_data = {
@@ -261,9 +263,9 @@ describe('bridge', () => {
         hideSource: false
       })
 
-      expect(window.settingsLocal[1]?.m).toBe('制作台Mk.Ⅱ')
-      expect(window.settingsLocal[1]?.accType).toBe('增产剂Mk.Ⅱ')
-      expect(window.settingsLocal[1]?.accValue).toBe('加速')
+      expect(window.settingsLocal?.[1]?.m).toBe('制作台Mk.Ⅱ')
+      expect(window.settingsLocal?.[1]?.accType).toBe('增产剂Mk.Ⅱ')
+      expect(window.settingsLocal?.[1]?.accValue).toBe('加速')
       expect(window.defaultAccType).toBe('增产剂Mk.Ⅱ')
       expect(window.defaultAccValue).toBe('加速')
     })
@@ -281,7 +283,7 @@ describe('bridge', () => {
         hideSource: false
       })
 
-      expect(window.settingsLocal[2]?.m).toBe('位面熔炉')
+      expect(window.settingsLocal?.[2]?.m).toBe('位面熔炉')
     })
 
     it('should update settings for chemical plant', () => {
@@ -297,7 +299,7 @@ describe('bridge', () => {
         hideSource: false
       })
 
-      expect(window.settingsLocal[3]?.m).toBe('量子化工')
+      expect(window.settingsLocal?.[3]?.m).toBe('量子化工')
     })
 
     it('should update settings for research station', () => {
@@ -313,7 +315,7 @@ describe('bridge', () => {
         hideSource: false
       })
 
-      expect(window.settingsLocal[4]?.m).toBe('研究站Mk.Ⅱ')
+      expect(window.settingsLocal?.[4]?.m).toBe('研究站Mk.Ⅱ')
     })
 
     it('should update hideSource checkbox', () => {
