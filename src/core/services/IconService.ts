@@ -183,6 +183,22 @@ class IconService {
     return this.loaded
   }
 
+  private ensureFromWindow(): void {
+    if (this.loaded) return
+
+    const win = window as any
+    if (win.game_data && (win.game_data.icons1 || win.game_data.icons2)) {
+      this.gameData = win.game_data
+      this.buildIconMap()
+      this.loaded = true
+    }
+  }
+
+  loadFromWindow(): boolean {
+    this.ensureFromWindow()
+    return this.loaded
+  }
+
   waitForLoad(): Promise<void> {
     if (this.loaded) {
       return Promise.resolve()
@@ -251,6 +267,7 @@ class IconService {
   }
 
   getSelectableItems(): string[] {
+    this.ensureFromWindow()
     const items: string[] = []
     const seen = new Set<string>()
 
@@ -278,6 +295,7 @@ class IconService {
   }
 
   getSelectableItemsWithIcons(): ISelectableItemsResult {
+    this.ensureFromWindow()
     const result: ISelectableItemsResult = { icons1: [], icons2: [] }
     const seen1 = new Set<string>()
     const seen2 = new Set<string>()
@@ -309,6 +327,7 @@ class IconService {
   }
 
   getIconDataMap(): Record<string, string> {
+    this.ensureFromWindow()
     const result: Record<string, string> = {}
 
     this.iconMap.forEach((value, key) => {

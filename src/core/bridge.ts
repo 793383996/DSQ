@@ -760,7 +760,7 @@ export function isLegacyDataLoaded(): boolean {
 }
 
 export function isGameDataLoaded(): boolean {
-  return iconService.isLoaded()
+  return iconService.loadFromWindow()
 }
 
 export interface LegacyDataLoadResult {

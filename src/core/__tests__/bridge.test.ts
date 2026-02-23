@@ -19,6 +19,7 @@ import {
   isLegacyDataLoaded,
   isGameDataLoaded
 } from '../bridge'
+import { iconService } from '../services/IconService'
 
 declare global {
   interface Window {
@@ -85,6 +86,7 @@ describe('bridge', () => {
       icons2: []
     }
     window.isDataLoaded = false
+    iconService.reset()
   })
 
   describe('initLegacyBridge', () => {
@@ -670,12 +672,12 @@ describe('bridge', () => {
       expect(result.icons1).toHaveLength(1)
       expect(result.icons1[0]).toEqual({
         name: '铁块',
-        icon: 'base64icon1'
+        icon: 'data:image/png;base64,base64icon1'
       })
       expect(result.icons2).toHaveLength(1)
       expect(result.icons2[0]).toEqual({
         name: '铜块',
-        icon: 'base64icon2'
+        icon: 'data:image/png;base64,base64icon2'
       })
     })
   })
