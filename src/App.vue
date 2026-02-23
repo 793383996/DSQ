@@ -81,7 +81,8 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
-import { isLegacyDataLoaded, waitForLegacyData, isGameDataLoaded } from './core/bridge'
+import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
+import { iconService } from './core/services/IconService'
 import type { LegacyWindow } from './core/types/legacy'
 import {
   calculatorService,
@@ -178,8 +179,7 @@ onMounted(async () => {
     })
   }
 
-  // P2-1修复：改用事件驱动替代轮询
-  if (isGameDataLoaded()) {
+  if (iconService.isLoaded()) {
     store.checkIconsLoaded()
     logger.log('[App] Game icons already loaded')
   } else {
@@ -194,7 +194,6 @@ onMounted(async () => {
     }
     window.addEventListener('gameDataLoaded', handleGameDataLoaded)
 
-    // 保留超时保护
     let loadTimeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
       loadTimeoutId = null
@@ -202,6 +201,16 @@ onMounted(async () => {
         logger.warn('[App] Game icons load timeout')
       }
     }, 30000)
+
+    iconService
+      .loadIconData()
+      .then(() => {
+        store.checkIconsLoaded()
+        logger.log('[App] IconService loaded successfully')
+      })
+      .catch(e => {
+        logger.error('[App] IconService load failed:', e)
+      })
   }
 
   if (win.settings || win.settings_time || win.settings_pf) {

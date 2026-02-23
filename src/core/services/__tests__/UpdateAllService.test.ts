@@ -27,15 +27,15 @@ const mockRecipeIndexByProduct: Record<string, number[]> = {
 }
 
 describe('UpdateAllService', () => {
-  beforeEach(() => {
-    vi.stubGlobal('window', {
-      data: mockRecipes,
-      recipeIndexByProduct: mockRecipeIndexByProduct
-    })
+  beforeEach(async () => {
+    const { recipeDataService } = await import('../../services/RecipeDataService')
+    recipeDataService.reset()
+    recipeDataService.initializeWithData(mockRecipes, mockRecipeIndexByProduct)
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
+  afterEach(async () => {
+    const { recipeDataService } = await import('../../services/RecipeDataService')
+    recipeDataService.reset()
   })
 
   describe('ENERGY_DATA', () => {

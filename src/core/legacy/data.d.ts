@@ -1,6 +1,19 @@
 /**
  * Legacy数据类型声明
  *
+ * @deprecated 此模块已废弃，保留用于蓝图生成功能兼容
+ *
+ * 废弃状态：
+ * - 计算功能：已迁移至 RecipeCalculator.ts / CalculatorService.ts
+ * - 配方数据：已迁移至 RecipeDataService.ts
+ * - 设置管理：已迁移至 SettingsAdapter.ts
+ * - 蓝图生成：仍依赖此模块的 getRecipe() 函数
+ *
+ * 迁移路径：
+ * - legacy/data.js → src/core/services/RecipeDataService.ts
+ * - window.find → RecipeAdapter.findRecipe()
+ * - window.getRecipe → 待迁移（蓝图生成依赖）
+ *
  * 功能：
  * - 声明全局遗留数据和函数类型
  * - 为遗留JavaScript代码提供TypeScript类型支持

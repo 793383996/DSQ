@@ -3,7 +3,7 @@
  *
  * 功能：
  * - 定义遗留代码接口类型
- * - 描述data.js和blueprint.js中的数据结构
+ * - 描述data.js中的数据结构
  * - 提供遗留代码兼容层
  *
  * 定义：
@@ -18,11 +18,17 @@
  * 上游使用：
  * - core/legacy/data.js: 遗留数据模块
  * - core/bridge.ts: 状态同步桥
+ *
+ * 架构师注 (P4-8):
+ * - 这些类型定义用于与遗留代码交互
+ * - 新代码应使用 core/types/ 下的现代类型定义
+ * - 遗留模块已标记为 @deprecated，将在未来版本移除
  */
 /**
  * 遗留模块类型定义
  *
- * 这些类型定义用于描述 data.js 和 blueprint.js 中的遗留代码接口
+ * @deprecated 这些类型定义用于描述 data.js 中的遗留代码接口
+ * 新代码应使用 core/types/ 下的现代类型定义
  */
 
 export interface ILegacyDataItem {
@@ -133,6 +139,8 @@ export interface ILegacyWindow {
   update_all: () => void
   saveSetting: () => void
   data: ILegacyDataItem[]
+  recipeIndexByProduct?: Record<string, number[]>
+  recipeIndexByMaterial?: Record<string, number[]>
   game_data: ILegacyGameData
   isDataLoaded: boolean
   itemMap: Record<

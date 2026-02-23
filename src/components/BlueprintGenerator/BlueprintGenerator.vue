@@ -50,7 +50,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from '../../stores/blueprint'
-import { legacyGenerateBlueprint, generateBlueprintWithAdapter } from '../../core/bridge'
+import { generateBlueprintFromStoreData } from '../../core/bridge'
 import { useToast } from '../../composables/useToast'
 import { logger } from '../../utils/logger'
 
@@ -71,7 +71,7 @@ function generateBlueprint(): void {
   generatedUrl.value = null
 
   try {
-    const result = generateBlueprintWithAdapter()
+    const result = generateBlueprintFromStoreData(store.resultItems, store.demandList)
     if (!result.success) {
       error.value = result.error || t('blueprintGenerator.generateFailed')
       toast.error(t('blueprintGenerator.generateFailed') + ': ' + error.value, 5000)

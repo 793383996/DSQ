@@ -1,6 +1,11 @@
 /**
  * Legacy设置助手类型声明
  *
+ * @deprecated 此模块已废弃，请使用 SettingsAdapter.ts
+ *
+ * 废弃状态：
+ * - 设置管理：已迁移至 SettingsAdapter.ts
+ *
  * 功能：
  * - 声明遗留设置管理函数类型
  * - 为遗留JavaScript设置代码提供类型支持

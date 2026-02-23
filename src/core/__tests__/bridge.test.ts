@@ -246,7 +246,6 @@ describe('bridge', () => {
   describe('legacyUpdateMachineSettings', () => {
     it('should update settings for crafting table', () => {
       window.data = [{ id: 1, mName: '制作台' }]
-      window.saveSetting = vi.fn()
       window.update_all = vi.fn()
 
       legacyUpdateMachineSettings({
@@ -478,25 +477,6 @@ describe('bridge', () => {
       expect(window.settings_time['分馏塔']).toBe(20)
       expect(window.settings_time['原油萃取站']).toBe(5)
       expect(window.pointLength.value).toBe('2')
-    })
-
-    it('should call saveSettingTime if available', () => {
-      window.saveSettingTime = vi.fn()
-
-      legacyUpdateSpeedSettings({
-        oreSpeed: 100,
-        fractionatorSpeed: 18,
-        largeMinerSpeed: 100,
-        oilSpeed: 4,
-        orbitalDeuterium: 0.02,
-        orbitalFireIce: 0.5,
-        orbitalHydrogenIce: 0.5,
-        orbitalHydrogenGas: 1,
-        criticalPhotonSpeed: 5,
-        pointLength: 1
-      })
-
-      expect(window.saveSettingTime).toHaveBeenCalled()
     })
 
     it('should not call update_all (removed from legacy)', () => {

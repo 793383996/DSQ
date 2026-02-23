@@ -3,11 +3,12 @@
  *
  * 功能：
  * - 将简写数据转换为语义化接口
- * - 复用data.js已构建的索引，避免双重索引
+ * - 使用 RecipeDataService 获取数据，避免依赖 window.data
  * - 提供配方查询接口（按产物/原料/ID）
  *
  * 主要方法：
- * - loadFromRawData(rawData): 从原始数据加载配方
+ * - initialize(): 从 RecipeDataService 初始化
+ * - loadFromRawData(rawData): 从原始数据加载配方（向后兼容）
  * - findByProductName(name): 按产物名称查找配方
  * - findByInputName(name): 按原料名称查找配方
  * - findById(id): 按ID查找配方
@@ -21,32 +22,26 @@
  *
  * 下游依赖：
  * - core/types/recipe.ts: 配方类型定义
+ * - core/services/RecipeDataService.ts: 配方数据服务
  * - utils/logger.ts: 日志记录
  *
  * 架构师注：
  * - 此类为只读适配器，不修改原始数据
- * - 复用 data.js 已构建的索引，避免双重索引
- * - 所有对 window.data 的访问必须通过此适配器进行
+ * - 使用 RecipeDataService 获取数据，移除对 window.data 的依赖
+ * - 支持从服务初始化或直接传入数据两种方式
  */
 import type { IRecipe, IRecipeItem, IRecipeIndex } from '../types/recipe'
 import type { IRawRecipe } from '../types/settings'
+import { recipeDataService } from '../services/RecipeDataService'
 import { logger } from '../../utils/logger'
-
-declare global {
-  interface Window {
-    data: IRawRecipe[]
-    recipeIndexByProduct: Record<string, number[]>
-    recipeIndexByMaterial: Record<string, number[]>
-  }
-}
 
 /**
  * 配方适配器 - 将简写数据转换为语义化接口
  *
  * 架构师注：
  * - 此类为只读适配器，不修改原始数据
- * - 复用 data.js 已构建的索引，避免双重索引
- * - 所有对 window.data 的访问必须通过此适配器进行
+ * - 使用 RecipeDataService 获取数据，移除对 window.data 的依赖
+ * - 支持从服务初始化或直接传入数据两种方式
  */
 export class RecipeAdapter {
   private rawRecipes: IRawRecipe[] = []
@@ -57,6 +52,51 @@ export class RecipeAdapter {
   }
   private loaded: boolean = false
   private recipeCache: Map<number, IRecipe> = new Map()
+
+  async initialize(): Promise<void> {
+    if (this.loaded) {
+      return
+    }
+
+    await recipeDataService.initialize()
+    this.rawRecipes = recipeDataService.getRecipes()
+    this.buildIndexFromService()
+    this.loaded = true
+
+    logger.log(
+      `[RecipeAdapter] Initialized with ${this.rawRecipes.length} recipes from RecipeDataService`
+    )
+  }
+
+  private buildIndexFromService(): void {
+    const productIndex = recipeDataService.getIndexByProduct()
+    const materialIndex = recipeDataService.getIndexByMaterial()
+
+    Object.entries(productIndex).forEach(([name, indices]) => {
+      const recipes = (indices as number[])
+        .map(idx => this.getRecipe(idx))
+        .filter((r): r is IRecipe => r !== null)
+      if (recipes.length > 0) {
+        this.index.byProduct.set(name, recipes)
+      }
+    })
+
+    Object.entries(materialIndex).forEach(([name, indices]) => {
+      const recipes = (indices as number[])
+        .map(idx => this.getRecipe(idx))
+        .filter((r): r is IRecipe => r !== null)
+      if (recipes.length > 0) {
+        this.index.byInput.set(name, recipes)
+      }
+    })
+
+    for (let idx = 0; idx < this.rawRecipes.length; idx++) {
+      const recipe = this.getRecipe(idx)
+      if (recipe) {
+        this.index.byId.set(recipe.id, recipe)
+      }
+    }
+  }
 
   loadFromRawData(rawData: IRawRecipe[]): void {
     if (this.loaded) {
@@ -70,12 +110,10 @@ export class RecipeAdapter {
     }
 
     this.rawRecipes = rawData
-    this.reuseExistingIndex()
+    this.buildIndex()
     this.loaded = true
 
-    logger.log(
-      `[RecipeAdapter] Loaded ${this.rawRecipes.length} recipes (reused existing index, lazy transform)`
-    )
+    logger.log(`[RecipeAdapter] Loaded ${this.rawRecipes.length} recipes (lazy transform)`)
   }
 
   private getRecipe(idx: number): IRecipe | null {
@@ -112,45 +150,6 @@ export class RecipeAdapter {
       name: item.name,
       n: item.n ?? 1
     }))
-  }
-
-  private reuseExistingIndex(): void {
-    if (typeof window === 'undefined') {
-      this.buildIndex()
-      return
-    }
-
-    const productIndex = window.recipeIndexByProduct
-    const materialIndex = window.recipeIndexByMaterial
-
-    if (productIndex && materialIndex) {
-      Object.entries(productIndex).forEach(([name, indices]) => {
-        const recipes = (indices as number[])
-          .map(idx => this.getRecipe(idx))
-          .filter((r): r is IRecipe => r !== null)
-        if (recipes.length > 0) {
-          this.index.byProduct.set(name, recipes)
-        }
-      })
-
-      Object.entries(materialIndex).forEach(([name, indices]) => {
-        const recipes = (indices as number[])
-          .map(idx => this.getRecipe(idx))
-          .filter((r): r is IRecipe => r !== null)
-        if (recipes.length > 0) {
-          this.index.byInput.set(name, recipes)
-        }
-      })
-
-      for (let idx = 0; idx < this.rawRecipes.length; idx++) {
-        const recipe = this.getRecipe(idx)
-        if (recipe) {
-          this.index.byId.set(recipe.id, recipe)
-        }
-      }
-    } else {
-      this.buildIndex()
-    }
   }
 
   private buildIndex(): void {

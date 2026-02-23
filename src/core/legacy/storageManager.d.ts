@@ -1,6 +1,18 @@
 /**
  * Legacy存储管理器类型声明
  *
+ * @deprecated 此模块已废弃，请使用 SettingsAdapter.ts
+ *
+ * 废弃状态：
+ * - 设置管理：已迁移至 SettingsAdapter.ts
+ * - 保留用于遗留代码兼容
+ *
+ * 迁移路径：
+ * - legacy/storageManager.js → src/core/adapters/SettingsAdapter.ts
+ * - window.settings → SettingsAdapter.getRecipeSettings()
+ * - window.settings_time → SettingsAdapter.getSpeedSettings()
+ * - window.settings_pf → SettingsAdapter.getProductivitySettings()
+ *
  * 功能：
  * - 声明遗留存储管理函数类型
  * - 为遗留JavaScript存储代码提供类型支持

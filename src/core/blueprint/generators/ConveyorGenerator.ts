@@ -89,6 +89,7 @@ export class ConveyorGenerator {
   private config: IConveyorGeneratorConfig
   private buildingMap: IBuildingMap
   private buildingArray: BuildingArray = []
+  private buildingIndexMap: Map<number, { row: number; col: number }> = new Map()
   private sprayCoaterOffsetList: ICoordinate[] = []
   private lastProductionBuildingType: number = 0
   private allBuildings: IBlueprintBuilding[] | null = null
@@ -124,8 +125,18 @@ export class ConveyorGenerator {
     this.conveyorStartOffsetX = x
   }
 
+  private buildBuildingIndexMap(): void {
+    this.buildingIndexMap.clear()
+    for (let i = 0; i < this.buildingArray.length; i++) {
+      for (let k = 0; k < this.buildingArray[i].length; k++) {
+        this.buildingIndexMap.set(this.buildingArray[i][k].index, { row: i, col: k })
+      }
+    }
+  }
+
   setBuildingArray(buildingArray: BuildingArray): void {
     this.buildingArray = buildingArray
+    this.buildBuildingIndexMap()
   }
 
   setSprayCoaterOffsetList(list: ICoordinate[]): void {
@@ -163,6 +174,7 @@ export class ConveyorGenerator {
   reset(): void {
     this.buildings = []
     this.buildingArray = []
+    this.buildingIndexMap.clear()
     this.sprayCoaterOffsetList = []
     this.buildingIndex = -1
     this.occupiedAreaX = 0
@@ -338,8 +350,11 @@ export class ConveyorGenerator {
       stackLayers > 1
         ? Math.max(1, Math.floor(this.config.maxSorterNumOneBelt / stackLayers))
         : this.config.maxSorterNumOneBelt
-    const itemSummaryKeys = Object.keys(itemSummary)
-    const maxIterations = Math.max(10000, itemSummaryKeys.length * 500)
+
+    // P1-改进：更合理的迭代上限计算
+    // 单物品上限 + 总上限，避免固定值对小蓝图过于宽松
+    const MAX_ITERATIONS_PER_ITEM = 2000
+    const MAX_TOTAL_ITERATIONS = 200000
     let totalIterations = 0
 
     for (const item in itemSummary) {
@@ -350,13 +365,27 @@ export class ConveyorGenerator {
 
       const maxTransportSpeed = this.calculateMaxTransportSpeed(itemEntry.fromBuildingNum)
 
+      // P2-改进：每个物品独立计数，便于定位问题
+      let itemIterations = 0
+
       for (let totalDoneRate = 0; itemEntry.rate - totalDoneRate > zero; ) {
+        itemIterations++
         totalIterations++
-        if (totalIterations > maxIterations) {
+
+        // P3-改进：双重检查 - 单物品限制和总限制
+        if (itemIterations > MAX_ITERATIONS_PER_ITEM) {
           logger.error(
-            `[ConveyorGenerator] 死循环检测: item=${itemName}, rate=${itemEntry.rate}, totalDoneRate=${totalDoneRate}`
+            `[ConveyorGenerator] 单物品迭代超限: item=${itemName}, rate=${itemEntry.rate}, iterations=${itemIterations}`
           )
           break
+        }
+
+        if (totalIterations > MAX_TOTAL_ITERATIONS) {
+          logger.error(
+            `[ConveyorGenerator] 总迭代超限: totalIterations=${totalIterations}, 当前物品=${itemName}`
+          )
+          this.buildings = result
+          return result
         }
 
         let needSprayCoater = itemEntry.needProliferator
@@ -409,6 +438,15 @@ export class ConveyorGenerator {
           }
           doneRate += inputRate
         }
+
+        // P4-改进：doneRate增长检查，防止死循环
+        if (doneRate <= 0) {
+          logger.warn(
+            `[ConveyorGenerator] doneRate未增长: item=${itemName}, rate=${itemEntry.rate}, totalDoneRate=${totalDoneRate}`
+          )
+          break
+        }
+
         totalDoneRate += doneRate
         let outputRate = doneRate
         doneSorterNum = 0
@@ -490,34 +528,64 @@ export class ConveyorGenerator {
               let startMove = false
               let findTargetBuilding = false
               const buildingsToSearch = this.allBuildings || result
-              for (let i = 0; i < this.buildingArray.length; i++) {
-                for (let k = 0; k < this.buildingArray[i].length; k++) {
-                  if (this.buildingArray[i][k].index === inputList[j].ownerObjIdx) {
-                    this.buildingArray[i][k].sorterList.push(newSorter.index)
-                    findTargetBuilding = true
-                    if (
-                      ownerCategory === PRODUCTION_CATEGORY.smelter &&
-                      this.buildingArray[i][k].sorterList.length === 3
-                    ) {
-                      startMove = true
-                    } else {
-                      break
-                    }
-                  } else if (startMove) {
-                    const toMoveNum = 1 + this.buildingArray[i][k].sorterList.length
+
+              // P5-优化：使用索引Map查找建筑，O(1)复杂度
+              const targetPosition = this.buildingIndexMap.get(inputList[j].ownerObjIdx)
+              if (targetPosition) {
+                const { row, col } = targetPosition
+                this.buildingArray[row][col].sorterList.push(newSorter.index)
+                findTargetBuilding = true
+
+                if (
+                  ownerCategory === PRODUCTION_CATEGORY.smelter &&
+                  this.buildingArray[row][col].sorterList.length === 3
+                ) {
+                  startMove = true
+                  // 继续遍历后续建筑进行位移
+                  for (let k = col + 1; k < this.buildingArray[row].length; k++) {
+                    const toMoveNum = 1 + this.buildingArray[row][k].sorterList.length
                     for (const b of buildingsToSearch) {
-                      if (b.index === this.buildingArray[i][k].index) {
+                      if (b.index === this.buildingArray[row][k].index) {
                         b.localOffset![0].x += 1
                         b.localOffset![1].x += 1
-                      } else if (this.buildingArray[i][k].sorterList.includes(b.index)) {
+                      } else if (this.buildingArray[row][k].sorterList.includes(b.index)) {
                         b.localOffset![0].x += 1
                         b.localOffset![1].x += 1
                       }
                     }
                   }
                 }
-                if (findTargetBuilding) {
-                  break
+              } else {
+                // P5-优化：回退到原逻辑，确保兼容性
+                for (let i = 0; i < this.buildingArray.length; i++) {
+                  for (let k = 0; k < this.buildingArray[i].length; k++) {
+                    if (this.buildingArray[i][k].index === inputList[j].ownerObjIdx) {
+                      this.buildingArray[i][k].sorterList.push(newSorter.index)
+                      findTargetBuilding = true
+                      if (
+                        ownerCategory === PRODUCTION_CATEGORY.smelter &&
+                        this.buildingArray[i][k].sorterList.length === 3
+                      ) {
+                        startMove = true
+                      } else {
+                        break
+                      }
+                    } else if (startMove) {
+                      const toMoveNum = 1 + this.buildingArray[i][k].sorterList.length
+                      for (const b of buildingsToSearch) {
+                        if (b.index === this.buildingArray[i][k].index) {
+                          b.localOffset![0].x += 1
+                          b.localOffset![1].x += 1
+                        } else if (this.buildingArray[i][k].sorterList.includes(b.index)) {
+                          b.localOffset![0].x += 1
+                          b.localOffset![1].x += 1
+                        }
+                      }
+                    }
+                  }
+                  if (findTargetBuilding) {
+                    break
+                  }
                 }
               }
 

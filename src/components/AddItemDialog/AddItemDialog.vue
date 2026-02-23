@@ -122,11 +122,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import {
-  getSelectableItemsWithIcons,
-  waitForLegacyData,
-  isLegacyDataLoaded
-} from '../../core/bridge'
+import { iconService } from '../../core/services/IconService'
 import { logger } from '../../utils/logger'
 
 interface ItemData {
@@ -157,22 +153,16 @@ const isLoading = ref(true)
 const loadError = ref<string | null>(null)
 const activeTab = ref<'icons1' | 'icons2'>('icons1')
 
-// P1-3修复：添加错误处理和重试机制
 async function loadItems() {
   isLoading.value = true
   loadError.value = null
 
   try {
-    if (!isLegacyDataLoaded()) {
-      const loaded = await waitForLegacyData(10000)
-      if (!loaded) {
-        loadError.value = '数据加载超时，请重试'
-        logger.warn('[AddItemDialog] Legacy data load timeout')
-        return
-      }
+    if (!iconService.isLoaded()) {
+      await iconService.loadIconData()
     }
 
-    const data = getSelectableItemsWithIcons()
+    const data = iconService.getSelectableItemsWithIcons()
 
     if (!data.icons1.length && !data.icons2.length) {
       loadError.value = '未找到可用物品数据'

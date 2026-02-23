@@ -8,89 +8,10 @@ import {
   ILegacyBlueprintConfig
 } from '../BlueprintAdapter'
 
-const mockBuildingMap = {
-  arcSmelter: {
-    name: 'arcSmelter',
-    itemId: 1002,
-    modelIndex: 2302,
-    productionSpeed: 1,
-    category: 0,
-    size: { x: 2, y: 2 },
-    remark: ''
-  },
-  assemblingMachineMk1: {
-    name: 'assemblingMachineMk1',
-    itemId: 1001,
-    modelIndex: 2303,
-    productionSpeed: 0.75,
-    category: 1,
-    size: { x: 3, y: 3 },
-    remark: ''
-  },
-  conveyorBeltMk1: {
-    name: 'conveyorBeltMk1',
-    itemId: 2001,
-    modelIndex: 2100,
-    transportSpeed: 6,
-    type: 5,
-    remark: ''
-  },
-  conveyorBeltMK3: {
-    name: 'conveyorBeltMK3',
-    itemId: 2003,
-    modelIndex: 2102,
-    transportSpeed: 30,
-    type: 5,
-    remark: ''
-  },
-  sprayCoater: {
-    name: 'sprayCoater',
-    itemId: 2313,
-    modelIndex: 481,
-    remark: ''
-  },
-  sorterMk1: {
-    name: 'sorterMk1',
-    itemId: 2011,
-    modelIndex: 2110,
-    sortingSpeed: 6,
-    remark: ''
-  },
-  sorterMk3: {
-    name: 'sorterMk3',
-    itemId: 2013,
-    modelIndex: 2112,
-    sortingSpeed: 30,
-    remark: ''
-  }
-}
-
-const mockItemMap = {
-  ironOre: { iconId: 1001, name: 'ironOre' },
-  ironIngot: { iconId: 1003, name: 'ironIngot' }
-}
-
 describe('BlueprintAdapter', () => {
-  beforeEach(() => {
-    vi.stubGlobal('window', {
-      buildingMap: { ...mockBuildingMap },
-      itemMap: { ...mockItemMap }
-    })
-  })
-
   describe('isBlueprintServiceAvailable', () => {
-    it('should return true when buildingMap and itemMap are available', () => {
+    it('should return true when buildingMap and itemMap JSON files are loaded', () => {
       expect(isBlueprintServiceAvailable()).toBe(true)
-    })
-
-    it('should return false when buildingMap is empty', () => {
-      vi.stubGlobal('window', { buildingMap: {}, itemMap: mockItemMap })
-      expect(isBlueprintServiceAvailable()).toBe(false)
-    })
-
-    it('should return false when itemMap is empty', () => {
-      vi.stubGlobal('window', { buildingMap: mockBuildingMap, itemMap: {} })
-      expect(isBlueprintServiceAvailable()).toBe(false)
     })
   })
 
@@ -170,26 +91,6 @@ describe('BlueprintAdapter', () => {
   })
 
   describe('generateBlueprintWithNewService', () => {
-    it('should return error when buildingMap is not loaded', () => {
-      vi.stubGlobal('window', { buildingMap: {}, itemMap: mockItemMap })
-
-      const legacyRecipe: ILegacyRecipe = {
-        subRecipes: [
-          {
-            building: { name: 'arcSmelter', num: 2 },
-            output: [{ name: 'ironIngot', rate: 1 }],
-            input: [{ name: 'ironOre', rate: 1 }],
-            acceleratorMode: 0
-          }
-        ]
-      }
-
-      const result = generateBlueprintWithNewService(legacyRecipe, {} as ILegacyBlueprintConfig)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('buildingMap')
-    })
-
     it('should generate blueprint successfully', () => {
       const legacyRecipe: ILegacyRecipe = {
         proliferator: undefined,

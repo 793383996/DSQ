@@ -2,7 +2,7 @@
  * Bridge - 遗留代码桥接模块
  *
  * 功能：
- * - 加载和初始化遗留模块（data.js、blueprint.js）
+ * - 加载和初始化遗留模块（data.js）
  * - 提供遗留代码与新代码的接口适配
  * - 同步状态到遗留代码
  * - 提供配方索引就绪通知
@@ -21,29 +21,30 @@
  *
  * 下游依赖：
  * - core/legacy/data.js: 遗留数据模块
- * - core/legacy/blueprint.js: 遗留蓝图模块
  * - core/adapters/RecipeAdapter.ts: 配方适配器
  * - core/adapters/SettingsAdapter.ts: 设置适配器
- * - core/adapters/BlueprintAdapter.ts: 蓝图适配器
+ * - core/adapters/BlueprintAdapter.ts: 蓝图适配器（独立加载buildingMap/itemMap）
  */
 import { cocoMessageProxy } from '../composables/useToast'
 import { recipeAdapter } from './adapters/RecipeAdapter'
 import { settingsAdapter } from './adapters/SettingsAdapter'
 import {
   generateBlueprintWithNewService,
-  isBlueprintServiceAvailable,
   ILegacyRecipe,
   ILegacyBlueprintConfig,
   ILegacySubRecipe
 } from './adapters/BlueprintAdapter'
+import { recipeDataBuilder, IRecipeBuildResult } from './services/RecipeDataBuilder'
+import { iconService } from './services/IconService'
 import { logger } from '../utils/logger'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 import type { IRawRecipe } from './types/settings'
+import type { IConsumptionItem, IResultItemOutput } from './types/recipe'
+import type { DemandItem } from '../stores/blueprint'
 import { itemMap } from './types/itemMap'
 import { buildingMap } from './types/buildingMap'
 
 let dataModule: unknown = null
-let blueprintModule: unknown = null
 let pakoModule: unknown = null
 let isBridgeInitialized = false
 let legacyModulesPromise: Promise<unknown> | null = null
@@ -102,7 +103,7 @@ export function isRecipeIndexReady(): boolean {
 
 async function loadLegacyModules() {
   if (dataModule) {
-    return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
+    return { data: dataModule, pako: pakoModule }
   }
 
   if (legacyModulesPromise) {
@@ -110,29 +111,16 @@ async function loadLegacyModules() {
   }
 
   legacyModulesPromise = (async () => {
-    const [
-      dataMod,
-      blueprintMod,
-      pakoMod,
-      calculatorMod,
-      iconLoaderMod,
-      storageManagerMod,
-      recipeHelperMod,
-      configDataMod,
-      settingsHelperMod
-    ] = await Promise.all([
-      import('./legacy/data'),
-      import('./legacy/blueprint'),
-      import('pako'),
-      import('./legacy/calculator'),
-      import('./legacy/iconLoader'),
-      import('./legacy/storageManager'),
-      import('./legacy/recipeHelper'),
-      import('./legacy/configData'),
-      import('./legacy/settingsHelper')
-    ])
+    const [dataMod, pakoMod, calculatorMod, storageManagerMod, recipeHelperMod, settingsHelperMod] =
+      await Promise.all([
+        import('./legacy/data'),
+        import('pako'),
+        import('./legacy/calculator'),
+        import('./legacy/storageManager'),
+        import('./legacy/recipeHelper'),
+        import('./legacy/settingsHelper')
+      ])
     dataModule = dataMod
-    blueprintModule = blueprintMod
     pakoModule = pakoMod
     getWin().pako = pakoMod
 
@@ -149,7 +137,7 @@ async function loadLegacyModules() {
     settingsAdapter.init()
 
     logger.log('[bridge] Legacy modules loaded successfully')
-    return { data: dataModule, blueprint: blueprintModule, pako: pakoModule }
+    return { data: dataModule, pako: pakoModule }
   })()
 
   return legacyModulesPromise
@@ -161,7 +149,6 @@ function getLegacyModulesLoadPromise(): Promise<unknown> | null {
 
 export interface LegacyGlobals {
   data: unknown
-  blueprint: unknown
   pako: unknown
 }
 
@@ -310,10 +297,6 @@ export function legacyUpdateMachineSettings(config: MachineConfigSettings): void
   if (win.hideSource) {
     win.hideSource.checked = config.hideSource
   }
-
-  if (typeof win.saveSetting === 'function') {
-    win.saveSetting()
-  }
 }
 
 export function legacyGetMachineSettings(): MachineConfigSettings {
@@ -441,13 +424,11 @@ export function legacyFind(name: string, normalize_recipe?: boolean): ILegacyDat
   return null
 }
 
-export function legacyGenerateBlueprint(): void {
-  const win = getWin()
-  if (typeof win.generateBlueprint === 'function') {
-    win.generateBlueprint()
-  }
-}
-
+/**
+ * @deprecated 使用 generateBlueprintFromStoreData 替代
+ * 该函数依赖遗留的 window.getRecipe()，将从 DOM 读取配方数据
+ * 新架构应使用 generateBlueprintFromStoreData 直接从 Store 数据生成蓝图
+ */
 export function getLegacyRecipe(): ILegacyRecipe | null {
   const win = getWin()
   if (typeof win.getRecipe === 'function') {
@@ -465,15 +446,12 @@ export function getLegacyRecipe(): ILegacyRecipe | null {
   return null
 }
 
+/**
+ * @deprecated 使用 generateBlueprintFromStoreData 替代
+ * 该函数依赖遗留的 window.getRecipe()，将从 DOM 读取配方数据
+ * 新架构应使用 generateBlueprintFromStoreData 直接从 Store 数据生成蓝图
+ */
 export function generateBlueprintWithAdapter(): { success: boolean; error?: string } {
-  const win = getWin()
-
-  if (!isBlueprintServiceAvailable()) {
-    logger.warn('[bridge] BlueprintService not available, falling back to legacy')
-    legacyGenerateBlueprint()
-    return { success: true }
-  }
-
   try {
     const recipe = getLegacyRecipe()
     if (!recipe || !recipe.subRecipes) {
@@ -485,9 +463,7 @@ export function generateBlueprintWithAdapter(): { success: boolean; error?: stri
     const result = generateBlueprintWithNewService(recipe, config)
 
     if (!result.success) {
-      logger.warn('[bridge] New service failed, falling back to legacy:', result.error)
-      legacyGenerateBlueprint()
-      return { success: true }
+      return { success: false, error: result.error }
     }
 
     if (result.blueprintString) {
@@ -505,8 +481,58 @@ export function generateBlueprintWithAdapter(): { success: boolean; error?: stri
   } catch (error) {
     const err = error as Error
     logger.error('[bridge] generateBlueprintWithAdapter error:', err)
-    legacyGenerateBlueprint()
+    return { success: false, error: err.message }
+  }
+}
+
+type TableItem = IConsumptionItem | IResultItemOutput
+
+export function generateBlueprintFromStoreData(
+  consumptionItems: TableItem[],
+  demandList: DemandItem[],
+  config?: Partial<BlueprintConfig>
+): { success: boolean; error?: string } {
+  try {
+    const recipeData = recipeDataBuilder.buildRecipeData(
+      consumptionItems,
+      demandList,
+      getWin().defaultAccType || '增产剂Mk.Ⅰ'
+    )
+
+    const legacyRecipe: ILegacyRecipe = {
+      proliferator: recipeData.proliferator || undefined,
+      subRecipes: recipeData.recipeList as ILegacySubRecipe[],
+      blueprintTitle: recipeData.blueprintTitle,
+      blueprintIcon: recipeData.blueprintIcon
+    }
+
+    const fullConfig: ILegacyBlueprintConfig = {
+      ...legacyGetConfigFromDOM(),
+      ...config
+    }
+
+    const result = generateBlueprintWithNewService(legacyRecipe, fullConfig)
+
+    if (!result.success) {
+      return { success: false, error: result.error }
+    }
+
+    if (result.blueprintString) {
+      navigator.clipboard
+        .writeText(result.blueprintString)
+        .then(() => {
+          cocoMessageProxy('已复制到粘贴板', 'success')
+        })
+        .catch(err => {
+          logger.error('[bridge] Failed to copy to clipboard:', err)
+        })
+    }
+
     return { success: true }
+  } catch (error) {
+    const err = error as Error
+    logger.error('[bridge] generateBlueprintFromStoreData error:', err)
+    return { success: false, error: err.message }
   }
 }
 
@@ -595,9 +621,12 @@ export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
   // 老代码：speed1_3 = st['轨道采集器(巨冰)_氢']，对应巨冰行星采集氢
   // 老代码：speed1_4 = st['轨道采集器(巨冰)_可燃冰']，对应巨冰行星采集可燃冰
   // 老代码：ore = st['采矿机_效率']
+  // P9-修复：大型采矿机速度计算与老代码对齐
+  // 老代码：speed = 1 * 20 * 0.01 * oreSpeed * 0.01 * largeMinerSpeed
+  // 即：speed = 20 * (oreSpeed/100) * (largeMinerSpeed/100)
   settingsTime['采矿机_效率'] = speeds.oreSpeed
   settingsTime['采矿机'] = (speeds.oreSpeed / 100) * 0.5 * 6
-  settingsTime['大型采矿机'] = (speeds.oreSpeed / 100) * 1 * 20
+  settingsTime['大型采矿机'] = (speeds.oreSpeed / 100) * (speeds.largeMinerSpeed / 100) * 1 * 20
   settingsTime['分馏塔'] = speeds.fractionatorSpeed
   settingsTime['原油萃取站'] = speeds.oilSpeed
   settingsTime['轨道采集器(气态)_氢'] = speeds.orbitalHydrogenGas
@@ -605,10 +634,6 @@ export function legacyUpdateSpeedSettings(speeds: SpeedSettings): void {
   settingsTime['轨道采集器(巨冰)_氢'] = speeds.orbitalHydrogenIce
   settingsTime['轨道采集器(巨冰)_可燃冰'] = speeds.orbitalFireIce
   settingsTime['射线接收塔'] = speeds.criticalPhotonSpeed
-
-  if (typeof win.saveSettingTime === 'function') {
-    win.saveSettingTime()
-  }
 
   if (win.pointLength) {
     win.pointLength.value = String(speeds.pointLength)
@@ -643,16 +668,25 @@ export function legacyGetSpeedSettings(): SpeedSettings {
   const win = getWin()
   const settingsTime = win.settings_time || {}
 
+  // P9-修复：大型采矿机速度反推逻辑
+  // 写入时：settingsTime['大型采矿机'] = (oreSpeed/100) * (largeMinerSpeed/100) * 20
+  // 反推：largeMinerSpeed = settingsTime['大型采矿机'] * 15 / settingsTime['采矿机']
+  const oreSpeedValue = Math.round(((settingsTime['采矿机'] || 3) / 0.5 / 6) * 100)
+  const largeMinerSpeedValue = Math.round(
+    ((settingsTime['大型采矿机'] || 20) * 15) / (settingsTime['采矿机'] || 3)
+  )
+
   return {
-    oreSpeed: Math.round(((settingsTime['采矿机'] || 3) / 0.5 / 6) * 100),
+    oreSpeed: oreSpeedValue,
     fractionatorSpeed: settingsTime['分馏塔'] || 18,
-    largeMinerSpeed: Math.round(((settingsTime['大型采矿机'] || 20) / 1 / 20) * 100),
+    largeMinerSpeed: largeMinerSpeedValue,
     oilSpeed: settingsTime['原油萃取站'] || 4,
     // P0-4修复：从settings_time读取重氢和可燃冰的值
+    // P9-修复：读取键名与写入键名对齐
     orbitalDeuterium: settingsTime['轨道采集器(气态)_重氢'] || 0.02,
     orbitalFireIce: settingsTime['轨道采集器(巨冰)_可燃冰'] || 0.5,
-    orbitalHydrogenIce: settingsTime['轨道采集器(巨冰)'] || 0.5,
-    orbitalHydrogenGas: settingsTime['轨道采集器(气态)'] || 1,
+    orbitalHydrogenIce: settingsTime['轨道采集器(巨冰)_氢'] || 0.5,
+    orbitalHydrogenGas: settingsTime['轨道采集器(气态)_氢'] || 1,
     criticalPhotonSpeed: settingsTime['射线接收塔'] || 5,
     pointLength: parseInt(win.pointLength?.value || '1')
   }
@@ -682,33 +716,7 @@ export function legacySetProductionSettings(production: number, machineCount?: n
 export { loadLegacyModules, getLegacyModulesLoadPromise }
 
 export function getSelectableItems(): string[] {
-  const items: string[] = []
-  const reg = /^(\d)-(\d{1,2})-(.+)$/
-  const win = getWin()
-  const gameData = win.game_data
-  if (!gameData) return items
-
-  const iconArrays = [gameData.icons1, gameData.icons2]
-  const seen = new Set<string>()
-
-  for (const icons of iconArrays) {
-    if (!Array.isArray(icons)) continue
-    for (const icon of icons) {
-      const name = icon.name
-      if (reg.test(name)) {
-        const match = name.match(reg)
-        if (match && match[3]) {
-          const itemName = match[3]
-          if (!seen.has(itemName)) {
-            seen.add(itemName)
-            items.push(itemName)
-          }
-        }
-      }
-    }
-  }
-
-  return items
+  return iconService.getSelectableItems()
 }
 
 interface ItemWithIcon {
@@ -722,64 +730,23 @@ interface SelectableItemsResult {
 }
 
 export function getSelectableItemsWithIcons(): SelectableItemsResult {
-  const result: SelectableItemsResult = { icons1: [], icons2: [] }
-  const reg = /^(\d)-(\d{1,2})-(.+)$/
-  const win = getWin()
-  const gameData = win.game_data
-  if (!gameData) return result
-
-  const seen1 = new Set<string>()
-  const seen2 = new Set<string>()
-
-  function processIcons(icons: ILegacyIcon[], target: ItemWithIcon[], seen: Set<string>) {
-    if (!Array.isArray(icons)) return
-    for (const icon of icons) {
-      const name = icon.name
-      if (reg.test(name)) {
-        const match = name.match(reg)
-        if (match && match[3]) {
-          const itemName = match[3]
-          if (!seen.has(itemName)) {
-            seen.add(itemName)
-            target.push({
-              name: itemName,
-              icon: icon.value
-            })
-          }
-        }
-      }
-    }
+  const data = iconService.getSelectableItemsWithIcons()
+  return {
+    icons1: data.icons1.map(item => ({ name: item.name, icon: item.icon })),
+    icons2: data.icons2.map(item => ({ name: item.name, icon: item.icon }))
   }
-
-  processIcons(gameData.icons1, result.icons1, seen1)
-  processIcons(gameData.icons2, result.icons2, seen2)
-
-  return result
 }
 
 export function getIconData(): { [key: string]: string } {
-  const result: { [key: string]: string } = {}
-  const reg = /^(\d)-(\d{1,2})-(.+)$/
-  const win = getWin()
-  const gameData = win.game_data
-  if (!gameData) return result
+  return iconService.getIconDataMap()
+}
 
-  const iconArrays = [gameData.icons1, gameData.icons2]
+export function getIconImg(name: string): string {
+  return iconService.getIconImg(name)
+}
 
-  for (const icons of iconArrays) {
-    if (!Array.isArray(icons)) continue
-    for (const icon of icons) {
-      const name = icon.name
-      if (reg.test(name)) {
-        const match = name.match(reg)
-        if (match && match[3]) {
-          result[match[3]] = 'data:image/png;base64,' + icon.value
-        }
-      }
-    }
-  }
-
-  return result
+export function getIconShow(name: string, number: string | number): string {
+  return iconService.getIconShow(name, number)
 }
 
 export function isLegacyDataLoaded(): boolean {
@@ -793,8 +760,7 @@ export function isLegacyDataLoaded(): boolean {
 }
 
 export function isGameDataLoaded(): boolean {
-  const win = getWin()
-  return win.isDataLoaded === true && win.game_data !== undefined
+  return iconService.isLoaded()
 }
 
 export interface LegacyDataLoadResult {

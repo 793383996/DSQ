@@ -3,12 +3,12 @@
  *
  * 功能：
  * - 管理配方设置、速度设置、增产剂设置
- * - 封装对window.settings/settings_time/settings_pf的访问
+ * - 使用 localStorage 作为主存储（独立于遗留代码）
  * - 提供类型安全的读写接口
- * - 自动同步到localStorage
+ * - 自动同步到 localStorage
  *
  * 主要方法：
- * - init(): 初始化设置（从遗留代码加载）
+ * - init(): 初始化设置（从 localStorage 加载）
  * - getRecipeSetting(recipeId): 获取配方设置
  * - getRecipeMachine(recipeId): 获取配方选中的机器
  * - setRecipeMachine(recipeId, machineName): 设置配方机器
@@ -32,6 +32,11 @@
  * - settings: 配方级设置，key为配方ID
  * - settings_time: 机器速度设置，key为机器名称
  * - settings_pf: 增产剂设置，key为物品名称
+ *
+ * 架构师注 (P4-6):
+ * - 已重构为使用 localStorage 作为主存储
+ * - 移除对 window.saveSetting 等遗留函数的依赖
+ * - 保留 window.settings 同步以支持遗留代码过渡期
  */
 import type {
   IRecipeSettings,
@@ -42,216 +47,199 @@ import type {
 import { logger } from '../../utils/logger'
 import { APP_CONFIG } from '../config/app.config'
 
-declare global {
-  interface Window {
-    settings: IRecipeSettings
-    settings_time: ISpeedSettings
-    settings_pf: IProductivitySettings
-    settingsLocal: IRecipeSettings
-    saveSetting: () => void
-    saveSettingTime: () => void
-    saveSettingPf: () => void
-    loadSetting: () => void
-    loadSettingTime: () => void
-    loadSettingPf: () => void
-  }
-}
-
 const { VERSION, STORAGE_KEYS } = APP_CONFIG
 
-/**
- * 设置适配器 - 管理配方设置、速度设置、增产剂设置
- *
- * 架构师注：
- * - 此适配器封装对 window.settings/settings_time/settings_pf 的访问
- * - settings: 配方级设置，key为配方ID，value包含机器名称和增产剂配置
- * - settings_time: 机器速度设置，key为机器名称
- * - settings_pf: 增产剂设置，key为物品名称，value为配方索引
- * - 提供类型安全的读写接口
- * - 自动同步到 localStorage
- */
+const RECIPE_SETTINGS_KEY = STORAGE_KEYS.MACHINE_SETTINGS + VERSION
+const SPEED_SETTINGS_KEY = STORAGE_KEYS.SPEED_SETTINGS + VERSION
+const PF_SETTINGS_KEY = STORAGE_KEYS.PF_SETTINGS + VERSION
+
 export class SettingsAdapter {
   private recipeSettings: IRecipeSettings = {}
   private speedSettings: ISpeedSettings = {}
   private productivitySettings: IProductivitySettings = {}
+  private initialized: boolean = false
 
-  /**
-   * 初始化设置 (从遗留代码加载)
-   *
-   * 架构师注：
-   * - 必须确保内部引用指向window对象上的同一个对象
-   * - 如果window对象上没有设置，从localStorage加载
-   * - 避免双重存储导致的状态不同步
-   */
   init(): void {
     if (typeof window === 'undefined') return
+    if (this.initialized) return
 
-    if (!window.settings) {
-      window.settings = {}
-    }
-    if (!window.settings_time) {
-      window.settings_time = {}
-    }
-    if (!window.settings_pf) {
-      window.settings_pf = {}
-    }
-
-    this.recipeSettings = window.settings
-    this.speedSettings = window.settings_time
-    this.productivitySettings = window.settings_pf
-
-    logger.log('[SettingsAdapter] Initialized')
+    this.loadFromStorage()
+    this.syncToWindow()
+    this.initialized = true
+    logger.log('[SettingsAdapter] Initialized with localStorage')
   }
 
-  /**
-   * 获取配方设置
-   * P1-1修复：支持数字和字符串key，遗留代码使用数字key
-   */
+  private syncToWindow(): void {
+    if (typeof window === 'undefined') return
+
+    window.settings = this.recipeSettings
+    window.settings_time = this.speedSettings
+    window.settings_pf = this.productivitySettings
+  }
+
+  private syncRecipeToWindow(key: string): void {
+    if (typeof window === 'undefined') return
+    window.settings[key] = this.recipeSettings[key]
+  }
+
+  private syncSpeedToWindow(key: string): void {
+    if (typeof window === 'undefined') return
+    window.settings_time[key] = this.speedSettings[key]
+  }
+
+  private syncPfToWindow(key: string): void {
+    if (typeof window === 'undefined') return
+    window.settings_pf[key] = this.productivitySettings[key]
+  }
+
+  private saveRecipeToStorage(): void {
+    try {
+      localStorage.setItem(RECIPE_SETTINGS_KEY, JSON.stringify(this.recipeSettings))
+    } catch (e) {
+      logger.warn('[SettingsAdapter] Failed to save recipe settings:', e)
+    }
+  }
+
+  private saveSpeedToStorage(): void {
+    try {
+      localStorage.setItem(SPEED_SETTINGS_KEY, JSON.stringify(this.speedSettings))
+    } catch (e) {
+      logger.warn('[SettingsAdapter] Failed to save speed settings:', e)
+    }
+  }
+
+  private savePfToStorage(): void {
+    try {
+      localStorage.setItem(PF_SETTINGS_KEY, JSON.stringify(this.productivitySettings))
+    } catch (e) {
+      logger.warn('[SettingsAdapter] Failed to save pf settings:', e)
+    }
+  }
+
   getRecipeSetting(recipeId: string | number): IRecipeSetting | undefined {
-    // JavaScript对象key会自动转换为字符串，但显式处理更安全
     const key = String(recipeId)
     return this.recipeSettings[key]
   }
 
-  /**
-   * 获取配方选中的机器
-   */
   getRecipeMachine(recipeId: string | number): string | undefined {
     const key = String(recipeId)
     return this.recipeSettings[key]?.m
   }
 
-  /**
-   * 设置配方选中的机器
-   */
   setRecipeMachine(recipeId: string | number, machineName: string): void {
     const key = String(recipeId)
     if (!this.recipeSettings[key]) {
       this.recipeSettings[key] = {}
     }
     this.recipeSettings[key].m = machineName
-    if (typeof window !== 'undefined') {
-      window.settings[key] = this.recipeSettings[key]
-      if (typeof window.saveSetting === 'function') {
-        window.saveSetting()
-      }
-    }
+    this.syncRecipeToWindow(key)
+    this.saveRecipeToStorage()
   }
 
-  /**
-   * 获取配方增产剂类型
-   */
   getRecipeAccType(recipeId: string | number): string | undefined {
     const key = String(recipeId)
     return this.recipeSettings[key]?.accType
   }
 
-  /**
-   * 设置配方增产剂类型
-   */
   setRecipeAccType(recipeId: string | number, accType: string): void {
     const key = String(recipeId)
     if (!this.recipeSettings[key]) {
       this.recipeSettings[key] = {}
     }
     this.recipeSettings[key].accType = accType
-    if (typeof window !== 'undefined') {
-      window.settings[key] = this.recipeSettings[key]
-      if (typeof window.saveSetting === 'function') {
-        window.saveSetting()
-      }
-    }
+    this.syncRecipeToWindow(key)
+    this.saveRecipeToStorage()
   }
 
-  /**
-   * 获取配方增产剂效果
-   */
   getRecipeAccValue(recipeId: string | number): string | undefined {
     const key = String(recipeId)
     return this.recipeSettings[key]?.accValue
   }
 
-  /**
-   * 设置配方增产剂效果
-   */
   setRecipeAccValue(recipeId: string | number, accValue: string): void {
     const key = String(recipeId)
     if (!this.recipeSettings[key]) {
       this.recipeSettings[key] = {}
     }
     this.recipeSettings[key].accValue = accValue
-    if (typeof window !== 'undefined') {
-      window.settings[key] = this.recipeSettings[key]
-      if (typeof window.saveSetting === 'function') {
-        window.saveSetting()
-      }
-    }
+    this.syncRecipeToWindow(key)
+    this.saveRecipeToStorage()
   }
 
-  /**
-   * 获取所有配方设置
-   */
   getAllRecipeSettings(): IRecipeSettings {
     return { ...this.recipeSettings }
   }
 
-  /**
-   * 获取机器速度设置
-   */
+  getRecipeSettings(): IRecipeSettings {
+    return this.recipeSettings
+  }
+
   getSpeedSetting(machineName: string): number | undefined {
     return this.speedSettings[machineName]
   }
 
-  /**
-   * 设置机器速度
-   */
   setSpeedSetting(machineName: string, speed: number): void {
     this.speedSettings[machineName] = speed
-    if (typeof window !== 'undefined') {
-      window.settings_time[machineName] = speed
-      if (typeof window.saveSettingTime === 'function') {
-        window.saveSettingTime()
-      }
-    }
+    this.syncSpeedToWindow(machineName)
+    this.saveSpeedToStorage()
   }
 
-  /**
-   * 获取所有速度设置
-   */
   getAllSpeedSettings(): ISpeedSettings {
     return { ...this.speedSettings }
   }
 
-  /**
-   * 获取增产剂设置（配方索引）
-   */
+  getSpeedSettings(): ISpeedSettings {
+    return this.speedSettings
+  }
+
   getProductivitySetting(itemName: string): number | undefined {
     return this.productivitySettings[itemName]
   }
 
-  /**
-   * 设置增产剂配置
-   */
   setProductivitySetting(itemName: string, recipeIndex: number): void {
     this.productivitySettings[itemName] = recipeIndex
-    if (typeof window !== 'undefined') {
-      window.settings_pf[itemName] = recipeIndex
-      if (typeof window.saveSettingPf === 'function') {
-        window.saveSettingPf()
-      }
-    }
+    this.syncPfToWindow(itemName)
+    this.savePfToStorage()
   }
 
-  /**
-   * 获取所有增产剂设置
-   */
   getAllProductivitySettings(): IProductivitySettings {
     return { ...this.productivitySettings }
   }
 
-  /**
-   * 重置所有设置
-   */
+  getProductivitySettings(): IProductivitySettings {
+    return this.productivitySettings
+  }
+
+  getDefaultAccType(): string {
+    if (typeof window !== 'undefined') {
+      return (window as unknown as { defaultAccType?: string }).defaultAccType || '增产剂Mk.Ⅰ'
+    }
+    return '增产剂Mk.Ⅰ'
+  }
+
+  getDefaultAccValue(): string {
+    if (typeof window !== 'undefined') {
+      return (window as unknown as { defaultAccValue?: string }).defaultAccValue || '无'
+    }
+    return '无'
+  }
+
+  getSelfAcc(): boolean {
+    if (typeof window !== 'undefined') {
+      const win = window as unknown as { selfAcc?: { checked?: boolean } }
+      return win.selfAcc?.checked ?? false
+    }
+    return false
+  }
+
+  getIsAddSelfAccP(): boolean {
+    if (typeof window !== 'undefined') {
+      const win = window as unknown as { isAddSelfAccP?: { checked?: boolean } }
+      return win.isAddSelfAccP?.checked ?? false
+    }
+    return false
+  }
+
   reset(): void {
     this.recipeSettings = {}
     this.speedSettings = {}
@@ -262,24 +250,25 @@ export class SettingsAdapter {
       window.settings_time = {}
       window.settings_pf = {}
     }
+
+    this.saveRecipeToStorage()
+    this.saveSpeedToStorage()
+    this.savePfToStorage()
   }
 
-  /**
-   * 从 localStorage 加载设置 (独立于遗留代码)
-   */
   loadFromStorage(): void {
     try {
-      const recipeJson = localStorage.getItem(STORAGE_KEYS.MACHINE_SETTINGS + VERSION)
+      const recipeJson = localStorage.getItem(RECIPE_SETTINGS_KEY)
       if (recipeJson) {
         this.recipeSettings = JSON.parse(recipeJson)
       }
 
-      const speedJson = localStorage.getItem(STORAGE_KEYS.SPEED_SETTINGS + VERSION)
+      const speedJson = localStorage.getItem(SPEED_SETTINGS_KEY)
       if (speedJson) {
         this.speedSettings = JSON.parse(speedJson)
       }
 
-      const pfJson = localStorage.getItem(STORAGE_KEYS.PF_SETTINGS + VERSION)
+      const pfJson = localStorage.getItem(PF_SETTINGS_KEY)
       if (pfJson) {
         this.productivitySettings = JSON.parse(pfJson)
       }
@@ -291,23 +280,25 @@ export class SettingsAdapter {
   }
 
   saveToStorage(): void {
-    try {
-      localStorage.setItem(
-        STORAGE_KEYS.MACHINE_SETTINGS + VERSION,
-        JSON.stringify(this.recipeSettings)
-      )
-      localStorage.setItem(
-        STORAGE_KEYS.SPEED_SETTINGS + VERSION,
-        JSON.stringify(this.speedSettings)
-      )
-      localStorage.setItem(
-        STORAGE_KEYS.PF_SETTINGS + VERSION,
-        JSON.stringify(this.productivitySettings)
-      )
-      logger.log('[SettingsAdapter] Saved to storage')
-    } catch (e) {
-      logger.warn('[SettingsAdapter] Failed to save to storage:', e)
-    }
+    this.saveRecipeToStorage()
+    this.saveSpeedToStorage()
+    this.savePfToStorage()
+    logger.log('[SettingsAdapter] Saved to storage')
+  }
+}
+
+declare global {
+  interface Window {
+    settings: IRecipeSettings
+    settings_time: ISpeedSettings
+    settings_pf: IProductivitySettings
+    settingsLocal?: IRecipeSettings
+    saveSetting?: () => void
+    saveSettingTime?: () => void
+    saveSettingPf?: () => void
+    loadSetting?: () => void
+    loadSettingTime?: () => void
+    loadSettingPf?: () => void
   }
 }
 

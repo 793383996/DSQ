@@ -38,15 +38,6 @@ import {
   doMergeMul,
   mergeMul
 } from './calculator.js'
-import {
-  game_data,
-  isDataLoaded,
-  icons,
-  loadData,
-  f_initIcons,
-  getIconImg,
-  getIconShow
-} from './iconLoader.js'
 import { energyData, spaceData, icons_define, itemNameList } from './configData.js'
 import { settingsLocal, getMachine, getAccType, getAccValue, getValue } from './settingsHelper.js'
 import data from '../data/recipes.json'
@@ -58,6 +49,47 @@ var defaultAccType = '增产剂Mk.Ⅰ'
 var defaultAccValue = '无'
 window.defaultAccType = defaultAccType
 window.defaultAccValue = defaultAccValue
+
+var icons = {}
+function getIconImg(name) {
+  if (name == '研究站') name = '矩阵研究站'
+  if (name == '电弧熔炉') name = '电弧熔炉'
+  if (name == '位面熔炉') name = '位面熔炉'
+  if (name == '原油精炼机') name = '原油精炼厂'
+  if (name == '粒子对撞机') name = '微型粒子对撞机'
+  if (name == '射线接收塔') name = '射线接收站'
+  if (name == '轨道采集器(气态)') name = '轨道采集器'
+  if (name == '轨道采集器(巨冰)') name = '轨道采集器'
+
+  var winIcons = window.icons || icons
+  if (winIcons && winIcons[name]) {
+    return (
+      "<img class='sicon' src='data:image/png;base64," +
+      winIcons[name] +
+      "' title='" +
+      name +
+      "' />"
+    )
+  }
+  return name
+}
+
+function getIconShow(name, number) {
+  var title = []
+  title.push(getIconImg(name))
+  title.push('<sub>' + number + '</sub>')
+  return title.join('')
+}
+
+function f_initIcons() {
+  var winIcons = window.icons || {}
+  Object.keys(icons).forEach(function (key) {
+    delete icons[key]
+  })
+  Object.keys(winIcons).forEach(function (key) {
+    icons[key] = winIcons[key]
+  })
+}
 
 var version = '20240202'
 
@@ -190,19 +222,6 @@ async function ensureDataInitialized() {
   if (dataInitPromise) return dataInitPromise
 
   dataInitPromise = (async function () {
-    await new Promise(function (resolve) {
-      var checkInterval = setInterval(function () {
-        if (window.isDataLoaded) {
-          clearInterval(checkInterval)
-          resolve(true)
-        }
-      }, 50)
-      setTimeout(function () {
-        clearInterval(checkInterval)
-        resolve(true)
-      }, 5000)
-    })()
-
     f_init()
     isDataInitialized = true
 
@@ -213,6 +232,23 @@ async function ensureDataInitialized() {
   })()
 
   return dataInitPromise
+}
+
+function loadData() {
+  if (window.isDataLoaded) {
+    f_initIcons()
+    return
+  }
+
+  var handleGameDataLoaded = function () {
+    f_initIcons()
+    window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
+  }
+  window.addEventListener('gameDataLoaded', handleGameDataLoaded)
+
+  setTimeout(function () {
+    window.removeEventListener('gameDataLoaded', handleGameDataLoaded)
+  }, 35000)
 }
 
 loadData()
@@ -1197,8 +1233,6 @@ export {
   xqs,
   singleMake,
   xqss,
-  game_data,
-  isDataLoaded,
   getGroup,
   getPfs,
   getPfsByQ,

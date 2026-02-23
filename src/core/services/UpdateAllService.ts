@@ -43,6 +43,8 @@ import {
   type ICalculationState,
   type ILoadNumberOptions
 } from './RecipeCalculator'
+import { recipeDataService } from './RecipeDataService'
+import { ENERGY_DATA, SPACE_DATA } from '../config/machineConfig'
 import type { IRawRecipe } from '../types/settings'
 import type { IDemand } from '../types/recipe'
 import { logger } from '../../utils/logger'
@@ -128,52 +130,6 @@ export interface IUpdateAllOptions {
   isAddSelfAccP?: boolean
 }
 
-const ENERGY_DATA: Record<string, number> = {
-  电弧熔炉: 360,
-  位面熔炉: 720,
-  负熵熔炉: 1440,
-  '制作台Mk.Ⅰ': 270,
-  '制作台Mk.Ⅱ': 360,
-  '制作台Mk.Ⅲ': 540,
-  重组式制造台: 1080,
-  化工厂: 540,
-  量子化工厂: 1080,
-  原油精炼厂: 1440,
-  粒子对撞机: 8640,
-  矩阵研究站: 360,
-  自演化研究站: 1080,
-  射线接收塔: 3600,
-  分馏塔: 360,
-  采矿机: 252,
-  大型采矿机: 2940,
-  原油萃取站: 1080,
-  抽水机: 180,
-  轨道采集器: 0,
-  能量枢纽: 0
-}
-
-const SPACE_DATA: Record<string, number> = {
-  电弧熔炉: 9,
-  位面熔炉: 9,
-  负熵熔炉: 9,
-  '制作台Mk.Ⅰ': 9,
-  '制作台Mk.Ⅱ': 9,
-  '制作台Mk.Ⅲ': 9,
-  重组式制造台: 9,
-  化工厂: 12,
-  量子化工厂: 12,
-  原油精炼厂: 18,
-  粒子对撞机: 16,
-  矩阵研究站: 9,
-  自演化研究站: 9,
-  射线接收塔: 4,
-  分馏塔: 4,
-  采矿机: 24,
-  大型采矿机: 160,
-  原油萃取站: 16,
-  抽水机: 4
-}
-
 export class UpdateAllService {
   private calculator: RecipeCalculator | null = null
   private recipes: IRawRecipe[] = []
@@ -209,28 +165,10 @@ export class UpdateAllService {
 
     this.initPromise = (async () => {
       try {
-        if (typeof window === 'undefined') {
-          throw new Error('Window not available')
-        }
+        await recipeDataService.initialize()
 
-        // P1-1修复：等待 legacy 数据加载完成，并验证索引有效性
-        const maxWait = 10000
-        const startTime = Date.now()
-        while (
-          (!window.data ||
-            !window.recipeIndexByProduct ||
-            Object.keys(window.recipeIndexByProduct).length === 0) &&
-          Date.now() - startTime < maxWait
-        ) {
-          await new Promise(resolve => setTimeout(resolve, 50))
-        }
-
-        if (!window.data || !window.recipeIndexByProduct) {
-          throw new Error('Recipe data not loaded after timeout')
-        }
-
-        this.recipes = window.data
-        this.recipeIndexByProduct = window.recipeIndexByProduct
+        this.recipes = recipeDataService.getRecipes()
+        this.recipeIndexByProduct = recipeDataService.getIndexByProduct()
         this.calculator = new RecipeCalculator(this.recipes, this.recipeIndexByProduct)
         this.isInitialized = true
 
@@ -525,35 +463,31 @@ export class UpdateAllService {
 
     // P14-1修复：支持manualGzSpeed手动输入临界光子速度
     // 老代码：if (manualGzSpeed) { fixedGzSpeed = parseFloat($("#gzSpeed").val()); }
-    const manualGzSpeed = settingsTime['临界光子_手动速度']
+    // P8-修复：键名对齐，使用'射线接收塔'而非'临界光子_手动速度'
+    // bridge.ts中legacyUpdateSpeedSettings将criticalPhotonSpeed写入'射线接收塔'
+    const gzSpeedSetting = settingsTime['射线接收塔']
     let fixedGzSpeed: number
-    if (manualGzSpeed !== undefined && manualGzSpeed > 0) {
+    if (gzSpeedSetting !== undefined && gzSpeedSetting > 0) {
       // P14-1修复：用户手动输入临界光子每分钟产量
-      fixedGzSpeed = manualGzSpeed
+      fixedGzSpeed = gzSpeedSetting
     } else {
-      const gzSpeedSetting = settingsTime['射线接收塔']
-      if (gzSpeedSetting !== undefined) {
-        // 用户手动设置了射线接收塔速度
-        fixedGzSpeed = gzSpeedSetting
-      } else {
-        // 根据增产剂设置计算
-        if (accValue === '加速') {
-          switch (accType) {
-            case '增产剂Mk.Ⅰ':
-              fixedGzSpeed = 15
-              break
-            case '增产剂Mk.Ⅱ':
-              fixedGzSpeed = 18
-              break
-            case '增产剂Mk.Ⅲ':
-              fixedGzSpeed = 24
-              break
-            default:
-              fixedGzSpeed = 12
-          }
-        } else {
-          fixedGzSpeed = 12
+      // 根据增产剂设置计算
+      if (accValue === '加速') {
+        switch (accType) {
+          case '增产剂Mk.Ⅰ':
+            fixedGzSpeed = 15
+            break
+          case '增产剂Mk.Ⅱ':
+            fixedGzSpeed = 18
+            break
+          case '增产剂Mk.Ⅲ':
+            fixedGzSpeed = 24
+            break
+          default:
+            fixedGzSpeed = 12
         }
+      } else {
+        fixedGzSpeed = 12
       }
     }
 

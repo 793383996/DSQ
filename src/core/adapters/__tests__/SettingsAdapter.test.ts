@@ -8,6 +8,8 @@ describe('SettingsAdapter', () => {
   beforeEach(() => {
     adapter = new SettingsAdapter()
 
+    localStorage.clear()
+
     const mockWindow = {
       settings: {},
       settings_time: {},
@@ -23,6 +25,7 @@ describe('SettingsAdapter', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    localStorage.clear()
   })
 
   describe('init', () => {
@@ -34,10 +37,13 @@ describe('SettingsAdapter', () => {
       expect(window.settings_pf).toEqual({})
     })
 
-    it('should use existing window settings if available', () => {
-      window.settings = { 'recipe-1': { m: 'arcSmelter' } }
-      window.settings_time = { arcSmelter: 1.0 }
-      window.settings_pf = { ironOre: 0 }
+    it('should load settings from localStorage', () => {
+      localStorage.setItem(
+        'machine_settings20240202',
+        JSON.stringify({ 'recipe-1': { m: 'arcSmelter' } })
+      )
+      localStorage.setItem('machine_settings_time20240202', JSON.stringify({ arcSmelter: 1.0 }))
+      localStorage.setItem('machine_settings_pf20240202', JSON.stringify({ ironOre: 0 }))
 
       adapter.init()
 
@@ -57,7 +63,9 @@ describe('SettingsAdapter', () => {
 
       expect(adapter.getRecipeMachine('recipe-1')).toBe('arcSmelter')
       expect(window.settings['recipe-1']?.m).toBe('arcSmelter')
-      expect(window.saveSetting).toHaveBeenCalled()
+
+      const stored = JSON.parse(localStorage.getItem('machine_settings20240202') || '{}')
+      expect(stored['recipe-1']?.m).toBe('arcSmelter')
     })
 
     it('should get and set recipe accType', () => {
@@ -101,7 +109,9 @@ describe('SettingsAdapter', () => {
 
       expect(adapter.getSpeedSetting('arcSmelter')).toBe(1.5)
       expect(window.settings_time['arcSmelter']).toBe(1.5)
-      expect(window.saveSettingTime).toHaveBeenCalled()
+
+      const stored = JSON.parse(localStorage.getItem('machine_settings_time20240202') || '{}')
+      expect(stored['arcSmelter']).toBe(1.5)
     })
 
     it('should return undefined for non-existent speed setting', () => {
@@ -130,7 +140,9 @@ describe('SettingsAdapter', () => {
 
       expect(adapter.getProductivitySetting('ironOre')).toBe(2)
       expect(window.settings_pf['ironOre']).toBe(2)
-      expect(window.saveSettingPf).toHaveBeenCalled()
+
+      const stored = JSON.parse(localStorage.getItem('machine_settings_pf20240202') || '{}')
+      expect(stored['ironOre']).toBe(2)
     })
 
     it('should return undefined for non-existent productivity setting', () => {

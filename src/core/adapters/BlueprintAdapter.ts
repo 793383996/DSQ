@@ -5,7 +5,7 @@
  * - 将遗留格式的配方数据转换为新服务格式
  * - 将遗留配置转换为新服务配置
  * - 调用BlueprintService生成蓝图
- * - 验证buildingMap和itemMap数据有效性
+ * - 独立加载buildingMap和itemMap数据（不依赖window对象）
  *
  * 主要方法：
  * - generateBlueprintWithNewService(legacyRecipe, legacyConfig): 生成蓝图
@@ -15,16 +15,14 @@
  * - validateAndGetData(): 验证并获取数据
  *
  * 上游调用：
- * - core/bridge.ts: legacyGenerateBlueprint()
+ * - core/bridge.ts: generateBlueprintWithAdapter()
  *
  * 下游依赖：
  * - core/blueprint/services/BlueprintService.ts: 蓝图生成服务
  * - core/utils/BlueprintEncoder.ts: 蓝图编码
+ * - core/data/buildingMap.json: 建筑映射数据
+ * - core/data/itemMap.json: 物品映射数据
  * - utils/logger.ts: 日志记录
- *
- * 数据验证：
- * - 检查window.buildingMap和window.itemMap是否存在
- * - 验证必需的建筑类型是否存在
  */
 import { encodeBlueprint } from '../utils/BlueprintEncoder'
 import {
@@ -35,6 +33,8 @@ import {
 import type { IBlueprintData } from '../types/blueprint'
 import type { ISubRecipe } from '../blueprint/types/buildingGenerator'
 import { logger } from '../../utils/logger'
+import buildingMapData from '../data/buildingMap.json'
+import itemMapData from '../data/itemMap.json'
 
 export interface ILegacyRecipe {
   proliferator?: string
@@ -125,56 +125,38 @@ function validateItemMapEntry(entry: unknown): entry is IItemMapEntry {
 
 function validateAndGetData(): IDataValidationResult {
   const errors: string[] = []
-  const win = window as any
-
   const buildingMap: Record<string, IBuildingMapEntry> = {}
   const itemMap: Record<string, IItemMapEntry> = {}
 
-  if (!win.buildingMap) {
-    errors.push('window.buildingMap is undefined - legacy data not injected')
-    logger.error('[BlueprintAdapter] window.buildingMap is undefined')
-  } else if (typeof win.buildingMap !== 'object') {
-    errors.push('window.buildingMap is not an object')
-    logger.error('[BlueprintAdapter] window.buildingMap is not an object:', typeof win.buildingMap)
-  } else {
-    const rawBuildingMap = win.buildingMap as Record<string, unknown>
-    let validCount = 0
-    for (const [key, value] of Object.entries(rawBuildingMap)) {
-      if (validateBuildingMapEntry(value, key)) {
-        buildingMap[key] = value
-        validCount++
-      }
+  const rawBuildingMap = buildingMapData as Record<string, unknown>
+  let validBuildingCount = 0
+  for (const [key, value] of Object.entries(rawBuildingMap)) {
+    if (validateBuildingMapEntry(value, key)) {
+      buildingMap[key] = value
+      validBuildingCount++
     }
-    if (validCount === 0) {
-      errors.push('window.buildingMap contains no valid entries')
-      logger.error('[BlueprintAdapter] buildingMap has no valid entries')
-    } else {
-      const missingRequired = REQUIRED_BUILDINGS.filter(b => !buildingMap[b])
-      if (missingRequired.length > 0) {
-        logger.warn(`[BlueprintAdapter] Missing required buildings: ${missingRequired.join(', ')}`)
-      }
+  }
+  if (validBuildingCount === 0) {
+    errors.push('buildingMap.json contains no valid entries')
+    logger.error('[BlueprintAdapter] buildingMap has no valid entries')
+  } else {
+    const missingRequired = REQUIRED_BUILDINGS.filter(b => !buildingMap[b])
+    if (missingRequired.length > 0) {
+      logger.warn(`[BlueprintAdapter] Missing required buildings: ${missingRequired.join(', ')}`)
     }
   }
 
-  if (!win.itemMap) {
-    errors.push('window.itemMap is undefined - legacy data not injected')
-    logger.error('[BlueprintAdapter] window.itemMap is undefined')
-  } else if (typeof win.itemMap !== 'object') {
-    errors.push('window.itemMap is not an object')
-    logger.error('[BlueprintAdapter] window.itemMap is not an object:', typeof win.itemMap)
-  } else {
-    const rawItemMap = win.itemMap as Record<string, unknown>
-    let validCount = 0
-    for (const [key, value] of Object.entries(rawItemMap)) {
-      if (validateItemMapEntry(value)) {
-        itemMap[key] = value
-        validCount++
-      }
+  const rawItemMap = itemMapData as Record<string, unknown>
+  let validItemCount = 0
+  for (const [key, value] of Object.entries(rawItemMap)) {
+    if (validateItemMapEntry(value)) {
+      itemMap[key] = value
+      validItemCount++
     }
-    if (validCount === 0) {
-      errors.push('window.itemMap contains no valid entries')
-      logger.error('[BlueprintAdapter] itemMap has no valid entries')
-    }
+  }
+  if (validItemCount === 0) {
+    errors.push('itemMap.json contains no valid entries')
+    logger.error('[BlueprintAdapter] itemMap has no valid entries')
   }
 
   return {
@@ -183,24 +165,6 @@ function validateAndGetData(): IDataValidationResult {
     itemMap,
     errors
   }
-}
-
-function getBuildingMap(): Record<string, IBuildingMapEntry> {
-  const win = window as any
-  if (!win.buildingMap) {
-    logger.warn('[BlueprintAdapter] getBuildingMap: window.buildingMap is undefined')
-    return {}
-  }
-  return win.buildingMap
-}
-
-function getItemMap(): Record<string, IItemMapEntry> {
-  const win = window as any
-  if (!win.itemMap) {
-    logger.warn('[BlueprintAdapter] getItemMap: window.itemMap is undefined')
-    return {}
-  }
-  return win.itemMap
 }
 
 export function convertLegacyRecipe(legacyRecipe: ILegacyRecipe): ISubRecipe[] {

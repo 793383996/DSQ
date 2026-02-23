@@ -6,6 +6,7 @@
  * - 避免阻塞主线程
  * - 支持大数据量计算
  * - 实现与legacy代码相同的计算逻辑
+ * - 支持增量数据同步 (P5-2优化)
  *
  * 主要方法：
  * - loadNumber(itemName, n): 递归计算物品需求
@@ -22,16 +23,25 @@
  * - workers/types.ts: Worker类型定义
  *
  * 消息类型：
- * - init: 初始化Worker
+ * - init: 初始化Worker数据
+ * - sync: 增量同步数据
  * - calculate: 执行计算
  * - result: 返回结果
  * - error: 返回错误
+ *
+ * 架构师注 (P5-2):
+ * - Worker 保持数据副本，避免重复传输
+ * - calculate 请求仅传输计算参数
+ * - 使用校验和检测数据变更
  */
 import type {
   IWorkerCalculateRequest,
   IWorkerCalculateResponse,
   IWorkerInitRequest,
-  IWorkerInitResponse
+  IWorkerInitResponse,
+  IWorkerSyncRequest,
+  IWorkerSyncResponse,
+  IWorkerDataChecksum
 } from './types'
 import type { IRawRecipe } from '../types/settings'
 
@@ -47,6 +57,8 @@ let defaultAccValue = '无'
 let selfAcc = false
 let isAddSelfAccP = false
 const maxDepth = 200
+
+let currentChecksum: IWorkerDataChecksum | null = null
 
 interface IInternalItem {
   name: string
@@ -594,16 +606,52 @@ function loadNumber(itemName: string, n: number): void {
   }
 }
 
+function computeChecksum(): IWorkerDataChecksum {
+  return {
+    recipeCount: recipes.length,
+    settingsKeyCount: Object.keys(settings).length,
+    settingsPfKeyCount: Object.keys(settingsPf).length,
+    settingsTimeKeyCount: Object.keys(settingsTime).length
+  }
+}
+
 function init(data: IWorkerInitRequest): IWorkerInitResponse {
   recipes = data.recipes as unknown as ILegacyRecipe[]
   settings = data.settings
   settingsPf = data.settingsPf
   settingsTime = data.settingsTime
   recipeIndexByProduct = data.recipeIndexByProduct
+  currentChecksum = computeChecksum()
 
   return {
     type: 'ready',
-    recipeCount: recipes.length
+    recipeCount: recipes.length,
+    checksum: currentChecksum
+  }
+}
+
+function sync(data: IWorkerSyncRequest): IWorkerSyncResponse {
+  if (data.recipes) {
+    recipes = data.recipes as unknown as ILegacyRecipe[]
+  }
+  if (data.settings) {
+    settings = data.settings
+  }
+  if (data.settingsPf) {
+    settingsPf = data.settingsPf
+  }
+  if (data.settingsTime) {
+    settingsTime = data.settingsTime
+  }
+  if (data.recipeIndexByProduct) {
+    recipeIndexByProduct = data.recipeIndexByProduct
+  }
+  currentChecksum = computeChecksum()
+
+  return {
+    type: 'synced',
+    success: true,
+    checksum: currentChecksum
   }
 }
 
@@ -615,17 +663,11 @@ function calculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
   ig_names = data.excludes || []
   loadNumberDepth = 0
 
-  recipes = data.recipes as unknown as ILegacyRecipe[]
-  settings = data.settings
-  settingsPf = data.settingsPf
-  settingsTime = data.settingsTime
-  recipeIndexByProduct = data.recipeIndexByProduct
   defaultAccType = data.defaultAccType
   defaultAccValue = data.defaultAccValue
   selfAcc = data.selfAcc ?? false
   isAddSelfAccP = data.isAddSelfAccP ?? false
 
-  // P6-4修复：初始化轨道采集器t值缓存
   orbitalCollectorTCache = new Map()
   if (data.orbitalCollectorTCache) {
     for (const [key, value] of Object.entries(data.orbitalCollectorTCache)) {
@@ -633,14 +675,10 @@ function calculate(data: IWorkerCalculateRequest): IWorkerCalculateResponse {
     }
   }
 
-  // P10-1修复：初始化临界光子缓存
   criticalPhotonTCache = data.criticalPhotonTCache ?? null
   criticalPhotonLensNCache = data.criticalPhotonLensNCache ?? null
 
   try {
-    // P0-3修复：doSpeed1逻辑已在主线程UpdateAllService中处理
-    // Worker版本通过settingsTime参数获取已计算的速度设置
-
     for (let i = 0; i < data.demands.length; i++) {
       const d = data.demands[i]
       loadNumber(d.name, d.num)
@@ -686,10 +724,13 @@ self.onmessage = function (e: MessageEvent) {
   if (data.type === 'init') {
     const response = init(data as IWorkerInitRequest)
     self.postMessage(response)
+  } else if (data.type === 'sync') {
+    const response = sync(data as IWorkerSyncRequest)
+    self.postMessage(response)
   } else if (data.type === 'calculate') {
     const response = calculate(data as IWorkerCalculateRequest)
     self.postMessage(response)
   }
 }
 
-export { init, calculate, loadNumber, find, addXH, addOut, findOut }
+export { init, sync, calculate, loadNumber, find, addXH, addOut, findOut }

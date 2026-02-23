@@ -34,6 +34,7 @@ export interface IResultItem {
   speed: string
   speedClass: string
   rowClass: string
+  machineName?: string
   m: IMachineOption[]
   pf: IProductivityOption[]
 }
@@ -50,6 +51,7 @@ export interface IResultItemOutput {
   speed: string
   speedClass: string
   rowClass: string
+  machineName?: string
   m: IMachineOption[]
   pf: IProductivityOption[]
 }

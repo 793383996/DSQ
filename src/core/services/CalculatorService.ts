@@ -26,22 +26,20 @@
  * - core/adapters/RecipeAdapter.ts: 配方适配器
  * - core/adapters/SettingsAdapter.ts: 设置适配器
  * - core/workers/CalculatorWorkerService.ts: Worker服务
- * - core/bridge.ts: 状态同步
  *
  * 架构师注：
  * - 核心算法保持不变，仅做外围包装
  * - update_all 函数视为黑盒，禁止修改内部递归逻辑
  * - 所有计算结果通过 CalculationContext 封装
  * - 输入输出格式与原 bridge.runCalculation 完全一致
+ * - 已移除对 window.data 的依赖，使用 RecipeDataService
  */
 import type { IDemand, ILegacyCalculationResult, ILegacyApp } from '../types/recipe'
-import type { IRawRecipe } from '../types/settings'
 import type { LegacyWindow } from '../types/legacy'
 import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { settingsAdapter } from '../adapters/SettingsAdapter'
 import { updateAllService } from './UpdateAllService'
-import { syncStateToLegacy, clearLegacyState } from '../bridge'
 import { logger } from '../../utils/logger'
 
 export interface CalculationOptions {
@@ -148,23 +146,8 @@ export class CalculatorService {
       snapshot = options.onStateSnapshot()
     }
 
-    clearLegacyState()
-
-    // P0-2修复：传递machineSettings确保legacy全局变量同步
-    syncStateToLegacy({
-      demandList: demands,
-      excludeList: options.excludes || [],
-      machineSettings: options.machineSettings
-    })
-
     if (!recipeAdapter.isLoaded()) {
-      const winRaw = window as unknown as Record<string, unknown>
-      if (winRaw.data && winRaw.recipeIndexByProduct) {
-        recipeAdapter.loadFromRawData(winRaw.data as IRawRecipe[])
-      } else {
-        logger.error('[CalculatorService] RecipeAdapter not initialized - bridge load failed')
-        throw new Error('配方数据未初始化，请刷新页面重试')
-      }
+      await recipeAdapter.initialize()
     }
 
     const excludes = options.excludes || []
@@ -172,7 +155,6 @@ export class CalculatorService {
     try {
       const settings = settingsAdapter.getAllRecipeSettings()
       const settingsTime = settingsAdapter.getAllSpeedSettings()
-      // P1-2修复：保持settingsPf原始类型(number)，RecipeCalculator.find已正确处理类型
       const settingsPf = settingsAdapter.getAllProductivitySettings()
       const win = window as unknown as LegacyWindow
 
@@ -268,14 +250,12 @@ export class CalculatorService {
     this.context.startTimer()
 
     if (!recipeAdapter.isLoaded()) {
-      logger.error('[CalculatorService] RecipeAdapter not initialized')
-      throw new Error('配方数据未初始化，请刷新页面重试')
+      await recipeAdapter.initialize()
     }
 
     try {
       const settings = settingsAdapter.getAllRecipeSettings()
       const settingsTime = settingsAdapter.getAllSpeedSettings()
-      // P1-2修复：保持settingsPf原始类型(number)，RecipeCalculator.find已正确处理类型
       const settingsPf = settingsAdapter.getAllProductivitySettings()
       const win = window as unknown as LegacyWindow
 
@@ -368,25 +348,6 @@ export class CalculatorService {
     }
 
     try {
-      // P1-1修复：Worker计算前同步状态到legacy全局变量
-      // P1-2修复：合并options和machineSettings
-      const ms = options.machineSettings || {}
-      syncStateToLegacy({
-        demandList: demands,
-        excludeList: excludes,
-        machineSettings: {
-          modeIn: ms.modeIn,
-          furnace: ms.furnace,
-          chemical: ms.chemical,
-          research: ms.research,
-          accType: ms.accType,
-          accValue: ms.accValue,
-          hideSource: ms.hideSource,
-          selfAcc: options.selfAcc ?? ms.selfAcc,
-          isAddSelfAccP: options.isAddSelfAccP ?? ms.isAddSelfAccP
-        }
-      })
-
       const { calculatorWorkerService } = await import('../workers/CalculatorWorkerService')
 
       if (!calculatorWorkerService.isAvailable()) {
