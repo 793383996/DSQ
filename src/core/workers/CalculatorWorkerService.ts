@@ -49,6 +49,7 @@ import type {
 import { logger } from '../../utils/logger'
 import { recipeDataService } from '../services/RecipeDataService'
 import { settingsAdapter } from '../adapters/SettingsAdapter'
+import { calculationCacheService } from '../services/CalculationCacheService'
 import { LRUCache, createHashKey } from '../utils/LRUCache'
 
 export interface IWorkerCalculateOptions {
@@ -402,6 +403,13 @@ export class CalculatorWorkerService {
       defaultAccType,
       defaultAccValue
     )
+
+    calculationCacheService.importFromWorker({
+      orbitalCollectorTCache,
+      criticalPhotonTCache: criticalPhotonCache.t,
+      criticalPhotonLensNCache: criticalPhotonCache.lensN,
+      timestamp: Date.now()
+    })
 
     const selfAcc = options.selfAcc ?? settingsAdapter.getSelfAcc()
     const isAddSelfAccP = options.isAddSelfAccP ?? settingsAdapter.getIsAddSelfAccP()

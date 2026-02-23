@@ -29,13 +29,17 @@ const mockRecipeIndexByProduct: Record<string, number[]> = {
 describe('UpdateAllService', () => {
   beforeEach(async () => {
     const { recipeDataService } = await import('../../services/RecipeDataService')
+    const { calculationCacheService } = await import('../../services/CalculationCacheService')
     recipeDataService.reset()
+    calculationCacheService.clearAll()
     recipeDataService.initializeWithData(mockRecipes, mockRecipeIndexByProduct)
   })
 
   afterEach(async () => {
     const { recipeDataService } = await import('../../services/RecipeDataService')
+    const { calculationCacheService } = await import('../../services/CalculationCacheService')
     recipeDataService.reset()
+    calculationCacheService.clearAll()
   })
 
   describe('ENERGY_DATA', () => {

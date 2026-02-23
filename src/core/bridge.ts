@@ -36,6 +36,7 @@ import {
 } from './adapters/BlueprintAdapter'
 import { recipeDataBuilder, IRecipeBuildResult } from './services/RecipeDataBuilder'
 import { iconService } from './services/IconService'
+import { initializationService, InitState } from './services/InitializationService'
 import { logger } from '../utils/logger'
 import type { LegacyWindow, ILegacyDataItem, ILegacyIcon, ILegacyGameData } from './types/legacy'
 import type { IRawRecipe } from './types/settings'
@@ -111,6 +112,8 @@ async function loadLegacyModules() {
   }
 
   legacyModulesPromise = (async () => {
+    initializationService.startInitialization()
+
     const [dataMod, pakoMod, calculatorMod, storageManagerMod, recipeHelperMod, settingsHelperMod] =
       await Promise.all([
         import('./legacy/data'),
@@ -124,17 +127,23 @@ async function loadLegacyModules() {
     pakoModule = pakoMod
     getWin().pako = pakoMod
 
+    initializationService.setRecipesLoaded()
+
     const win = getWin()
     ;(win as any).itemMap = itemMap
     ;(win as any).buildingMap = buildingMap
 
     await getRecipeIndexReadyPromise()
 
+    initializationService.setIndexBuilt()
+
     if (win.data && win.recipeIndexByProduct && !recipeAdapter.isLoaded()) {
       recipeAdapter.loadFromRawData(win.data as unknown as IRawRecipe[])
     }
 
     settingsAdapter.init()
+
+    initializationService.setLegacySynced()
 
     logger.log('[bridge] Legacy modules loaded successfully')
     return { data: dataModule, pako: pakoModule }

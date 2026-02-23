@@ -30,6 +30,7 @@
  */
 import type { IRawRecipe } from '../types/settings'
 import { logger } from '../../utils/logger'
+import { initializationService, InitState } from './InitializationService'
 
 export interface IRecipeIndex {
   byProduct: Record<string, number[]>
@@ -60,15 +61,34 @@ class RecipeDataService {
 
   private async doInitialize(): Promise<void> {
     try {
+      const currentState = initializationService.getState()
+      if (currentState === InitState.IDLE) {
+        initializationService.setSkipIconsLoading(true)
+        initializationService.startInitialization()
+      } else if (currentState !== InitState.LOADING_RECIPES) {
+        logger.log('[RecipeDataService] Initialization already in progress, skipping state update')
+      }
+
       const dataModule = await import('../data/recipes.json')
       this.recipes = dataModule.default || dataModule
 
+      if (initializationService.getState() === InitState.LOADING_RECIPES) {
+        initializationService.setRecipesLoaded()
+      }
+
       this.buildIndex()
+
+      if (initializationService.getState() === InitState.BUILDING_INDEX) {
+        initializationService.setIndexBuilt()
+      }
 
       this.initialized = true
       logger.log(`[RecipeDataService] Initialized with ${this.recipes.length} recipes`)
     } catch (error) {
       logger.error('[RecipeDataService] Failed to initialize:', error)
+      if (initializationService.getState() !== InitState.READY) {
+        initializationService.setError(error as Error)
+      }
       throw error
     }
   }
