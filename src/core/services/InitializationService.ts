@@ -6,6 +6,7 @@
  * - 提供初始化状态追踪
  * - 支持依赖等待和超时处理
  * - 提供初始化完成通知
+ * - 提供计算就绪检查（P1修复）
  *
  * 初始化状态：
  * - IDLE: 初始状态
@@ -29,6 +30,7 @@
  * - 使用状态机模式管理初始化流程
  * - 支持异步初始化和依赖等待
  * - 提供详细的初始化日志和错误处理
+ * - P1修复：新增 isCalculationReady() 方法，确保计算前数据已就绪
  */
 import { logger } from '../../utils/logger'
 
@@ -250,6 +252,71 @@ class InitializationService {
   getElapsedTime(): number {
     if (this.startTime === 0) return 0
     return Date.now() - this.startTime
+  }
+
+  isCalculationReady(): { ready: boolean; reason?: string } {
+    if (this.currentState !== InitState.READY) {
+      return { ready: false, reason: `Initialization not complete: ${this.currentState}` }
+    }
+
+    const win = window as any
+
+    if (typeof win.find !== 'function') {
+      return { ready: false, reason: 'Recipe find function not available' }
+    }
+
+    if (!Array.isArray(win.data) || win.data.length === 0) {
+      return { ready: false, reason: 'Recipe data not loaded' }
+    }
+
+    if (!win.recipeIndexByProduct || Object.keys(win.recipeIndexByProduct).length === 0) {
+      return { ready: false, reason: 'Recipe index not built' }
+    }
+
+    return { ready: true }
+  }
+
+  async waitForCalculationReady(
+    timeout: number = 30000
+  ): Promise<{ ready: boolean; reason?: string }> {
+    const checkReady = () => this.isCalculationReady()
+
+    const result = checkReady()
+    if (result.ready) {
+      return result
+    }
+
+    return new Promise(resolve => {
+      const timeoutId = setTimeout(() => {
+        resolve({ ready: false, reason: `Timeout waiting for calculation ready: ${result.reason}` })
+      }, timeout)
+
+      const checkInterval = setInterval(() => {
+        const currentResult = checkReady()
+        if (currentResult.ready) {
+          clearTimeout(timeoutId)
+          clearInterval(checkInterval)
+          resolve(currentResult)
+        }
+      }, 50)
+
+      const unsubscribe = this.subscribeState(progress => {
+        if (progress.state === InitState.READY) {
+          setTimeout(() => {
+            const finalResult = checkReady()
+            clearTimeout(timeoutId)
+            clearInterval(checkInterval)
+            unsubscribe()
+            resolve(finalResult)
+          }, 100)
+        } else if (progress.state === InitState.ERROR) {
+          clearTimeout(timeoutId)
+          clearInterval(checkInterval)
+          unsubscribe()
+          resolve({ ready: false, reason: 'Initialization failed with error' })
+        }
+      })
+    })
   }
 }
 

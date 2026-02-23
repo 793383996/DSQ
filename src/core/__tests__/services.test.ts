@@ -347,4 +347,68 @@ describe('InitializationService', () => {
       expect(initializationService.getError()).toBeNull()
     })
   })
+
+  // P1修复：新增 isCalculationReady 和 waitForCalculationReady 测试
+  describe('Calculation Ready Check', () => {
+    it('should return not ready when not initialized', () => {
+      const result = initializationService.isCalculationReady()
+      expect(result.ready).toBe(false)
+      expect(result.reason).toContain('Initialization not complete')
+    })
+
+    it('should return not ready when in READY state but data not loaded', () => {
+      initializationService.startInitialization()
+      initializationService.setRecipesLoaded()
+      initializationService.setIconsLoaded()
+      initializationService.setIndexBuilt()
+      initializationService.setLegacySynced()
+
+      const result = initializationService.isCalculationReady()
+      expect(result.ready).toBe(false)
+      expect(result.reason).toContain('Recipe find function not available')
+    })
+
+    it('should return ready when all data is loaded', async () => {
+      initializationService.startInitialization()
+      initializationService.setRecipesLoaded()
+      initializationService.setIconsLoaded()
+      initializationService.setIndexBuilt()
+      initializationService.setLegacySynced()
+      ;(window as any).find = vi.fn()
+      ;(window as any).data = [{ id: 1, name: 'test' }]
+      ;(window as any).recipeIndexByProduct = { 铁: [1] }
+
+      const result = initializationService.isCalculationReady()
+      expect(result.ready).toBe(true)
+      expect(result.reason).toBeUndefined()
+
+      delete (window as any).find
+      delete (window as any).data
+      delete (window as any).recipeIndexByProduct
+    })
+
+    it('should wait for calculation ready', async () => {
+      const result = await initializationService.waitForCalculationReady(100)
+      expect(result.ready).toBe(false)
+      expect(result.reason).toContain('Timeout')
+    })
+
+    it('should resolve immediately when already ready', async () => {
+      initializationService.startInitialization()
+      initializationService.setRecipesLoaded()
+      initializationService.setIconsLoaded()
+      initializationService.setIndexBuilt()
+      initializationService.setLegacySynced()
+      ;(window as any).find = vi.fn()
+      ;(window as any).data = [{ id: 1, name: 'test' }]
+      ;(window as any).recipeIndexByProduct = { 铁: [1] }
+
+      const result = await initializationService.waitForCalculationReady(100)
+      expect(result.ready).toBe(true)
+
+      delete (window as any).find
+      delete (window as any).data
+      delete (window as any).recipeIndexByProduct
+    })
+  })
 })

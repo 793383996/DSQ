@@ -83,6 +83,7 @@ import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
 import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
 import { iconService } from './core/services/IconService'
+import { initializationService } from './core/services/InitializationService'
 import type { LegacyWindow } from './core/types/legacy'
 import {
   calculatorService,
@@ -151,18 +152,17 @@ onMounted(async () => {
     }
   })
 
-  const loadResult = await waitForLegacyData(10000, 2)
-  isDataReady.value = loadResult.success
+  // P1修复：使用 initializationService 等待计算就绪
+  const readyResult = await initializationService.waitForCalculationReady(15000)
+  isDataReady.value = readyResult.ready
 
-  if (!loadResult.success) {
+  if (!readyResult.ready) {
     calculationError.value = t('errors.dataLoadFailed')
-    logger.error(`[App] Data load failed after ${loadResult.retries} retries`)
+    logger.error(`[App] Calculation not ready: ${readyResult.reason}`)
     return
   }
 
-  if (loadResult.retries > 0) {
-    logger.log(`[App] Data loaded after ${loadResult.retries} retries`)
-  }
+  logger.log('[App] Calculation ready, initializing store from legacy state')
 
   const win = getWin()
   if (win.xqs && win.xqs.length > 0) {
@@ -233,8 +233,11 @@ async function runCalculation(retryCount: number = 0) {
     return
   }
 
-  if (!isDataReady.value && !isLegacyDataLoaded()) {
+  // P1修复：使用 initializationService 进行严格的计算就绪检查
+  const readyCheck = initializationService.isCalculationReady()
+  if (!readyCheck.ready) {
     calculationError.value = t('errors.dataLoading')
+    logger.warn(`[App] Calculation blocked: ${readyCheck.reason}`)
     return
   }
 

@@ -116,6 +116,9 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   let syncEnabled = false
   let lastSyncVersion = 0
   let isSyncing = false
+  // P2修复：添加同步防抖，避免频繁同步
+  let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  const SYNC_DEBOUNCE_MS = 16 // 约60fps，减少延迟同时避免过度同步
 
   function enableSync() {
     syncEnabled = true
@@ -146,7 +149,23 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     }
   }
 
+  // P2修复：带防抖的同步方法，用于 watch 触发
+  function debouncedSyncToLegacy(): void {
+    if (syncDebounceTimer) {
+      clearTimeout(syncDebounceTimer)
+    }
+    syncDebounceTimer = setTimeout(() => {
+      syncDebounceTimer = null
+      doSyncToLegacy()
+    }, SYNC_DEBOUNCE_MS)
+  }
+
   function forceSyncToLegacy(): void {
+    // P2修复：强制同步时清除防抖定时器
+    if (syncDebounceTimer) {
+      clearTimeout(syncDebounceTimer)
+      syncDebounceTimer = null
+    }
     doSyncToLegacy(true)
   }
 
@@ -158,10 +177,11 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     }
   }
 
+  // P2修复：使用防抖同步，减少频繁触发
   watch(
     [demandList, excludeList, machineSettings],
     () => {
-      doSyncToLegacy()
+      debouncedSyncToLegacy()
     },
     { deep: true }
   )

@@ -351,45 +351,52 @@ export class UpdateAllService {
 
     calculationCacheService.clearOrbitalCollectorCache()
 
+    // L1修复：遍历所有配方，为轨道采集器配方设置正确的t值缓存
+    // 缓存键格式：`${recipeId}-${productName}`
+    // 注意：同一个配方可能有多个产物，需要为每个产物都设置缓存
     for (const recipe of this.recipes) {
-      if (
-        recipe.s &&
-        (recipe.s[0]?.name === '氢' ||
-          recipe.s[0]?.name === '重氢' ||
-          recipe.s[0]?.name === '可燃冰')
-      ) {
-        if (recipe.m && Array.isArray(recipe.m)) {
-          for (let i = 0; i < recipe.m.length; i++) {
-            const cacheKey = `${recipe.id}-${recipe.s[0].name}`
-            if (recipe.m[i].name === '轨道采集器(气态)') {
-              if (recipe.s[0].name === '氢') {
-                calculationCacheService.setOrbitalCollectorT(
-                  recipe.id,
-                  recipe.s[0].name,
-                  1 / (getSum(speed1_1, speed1_2, 8, 8) / 60)
-                )
-              } else if (recipe.s[0].name === '重氢') {
-                calculationCacheService.setOrbitalCollectorT(
-                  recipe.id,
-                  recipe.s[0].name,
-                  1 / (getSum(speed1_2, speed1_1, 8, 8) / 60)
-                )
-              }
+      if (!recipe.s || !Array.isArray(recipe.m)) continue
+
+      // 检查是否是轨道采集器配方（产物为氢、重氢或可燃冰）
+      const productNames = ['氢', '重氢', '可燃冰']
+      const hasOrbitalProduct = recipe.s.some(s => productNames.includes(s.name))
+      if (!hasOrbitalProduct) continue
+
+      for (let i = 0; i < recipe.m.length; i++) {
+        const machineName = recipe.m[i].name
+
+        // 为每个产物设置缓存
+        for (const output of recipe.s) {
+          if (!productNames.includes(output.name)) continue
+
+          if (machineName === '轨道采集器(气态)') {
+            if (output.name === '氢') {
+              calculationCacheService.setOrbitalCollectorT(
+                recipe.id,
+                output.name,
+                1 / (getSum(speed1_1, speed1_2, 8, 8) / 60)
+              )
+            } else if (output.name === '重氢') {
+              calculationCacheService.setOrbitalCollectorT(
+                recipe.id,
+                output.name,
+                1 / (getSum(speed1_2, speed1_1, 8, 8) / 60)
+              )
             }
-            if (recipe.m[i].name === '轨道采集器(巨冰)') {
-              if (recipe.s[0].name === '氢') {
-                calculationCacheService.setOrbitalCollectorT(
-                  recipe.id,
-                  recipe.s[0].name,
-                  1 / (getSum(speed1_4, speed1_3, 8, 4.8) / 60)
-                )
-              } else if (recipe.s[0].name === '可燃冰') {
-                calculationCacheService.setOrbitalCollectorT(
-                  recipe.id,
-                  recipe.s[0].name,
-                  1 / (getSum(speed1_3, speed1_4, 4.8, 8) / 60)
-                )
-              }
+          }
+          if (machineName === '轨道采集器(巨冰)') {
+            if (output.name === '氢') {
+              calculationCacheService.setOrbitalCollectorT(
+                recipe.id,
+                output.name,
+                1 / (getSum(speed1_4, speed1_3, 8, 4.8) / 60)
+              )
+            } else if (output.name === '可燃冰') {
+              calculationCacheService.setOrbitalCollectorT(
+                recipe.id,
+                output.name,
+                1 / (getSum(speed1_3, speed1_4, 4.8, 8) / 60)
+              )
             }
           }
         }

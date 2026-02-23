@@ -143,6 +143,18 @@ async function loadLegacyModules() {
 
     settingsAdapter.init()
 
+    // T2修复：初始化完成后主动同步默认设置到 legacy 全局变量
+    // 确保后续计算时 defaultAccType 和 defaultAccValue 已正确设置
+    if (!win.defaultAccType) {
+      win.defaultAccType = '增产剂Mk.Ⅰ'
+    }
+    if (!win.defaultAccValue) {
+      win.defaultAccValue = '无'
+    }
+    logger.log(
+      `[bridge] Default accelerator settings synced: ${win.defaultAccType}/${win.defaultAccValue}`
+    )
+
     initializationService.setLegacySynced()
 
     logger.log('[bridge] Legacy modules loaded successfully')

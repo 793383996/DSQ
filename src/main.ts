@@ -158,37 +158,44 @@ window.addEventListener('error', handleGlobalError)
 app.component('BlueprintGenerator', BlueprintGenerator)
 
 // P0-3修复：legacy模块必须在mount之前加载完成，确保update_all等函数已挂载
-// 添加重试机制和更详细的错误处理
+// T1修复：增强重试机制，提供更详细的错误信息和用户反馈
 const MAX_INIT_RETRIES = 3
 const INIT_RETRY_DELAY_MS = 1000
+const LEGACY_LOAD_TIMEOUT_MS = 20000
 
 async function initializeApp(retryCount: number = 0): Promise<void> {
   try {
     const loadPromise = loadLegacyModules()
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Legacy modules load timeout')), 15000)
+      setTimeout(
+        () => reject(new Error(`Legacy modules load timeout after ${LEGACY_LOAD_TIMEOUT_MS}ms`)),
+        LEGACY_LOAD_TIMEOUT_MS
+      )
     })
 
     await Promise.race([loadPromise, timeoutPromise])
     logger.log('[main] Legacy modules loaded successfully')
   } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
     logger.error(
-      `Failed to load legacy modules (attempt ${retryCount + 1}/${MAX_INIT_RETRIES}):`,
-      e
+      `Failed to load legacy modules (attempt ${retryCount + 1}/${MAX_INIT_RETRIES}): ${errorMessage}`
     )
 
     if (retryCount < MAX_INIT_RETRIES - 1) {
-      await new Promise(resolve => setTimeout(resolve, INIT_RETRY_DELAY_MS))
+      const delay = INIT_RETRY_DELAY_MS * Math.pow(2, retryCount)
+      logger.log(`[main] Retrying in ${delay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
       return initializeApp(retryCount + 1)
     }
 
     const appEl = document.getElementById('app')
     if (appEl) {
       appEl.innerHTML = `
-        <div style="padding: 40px; text-align: center; color: #e74c3c;">
+        <div style="padding: 40px; text-align: center; color: #e74c3c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
           <h2>应用初始化失败</h2>
-          <p>请刷新页面重试，或检查网络连接</p>
-          <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">
+          <p style="color: #666; margin: 16px 0;">错误信息：${errorMessage}</p>
+          <p style="color: #666;">请刷新页面重试，或检查网络连接</p>
+          <button onclick="location.reload()" style="margin-top: 20px; padding: 12px 24px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 4px; font-size: 16px;">
             刷新页面
           </button>
         </div>
