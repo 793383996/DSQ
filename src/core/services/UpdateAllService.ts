@@ -77,6 +77,7 @@ export interface IMachineOptionItem {
   href: string
   name: string
   title: string
+  titleText?: string
   showName: string
 }
 
@@ -493,7 +494,8 @@ export class UpdateAllService {
   ): IMachineInfo {
     const recipeSettings = settings[recipe.id?.toString() || '']
     const mArray = Array.isArray(recipe.m) ? recipe.m : []
-    const machineName = recipeSettings?.m || mArray[0]?.name || recipe.mName || ''
+    const machineNameRaw = recipeSettings?.m || mArray[0]?.name || recipe.mName || ''
+    const machineName = typeof machineNameRaw === 'string' ? machineNameRaw : String(machineNameRaw)
     const machine =
       mArray.find((m: { name: string; speed: number }) => m.name === machineName) || mArray[0]
 
@@ -667,6 +669,14 @@ export class UpdateAllService {
       const pfRecipes = this.calculator!.getPfs(xh.name)
       for (const pfRecipe of pfRecipes) {
         const isSelected = recipe.id === pfRecipe.id
+        const pfTitle = this.getPfTitle(pfRecipe, isSelected ? machineInfo : null)
+        const titleText =
+          typeof pfTitle === 'string'
+            ? pfTitle
+                .replace(/<[^>]*>/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+            : ''
         item.pf.push({
           class: isSelected ? 'pf selected' : 'pf',
           itemName: xh.name,
@@ -674,17 +684,61 @@ export class UpdateAllService {
             ? 'javascript:void(0)'
             : `javascript:selectPf("${xh.name}","${pfRecipe.id}")`,
           name: pfRecipe.name || '',
-          title: this.getPfTitle(pfRecipe, isSelected ? machineInfo : null),
+          title: pfTitle,
+          titleText: titleText,
           showName: pfRecipe.name || ''
         })
       }
 
       // P7-1修复：填充m数组（可选设备列表）
       const mArray = Array.isArray(recipe.m) ? recipe.m : []
-      for (const m of mArray) {
-        const isSelected = machineInfo.name === m.name
-        let title = `设备速度:${(m.speed || 1).toFixed(this.pointLength)}`
-        const showName = (m.name || '').replace('制作台', '')
+
+      for (const mItem of mArray) {
+        let mName = ''
+        let mSpeed = 1
+
+        const mItemAny = mItem as unknown as Record<string, unknown>
+
+        const extractMachineName = (value: unknown): string => {
+          if (typeof value === 'string') return value
+          if (Array.isArray(value) && value.length > 0) {
+            return extractMachineName(value[0])
+          }
+          if (value && typeof value === 'object') {
+            const obj = value as Record<string, unknown>
+            if (obj.name) return extractMachineName(obj.name)
+          }
+          return String(value || '')
+        }
+
+        if (typeof mItem === 'object' && mItem !== null) {
+          const nameVal = mItemAny.name
+          mName = extractMachineName(nameVal)
+
+          if (typeof mItemAny.speed === 'number') {
+            mSpeed = mItemAny.speed
+          }
+        } else {
+          mName = String(mItem || '')
+        }
+
+        if (!mName || mName === '[object Object]' || mName === '[object Array]') {
+          const fallbackName = recipe.mName || machineInfo?.name || xh.name
+          mName = typeof fallbackName === 'string' ? fallbackName : String(fallbackName || '')
+        }
+
+        const isSelected = machineInfo.name === mName
+        let title = `设备速度:${mSpeed.toFixed(this.pointLength)}`
+        let showName = ''
+        if (typeof mName === 'string') {
+          showName = mName.replace('制作台', '')
+        } else if (mName && typeof mName === 'object') {
+          const mNameObj = mName as Record<string, unknown>
+          const nameStr = String(mNameObj.name || '')
+          showName = nameStr.replace('制作台', '')
+        } else {
+          showName = String(mName || '')
+        }
         if (showName === '采矿机') {
           title += ' 采矿机按6个矿脉计算(因所限传送带速度最高30)'
         }
@@ -699,8 +753,8 @@ export class UpdateAllService {
           itemName: xh.name,
           href: isSelected
             ? 'javascript:void(0)'
-            : `javascript:selectM("${recipe.id}","${m.name}")`,
-          name: m.name || '',
+            : `javascript:selectM("${recipe.id}","${String(mName)}")`,
+          name: typeof mName === 'string' ? mName : String(mName || ''),
           title,
           showName
         })
@@ -720,7 +774,7 @@ export class UpdateAllService {
             : `javascript:selectAccType("${recipe.id}","${accT}")`,
           name: accT,
           title: accT,
-          showName: accT.replace('增产剂', '')
+          showName: typeof accT === 'string' ? accT.replace('增产剂', '') : String(accT)
         })
       }
 
@@ -889,29 +943,30 @@ export class UpdateAllService {
   private getPfTitle(recipe: IRawRecipe, machineInfo: IMachineInfo | null): string {
     const parts: string[] = []
 
-    // 原料
-    if (recipe.q) {
+    const getIconShow = (window as any).getIconShow || ((name: string, n: number) => `${name}×${n}`)
+    const getIconImg = (window as any).getIconImg || ((name: string) => name)
+
+    if (recipe.q && recipe.q.length > 0) {
       for (const q of recipe.q) {
-        parts.push(`${q.name}×${q.n || 1}`)
+        const qName = typeof q === 'object' ? q.name : q
+        const qN = typeof q === 'object' ? q.n || 1 : 1
+        parts.push(getIconShow(qName, qN))
       }
     }
 
     if (recipe.q && recipe.q.length > 0) {
-      parts.push('→')
+      parts.push('<img class="to" src="./img/to.png" />')
     }
 
-    // 产出
-    if (recipe.s) {
+    if (recipe.s && recipe.s.length > 0) {
       for (const s of recipe.s) {
-        parts.push(`${s.name}×${s.n || 1}`)
+        const sName = typeof s === 'object' ? s.name : s
+        const sN = typeof s === 'object' ? s.n || 1 : 1
+        parts.push(getIconShow(sName, sN))
       }
     }
 
     parts.push(`(${(recipe.t || 1).toFixed(1)}s)`)
-
-    if (machineInfo) {
-      parts.push(`[${machineInfo.name}]`)
-    }
 
     return parts.join(' ')
   }
