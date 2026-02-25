@@ -137,6 +137,13 @@ export const useCalculationStore = defineStore('calculation', () => {
     logger.debug(`[CalculationStore] State force reset: ${previousState} -> IDLE`)
   }
 
+  function resetStateOnly(): void {
+    const previousState = state.value
+    state.value = CalcState.IDLE
+    error.value = null
+    logger.debug(`[CalculationStore] State reset only: ${previousState} -> IDLE`)
+  }
+
   function setResultItems(items: ResultItem[]): void {
     resultItems.value = items
   }
@@ -164,6 +171,10 @@ export const useCalculationStore = defineStore('calculation', () => {
     return calculationVersion.value
   }
 
+  function incrementVersion(): void {
+    calculationVersion.value++
+  }
+
   return {
     state,
     resultItems,
@@ -185,6 +196,8 @@ export const useCalculationStore = defineStore('calculation', () => {
     getState,
     getResultItems,
     getError,
-    getCalculationVersion
+    getCalculationVersion,
+    incrementVersion,
+    resetStateOnly
   }
 })

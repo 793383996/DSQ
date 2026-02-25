@@ -46,7 +46,14 @@ export default {
     clearAll: '清空',
     productionPerMinute: '每分钟产量',
     machineCount: '或生产设备数',
-    fixCalculation: '修复计算空白'
+    fixCalculation: '修复计算空白',
+    reset: '重置',
+    saveProject: '保存方案',
+    generateBlueprint: '生成蓝图',
+    inputProjectName: '输入方案名',
+    projectExists: '已存在同名方案，继续保存将覆盖原方案',
+    projectSaved: '方案已保存',
+    blueprintNotSupported: '请使用 https 协议访问以启用蓝图生成功能'
   },
   resultTable: {
     title: '计算结果',

@@ -341,14 +341,6 @@ export function clearLegacyState(): void {
   legacyDataAdapter.clearLegacyState()
 }
 
-export function legacyUpdateMachineSettings(config: MachineConfigSettings): void {
-  legacyDataAdapter.updateMachineSettings(config)
-}
-
-export function legacyGetMachineSettings(): MachineConfigSettings {
-  return legacyDataAdapter.getMachineSettings()
-}
-
 export function legacyFind(name: string, normalize_recipe?: boolean): ILegacyDataItem | null {
   return legacyDataAdapter.findItem(name, normalize_recipe)
 }
@@ -637,16 +629,40 @@ export function legacyGetProductionSettings(): {
 }
 
 export function legacySetProductionSettings(production: number, machineCount?: number): void {
-  const win = getWin()
-  if (win.txtnumber) {
-    win.txtnumber.value = String(production)
+  const win = getWin() as any
+
+  if (!win.txtnumber) {
+    win.txtnumber = { value: '60' }
   }
-  if (machineCount !== undefined && win.selmaince) {
+  if (!win.selmaince) {
+    win.selmaince = { value: '0' }
+  }
+
+  win.txtnumber.value = String(production)
+  if (machineCount !== undefined) {
     win.selmaince.value = String(machineCount)
   }
 }
 
 export { loadLegacyModules, getLegacyModulesLoadPromise }
+
+export async function legacyAddDemand(name: string): Promise<void> {
+  try {
+    const dataMod = await import('./legacy/data')
+
+    if (dataMod.ensureDataInitialized) {
+      await dataMod.ensureDataInitialized()
+    }
+
+    if (typeof dataMod.f_add3 === 'function') {
+      dataMod.f_add3(name)
+    } else {
+      logger.warn('[bridge] f_add3 not available in data module')
+    }
+  } catch (e) {
+    logger.error('[bridge] Failed to call f_add3:', e)
+  }
+}
 
 export function getSelectableItems(): string[] {
   return iconService.getSelectableItems()
@@ -684,16 +700,12 @@ export function getIconShow(name: string, number: string | number): string {
 
 export function isLegacyDataLoaded(): boolean {
   const win = getWin()
-  return (
+  return !!(
     typeof win.find === 'function' &&
     Array.isArray(win.data) &&
     win.recipeIndexByProduct !== undefined &&
     Object.keys(win.recipeIndexByProduct || {}).length > 0
   )
-}
-
-export function isGameDataLoaded(): boolean {
-  return iconService.loadFromWindow()
 }
 
 export interface LegacyDataLoadResult {

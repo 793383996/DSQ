@@ -46,7 +46,14 @@ export default {
     clearAll: 'Clear All',
     productionPerMinute: 'Per Minute Output',
     machineCount: 'Or Machine Count',
-    fixCalculation: 'Fix Empty Results'
+    fixCalculation: 'Fix Empty Results',
+    reset: 'Reset',
+    saveProject: 'Save Project',
+    generateBlueprint: 'Generate Blueprint',
+    inputProjectName: 'Enter project name',
+    projectExists: 'Project with this name already exists. Overwrite?',
+    projectSaved: 'Project saved',
+    blueprintNotSupported: 'Please use HTTPS to enable blueprint generation'
   },
   resultTable: {
     title: 'Results',

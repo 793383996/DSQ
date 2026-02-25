@@ -81,7 +81,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
-import { isLegacyDataLoaded, waitForLegacyData } from './core/bridge'
+import { isLegacyDataLoaded, waitForLegacyData, legacyAddDemand } from './core/bridge'
 import { iconService } from './core/services/IconService'
 import { initializationService } from './core/services/InitializationService'
 import { APP_CONFIG } from './core/config/app.config'
@@ -300,12 +300,15 @@ async function runCalculation(retryCount: number = 0) {
 
     if (result && result.items) {
       const allItems = [...result.items, ...(result.items2 || [])]
+      logger.log(`[App] Calculation result: ${allItems.length} items`)
       store.setResultItems(
         allItems.map((item, index) => ({
           ...item,
           id: `${item.name}-${index}`
         }))
       )
+    } else {
+      logger.warn('[App] No calculation result:', result)
     }
   } catch (error: unknown) {
     if (error instanceof StateChangedDuringCalculationError && retryCount < 3) {
@@ -351,8 +354,20 @@ function handleToggleExclude(item: { name: string; action?: 'exclude' | 'include
   runCalculation()
 }
 
-function handleAddItem(item: { name: string; num: number }) {
-  store.addDemand(item.name, item.num)
+async function handleAddItem(item: { name: string }) {
+  await legacyAddDemand(item.name)
+
+  const win = getWin()
+  if (win.xqs && win.xqs.length > 0) {
+    const legacyDemands: Array<{ name: string; num: number }> = []
+    win.xqs.forEach((xq: any) => {
+      const name = xq.item?.name || xq.name
+      const num = xq.number || xq.num || 1
+      legacyDemands.push({ name, num })
+    })
+    store.loadFromLegacy(legacyDemands, store.excludeList)
+  }
+
   runCalculation()
 }
 </script>

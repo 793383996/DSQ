@@ -22,7 +22,7 @@
  */
 
 import { logger } from '../../utils/logger'
-import { legacyDataService } from './LegacyDataService'
+import { legacyDataService } from '../services/LegacyDataService'
 import type { LegacyWindow, ILegacyDataItem } from '../types/legacy'
 import type { IRawRecipe } from '../types/settings'
 
@@ -281,7 +281,7 @@ class LegacyDataAdapter {
   isRecipeIndexReady(): boolean {
     try {
       const win = this.getWin()
-      return win.recipeIndexByProduct && Object.keys(win.recipeIndexByProduct).length > 0
+      return !!(win.recipeIndexByProduct && Object.keys(win.recipeIndexByProduct).length > 0)
     } catch (error) {
       logger.error('[LegacyDataAdapter] Failed to check recipe index ready:', error)
       return false

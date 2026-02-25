@@ -22,6 +22,34 @@ function replacePlaceholdersPlugin() {
   }
 }
 
+import fs from 'fs'
+import path from 'path'
+
+function copyScriptsPlugin() {
+  return {
+    name: 'copy-scripts',
+    enforce: 'post' as const,
+    closeBundle() {
+      const scriptsDir = path.resolve(__dirname, 'Scripts')
+      const destDir = path.resolve(__dirname, 'dist/Scripts')
+      if (fs.existsSync(scriptsDir)) {
+        if (!fs.existsSync(destDir)) {
+          fs.mkdirSync(destDir, { recursive: true })
+        }
+        const files = fs.readdirSync(scriptsDir)
+        files.forEach(file => {
+          const srcPath = path.join(scriptsDir, file)
+          const destPath = path.join(destDir, file)
+          if (fs.statSync(srcPath).isFile()) {
+            fs.copyFileSync(srcPath, destPath)
+          }
+        })
+        console.log('  ✓ Scripts directory copied to dist/')
+      }
+    }
+  }
+}
+
 const cspDirectives = {
   'default-src': ["'self'"],
   'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
@@ -46,6 +74,7 @@ export default defineConfig({
   plugins: [
     vue(),
     replacePlaceholdersPlugin(),
+    copyScriptsPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
@@ -149,6 +178,18 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: true,
+    headers: {
+      'Content-Security-Policy': cspHeader,
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+    }
+  },
+  preview: {
+    port: 4173,
     host: true,
     headers: {
       'Content-Security-Policy': cspHeader,

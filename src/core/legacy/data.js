@@ -52,6 +52,10 @@ window.defaultAccValue = defaultAccValue
 
 var icons = {}
 function getIconImg(name) {
+  if (typeof name !== 'string') {
+    console.warn('[getIconImg] name is not a string:', name)
+    return String(name)
+  }
   if (name == '研究站') name = '矩阵研究站'
   if (name == '电弧熔炉') name = '电弧熔炉'
   if (name == '位面熔炉') name = '位面熔炉'
@@ -63,23 +67,33 @@ function getIconImg(name) {
 
   var winIcons = window.icons || icons
   if (winIcons && winIcons[name]) {
-    return (
-      "<img class='sicon' src='data:image/png;base64," +
-      winIcons[name] +
-      "' title='" +
-      name +
-      "' />"
-    )
+    var iconData = winIcons[name]
+    if (typeof iconData !== 'string') {
+      console.warn('[getIconImg] iconData is not a string for name:', name, 'iconData:', iconData)
+      return name
+    }
+    return "<img class='sicon' src='data:image/png;base64," + iconData + "' title='" + name + "' />"
   }
   return name
 }
 
 function getIconShow(name, number) {
+  if (typeof name !== 'string') {
+    console.warn('[getIconShow] name is not a string:', name)
+    name = String(name)
+  }
+  if (typeof number !== 'string' && typeof number !== 'number') {
+    console.warn('[getIconShow] number is not a string or number:', number)
+    number = String(number)
+  }
   var title = []
   title.push(getIconImg(name))
   title.push('<sub>' + number + '</sub>')
   return title.join('')
 }
+
+window.getIconImg = getIconImg
+window.getIconShow = getIconShow
 
 function f_initIcons() {
   var winIcons = window.icons || {}
@@ -198,6 +212,10 @@ function f_initData() {
       ms = [{ name: '分馏塔', speed: 30 }]
     }
 
+    if (ms.length == 0 && item.m) {
+      ms = [{ name: item.m, speed: 1 }]
+    }
+
     item.mName = item.m
     item.m = ms
   })
@@ -222,6 +240,7 @@ async function ensureDataInitialized() {
   if (dataInitPromise) return dataInitPromise
 
   dataInitPromise = (async function () {
+    f_initData()
     f_init()
     isDataInitialized = true
 
@@ -264,8 +283,20 @@ function getPfTitle(item, info) {
     return (csdsize / ((60 / (t || 1)) * info.speed * (item_array[item_index].n || 1))) * speed1_5
   }
 
+  if (!item.q || item.q.length == 0) {
+    return ''
+  }
+
   for (var j = 0; j < item.q.length; j++) {
-    title.push(getIconShow(item.q[j].name, item.q[j].n || 1))
+    var qItem = item.q[j]
+    var qName = typeof qItem === 'object' ? qItem.name : qItem
+    var qN = typeof qItem === 'object' ? qItem.n || 1 : 1
+    var iconResult = getIconShow(qName, qN)
+    if (typeof iconResult !== 'string') {
+      console.warn('[getPfTitle] getIconShow returned non-string:', iconResult, 'for name:', qName)
+      iconResult = String(iconResult)
+    }
+    title.push(iconResult)
 
     if (info && showMaxOneBelt) {
       var csdsize = 1800
@@ -284,11 +315,22 @@ function getPfTitle(item, info) {
     }
   }
 
-  if (item.q.length) {
+  if (item.q && item.q.length) {
     title.push('<img class="to" src="./img/to.png" />')
   }
+  if (!item.s || item.s.length == 0) {
+    return title.join(' ')
+  }
   for (var j = 0; j < item.s.length; j++) {
-    title.push(getIconShow(item.s[j].name, item.s[j].n || 1))
+    var sItem = item.s[j]
+    var sName = typeof sItem === 'object' ? sItem.name : sItem
+    var sN = typeof sItem === 'object' ? sItem.n || 1 : 1
+    var iconResult = getIconShow(sName, sN)
+    if (typeof iconResult !== 'string') {
+      console.warn('[getPfTitle] getIconShow returned non-string:', iconResult, 'for name:', sName)
+      iconResult = String(iconResult)
+    }
+    title.push(iconResult)
 
     if (info && showMaxOneBelt) {
       var csdsize = 1800
@@ -310,28 +352,51 @@ function getPfTitle(item, info) {
 }
 
 function f_add3(name) {
+  if (!app) {
+    f_init()
+  }
   currentItem = find(name)
-  var number = parseInt(window.txtnumber?.value || '60')
-  var v = window.selmaince?.value
-  if (v) {
-    var accType = (settings[currentItem.id] || {}).accType || defaultAccType
-    var accValue = (settings[currentItem.id] || {}).accValue || defaultAccValue
-    if (accValue == '增产' && currentItem.noExtra) accValue = '无'
-    if (currentItem.q.length == 0) accValue = '无'
+  if (!currentItem) {
+    console.error('[data.js] f_add3: item not found:', name)
+    return
+  }
+  if (!currentItem.name) {
+    console.error('[data.js] f_add3: item has no name:', currentItem)
+    return
+  }
+  var machineCount = parseInt(window.selmaince?.value || '0')
+  var productionPerMinute = parseInt(window.txtnumber?.value || '60')
+  var number = 0
 
+  var accType = (settings[currentItem.id] || {}).accType || defaultAccType
+  var accValue = (settings[currentItem.id] || {}).accValue || defaultAccValue
+  if (accValue == '增产' && currentItem.noExtra) accValue = '无'
+  if (!currentItem.q || currentItem.q.length == 0) accValue = '无'
+
+  var accSpeed = getAccSpeed(accType, accValue)
+
+  if (machineCount > 0) {
     var info = getValue(currentItem)
-    for (var i = 0; i < currentItem.s.length; i++) {
-      if (currentItem.s[i].name == name) {
-        number =
-          ((parseInt(v) * 60) / (currentItem.t || 1)) * info.speed * (currentItem.s[i].n || 1)
+    if (currentItem.s && currentItem.s.length > 0) {
+      for (var i = 0; i < currentItem.s.length; i++) {
+        if (currentItem.s[i].name == name) {
+          number =
+            ((machineCount * 60) / (currentItem.t || 1)) * info.speed * (currentItem.s[i].n || 1)
+        }
       }
-      number *= getAccSpeed(accType, accValue)
+      number *= accSpeed
     }
+  } else {
+    number = productionPerMinute * accSpeed
   }
 
   addItem(currentItem, number)
 }
 function addItem(item, number) {
+  if (!item || !item.name) {
+    console.error('[data.js] addItem: invalid item:', item)
+    return
+  }
   xqs.push({
     item: item,
     number: number
@@ -497,6 +562,9 @@ function f_init() {
 var single_list = [] //独立生产
 
 function update_all() {
+  if (!app) {
+    f_init()
+  }
   var outResult = []
   clearCalculatorState()
   single_list = []
@@ -563,14 +631,16 @@ function update_all() {
       var accType = (settings[item.id] || {}).accType || defaultAccType
       var accValue = (settings[item.id] || {}).accValue || defaultAccValue
       if (accValue == '增产' && item.noExtra) accValue = '无'
-      if (item.q.length == 0) accValue = '无'
+      if (!item.q || item.q.length == 0) accValue = '无'
 
       if (item.name !== '临界光子' || item.mName !== '射线接收塔') {
         // 修正产物与需求物相同时，生产设备计算偏少
         let fixValue2Times = 1
-        for (let j = 0; j < item.q.length; j++) {
-          if (item.q[j].name === item.name) {
-            fixValue2Times = item.n / (item.n - item.q[j].n)
+        if (item.q && item.q.length > 0) {
+          for (let j = 0; j < item.q.length; j++) {
+            if (item.q[j].name === item.name) {
+              fixValue2Times = item.n / (item.n - item.q[j].n)
+            }
           }
         }
         xh.value2 = (xh.value2 / getAccSpeed(accType, accValue)) * fixValue2Times
@@ -708,43 +778,75 @@ function update_all() {
     var pfds = getPfs(xh_list[i].name)
 
     for (var j = 0; j < pfds.length; j++) {
+      var pfdsItem = pfds[j]
+      if (!pfdsItem || !pfdsItem.q) {
+        console.warn('[update_all] Invalid pfds item:', pfdsItem)
+        continue
+      }
+      var pfTitle = getPfTitle(pfdsItem, item.id == pfdsItem.id ? info : null)
+      if (typeof pfTitle !== 'string') {
+        console.warn('[update_all] pfTitle is not string:', pfTitle)
+        pfTitle = String(pfTitle)
+      }
       var pf = {
-        class: item.id == pfds[j].id ? 'pf selected' : 'pf',
+        class: item.id == pfdsItem.id ? 'pf selected' : 'pf',
         href:
-          item.id == pfds[j].id
+          item.id == pfdsItem.id
             ? 'javascript:void(0)'
-            : 'javascript: selectPf("' + item.name + '","' + pfds[j].id + '")',
-        title: getPfTitle(pfds[j], item.id == pfds[j].id ? info : null)
+            : 'javascript: selectPf("' + item.name + '","' + pfdsItem.id + '")',
+        title: pfTitle,
+        titleText: pfTitle
+          .replace(/<[^>]*>/g, '')
+          .replace(/\s+/g, ' ')
+          .trim(),
+        name: pfdsItem.name || pfdsItem.id,
+        id: pfdsItem.id
       }
       outitem.pf.push(pf)
     }
-    for (var j = 0; j < item.m.length; j++) {
-      var m = {
-        class: info.name == item.m[j].name ? 'm selected' : 'm',
+    if (item.m && item.m.length > 0) {
+      for (var j = 0; j < item.m.length; j++) {
+        var mName = item.m[j].name
+        if (typeof mName !== 'string') {
+          mName = String(mName)
+        }
+        var m = {
+          class: info.name == mName ? 'm selected' : 'm',
+          itemName: item.name,
+          href:
+            info.name == mName
+              ? 'javascript:void(0)'
+              : 'javascript: selectM("' + item.id + '","' + mName + '")',
+          name: mName,
+          title: '设备速度:' + item.m[j].speed.toFixed(pointLength),
+          showName: mName.replace('制作台', '')
+        }
+        if (m.showName == '采矿机') {
+          m.title += ' 采矿机按6个矿脉计算(因所限传送带速度最高30)'
+        }
+        if (m.showName == '大型采矿机') {
+          m.title += ' 大型采矿机按20个矿脉计算'
+        }
+        if (m.showName == '矿脉') {
+          m.title += ' (速度最高30)'
+        }
+        outitem.m.push(m)
+      }
+    }
+    if (outitem.m.length == 0 && item.mName) {
+      outitem.m.push({
+        class: 'm selected',
         itemName: item.name,
-        href:
-          info.name == item.m[j].name
-            ? 'javascript:void(0)'
-            : 'javascript: selectM("' + item.id + '","' + item.m[j].name + '")',
-        name: item.m[j].name,
-        title: '设备速度:' + item.m[j].speed.toFixed(pointLength),
-        showName: item.m[j].name.replace('制作台', '')
-      }
-      if (m.showName == '采矿机') {
-        m.title += ' 采矿机按6个矿脉计算(因所限传送带速度最高30)'
-      }
-      if (m.showName == '大型采矿机') {
-        m.title += ' 大型采矿机按20个矿脉计算'
-      }
-      if (m.showName == '矿脉') {
-        m.title += ' (速度最高30)'
-      }
-      outitem.m.push(m)
+        href: 'javascript:void(0)',
+        name: item.mName,
+        title: '设备速度:1.000',
+        showName: item.mName
+      })
     }
     var accType = (settings[item.id] || {}).accType || defaultAccType
     var accValue = (settings[item.id] || {}).accValue || defaultAccValue
     if (accValue == '增产' && item.noExtra) accValue = '无'
-    if (item.q.length == 0 || item.noExtra === null) accValue = '无'
+    if (!item.q || item.q.length == 0 || item.noExtra === null) accValue = '无'
     ;['增产剂Mk.Ⅰ', '增产剂Mk.Ⅱ', '增产剂Mk.Ⅲ'].forEach(function (one) {
       outitem.accType.push({
         class: one == accType ? 'm selected' : 'm',
@@ -759,7 +861,7 @@ function update_all() {
       })
     })
     ;['无', '加速', '增产'].forEach(function (one) {
-      if (one != '无' && (item.q.length == 0 || item.noExtra === null)) return
+      if (one != '无' && (!item.q || item.q.length == 0 || item.noExtra === null)) return
       if (one == '增产' && item.noExtra) return
       outitem.accValue.push({
         class: one == accValue ? 'm selected' : 'm',

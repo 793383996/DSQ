@@ -80,30 +80,13 @@
               :title="item.name"
               @click="selectItem(item)"
             >
-              <img
-                v-if="item.icon"
-                :src="'data:image/png;base64,' + item.icon"
-                :alt="item.name"
-                class="item-icon"
-              />
+              <img v-if="item.icon" :src="item.icon" :alt="item.name" class="item-icon" />
               <span class="item-name">{{ item.name }}</span>
             </button>
           </div>
 
           <div v-else class="no-results">
             <span>{{ $t('addItemDialog.noMatch') }}</span>
-          </div>
-
-          <div v-if="selectedItem" class="quantity-section">
-            <label>{{ $t('addItemDialog.quantity') }}：</label>
-            <input
-              v-model.number="quantity"
-              type="number"
-              min="1"
-              max="9999"
-              class="quantity-input"
-            />
-            <span class="unit">{{ $t('addItemDialog.unit') }}</span>
           </div>
         </div>
 
@@ -138,14 +121,13 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'confirm', item: { name: string; num: number }): void
+  (e: 'confirm', item: { name: string }): void
 }>()
 
 const visible = ref(props.modelValue)
 const searchKeyword = ref('')
 const debouncedKeyword = ref('')
 const selectedItem = ref<ItemData | null>(null)
-const quantity = ref(1)
 const searchInput = ref<HTMLInputElement | null>(null)
 const icons1Items = ref<ItemData[]>([])
 const icons2Items = ref<ItemData[]>([])
@@ -226,7 +208,6 @@ watch(
       searchKeyword.value = ''
       debouncedKeyword.value = ''
       selectedItem.value = null
-      quantity.value = 1
     }
   }
 )
@@ -243,8 +224,7 @@ function close() {
 function confirm() {
   if (selectedItem.value) {
     emit('confirm', {
-      name: selectedItem.value.name,
-      num: Math.max(1, quantity.value)
+      name: selectedItem.value.name
     })
     close()
   }
@@ -406,6 +386,7 @@ function confirm() {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-clamp: 2;
 }
 
 .no-results {
@@ -447,39 +428,6 @@ function confirm() {
 .loading-hint {
   text-align: center;
   padding: 20px;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.quantity-section {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.quantity-section label {
-  color: #4a5568;
-  font-size: 14px;
-}
-
-.quantity-input {
-  width: 80px;
-  padding: 8px 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 14px;
-  text-align: center;
-}
-
-.quantity-input:focus {
-  outline: none;
-  border-color: #3498db;
-}
-
-.unit {
   color: #64748b;
   font-size: 14px;
 }

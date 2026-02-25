@@ -27,7 +27,10 @@ function getMachine(arg) {
   machine = (settingsLocal[item.id] || {}).m || null
   if (machine != null) return machine
 
-  return item.m[0].name
+  if (item.m && item.m.length > 0) {
+    return item.m[0].name
+  }
+  return item.mName || null
 }
 
 function getAccType(arg) {
@@ -73,25 +76,37 @@ function getValue(arg) {
       accValue: accValue
     }
   }
-  for (var i = 0; i < item.m.length; i++) {
-    var m = item.m[i]
-    if (m.name == machine) {
-      return {
-        name: m.name,
-        t: item.t,
-        speed: m.speed,
-        time: item.t / m.speed,
-        accType: accType,
-        accValue: accValue
+  if (item.m && item.m.length > 0) {
+    for (var i = 0; i < item.m.length; i++) {
+      var m = item.m[i]
+      var mName = typeof m.name === 'string' ? m.name : String(m.name)
+      if (mName == machine) {
+        return {
+          name: mName,
+          t: item.t,
+          speed: m.speed,
+          time: item.t / m.speed,
+          accType: accType,
+          accValue: accValue
+        }
       }
     }
+    var m = item.m[0]
+    var mName = typeof m.name === 'string' ? m.name : String(m.name)
+    return {
+      name: mName,
+      t: item.t,
+      speed: m.speed,
+      time: item.t / m.speed,
+      accType: accType,
+      accValue: accValue
+    }
   }
-  m = item.m[0]
   return {
-    name: m.name,
+    name: machine || item.mName || '未知设备',
     t: item.t,
-    speed: m.speed,
-    time: item.t / m.speed,
+    speed: 1,
+    time: item.t,
     accType: accType,
     accValue: accValue
   }

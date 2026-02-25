@@ -151,11 +151,96 @@ class RecipeDataService {
           this.index.byMaterial[materialName].push(i)
         }
       }
+
+      this.convertMachineType(item)
     })
 
     logger.log(
       `[RecipeDataService] Index built: ${Object.keys(this.index.byProduct).length} products, ${Object.keys(this.index.byMaterial).length} materials`
     )
+  }
+
+  private convertMachineType(item: IRawRecipe): void {
+    const mValue = item.m
+
+    if (Array.isArray(mValue)) {
+      if (mValue.length > 0 && typeof mValue[0]?.name === 'string') {
+        item.mName = mValue[0].name
+      }
+      return
+    }
+
+    if (typeof mValue !== 'string') {
+      logger.warn(
+        `[RecipeDataService] Skipping convertMachineType: m is not string (type: ${typeof mValue}, value:`,
+        mValue,
+        ')'
+      )
+      return
+    }
+
+    logger.log(
+      `[RecipeDataService] Converting machine type: ${item.s?.[0]?.name} - "${item.m}" -> array`
+    )
+
+    const machineType = item.m as string
+    let ms: Array<{ name: string; speed: number }> = []
+
+    if (machineType === '研究站') {
+      ms = [
+        { name: '矩阵研究站', speed: 1 },
+        { name: '自演化研究站', speed: 3 }
+      ]
+    } else if (machineType === '制作台') {
+      ms = [
+        { name: '制作台Mk.Ⅰ', speed: 0.75 },
+        { name: '制作台Mk.Ⅱ', speed: 1 },
+        { name: '制作台Mk.Ⅲ', speed: 1.5 },
+        { name: '重组式制造台', speed: 3 }
+      ]
+    } else if (machineType === '冶炼设备') {
+      ms = [
+        { name: '电弧熔炉', speed: 1 },
+        { name: '位面熔炉', speed: 2 },
+        { name: '负熵熔炉', speed: 3 }
+      ]
+    } else if (machineType === '采矿机') {
+      ms = [
+        { name: '采矿机', speed: 0.5 * 6 },
+        { name: '大型采矿机', speed: 1 * 20 },
+        { name: '矿脉', speed: 0.5 * 1 }
+      ]
+    } else if (machineType === '能量枢纽') {
+      ms = [{ name: '能量枢纽', speed: 1 }]
+    } else if (machineType === '黑雾掉落') {
+      ms = [{ name: '黑雾掉落', speed: 1 }]
+    } else if (machineType === '原油萃取站') {
+      ms = [{ name: '原油萃取站', speed: 4 }]
+    } else if (machineType === '抽水机') {
+      ms = [{ name: '抽水机', speed: 50 / 60 }]
+    } else if (machineType === '原油精炼机') {
+      ms = [{ name: '原油精炼机', speed: 1 }]
+    } else if (machineType === '化工设备') {
+      ms = [
+        { name: '化工厂', speed: 1 },
+        { name: '量子化工厂', speed: 2 }
+      ]
+    } else if (machineType === '粒子对撞机') {
+      ms = [{ name: '粒子对撞机', speed: 1 }]
+    } else if (machineType === '轨道采集器') {
+      ms = [{ name: '轨道采集器(巨冰)', speed: 1 }]
+    } else if (machineType === '轨道采集器2') {
+      ms = [{ name: '轨道采集器(气态)', speed: 1 }]
+    } else if (machineType === '射线接收塔') {
+      ms = [{ name: '射线接收塔', speed: 1 }]
+    } else if (machineType === '分馏塔') {
+      ms = [{ name: '分馏塔', speed: 30 }]
+    } else if (machineType) {
+      ms = [{ name: machineType, speed: 1 }]
+    }
+
+    item.mName = machineType
+    item.m = ms as unknown as IRawRecipe['m']
   }
 
   getRecipes(): IRawRecipe[] {

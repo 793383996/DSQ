@@ -37,7 +37,7 @@ export interface ILegacyData {
 }
 
 export interface ILegacyState {
-  xqs: Array<{ name: string; value: number; item: { name: string } }>
+  xqs: Array<{ name: string; value: number; item?: { name: string } }>
   ig_names: string[]
   xh_list: Array<{ name: string; value: number; value2?: number }>
   out_list: Array<{ name: string; value: number }>
@@ -241,7 +241,7 @@ class LegacyDataService {
     return this.getRecipeIndex().byMaterial
   }
 
-  getDemandList(): Array<{ name: string; value: number; item: { name: string } }> {
+  getDemandList(): Array<{ name: string; value: number; item?: { name: string } }> {
     return this.getState().xqs
   }
 

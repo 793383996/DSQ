@@ -50,6 +50,9 @@ import { useDemandStore, type DemandItem, type IStateSnapshot as IDemandSnapshot
 import { useSettingsStore, type MachineSettings } from './settings'
 import { useCalculationStore, type ResultItem, CalcState } from './calculation'
 
+export type { DemandItem } from './demand'
+export type { MachineSettings } from './settings'
+
 export interface IStateSnapshot {
   demandVersion: number
   demandList: DemandItem[]
@@ -167,19 +170,38 @@ export const useBlueprintStore = defineStore('blueprint', () => {
 
   function setCalculating(calculating: boolean) {
     if (calculating) {
+      const currentState = calculationStore.getState()
+      logger.log(`[BlueprintStore] setCalculating(true), current state: ${currentState}`)
+      if (currentState === CalcState.SUCCESS || currentState === CalcState.ERROR) {
+        calculationStore.resetStateOnly()
+        logger.log('[BlueprintStore] State reset to IDLE')
+      }
       if (calculationStore.canTransition(CalcState.PREPARING)) {
         calculationStore.setPreparing()
         calculationStore.setCalculating()
+        logger.log('[BlueprintStore] State transitioned to CALCULATING')
       } else {
         logger.warn('[BlueprintStore] Cannot start calculation: invalid state transition')
       }
     } else {
-      calculationStore.forceReset()
+      const currentState = calculationStore.getState()
+      logger.log(`[BlueprintStore] setCalculating(false), current state: ${currentState}`)
+      if (calculationStore.getState() === CalcState.CALCULATING) {
+        calculationStore.transition(CalcState.SUCCESS)
+      }
     }
   }
 
   function setResultItems(items: ResultItem[]) {
+    logger.log(`[BlueprintStore] setResultItems: ${items.length} items`)
     calculationStore.setResultItems(items)
+    const currentState = calculationStore.getState()
+    logger.log(`[BlueprintStore] setResultItems, current state: ${currentState}`)
+    if (currentState === CalcState.CALCULATING || currentState === CalcState.PREPARING) {
+      calculationStore.transition(CalcState.SUCCESS)
+      calculationStore.incrementVersion()
+      logger.log('[BlueprintStore] State transitioned to SUCCESS')
+    }
   }
 
   function setError(error: string | null) {

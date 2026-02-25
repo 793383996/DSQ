@@ -28,9 +28,17 @@
   <div v-if="store.demandList.length > 0" class="demand-list">
     <div class="demand-header">
       <span class="demand-title">{{ $t('demandList.title') }}</span>
-      <button class="reset-btn" @click="resetAll">
-        {{ $t('common.reset') }}
-      </button>
+      <div class="action-buttons">
+        <button class="btn-reset" @click="resetAll">
+          {{ $t('controlPanel.reset') }}
+        </button>
+        <button class="btn-save" @click="handleSave">
+          {{ $t('controlPanel.saveProject') }}
+        </button>
+        <button class="btn-blueprint" @click="handleGenerateBlueprint">
+          {{ $t('controlPanel.generateBlueprint') }}
+        </button>
+      </div>
     </div>
     <div class="demand-items">
       <div v-for="(item, index) in store.demandList" :key="item.name" class="demand-item">
@@ -46,7 +54,7 @@
         <span class="item-quantity" @click="startEdit(index)">
           <template v-if="editingIndex === index">
             <input
-              ref="editInput"
+              :ref="el => setInputRef(el, index)"
               v-model.number="editingValue"
               type="number"
               min="0.01"
@@ -71,15 +79,23 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { useIconProvider } from '../../composables/useIconProvider'
 
 const store = useBlueprintStore()
 const { getIcon } = useIconProvider()
+const { t } = useI18n()
 
 const editingIndex = ref<number | null>(null)
 const editingValue = ref<number>(1)
-const editInput = ref<HTMLInputElement | null>(null)
+const inputRefs = new Map<number, HTMLInputElement>()
+
+function setInputRef(el: unknown, index: number) {
+  if (el instanceof HTMLInputElement) {
+    inputRefs.set(index, el)
+  }
+}
 
 function getItemIcon(name: string): string | undefined {
   return getIcon(name) ?? undefined
@@ -97,8 +113,11 @@ function startEdit(index: number) {
   editingIndex.value = index
   editingValue.value = store.demandList[index].num
   nextTick(() => {
-    editInput.value?.focus()
-    editInput.value?.select()
+    const input = inputRefs.get(index)
+    if (input) {
+      input.focus()
+      input.select()
+    }
   })
 }
 
@@ -134,6 +153,89 @@ function resetAll() {
   store.clearAll()
   emit('demand-changed')
 }
+
+function handleSave() {
+  const win = window as any
+  if (win.f_save) {
+    win.f_save()
+  } else {
+    const name = prompt(t('controlPanel.inputProjectName'))
+    if (!name) return
+
+    const win2 = window as any
+    if (win2.projects) {
+      let index = -1
+      for (let i = 0; i < win2.projects.length; i++) {
+        if (win2.projects[i].name === name) {
+          if (!confirm(t('controlPanel.projectExists'))) {
+            return
+          }
+          index = i
+          break
+        }
+      }
+
+      const product_settings: Record<string, any> = {}
+      for (const item of store.resultItems) {
+        const recipe = win2.find ? win2.find(item.name) : null
+        if (recipe) {
+          const setting: Record<string, any> = {}
+          if (item.accType && item.accType.length > 0) {
+            for (const acc of item.accType) {
+              if (acc.class === 'm selected') {
+                setting.accType = acc.name
+              }
+            }
+          }
+          if (item.accValue && item.accValue.length > 0) {
+            for (const acc of item.accValue) {
+              if (acc.class === 'm selected') {
+                setting.accValue = acc.name
+              }
+            }
+          }
+          if (item.m && item.m.length > 0) {
+            for (const m of item.m) {
+              if (m.class === 'm selected') {
+                setting.m = m.name
+              }
+            }
+          }
+          product_settings[recipe.id] = setting
+        }
+      }
+
+      const project = {
+        name: name,
+        singleMake: win2.singleMake || [],
+        ig_names: store.excludeList || [],
+        value: win2.xqs || [],
+        settings: product_settings
+      }
+
+      if (index >= 0) {
+        win2.projects[index] = project
+      } else {
+        win2.projects.push(project)
+      }
+
+      if (win2.saveSettingProjects) {
+        win2.saveSettingProjects()
+      }
+
+      alert(t('controlPanel.projectSaved'))
+    }
+  }
+}
+
+function handleGenerateBlueprint() {
+  const win = window as any
+  if (win.generateBlueprint) {
+    win.generateBlueprint()
+  } else {
+    alert(t('controlPanel.blueprintNotSupported'))
+  }
+}
 </script>
 
 <style scoped>
@@ -160,19 +262,48 @@ function resetAll() {
   font-size: 14px;
 }
 
-.reset-btn {
-  padding: 4px 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  color: #64748b;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.reset-btn:hover {
-  background: #e2e8f0;
+.action-buttons button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  font-size: 12px;
+}
+
+.btn-reset {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-reset:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.btn-save:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-blueprint {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.btn-blueprint:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 .demand-items {
@@ -253,19 +384,36 @@ function resetAll() {
   border-color: #2980b9;
 }
 
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quantity-input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 .remove-btn {
   background: none;
   border: none;
   color: #94a3b8;
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 8px;
+  min-width: 28px;
+  min-height: 28px;
   line-height: 1;
-  transition: color 0.2s ease;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .remove-btn:hover {
   color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
 }
 
 .demand-hint {

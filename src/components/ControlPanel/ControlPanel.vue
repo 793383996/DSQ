@@ -42,7 +42,7 @@
         <input
           type="number"
           :value="machineCount"
-          min="1"
+          min="0"
           max="1000"
           :style="{ minWidth: '70px', width: machineWidth, appearance: 'textfield' }"
           @input="updateMachineCount"
@@ -71,7 +71,7 @@
           {{ $t('controlPanel.settings') }}
         </button>
         <button
-          id="btnReset1"
+          id="btnFixCalculation"
           style="background: linear-gradient(135deg, #f97316, #ea580c)"
           @click="$emit('fix-calculation')"
         >
@@ -83,8 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, onMounted } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { legacySetProductionSettings } from '../../core/bridge'
 
@@ -97,25 +96,29 @@ const emit = defineEmits<{
 const store = useBlueprintStore()
 
 const productionPerMinute = ref(60)
-const machineCount = ref(1)
+const machineCount = ref(0)
+
+onMounted(() => {
+  legacySetProductionSettings(productionPerMinute.value, machineCount.value)
+})
 
 const productionWidth = computed(() => {
   return (parseFloat(productionPerMinute.value?.toString() || '60') >= 999 ? 150 : 70) + 'px'
 })
 
 const machineWidth = computed(() => {
-  return (parseFloat(machineCount.value?.toString() || '1') >= 999 ? 150 : 70) + 'px'
+  return (parseFloat(machineCount.value?.toString() || '0') >= 999 ? 150 : 70) + 'px'
 })
 
 function updateProductionPerMinute(e: Event) {
   const value = (e.target as HTMLInputElement).value
-  productionPerMinute.value = parseFloat(value) || 1
+  productionPerMinute.value = parseFloat(value) || 0
   legacySetProductionSettings(productionPerMinute.value, machineCount.value)
 }
 
 function updateMachineCount(e: Event) {
   const value = (e.target as HTMLInputElement).value
-  machineCount.value = parseInt(value) || 1
+  machineCount.value = parseInt(value) || 0
   legacySetProductionSettings(productionPerMinute.value, machineCount.value)
 }
 
@@ -130,6 +133,17 @@ function handleAdd() {
   border-radius: 12px;
   padding: 12px 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.control-bar input[type='number']::-webkit-inner-spin-button,
+.control-bar input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.control-bar input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .custom-dropdown {

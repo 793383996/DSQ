@@ -29,6 +29,9 @@ export interface IResultItem {
   name: string
   number1: string
   number2: string
+  number2full?: string
+  number2img?: string
+  numberOther?: string
   time: string
   t: string
   speed: string
@@ -36,7 +39,11 @@ export interface IResultItem {
   rowClass: string
   machineName?: string
   m: IMachineOption[]
-  pf: IProductivityOption[]
+  pf?: IRecipeOption[]
+  accType?: IAccTypeOption[]
+  accValue?: IAccValueOption[]
+  accTotal?: string
+  isTagged?: boolean
 }
 
 /**
@@ -46,6 +53,9 @@ export interface IResultItemOutput {
   name: string
   number1: string
   number2: string
+  number2full?: string
+  number2img?: string
+  numberOther?: string
   time: string
   t: string
   speed: string
@@ -53,7 +63,11 @@ export interface IResultItemOutput {
   rowClass: string
   machineName?: string
   m: IMachineOption[]
-  pf: IProductivityOption[]
+  pf?: IRecipeOption[]
+  accType?: IAccTypeOption[]
+  accValue?: IAccValueOption[]
+  accTotal?: string
+  isTagged?: boolean
 }
 
 /**
@@ -66,6 +80,20 @@ export interface IMachineOption {
   name: string
   title: string
   showName: string
+}
+
+/**
+ * 配方选项
+ */
+export interface IRecipeOption {
+  class: string
+  itemName?: string
+  href: string
+  name: string
+  title: string
+  titleText?: string
+  showName?: string
+  id?: string
 }
 
 /**
@@ -110,6 +138,8 @@ export interface IAccValueOption {
 export interface IConsumptionItem extends IResultItem {
   accType?: IAccTypeOption[]
   accValue?: IAccValueOption[]
+  accTotal?: string
+  isTagged?: boolean
 }
 
 /**
