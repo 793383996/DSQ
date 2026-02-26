@@ -108,8 +108,6 @@ class LegacyDataService {
 
     this.initPromise = (async () => {
       try {
-        logger.log('[LegacyDataService] Initializing...')
-
         const [dataMod, pakoMod] = await Promise.all([import('../legacy/data'), import('pako')])
 
         const win = this.getWin()
@@ -163,7 +161,6 @@ class LegacyDataService {
         }
 
         this.isInitialized = true
-        logger.log('[LegacyDataService] Initialized successfully')
       } catch (error) {
         logger.error('[LegacyDataService] Initialization failed:', error)
         this.reset()
@@ -446,7 +443,6 @@ class LegacyDataService {
     this.stateCache = null
     this.functionsCache = null
     this.recipeIndexCache = null
-    logger.log('[LegacyDataService] Reset')
   }
 }
 

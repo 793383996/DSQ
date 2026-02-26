@@ -40,6 +40,7 @@ import App from './App.vue'
 import Toast from './components/Toast/Toast.vue'
 import BlueprintGenerator from './components/BlueprintGenerator/BlueprintGenerator.vue'
 import { setToastInstance } from './composables/useToast'
+import { initLoggerGlobal } from './composables/useLogger'
 import { initLegacyBridge, loadLegacyModules } from './core/bridge'
 import { logger, initLogger } from './utils/logger'
 import {
@@ -87,6 +88,7 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(i18n)
+initLoggerGlobal(app)
 
 const toastContainer = document.createElement('div')
 toastContainer.id = 'toast-container'
@@ -174,7 +176,6 @@ async function initializeApp(retryCount: number = 0): Promise<void> {
     })
 
     await Promise.race([loadPromise, timeoutPromise])
-    logger.log('[main] Legacy modules loaded successfully')
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e)
     logger.error(
@@ -183,7 +184,6 @@ async function initializeApp(retryCount: number = 0): Promise<void> {
 
     if (retryCount < MAX_INIT_RETRIES - 1) {
       const delay = INIT_RETRY_DELAY_MS * Math.pow(2, retryCount)
-      logger.log(`[main] Retrying in ${delay}ms...`)
       await new Promise(resolve => setTimeout(resolve, delay))
       return initializeApp(retryCount + 1)
     }
@@ -205,7 +205,6 @@ async function initializeApp(retryCount: number = 0): Promise<void> {
   }
 
   app.mount('#app')
-  logger.log('[main] App mounted')
 }
 
 initializeApp()

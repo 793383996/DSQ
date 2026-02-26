@@ -111,6 +111,10 @@ export const useSettingsStore = defineStore('settings', () => {
     }
     settingsChangeDebounceTimer = setTimeout(() => {
       settingsChangeDebounceTimer = null
+      logger.log(
+        '[SettingsStore] executing settingsChangeCallbacks, count:',
+        settingsChangeCallbacks.size
+      )
       settingsChangeCallbacks.forEach(cb => {
         try {
           cb()

@@ -127,7 +127,6 @@ export function useIconProvider() {
   async function initializeIcons(): Promise<void> {
     if (isInitialized.value) return
     isInitialized.value = true
-    logger.log('[IconProvider] Lazy loading mode enabled')
   }
 
   // P1-1修复：优先从window.icons获取，再从缓存获取

@@ -123,7 +123,7 @@
                 :class="pf.class"
                 :title="pf.titleText || pf.title"
                 href="javascript:void(0)"
-                @click="selectRecipe(item.name, pf)"
+                @click.prevent="selectRecipe(item.name, pf)"
                 v-html="pf.title"
               />
             </div>
@@ -136,7 +136,7 @@
                 :class="acc.class"
                 :title="acc.title"
                 href="javascript:void(0)"
-                @click="selectAccType(item, acc.name)"
+                @click.prevent="selectAccType(item, acc)"
               >
                 <img v-if="getItemIcon(acc.name)" :src="getItemIcon(acc.name)" class="acc-icon" />
                 {{ acc.showName }}
@@ -151,7 +151,7 @@
                 :class="acc.class"
                 :title="acc.title"
                 href="javascript:void(0)"
-                @click="selectAccValue(item, acc.name)"
+                @click.prevent="selectAccValue(item, acc)"
               >
                 {{ acc.showName }}
               </a>
@@ -168,7 +168,7 @@
                 :class="m.class"
                 :title="m.title"
                 href="javascript:void(0)"
-                @click="selectMachine(item, String(m.name))"
+                @click.prevent="selectMachine(item, m)"
               >
                 <img
                   v-if="getMachineIcon(String(m.name))"
@@ -195,6 +195,7 @@
 import { computed, ref } from 'vue'
 import { useBlueprintStore } from '../../stores/blueprint'
 import { useIconProvider } from '../../composables/useIconProvider'
+import { useLogger } from '../../composables/useLogger'
 import type { IConsumptionItem, IResultItemOutput } from '../../core/types/recipe'
 
 type TableItem = IConsumptionItem | IResultItemOutput
@@ -214,15 +215,17 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
+  (e: 'add-demand', item: TableItem): void
   (e: 'toggle-exclude', item: TableItem & { action: 'exclude' | 'include' }): void
   (e: 'retry'): void
   (e: 'select-recipe', item: TableItem, recipeId: string): void
-  (e: 'select-acc-type', item: TableItem, accType: string): void
-  (e: 'select-acc-value', item: TableItem, accValue: string): void
-  (e: 'select-machine', item: TableItem, machineName: string): void
+  (e: 'select-acc-type', item: TableItem, recipeId: string | number, accType: string): void
+  (e: 'select-acc-value', item: TableItem, recipeId: string | number, accValue: string): void
+  (e: 'select-machine', item: TableItem, recipeId: string | number, machineName: string): void
 }>()
 
 const store = useBlueprintStore()
+const logger = useLogger()
 const { getIcon } = useIconProvider()
 
 const isIconsReady = computed(() => store.isIconsLoaded)
@@ -304,7 +307,7 @@ function includeItem(item: TableItem) {
 }
 
 function showMultiRecipe(item: TableItem) {
-  console.log('[ResultTable] Show multi recipe for:', item.name)
+  logger.log('[ResultTable] Show multi recipe for:', item.name)
 }
 
 function toggleTag(item: TableItem) {
@@ -316,34 +319,33 @@ function toggleTag(item: TableItem) {
 }
 
 function startEditCount(index: number) {
-  console.log('[ResultTable] Edit count for index:', index)
+  logger.log('[ResultTable] Edit count for index:', index)
 }
 
 function selectRecipe(itemName: string, pf: { name: string; class: string; id?: string }) {
   if (pf.class.includes('selected')) return
-  console.log('[ResultTable] Select recipe:', itemName, pf.id || pf.name)
-  if (
-    typeof window !== 'undefined' &&
-    typeof (window as unknown as { selectPf: (name: string, id: string) => void }).selectPf ===
-      'function'
-  ) {
-    ;(window as unknown as { selectPf: (name: string, id: string) => void }).selectPf(
-      itemName,
-      pf.id || pf.name
-    )
-  }
+  emit('select-recipe', { name: itemName } as TableItem, pf.id || pf.name)
 }
 
-function selectAccType(item: TableItem, accType: string) {
-  emit('select-acc-type', item, accType)
+function selectAccType(
+  item: TableItem,
+  acc: { name: string; id?: string | number; class: string }
+) {
+  if (acc.class.includes('selected')) return
+  emit('select-acc-type', item, acc.id ?? item.name, acc.name)
 }
 
-function selectAccValue(item: TableItem, accValue: string) {
-  emit('select-acc-value', item, accValue)
+function selectAccValue(
+  item: TableItem,
+  acc: { name: string; id?: string | number; class: string }
+) {
+  if (acc.class.includes('selected')) return
+  emit('select-acc-value', item, acc.id ?? item.name, acc.name)
 }
 
-function selectMachine(item: TableItem, machineName: string) {
-  emit('select-machine', item, machineName)
+function selectMachine(item: TableItem, m: { name: string; id?: string | number; class: string }) {
+  if (m.class.includes('selected')) return
+  emit('select-machine', item, m.id ?? item.name, m.name)
 }
 </script>
 

@@ -114,8 +114,6 @@ class IconService {
           detail: this.gameData
         })
       )
-
-      logger.log('[IconService] Icon data loaded successfully')
     } catch (error) {
       clearTimeout(timeoutId)
 
@@ -149,8 +147,6 @@ class IconService {
 
     processIcons(this.gameData.icons1 || [])
     processIcons(this.gameData.icons2 || [])
-
-    logger.log(`[IconService] Icon map built with ${this.iconMap.size} icons`)
   }
 
   private notifyListeners(): void {
@@ -175,8 +171,6 @@ class IconService {
       iconsObj[key] = value
     })
     win.icons = iconsObj
-
-    logger.log('[IconService] Synced to window.game_data, window.icons')
   }
 
   isLoaded(): boolean {

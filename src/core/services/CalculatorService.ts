@@ -40,6 +40,7 @@ import { CalculationContext } from './CalculationContext'
 import { recipeAdapter } from '../adapters/RecipeAdapter'
 import { settingsAdapter } from '../adapters/SettingsAdapter'
 import { updateAllService } from './UpdateAllService'
+import { useSettingsStore } from '../../stores/settings'
 import { logger } from '../../utils/logger'
 
 export interface CalculationOptions {
@@ -158,14 +159,26 @@ export class CalculatorService {
       const settingsPf = settingsAdapter.getAllProductivitySettings()
       const win = window as unknown as LegacyWindow
 
+      const settingsStore = useSettingsStore()
+      const machineSettingsFromOptions = options.machineSettings
+      const machineSettingsFromStore = settingsStore.machineSettings
+      const machineSettings = machineSettingsFromOptions || machineSettingsFromStore
+      logger.log('[CalculatorService] machineSettings:', machineSettings)
+
       const calcResult = await updateAllService.updateAll({
         demands,
         excludes,
         settings,
         settingsTime,
         settingsPf,
-        defaultAccType: win.defaultAccType || '增产剂Mk.Ⅰ',
-        defaultAccValue: win.defaultAccValue || '无',
+        defaultMachine: {
+          modeIn: machineSettings.modeIn,
+          furnace: machineSettings.furnace,
+          chemical: machineSettings.chemical,
+          research: machineSettings.research
+        },
+        defaultAccType: machineSettings.accType || '增产剂Mk.Ⅰ',
+        defaultAccValue: machineSettings.accValue || '无',
         hideSource: win.hideSource?.checked ?? false,
         pointLength: parseInt(win.pointLength?.value || '3'),
         selfAcc: options.selfAcc ?? win.selfAcc?.checked ?? false,
@@ -259,14 +272,23 @@ export class CalculatorService {
       const settingsPf = settingsAdapter.getAllProductivitySettings()
       const win = window as unknown as LegacyWindow
 
+      const settingsStore = useSettingsStore()
+      const machineSettings = settingsStore.machineSettings
+
       const calcResult = await updateAllService.updateAll({
         demands,
         excludes,
         settings,
         settingsTime,
         settingsPf,
-        defaultAccType: win.defaultAccType || '增产剂Mk.Ⅰ',
-        defaultAccValue: win.defaultAccValue || '无',
+        defaultMachine: {
+          modeIn: machineSettings.modeIn,
+          furnace: machineSettings.furnace,
+          chemical: machineSettings.chemical,
+          research: machineSettings.research
+        },
+        defaultAccType: machineSettings.accType || '增产剂Mk.Ⅰ',
+        defaultAccValue: machineSettings.accValue || '无',
         hideSource: win.hideSource?.checked ?? false,
         pointLength: parseInt(win.pointLength?.value || '3')
       })

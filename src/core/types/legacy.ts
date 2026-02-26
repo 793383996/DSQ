@@ -163,6 +163,10 @@ export interface ILegacyWindow {
     xqs: unknown[]
     ig_names: string[]
   }
+  selectPf: (name: string, value: string | number) => void
+  selectM: (id: string, m: string) => void
+  selectAccType: (id: string, accType: string) => void
+  selectAccValue: (id: string, accValue: string) => void
 }
 
 export type LegacyWindow = Partial<ILegacyWindow> & Window

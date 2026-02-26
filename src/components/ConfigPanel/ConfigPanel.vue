@@ -331,7 +331,7 @@ import {
   legacyUpdateSpeedSettings,
   legacyUpdateLogisticsSettings
 } from '../../core/bridge'
-import { logger } from '../../utils/logger'
+import { useLogger } from '../../composables/useLogger'
 
 interface Props {
   modelValue: boolean
@@ -344,6 +344,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useBlueprintStore()
+const logger = useLogger()
 
 const visible = ref(props.modelValue)
 
@@ -503,6 +504,7 @@ function close() {
 }
 
 function saveSettings() {
+  logger.log('[ConfigPanel] saveSettings called, settings:', settings)
   store.setMachineSetting('modeIn', settings.modeIn)
   store.setMachineSetting('furnace', settings.furnace)
   store.setMachineSetting('chemical', settings.chemical)

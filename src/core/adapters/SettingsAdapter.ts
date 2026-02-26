@@ -66,7 +66,6 @@ export class SettingsAdapter {
     this.loadFromStorage()
     this.syncToWindow()
     this.initialized = true
-    logger.log('[SettingsAdapter] Initialized with localStorage')
   }
 
   private syncToWindow(): void {
@@ -272,8 +271,6 @@ export class SettingsAdapter {
       if (pfJson) {
         this.productivitySettings = JSON.parse(pfJson)
       }
-
-      logger.log('[SettingsAdapter] Loaded from storage')
     } catch (e) {
       logger.warn('[SettingsAdapter] Failed to load from storage:', e)
     }
@@ -283,7 +280,6 @@ export class SettingsAdapter {
     this.saveRecipeToStorage()
     this.saveSpeedToStorage()
     this.savePfToStorage()
-    logger.log('[SettingsAdapter] Saved to storage')
   }
 }
 

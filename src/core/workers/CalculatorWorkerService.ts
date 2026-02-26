@@ -159,7 +159,6 @@ export class CalculatorWorkerService {
       this.status = 'ready'
       const initResponse = response as IWorkerInitResponse
       this.workerChecksum = initResponse.checksum
-      logger.log(`[CalculatorWorkerService] Worker ready with ${initResponse.recipeCount} recipes`)
       if (this.initResolve) {
         this.initResolve()
         this.initResolve = null
@@ -171,7 +170,6 @@ export class CalculatorWorkerService {
     if (response.type === 'synced') {
       const syncResponse = response as IWorkerSyncResponse
       this.workerChecksum = syncResponse.checksum
-      logger.log('[CalculatorWorkerService] Worker data synced')
       return
     }
 
@@ -429,9 +427,6 @@ export class CalculatorWorkerService {
     const cachedResult = this.resultCache.get(cacheKey)
     if (cachedResult) {
       this.cacheHits++
-      logger.log(
-        `[CalculatorWorkerService] Cache hit (${this.cacheHits}/${this.cacheHits + this.cacheMisses})`
-      )
       return { ...cachedResult, fromCache: true }
     }
 
@@ -657,7 +652,6 @@ export class CalculatorWorkerService {
     this.resultCache.clear()
     this.cacheHits = 0
     this.cacheMisses = 0
-    logger.log('[CalculatorWorkerService] Result cache cleared')
   }
 
   getCacheStats(): { size: number; hits: number; misses: number; hitRate: number } {

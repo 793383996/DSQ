@@ -65,12 +65,25 @@ class RecipeDataService {
       if (currentState === InitState.IDLE) {
         initializationService.setSkipIconsLoading(true)
         initializationService.startInitialization()
-      } else if (currentState !== InitState.LOADING_RECIPES) {
-        logger.log('[RecipeDataService] Initialization already in progress, skipping state update')
       }
 
       const dataModule = await import('../data/recipes.json')
       this.recipes = dataModule.default || dataModule
+
+      logger.log('[RecipeDataService] Loaded recipes (before buildIndex):', {
+        count: this.recipes.length,
+        firstRecipe: {
+          id: this.recipes[0]?.id,
+          name: this.recipes[0]?.s?.[0]?.name,
+          m: this.recipes[0]?.m,
+          'typeof m': typeof this.recipes[0]?.m
+        },
+        ironOreRecipe: {
+          id: this.recipes.find(r => r.s?.[0]?.name === '铁矿')?.id,
+          m: this.recipes.find(r => r.s?.[0]?.name === '铁矿')?.m,
+          'typeof m': typeof this.recipes.find(r => r.s?.[0]?.name === '铁矿')?.m
+        }
+      })
 
       if (initializationService.getState() === InitState.LOADING_RECIPES) {
         initializationService.setRecipesLoaded()
@@ -83,7 +96,6 @@ class RecipeDataService {
       }
 
       this.initialized = true
-      logger.log(`[RecipeDataService] Initialized with ${this.recipes.length} recipes`)
     } catch (error) {
       logger.error('[RecipeDataService] Failed to initialize:', error)
       if (initializationService.getState() !== InitState.READY) {
@@ -106,7 +118,6 @@ class RecipeDataService {
       this.buildIndex()
     }
     this.initialized = true
-    logger.log(`[RecipeDataService] Initialized with ${this.recipes.length} recipes (injected)`)
   }
 
   private buildMaterialIndex(): void {
@@ -152,21 +163,33 @@ class RecipeDataService {
         }
       }
 
+      logger.log('[RecipeDataService] Before convertMachineType:', {
+        recipeId: item.id,
+        recipeName: item.s?.[0]?.name,
+        'item.m': item.m,
+        'typeof item.m': typeof item.m
+      })
       this.convertMachineType(item)
+      logger.log('[RecipeDataService] After convertMachineType:', {
+        recipeId: item.id,
+        recipeName: item.s?.[0]?.name,
+        'item.m': item.m,
+        'item.mName': item.mName
+      })
     })
-
-    logger.log(
-      `[RecipeDataService] Index built: ${Object.keys(this.index.byProduct).length} products, ${Object.keys(this.index.byMaterial).length} materials`
-    )
   }
 
   private convertMachineType(item: IRawRecipe): void {
     const mValue = item.m
 
     if (Array.isArray(mValue)) {
-      if (mValue.length > 0 && typeof mValue[0]?.name === 'string') {
-        item.mName = mValue[0].name
-      }
+      logger.log('[RecipeDataService] convertMachineType: m is array, skipping', {
+        recipeId: item.id,
+        recipeName: item.s?.[0]?.name,
+        'item.mName': item.mName
+      })
+      // 如果 item.m 已经是数组，说明已经被 legacy/data.js 初始化过
+      // 不要修改 item.mName，保持原始的机器类型（如 "冶炼设备"）
       return
     }
 
@@ -178,10 +201,6 @@ class RecipeDataService {
       )
       return
     }
-
-    logger.log(
-      `[RecipeDataService] Converting machine type: ${item.s?.[0]?.name} - "${item.m}" -> array`
-    )
 
     const machineType = item.m as string
     let ms: Array<{ name: string; speed: number }> = []
@@ -241,6 +260,12 @@ class RecipeDataService {
 
     item.mName = machineType
     item.m = ms as unknown as IRawRecipe['m']
+    logger.log('[RecipeDataService] convertMachineType: converted', {
+      recipeId: item.id,
+      recipeName: item.s?.[0]?.name,
+      machineType,
+      resultM: item.m
+    })
   }
 
   getRecipes(): IRawRecipe[] {

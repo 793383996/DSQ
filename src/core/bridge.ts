@@ -84,7 +84,7 @@ function getRecipeIndexReadyPromise(): Promise<void> {
   return recipeIndexReadyPromise
 }
 
-function getWin(): LegacyWindow {
+export function getWin(): LegacyWindow {
   return window as unknown as LegacyWindow
 }
 
@@ -95,7 +95,6 @@ export function notifyRecipeIndexReady(): void {
     recipeIndexReadyResolve()
     recipeIndexReadyResolve = null
   }
-  logger.log('[bridge] Recipe index ready notification received')
 }
 
 export function isRecipeIndexReady(): boolean {
@@ -151,13 +150,8 @@ async function loadLegacyModules() {
     if (!win.defaultAccValue) {
       win.defaultAccValue = '无'
     }
-    logger.log(
-      `[bridge] Default accelerator settings synced: ${win.defaultAccType}/${win.defaultAccValue}`
-    )
 
     initializationService.setLegacySynced()
-
-    logger.log('[bridge] Legacy modules loaded successfully')
     return { data: dataModule, pako: pakoModule }
   })()
 
@@ -221,7 +215,6 @@ export interface Recipe {
 
 export function initLegacyBridge(): void {
   if (isBridgeInitialized) {
-    logger.log('[bridge] Already initialized, skipping')
     return
   }
   isBridgeInitialized = true
@@ -257,8 +250,6 @@ export function initLegacyBridge(): void {
 
   win.cocoMessage = cocoMessageProxy
   ;(win as any).notifyRecipeIndexReady = notifyRecipeIndexReady
-
-  logger.log('[bridge] Legacy bridge initialized')
 }
 
 export interface MachineConfigSettings {

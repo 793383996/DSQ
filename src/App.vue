@@ -66,6 +66,10 @@
         @add-demand="handleAddDemand"
         @toggle-exclude="handleToggleExclude"
         @retry="runCalculation"
+        @select-recipe="handleSelectRecipe"
+        @select-acc-type="handleSelectAccType"
+        @select-acc-value="handleSelectAccValue"
+        @select-machine="handleSelectMachine"
       />
 
       <ConfigPanel v-model="showSettings" />
@@ -82,15 +86,19 @@ import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBlueprintStore } from './stores/blueprint'
 import { isLegacyDataLoaded, waitForLegacyData, legacyAddDemand } from './core/bridge'
+import { settingsAdapter } from './core/adapters/SettingsAdapter'
 import { iconService } from './core/services/IconService'
 import { initializationService } from './core/services/InitializationService'
 import { APP_CONFIG } from './core/config/app.config'
 import type { LegacyWindow } from './core/types/legacy'
+import type { IConsumptionItem, IResultItemOutput } from './core/types/recipe'
+
+type TableItem = IConsumptionItem | IResultItemOutput
 import {
   calculatorService,
   StateChangedDuringCalculationError
 } from './core/services/CalculatorService'
-import { logger } from './utils/logger'
+import { useLogger } from './composables/useLogger'
 import { useMeta } from './composables/useMeta'
 import ControlPanel from './components/ControlPanel/ControlPanel.vue'
 import ConfigPanel from './components/ConfigPanel/ConfigPanel.vue'
@@ -103,6 +111,7 @@ import PWAUpdateBanner from './components/PWAUpdateBanner/PWAUpdateBanner.vue'
 
 const { t, locale } = useI18n()
 const store = useBlueprintStore()
+const logger = useLogger()
 
 const siteUrl = computed(() => {
   if (typeof window !== 'undefined') {
@@ -148,7 +157,14 @@ onMounted(async () => {
 
   // P1-2修复：监听设置变更，自动触发计算
   removeSettingsListener = store.onSettingsChange(() => {
-    if (store.demandList.length > 0) {
+    const isReady = initializationService.isCalculationReady()
+    logger.log(
+      '[App] Settings changed callback triggered, demandList length:',
+      store.demandList.length,
+      'isReady:',
+      isReady
+    )
+    if (store.demandList.length > 0 || isReady.ready) {
       runCalculation()
     }
   })
@@ -164,8 +180,6 @@ onMounted(async () => {
     logger.error(`[App] Calculation not ready: ${readyResult.reason}`)
     return
   }
-
-  logger.log('[App] Calculation ready, initializing store from legacy state')
 
   const win = getWin()
 
@@ -187,18 +201,10 @@ onMounted(async () => {
 
   if (legacyDemands.length > 0 || legacyExcludes.length > 0) {
     store.loadFromLegacy(legacyDemands, legacyExcludes)
-    logger.log(
-      '[App] Loaded from legacy:',
-      legacyDemands.length,
-      'demands,',
-      legacyExcludes.length,
-      'excludes'
-    )
   }
 
   if (iconService.isLoaded()) {
     store.checkIconsLoaded()
-    logger.log('[App] Game icons already loaded')
   } else {
     const handleGameDataLoaded = () => {
       store.checkIconsLoaded()
@@ -207,7 +213,6 @@ onMounted(async () => {
         clearTimeout(loadTimeoutId)
         loadTimeoutId = null
       }
-      logger.log('[App] Game icons loaded via event')
     }
     window.addEventListener('gameDataLoaded', handleGameDataLoaded)
 
@@ -223,7 +228,6 @@ onMounted(async () => {
       .loadIconData()
       .then(() => {
         store.checkIconsLoaded()
-        logger.log('[App] IconService loaded successfully')
       })
       .catch(e => {
         logger.error('[App] IconService load failed:', e)
@@ -232,7 +236,6 @@ onMounted(async () => {
 
   if (win.settings || win.settings_time || win.settings_pf) {
     store.syncAllSettings(win.settings || {}, win.settings_time || {}, win.settings_pf || {})
-    logger.log('[App] Settings synced to store')
   }
 })
 
@@ -297,10 +300,30 @@ async function runCalculation(retryCount: number = 0) {
         isAddSelfAccP: store.machineSettings.isAddSelfAccP
       }
     })
+    logger.log(
+      '[App] calculateWithOptions result:',
+      result
+        ? {
+            itemsCount: result.items?.length,
+            items2Count: result.items2?.length
+          }
+        : 'null'
+    )
 
     if (result && result.items) {
       const allItems = [...result.items, ...(result.items2 || [])]
       logger.log(`[App] Calculation result: ${allItems.length} items`)
+      logger.log(
+        '[App] Final products:',
+        allItems.map(item => ({
+          name: item.name,
+          number: item.number1,
+          machineName: item.machineName,
+          pf: item.pf?.map(p => p.name),
+          accType: item.accType?.map(a => a.name),
+          accValue: item.accValue?.map(a => a.name)
+        }))
+      )
       store.setResultItems(
         allItems.map((item, index) => ({
           ...item,
@@ -368,6 +391,45 @@ async function handleAddItem(item: { name: string }) {
     store.loadFromLegacy(legacyDemands, store.excludeList)
   }
 
+  runCalculation()
+}
+
+function handleSelectRecipe(item: TableItem, recipeId: string) {
+  const win = getWin()
+  if (typeof win.selectPf === 'function') {
+    win.selectPf(item.name, recipeId)
+  }
+  const recipeIndex = Number(recipeId)
+  if (!isNaN(recipeIndex)) {
+    settingsAdapter.setProductivitySetting(item.name, recipeIndex)
+  }
+  runCalculation()
+}
+
+function handleSelectAccType(item: TableItem, recipeId: string | number, accType: string) {
+  const win = getWin()
+  if (typeof win.selectAccType === 'function') {
+    win.selectAccType(item.name, accType)
+  }
+  settingsAdapter.setRecipeAccType(recipeId, accType)
+  runCalculation()
+}
+
+function handleSelectAccValue(item: TableItem, recipeId: string | number, accValue: string) {
+  const win = getWin()
+  if (typeof win.selectAccValue === 'function') {
+    win.selectAccValue(item.name, accValue)
+  }
+  settingsAdapter.setRecipeAccValue(recipeId, accValue)
+  runCalculation()
+}
+
+function handleSelectMachine(item: TableItem, recipeId: string | number, machineName: string) {
+  const win = getWin()
+  if (typeof win.selectM === 'function') {
+    win.selectM(item.name, machineName)
+  }
+  settingsAdapter.setRecipeMachine(recipeId, machineName)
   runCalculation()
 }
 </script>

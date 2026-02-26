@@ -104,10 +104,6 @@ class InitializationService {
     this.message = message
     this.progress = Math.min(100, this.progress + progressIncrement)
 
-    logger.log(
-      `[InitializationService] State: ${oldState} -> ${newState} (${this.progress}%) - ${message}`
-    )
-
     this.notifyStateListeners()
   }
 
@@ -218,7 +214,6 @@ class InitializationService {
     this.setState(InitState.READY, 'Initialization complete', 20)
 
     const elapsed = Date.now() - this.startTime
-    logger.log(`[InitializationService] Initialization completed in ${elapsed}ms`)
 
     if (this.readyResolve) {
       this.readyResolve()
@@ -247,7 +242,6 @@ class InitializationService {
     this.skipIconsLoading = false
     this.stateListeners.clear()
     this.errorListeners.clear()
-    logger.log('[InitializationService] Reset to IDLE state')
   }
 
   getElapsedTime(): number {

@@ -120,6 +120,28 @@ function f_initData() {
   data.forEach(function (item, i) {
     item.id = i //配方的id，用index设置，data改变时应该重置配方
 
+    // 如果 item.m 已经是数组，说明已经初始化过，跳过
+    if (Array.isArray(item.m)) {
+      // 重新构建索引
+      for (var j = 0; j < item.s.length; j++) {
+        var productName = item.s[j].name
+        if (!recipeIndexByProduct[productName]) {
+          recipeIndexByProduct[productName] = []
+        }
+        recipeIndexByProduct[productName].push(i)
+      }
+      if (item.q) {
+        for (var j = 0; j < item.q.length; j++) {
+          var materialName = item.q[j].name
+          if (!recipeIndexByMaterial[materialName]) {
+            recipeIndexByMaterial[materialName] = []
+          }
+          recipeIndexByMaterial[materialName].push(i)
+        }
+      }
+      return
+    }
+
     // 构建产物索引
     for (var j = 0; j < item.s.length; j++) {
       var productName = item.s[j].name

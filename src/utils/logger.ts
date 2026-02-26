@@ -148,18 +148,29 @@ class StructuredLogger {
   private consoleLog(level: LogLevel, ...args: any[]): void {
     const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}]`
 
+    const processedArgs = args.map(arg => {
+      if (typeof arg === 'object' && arg !== null) {
+        try {
+          return JSON.stringify(arg, null, 2)
+        } catch {
+          return arg
+        }
+      }
+      return arg
+    })
+
     switch (level) {
       case 'debug':
-        if (isDev) console.log(prefix, ...args)
+        if (isDev) console.log(prefix, ...processedArgs)
         break
       case 'info':
-        console.info(prefix, ...args)
+        console.info(prefix, ...processedArgs)
         break
       case 'warn':
-        console.warn(prefix, ...args)
+        console.warn(prefix, ...processedArgs)
         break
       case 'error':
-        console.error(prefix, ...args)
+        console.error(prefix, ...processedArgs)
         break
     }
   }

@@ -74,6 +74,7 @@ export interface ICalculationResult {
 export interface IMachineOptionItem {
   class: string
   itemName: string
+  id?: string | number
   href: string
   name: string
   title: string
@@ -84,6 +85,7 @@ export interface IMachineOptionItem {
 export interface IAccOptionItem {
   class: string
   itemName: string
+  id?: string | number
   href: string
   name: string
   title: string
@@ -126,6 +128,12 @@ export interface IUpdateAllOptions {
   settingsPf?: Record<string, string | number>
   defaultAccType?: string
   defaultAccValue?: string
+  defaultMachine?: {
+    modeIn?: string
+    furnace?: string
+    chemical?: string
+    research?: string
+  }
   hideSource?: boolean
   pointLength?: number
   selfAcc?: boolean
@@ -139,6 +147,12 @@ export class UpdateAllService {
   private pointLength: number = 3
   private isInitialized: boolean = false
   private initPromise: Promise<void> | null = null
+  private defaultMachine: {
+    modeIn?: string
+    furnace?: string
+    chemical?: string
+    research?: string
+  } = {}
   private singleList: Array<{
     id: number
     number: number
@@ -146,6 +160,7 @@ export class UpdateAllService {
     mName: string
     value: number
   }> = []
+  private hasLoggedMachineDetermination = false
 
   constructor() {
     // 延迟初始化：不在构造函数中初始化，避免 window.data 未加载问题
@@ -166,6 +181,22 @@ export class UpdateAllService {
 
         this.recipes = recipeDataService.getRecipes()
         this.recipeIndexByProduct = recipeDataService.getIndexByProduct()
+
+        logger.log('[UpdateAllService] After getting recipes:', {
+          count: this.recipes.length,
+          firstRecipe: {
+            id: this.recipes[0]?.id,
+            name: this.recipes[0]?.s?.[0]?.name,
+            m: this.recipes[0]?.m,
+            'typeof m': typeof this.recipes[0]?.m
+          },
+          ironOreRecipe: {
+            id: this.recipes.find(r => r.s?.[0]?.name === '铁矿')?.id,
+            m: this.recipes.find(r => r.s?.[0]?.name === '铁矿')?.m,
+            'typeof m': typeof this.recipes.find(r => r.s?.[0]?.name === '铁矿')?.m
+          }
+        })
+
         this.calculator = new RecipeCalculator(this.recipes, this.recipeIndexByProduct)
         this.isInitialized = true
 
@@ -193,6 +224,8 @@ export class UpdateAllService {
   async updateAll(options: IUpdateAllOptions): Promise<ICalculationResult> {
     await this.ensureCalculator()
 
+    this.hasLoggedMachineDetermination = false
+
     const {
       demands,
       excludes,
@@ -202,6 +235,7 @@ export class UpdateAllService {
       settingsPf = {},
       defaultAccType = '增产剂Mk.Ⅰ',
       defaultAccValue = '无',
+      defaultMachine = {},
       hideSource = false,
       pointLength = 3,
       selfAcc = false,
@@ -209,9 +243,12 @@ export class UpdateAllService {
     } = options
 
     this.pointLength = pointLength
+    this.defaultMachine = defaultMachine
     this.calculator!.clearState()
     this.calculator!.setIgNames(excludes)
     this.singleList = []
+
+    logger.log('[UpdateAll] Starting calculation with defaultMachine:', defaultMachine)
 
     if (calculationCacheService.isVersionChanged(settingsTime, settingsPf, settings)) {
       calculationCacheService.clearAll()
@@ -490,11 +527,83 @@ export class UpdateAllService {
   private getMachineInfo(
     recipe: IRawRecipe,
     settings: Record<string, { m?: string }>,
-    settingsTime: Record<string, number>
+    settingsTime: Record<string, number>,
+    defaultMachine?: { modeIn?: string; furnace?: string; chemical?: string; research?: string }
   ): IMachineInfo {
     const recipeSettings = settings[recipe.id?.toString() || '']
     const mArray = Array.isArray(recipe.m) ? recipe.m : []
-    const machineNameRaw = recipeSettings?.m || mArray[0]?.name || recipe.mName || ''
+    const recipeIdStr = recipe.id?.toString() || ''
+    const rawMachineType =
+      typeof recipe.m === 'string'
+        ? recipe.m
+        : Array.isArray(recipe.mName)
+          ? ''
+          : recipe.mName || ''
+    logger.log('[UpdateAll] getMachineInfo debug:', {
+      recipeId: recipeIdStr,
+      recipeName: recipe.s?.[0]?.name,
+      'recipe.m': typeof recipe.m === 'string' ? recipe.m : 'array',
+      'recipe.mName': recipe.mName,
+      rawMachineType,
+      mArrayLength: mArray.length
+    })
+
+    const getDefaultMachine = (
+      rawMachineType: string,
+      mName: string | string[] | { name: string; speed: number }
+    ): string => {
+      let recipeMachineName = ''
+      if (typeof mName === 'string') {
+        recipeMachineName = mName
+      } else if (Array.isArray(mName)) {
+        const first = mName[0] as string | { name: string; speed: number } | undefined
+        recipeMachineName = typeof first === 'object' && first !== null ? first.name : first || ''
+      } else if (typeof mName === 'object' && mName !== null) {
+        recipeMachineName = (mName as { name: string }).name || ''
+      }
+      const defaults = { ...this.defaultMachine, ...(defaultMachine || {}) }
+      let defaultForType = ''
+      if (rawMachineType === '冶炼设备' && defaults.furnace) {
+        defaultForType = defaults.furnace
+      } else if (rawMachineType === '化工设备' && defaults.chemical) {
+        defaultForType = defaults.chemical
+      } else if (rawMachineType === '研究站' && defaults.research) {
+        defaultForType = defaults.research
+      } else if (defaults.modeIn) {
+        defaultForType = defaults.modeIn
+      }
+      const result = defaultForType || recipeMachineName || mArray[0]?.name || '制作台Mk.Ⅰ'
+      logger.log('[UpdateAll] getDefaultMachine debug:', {
+        rawMachineType,
+        recipeMachineName,
+        defaults,
+        defaultForType,
+        result,
+        mArray0: mArray[0]?.name
+      })
+      return result
+    }
+
+    const defaultMachineName = getDefaultMachine(rawMachineType, recipe.mName || '')
+    const recipeSettingsM = settings[recipeIdStr]?.m
+    const hasGlobalDefault =
+      defaultMachine &&
+      Object.keys(defaultMachine).some(k => defaultMachine[k as keyof typeof defaultMachine])
+    const machineNameRaw = hasGlobalDefault
+      ? defaultMachineName
+      : recipeSettingsM || defaultMachineName || recipe.mName || ''
+    if (!this.hasLoggedMachineDetermination) {
+      this.hasLoggedMachineDetermination = true
+      logger.log('[UpdateAll] machine determination:', {
+        recipeId: recipeIdStr,
+        recipeName: recipe.s?.[0]?.name,
+        recipeSettingsM,
+        defaultMachineName,
+        thisDefaultMachine: this.defaultMachine,
+        hasGlobalDefault,
+        machineNameRaw: typeof machineNameRaw === 'object' ? 'object' : machineNameRaw
+      })
+    }
     const machineName = typeof machineNameRaw === 'string' ? machineNameRaw : String(machineNameRaw)
     const machine =
       mArray.find((m: { name: string; speed: number }) => m.name === machineName) || mArray[0]
@@ -680,6 +789,7 @@ export class UpdateAllService {
         item.pf.push({
           class: isSelected ? 'pf selected' : 'pf',
           itemName: xh.name,
+          id: pfRecipe.id,
           href: isSelected
             ? 'javascript:void(0)'
             : `javascript:selectPf("${xh.name}","${pfRecipe.id}")`,
@@ -692,6 +802,13 @@ export class UpdateAllService {
 
       // P7-1修复：填充m数组（可选设备列表）
       const mArray = Array.isArray(recipe.m) ? recipe.m : []
+      logger.log('[UpdateAll] building item.m:', {
+        recipeId: recipe.id,
+        recipeName: recipe.s?.[0]?.name,
+        'recipe.m': recipe.m,
+        mArrayLength: mArray.length,
+        machineInfoName: machineInfo?.name
+      })
 
       for (const mItem of mArray) {
         let mName = ''
@@ -751,6 +868,7 @@ export class UpdateAllService {
         item.m.push({
           class: isSelected ? 'm selected' : 'm',
           itemName: xh.name,
+          id: recipe.id,
           href: isSelected
             ? 'javascript:void(0)'
             : `javascript:selectM("${recipe.id}","${String(mName)}")`,
@@ -769,6 +887,7 @@ export class UpdateAllService {
         item.accType.push({
           class: isSelected ? 'm selected' : 'm',
           itemName: xh.name,
+          id: recipe.id,
           href: isSelected
             ? 'javascript:void(0)'
             : `javascript:selectAccType("${recipe.id}","${accT}")`,
@@ -795,6 +914,7 @@ export class UpdateAllService {
         item.accValue.push({
           class: isSelected ? 'm selected' : 'm',
           itemName: xh.name,
+          id: recipe.id,
           href: isSelected
             ? 'javascript:void(0)'
             : `javascript:selectAccValue("${recipe.id}","${accV}")`,

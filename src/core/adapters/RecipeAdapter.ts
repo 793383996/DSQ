@@ -62,10 +62,6 @@ export class RecipeAdapter {
     this.rawRecipes = recipeDataService.getRecipes()
     this.buildIndexFromService()
     this.loaded = true
-
-    logger.log(
-      `[RecipeAdapter] Initialized with ${this.rawRecipes.length} recipes from RecipeDataService`
-    )
   }
 
   private buildIndexFromService(): void {
@@ -112,8 +108,6 @@ export class RecipeAdapter {
     this.rawRecipes = rawData
     this.buildIndex()
     this.loaded = true
-
-    logger.log(`[RecipeAdapter] Loaded ${this.rawRecipes.length} recipes (lazy transform)`)
   }
 
   private getRecipe(idx: number): IRecipe | null {
