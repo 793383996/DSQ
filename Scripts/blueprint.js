@@ -2485,6 +2485,18 @@ class Blueprint {
           this.config.conveyorBeltStackLayer;
       }
 
+      // 平衡拆分：中间产物需要确保每条传送带的供需比例一致
+      const isIntermediate = item.fromBuildingNum !== 0 && item.toBuildingNum !== 0;
+      let totalSupplySorters = 0;
+      let totalDemandSorters = 0;
+      let assignedSupplySorters = 0;
+      let assignedDemandSorters = 0;
+      
+      if (isIntermediate && this.sorters[itemName]) {
+        totalSupplySorters = this.sorters[itemName].output ? this.sorters[itemName].output.length : 0;
+        totalDemandSorters = this.sorters[itemName].input ? this.sorters[itemName].input.length : 0;
+      }
+
       for (let totalDoneRate = 0; item.rate - totalDoneRate > zero; ) {
         let needSprayCoater = item.needProliferator;
         let doneRate = 0;
@@ -2540,6 +2552,23 @@ class Blueprint {
         let outputRate = doneRate; // 当前传送带实际运力
         doneSorterNum = 0;
         let refineryNum = 0; // X射线裂解/重整精炼工厂数量
+        
+        // 平衡拆分：中间产物按供需比例分配需求分拣器
+        let demandSortersToAssign = 0;
+        if (isIntermediate && totalSupplySorters > 0 && totalDemandSorters > 0) {
+          let currentSupplyCount = 0;
+          for (let node of inputData) {
+            currentSupplyCount += node.length;
+          }
+          let remainingSupply = totalSupplySorters - assignedSupplySorters;
+          let remainingDemand = totalDemandSorters - assignedDemandSorters;
+          if (remainingSupply > 0 && remainingDemand > 0) {
+            let demandRatio = remainingDemand / remainingSupply;
+            demandSortersToAssign = Math.ceil(currentSupplyCount * demandRatio);
+            demandSortersToAssign = Math.min(demandSortersToAssign, remainingDemand);
+          }
+          assignedSupplySorters += currentSupplyCount;
+        }
         // 重新排序以提高输出传送带中，X射线裂解(氢)和重整精炼(精炼油)的输入优先级
         if (["hydrogen", "refinedOil"].includes(itemName) && item.toBuildingNum !== 0) {
           let input2 = [];
@@ -2687,6 +2716,13 @@ class Blueprint {
             outputRate -= this.sorters[itemName].input[j].rate;
             this.sorters[itemName].input.pop();
             doneSorterNum++;
+            assignedDemandSorters++;
+            
+            // 平衡拆分：中间产物按比例分配后终止
+            if (isIntermediate && demandSortersToAssign > 0 && doneSorterNum >= demandSortersToAssign) {
+              break;
+            }
+            
             if (outputRate <= 0) {
               if (j > 0 && totalDoneRate >= item.rate) {
                 // 有分拣器还未连接 并且 不会再生成新的传送带了
@@ -2695,6 +2731,11 @@ class Blueprint {
               }
               break;
             }
+          }
+          
+          // 平衡拆分：如果还有剩余需求分拣器但已达到分配数量，继续循环创建新传送带
+          if (isIntermediate && this.sorters[itemName].input && this.sorters[itemName].input.length > 0) {
+            // 继续循环，创建下一条传送带
           }
         } else {
           // 说明是终产物
