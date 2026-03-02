@@ -2531,7 +2531,7 @@ class Blueprint {
           inputData.push([]);
           parameters = {
             iconId: itemMap[itemName].iconId,
-            count: (inputRate * 60 / stackLayers).toFixed(0),
+            count: (inputRate * 60).toFixed(0),
           };
           doneRate += inputRate;
           // inputRate = 0
@@ -2701,7 +2701,7 @@ class Blueprint {
           outputData.push([]);
           parameters = {
             iconId: itemMap[itemName].iconId,
-            count: (outputRate * 60 / stackLayers).toFixed(0),
+            count: (outputRate * 60).toFixed(0),
           };
           needSprayCoater = false;
         }
