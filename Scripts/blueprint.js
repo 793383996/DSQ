@@ -2225,6 +2225,52 @@ class Blueprint {
         this.buildings.push(clone);
       }
     }
+
+    // 修复：添加克隆后验证机制，检查传送带节点负载
+    this.validateBeltLoad();
+  }
+
+  validateBeltLoad() {
+    const beltItemIds = new Set([2001, 2002, 2003]);
+    const beltLoad = new Map();
+    
+    for (const b of this.buildings) {
+      if (b.itemId === 2014) {
+        if (b.outputObjIdx >= 0) {
+          beltLoad.set(b.outputObjIdx, (beltLoad.get(b.outputObjIdx) || 0) + 1);
+        }
+        if (b.inputObjIdx >= 0 && b.inputObjIdx !== b.outputObjIdx) {
+          const beltIdx = this.findBeltIndex(b.inputObjIdx);
+          if (beltIdx >= 0) {
+            beltLoad.set(beltIdx, (beltLoad.get(beltIdx) || 0) + 1);
+          }
+        }
+      }
+    }
+    
+    const warnings = [];
+    for (const [beltIdx, load] of beltLoad) {
+      if (load > this.config.maxSorterNumOneBelt) {
+        warnings.push(`传送带节点${beltIdx}超载: ${load}个分拣器 (限制: ${this.config.maxSorterNumOneBelt})`);
+      }
+    }
+    
+    if (warnings.length > 0) {
+      console.warn(`[蓝图验证] 发现${warnings.length}个传送带超载问题:`);
+      warnings.forEach(w => console.warn(`  - ${w}`));
+    }
+    
+    return warnings;
+  }
+
+  findBeltIndex(objIdx) {
+    const beltItemIds = new Set([2001, 2002, 2003]);
+    for (const b of this.buildings) {
+      if (b.index === objIdx && beltItemIds.has(b.itemId)) {
+        return objIdx;
+      }
+    }
+    return -1;
   }
 
   sortItemSummary(itemSummary) {
@@ -2408,8 +2454,9 @@ class Blueprint {
     // 堆叠模式：z=0 层每个传送带节点的分拣器在 cloneToStackLayers 后被克隆 stackLayers 倍
     // 为保证克隆后每节点不超过 maxSorterNumOneBelt，z=0 层每节点只分配 floor(max/stackLayers) 个
     // 例：stackLayers=4, max=8 → z=0 每节点 2 个分拣器 → 克隆后 2×4=8 ≤ 8
+    // 修复：使用更保守的分配策略，减1确保边界情况不会超载
     const sortersPerNode = stackLayers > 1
-      ? Math.max(1, Math.floor(this.config.maxSorterNumOneBelt / stackLayers))
+      ? Math.max(1, Math.floor((this.config.maxSorterNumOneBelt - 1) / stackLayers))
       : this.config.maxSorterNumOneBelt;
     for (let item in itemSummary) {
       const itemName = item;
@@ -2446,6 +2493,11 @@ class Blueprint {
         let inputData = [];
         let outputData = [];
         let doneSorterNum = 0;
+        // 修复：添加空值检查，防止 this.sorters[itemName] 不存在时抛出异常
+        if (!this.sorters[itemName]) {
+          console.warn(`[蓝图警告] 物品 ${itemName} 没有对应的分拣器数据`);
+          break;
+        }
         // 修复：浮点精度导致所有分拣器已消耗但循环未终止，安全退出防止死循环或错位节点
         if (item.fromBuildingNum !== 0 && this.sorters[itemName].output.length === 0) {
           break;
@@ -2460,7 +2512,9 @@ class Blueprint {
               // 当前带接受运力不能满足分拣器，则该分拣器连接下一个带上的节点
               break;
             }
-            if ((doneSorterNum + 1) % sortersPerNode === 0 || doneSorterNum === 0) {
+            // 修复：改进分配算法，确保每个节点均匀分配分拣器
+            // 当 doneSorterNum 是 sortersPerNode 的倍数时创建新节点
+            if (doneSorterNum % sortersPerNode === 0) {
               inputData.push([this.sorters[itemName].output[j].index]);
             } else {
               inputData[inputData.length - 1].push(
@@ -2622,9 +2676,8 @@ class Blueprint {
             // 当前传送带连接分拣器达到上限，连接下一个传送带
             // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
             // 修复：当 totalDoneRate >= item.rate 但 outputData 还未覆盖所有 inputData 时，仍需继续生成
-            const needMoreOutput = totalDoneRate + zero < item.rate;
-            const needMoreCoverage = outputData.length < inputData.length;
-            if (needMoreOutput || needMoreCoverage) {
+            // 修复：使用与输出分拣器相同的均匀分配策略
+            if (doneSorterNum % sortersPerNode === 0) {
               outputData.push([this.sorters[itemName].input[j].index]);
             } else {
               outputData[outputData.length - 1].push(
