@@ -2553,20 +2553,21 @@ class Blueprint {
         doneSorterNum = 0;
         let refineryNum = 0; // X射线裂解/重整精炼工厂数量
         
-        // 平衡拆分：中间产物按供需比例分配需求分拣器
-        let demandSortersToAssign = 0;
+        // 修复：计算当前节点的供应分拣器数量，用于确保供需平衡
+        let currentSupplyCount = 0;
+        for (let node of inputData) {
+          currentSupplyCount += node.length;
+        }
+        
+        // 修复：移除按比例分配需求分拣器的逻辑
+        // 正确的逻辑是：每个传送带节点应该有相同数量的供应和需求分拣器
+        // 如果需求分拣器不足，某些传送带节点没有输出（正常情况）
+        // 如果需求分拣器有余，继续分配到下一个传送带节点
+        let demandSortersToAssign = currentSupplyCount;
         if (isIntermediate && totalSupplySorters > 0 && totalDemandSorters > 0) {
-          let currentSupplyCount = 0;
-          for (let node of inputData) {
-            currentSupplyCount += node.length;
-          }
-          let remainingSupply = totalSupplySorters - assignedSupplySorters;
           let remainingDemand = totalDemandSorters - assignedDemandSorters;
-          if (remainingSupply > 0 && remainingDemand > 0) {
-            let demandRatio = remainingDemand / remainingSupply;
-            demandSortersToAssign = Math.ceil(currentSupplyCount * demandRatio);
-            demandSortersToAssign = Math.min(demandSortersToAssign, remainingDemand);
-          }
+          // 确保不超过剩余需求分拣器数量
+          demandSortersToAssign = Math.min(currentSupplyCount, remainingDemand);
           assignedSupplySorters += currentSupplyCount;
         }
         // 重新排序以提高输出传送带中，X射线裂解(氢)和重整精炼(精炼油)的输入优先级
@@ -2588,6 +2589,15 @@ class Blueprint {
           this.sorters[itemName].input = input2;
         }
         if (item.toBuildingNum !== 0) {
+          // 修复：确保每个节点的供需分拣器数量相等
+          // 根据输入节点的数量和每个节点的分拣器数量来分配输出分拣器
+          let nodeSorterCounts = [];
+          if (isIntermediate && inputData.length > 0) {
+            nodeSorterCounts = inputData.map(n => n.length);
+          }
+          let currentNodeIndex = 0;
+          let sortersInCurrentNode = 0;
+          
           for (let j = this.sorters[itemName].input.length - 1; j >= 0; j--) {
             if (
               totalDoneRate + zero < item.rate &&
@@ -2705,13 +2715,44 @@ class Blueprint {
             // 当前传送带连接分拣器达到上限，连接下一个传送带
             // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
             // 修复：当 totalDoneRate >= item.rate 但 outputData 还未覆盖所有 inputData 时，仍需继续生成
-            // 修复：使用与输出分拣器相同的均匀分配策略
-            if (doneSorterNum % sortersPerNode === 0) {
+            // 修复：确保每个节点的供需分拣器数量相等
+            // 根据输入节点的分拣器数量来决定输出节点的分配
+            let targetSortersPerNode = sortersPerNode;
+            if (isIntermediate && nodeSorterCounts.length > 0) {
+              // 使用当前输入节点的分拣器数量
+              targetSortersPerNode = nodeSorterCounts[Math.min(currentNodeIndex, nodeSorterCounts.length - 1)];
+            }
+            
+            // 判断是否需要创建新的输出节点
+            let needNewNode = false;
+            if (outputData.length === 0) {
+              needNewNode = true;
+            } else if (isIntermediate && nodeSorterCounts.length > 0) {
+              // 如果当前节点的分拣器数量已达到目标，创建新节点
+              if (sortersInCurrentNode >= targetSortersPerNode) {
+                needNewNode = true;
+                currentNodeIndex++;
+                sortersInCurrentNode = 0;
+                // 更新目标分拣器数量
+                if (currentNodeIndex < nodeSorterCounts.length) {
+                  targetSortersPerNode = nodeSorterCounts[currentNodeIndex];
+                }
+              }
+            } else {
+              // 非中间产物，使用原有逻辑
+              if (doneSorterNum % targetSortersPerNode === 0) {
+                needNewNode = true;
+              }
+            }
+            
+            if (needNewNode) {
               outputData.push([this.sorters[itemName].input[j].index]);
+              sortersInCurrentNode = 1;
             } else {
               outputData[outputData.length - 1].push(
                 this.sorters[itemName].input[j].index
               );
+              sortersInCurrentNode++;
             }
             outputRate -= this.sorters[itemName].input[j].rate;
             this.sorters[itemName].input.pop();
