@@ -2454,9 +2454,10 @@ class Blueprint {
     // 堆叠模式：z=0 层每个传送带节点的分拣器在 cloneToStackLayers 后被克隆 stackLayers 倍
     // 为保证克隆后每节点不超过 maxSorterNumOneBelt，z=0 层每节点只分配 floor(max/stackLayers) 个
     // 例：stackLayers=4, max=8 → z=0 每节点 2 个分拣器 → 克隆后 2×4=8 ≤ 8
-    // 修复：使用更保守的分配策略，减1确保边界情况不会超载
+    // 修复：确保sortersPerNode至少为2，这样克隆后每个节点可以连接8个分拣器（2×4）
+    // 满足普通模式下所有节点的需求（普通模式有节点需要连接8个分拣器）
     const sortersPerNode = stackLayers > 1
-      ? Math.max(1, Math.floor((this.config.maxSorterNumOneBelt - 1) / stackLayers))
+      ? Math.max(2, Math.floor((this.config.maxSorterNumOneBelt - 1) / stackLayers))
       : this.config.maxSorterNumOneBelt;
     for (let item in itemSummary) {
       const itemName = item;

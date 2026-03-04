@@ -6622,7 +6622,7 @@ function generateBlueprint() {
     ), // 电线杆间隔几排
     // onlyConveyorBeltMk3Downgrade: document.getElementById('onlyConveyorBeltMk3Downgrade').checked  // 三级传送带运力降级
     onlyConveyorBeltMk3Downgrade: false, // 三级传送带运力降级
-    stackLayers: parseInt(document.getElementById("stackLayers").value) || 1, // 建筑堆叠层数（1=不堆叠）
+    stackLayers: document.getElementById("stackLayers").checked ? 4 : 1, // 建筑堆叠层数（开关开启=4层堆叠，关闭=1层普通模式）
   };
   // console.log(config)
   let b1 = new Blueprint(
