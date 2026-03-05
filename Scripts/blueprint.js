@@ -2421,32 +2421,10 @@ class Blueprint {
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
 
-    // 堆叠模式：传送带需要支撑所有堆叠层的总产能
-    // z=0 传送带汇聚所有层的产物，需要按总产能设计
-    // 例如：4层堆叠，每层15设备 → 总共60设备 → 传送带按60设备产能设计
+    // 堆叠模式：设备垂直堆叠，传送带只在一层
+    // 每层设备数量 = 普通模式/stackLayers，总设备数量 ≈ 普通模式
+    // 传送带需要支撑的产能和普通模式一样，所以rate不需要放大
     const stackLayers = this.config.stackLayers || 1;
-    if (stackLayers > 1) {
-      for (let key in itemSummary) {
-        itemSummary[key].rate *= stackLayers;
-        if (itemSummary[key].inputRate !== undefined) {
-          itemSummary[key].inputRate *= stackLayers;
-        }
-      }
-      // 分拣器 rate 也需要放大，与 item.rate 匹配
-      // 这样传送带容量设计才能正确
-      for (let itemName in this.sorters) {
-        if (this.sorters[itemName].output) {
-          for (let s of this.sorters[itemName].output) {
-            s.rate *= stackLayers;
-          }
-        }
-        if (this.sorters[itemName].input) {
-          for (let s of this.sorters[itemName].input) {
-            s.rate *= stackLayers;
-          }
-        }
-      }
-    }
 
     this.conveyorStartOffsetX =
       this.occupiedArea[this.occupiedArea.length - 1].x2;
@@ -2535,7 +2513,7 @@ class Blueprint {
           inputData.push([]);
           parameters = {
             iconId: itemMap[itemName].iconId,
-            count: (inputRate * 60 / stackLayers).toFixed(0),
+            count: (inputRate * 60).toFixed(0),
           };
           doneRate += inputRate;
           // inputRate = 0
@@ -2705,7 +2683,7 @@ class Blueprint {
           outputData.push([]);
           parameters = {
             iconId: itemMap[itemName].iconId,
-            count: (outputRate * 60 / stackLayers).toFixed(0),
+            count: (outputRate * 60).toFixed(0),
           };
           needSprayCoater = false;
         }
