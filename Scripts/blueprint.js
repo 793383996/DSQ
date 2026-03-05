@@ -2064,6 +2064,8 @@ class Blueprint {
         if (subRecipe.building) {
           // 排除 Lab（不缩减num，保持完整产能）
           if (buildingMap[subRecipe.building.name].category !== productionCategory.lab) {
+            // 保存原始 num，用于 generateConveyorBelts 中计算原料需求
+            subRecipe.building.originalNum = subRecipe.building.num;
             subRecipe.building.num = Math.ceil(
               subRecipe.building.num / this.config.stackLayers
             );
@@ -2366,6 +2368,9 @@ class Blueprint {
         } else {
           toBuildingNum = subRecipe.building.num;
         }
+        // 堆叠模式：使用原始设备数量计算原料需求
+        // 因为所有层的设备共享 z=0 层的传送带，原料需要满足所有层的需求
+        const actualNum = subRecipe.building.originalNum || subRecipe.building.num;
         if (itemSummary[inputItem.name]) {
           itemSummary[inputItem.name].toBuildingNum += toBuildingNum;
           if (
@@ -2379,20 +2384,20 @@ class Blueprint {
             itemSummary[inputItem.name].inputRate +=
               inputItem.rate *
               buildingMap[subRecipe.building.name].productionSpeed *
-              subRecipe.building.num *
+              actualNum *
               extra_rate;
           } else {
             // 无增产剂或增产时原料速率不变
             itemSummary[inputItem.name].inputRate +=
               inputItem.rate *
               buildingMap[subRecipe.building.name].productionSpeed *
-              subRecipe.building.num;
+              actualNum;
           }
         } else {
           let itemInputRate =
             inputItem.rate *
             buildingMap[subRecipe.building.name].productionSpeed *
-            subRecipe.building.num;
+            actualNum;
           if (subRecipe.acceleratorMode === 1) {
             itemInputRate *= extra_rate;
           }
