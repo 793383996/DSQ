@@ -2133,6 +2133,7 @@ class Blueprint {
     ]);
     const beltItemIds = new Set([2001, 2002, 2003]);
     const sprayCoaterItemId = buildingMap.sprayCoater.itemId;
+    const teslaTowerItemId = 2201; // 电力感应塔
 
     const labIndices = new Set();
     for (const b of baseBuildings) {
@@ -2141,12 +2142,14 @@ class Blueprint {
       }
     }
 
-    // 过滤出需要克隆的建筑（排除Lab、传送带、喷涂机）
+    // 过滤出需要克隆的建筑（排除Lab、传送带、喷涂机、电力感应塔）
+    // 电力感应塔只保留z=0层，克隆层不需要（z=0层的电杆可以为所有层供电）
     const cloneableBuildings = baseBuildings.filter((b) => {
       if (labItemIds.has(b.itemId)) return false;
       if (labIndices.has(b.inputObjIdx) || labIndices.has(b.outputObjIdx)) return false;
       if (beltItemIds.has(b.itemId)) return false;
       if (b.itemId === sprayCoaterItemId) return false;
+      if (b.itemId === teslaTowerItemId) return false;
       return true;
     });
 
