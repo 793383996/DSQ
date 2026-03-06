@@ -6586,6 +6586,48 @@ function getRecipe() {
   };
 }
 
+let _loadingOverlay = null;
+
+function showLoadingDialog() {
+  if (!_loadingOverlay) {
+    _loadingOverlay = document.createElement('div');
+    _loadingOverlay.id = 'blueprint-loading-overlay';
+    _loadingOverlay.innerHTML = `
+      <style>
+        @keyframes bp-loading-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .bp-loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #e0e0e0;
+          border-top: 4px solid #3498db;
+          border-radius: 50%;
+          animation: bp-loading-spin 1s linear infinite;
+          margin: 0 auto 15px auto;
+        }
+      </style>
+      <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:9999;">
+        <div style="background:#fff;padding:30px 50px;border-radius:12px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+          <div class="bp-loading-spinner"></div>
+          <div style="font-size:16px;color:#333;font-weight:500;">蓝图生成中...</div>
+          <div style="font-size:12px;color:#888;margin-top:8px;">请稍候，正在计算最优布局</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(_loadingOverlay);
+  } else {
+    _loadingOverlay.style.display = 'block';
+  }
+}
+
+function hideLoadingDialog() {
+  if (_loadingOverlay) {
+    _loadingOverlay.style.display = 'none';
+  }
+}
+
 function generateBlueprint() {
   if (!location.href.startsWith("https")) {
     cocoMessage.warning("请使用 https 协议访问以启用复制到剪切板功能");
@@ -6596,8 +6638,6 @@ function generateBlueprint() {
     proliferator: recipe.proliferator,
     subRecipes: recipe.recipeList,
   };
-  // console.log(JSON.stringify(outputRecipe))
-  //{"subRecipes":[{"building":{"name":"assemblingMachineMk1","num":0.7},"output":[{"name":"magneticCoil","rate":2}],"input":[{"name":"magnet","rate":2},{"name":"copperIngot","rate":1}],"acceleratorMode":0,"recipeID":0},{"building":{"name":"arcSmelter","num":1.5},"output":[{"name":"magnet","rate":0.6666666666666666}],"input":[{"name":"ironOre","rate":0.6666666666666666}],"acceleratorMode":0,"recipeID":0},{"building":null,"output":[{"name":"ironOre","rate":1}],"input":null,"acceleratorMode":0,"recipeID":0},{"building":{"name":"arcSmelter","num":0.5},"output":[{"name":"copperIngot","rate":1}],"input":[{"name":"copperOre","rate":1}],"acceleratorMode":0,"recipeID":0},{"building":null,"output":[{"name":"copperOre","rate":0.5}],"input":null,"acceleratorMode":0,"recipeID":0}]}
   if (!outputRecipe.subRecipes) {
     return;
   }
@@ -6623,40 +6663,36 @@ function generateBlueprint() {
     // onlyConveyorBeltMk3Downgrade: document.getElementById('onlyConveyorBeltMk3Downgrade').checked  // 三级传送带运力降级
     onlyConveyorBeltMk3Downgrade: false, // 三级传送带运力降级
     stackLayers: document.getElementById("stackLayers").checked ? 4 : 1, // 建筑堆叠层数（开关开启=4层堆叠，关闭=1层普通模式）
+    blueprintDesc: recipe.blueprintDesc.trimEnd(),
+    blueprintIconLength: recipe.blueprintIcon.length,
   };
-  // console.log(config)
-  let b1 = new Blueprint(
+
+  // 现代状态管理：显示全局 Loading 状态，防范重入互调
+  showLoadingDialog();
+
+  BlueprintFacade.generateAsync(
     recipe.blueprintTitle,
     recipe.blueprintIcon.concat(Array(5).fill(0)).slice(0, 5),
     outputRecipe,
     config
-  );
-  b1.init();
-  b1.generateBuildings();
-  b1.generateConveyorBelts();
-  b1.generateConveyorBeltsForSprayCoater();
-  b1.cloneToStackLayers(); // 堆叠模式：将 z=0 层克隆到 z=10,20,30
-  b1.blueprintTemplate.buildings = b1.buildings;
-  b1.blueprintTemplate.header.desc = recipe.blueprintDesc.trimEnd();
-  switch (recipe.blueprintIcon.length) {
-    case 1:
-      b1.blueprintTemplate.header.layout = 10;
-      break;
-    case 2:
-      b1.blueprintTemplate.header.layout = 20;
-      break;
-    case 3:
-      b1.blueprintTemplate.header.layout = 30;
-      break;
-    case 4:
-      b1.blueprintTemplate.header.layout = 40;
-      break;
-    default:
-      b1.blueprintTemplate.header.layout = 51;
-      break;
-  }
-  navigator.clipboard
-    .writeText(b1.toStr())
-    .then((r) => cocoMessage.success("已复制到粘贴板", 1000));
-  // navigator.clipboard.writeText(JSON.stringify(b1.blueprintTemplate.buildings)).then(r => cocoMessage.success("已复制到粘贴板", 1000))
+  )
+    .then((bpStr) => {
+      navigator.clipboard
+        .writeText(bpStr)
+        .then(() => cocoMessage.success("已复制到粘贴板", 1000));
+    })
+    .catch((err) => {
+      // 兼容降级：静默吞掉连点拦截的 Error，避免在 UI 弹出报错气泡扰乱用户
+      if (err.message === "ERR_ALREADY_RUNNING") {
+        console.warn("[拦截] 蓝图生成任务正在进行中，已忽略重复点击");
+        return;
+      }
+      if (typeof window !== 'undefined' && window.cocoMessage) {
+        cocoMessage.error(`蓝图生成失败: ${err.message}`, 5000);
+      }
+    })
+    .finally(() => {
+      // 零资源残留保障：哪怕 Promise 被 Reject，UI 锁也必须强行恢复
+      hideLoadingDialog();
+    });
 }

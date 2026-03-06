@@ -662,20 +662,24 @@ class Blueprint {
         }
       }
       if (!recipeMap[recipeStr] || recipeMap[recipeStr] === -1) {
-        cocoMessage.warning(
-          `包含不支持的配方: ${recipeStr.replace(
-            "=",
-            "->"
-          )}，<br/>请排除对应物品（目前只支持通过(位面)熔炉、制造台、精炼厂、对撞机、（量子）化工厂、研究站六类生产设施进行制造的物品）`,
-          5000
-        );
+        const warnMsg = `包含不支持的配方: ${recipeStr.replace("=", "->")}，<br/>请排除对应物品（目前只支持通过(位面)熔炉、制造台、精炼厂、对撞机、（量子）化工厂、研究站六类生产设施进行制造的物品）`;
+        // 纵深防崩：UI 组件跨线程不可达。通过全局作用域探测降级至事件总线。
+        if (typeof window !== 'undefined' && window.cocoMessage) {
+            cocoMessage.warning(warnMsg, 5000);
+        } else if (typeof postMessage === 'function') {
+            postMessage({ type: 'WARNING', payload: warnMsg });
+        } else {
+            console.warn(warnMsg);
+        }
         throw `unknown recipe - ${recipeStr} ${subRecipe}`;
       }
       if ([58, 121].includes(recipeMap[recipeStr])) {
-        cocoMessage.warning(
-          `X射线裂解(制氢)与重整精炼(制精炼油)可能需手动提供初始启动的精炼油/氢`,
-          5000
-        );
+        const warnMsg2 = `X射线裂解(制氢)与重整精炼(制精炼油)可能需手动提供初始启动的精炼油/氢`;
+        if (typeof window !== 'undefined' && window.cocoMessage) {
+            cocoMessage.warning(warnMsg2, 5000);
+        } else if (typeof postMessage === 'function') {
+            postMessage({ type: 'WARNING', payload: warnMsg2 });
+        }
         //throw `unknown recipe - ${recipeStr} ${subRecipe}`;
       }
       subRecipe.recipeID = recipeMap[recipeStr];
