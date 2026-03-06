@@ -2547,15 +2547,22 @@ class Blueprint {
         }
         if (item.toBuildingNum !== 0) {
           for (let j = this.sorters[itemName].input.length - 1; j >= 0; j--) {
+            // 核心修复：防崩与运力对齐
+            // 堆叠模式下，分拣器数组内记录的 rate 是单层设备的需求。
+            // 但在物理上，该节点将被克隆 stackLayers 份，Mk4 的总拿取速率是单层的 stackLayers 倍。
+            // 必须将扣除的实际运力放大，否则会导致将所有机器挂载在第一条传送带上，造成尾部严重饥饿。
+            let actualSorterRate = this.sorters[itemName].input[j].rate;
+            let columnLoad = (item.fromBuildingNum === 0 && stackLayers > 1) ? actualSorterRate * stackLayers : actualSorterRate;
+
             if (
               totalDoneRate + zero < item.rate &&
-              outputRate + zero < this.sorters[itemName].input[j].rate
+              outputRate + zero < columnLoad
             ) {
               // 当前带输出运力不能满足分拣器且还会生成新的传送带，则传送带新增一个节点单独该分拣器连接上，同时给对应建筑增加一个分拣器连到下一个节点
               // console.log(`${itemName}: need add sorter`)
               outputData.push([this.sorters[itemName].input[j].index]);
-              const newSorterRate =
-                this.sorters[itemName].input[j].rate - outputRate;
+              const newColumnLoad = columnLoad - outputRate;
+              const newSorterRate = (item.fromBuildingNum === 0 && stackLayers > 1) ? newColumnLoad / stackLayers : newColumnLoad;
               let sorter = buildingMap.sorterMk1;
               if (this.config.useSorterMk4 || this.config.onlySorterMk3 || newSorterRate > sorter.sortingSpeed) {
                 // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
@@ -2671,7 +2678,7 @@ class Blueprint {
                 this.sorters[itemName].input[j].index
               );
             }
-            outputRate -= this.sorters[itemName].input[j].rate;
+            outputRate -= columnLoad;
             this.sorters[itemName].input.pop();
             doneSorterNum++;
             if (outputRate <= 0) {
