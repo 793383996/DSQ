@@ -1,0 +1,9 @@
+**/*.min.js
+**/*.backup
+**/node_modules/**
+**/dist/**
+**/build/**
+Scripts/vue.min.js
+Scripts/jquery-2.2.4.min.js
+Scripts/jquery.cookie.min.js
+Scripts/pako.js

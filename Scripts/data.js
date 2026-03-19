@@ -3982,7 +3982,7 @@ var data = [
       },
     ],
     t: 6,
-	noExtra: true,
+    noExtra: true,
   },
   {
     s: [
@@ -4226,11 +4226,7 @@ energyData["分馏塔"] = 0.72;
 
 var spaceData = {}; //占用格子
 spaceData["研究站"] = 36 / 15; // 可叠加
-spaceData["制作台Mk.Ⅰ"] =
-  spaceData["制作台Mk.Ⅱ"] =
-  spaceData["制作台Mk.Ⅲ"] =
-  spaceData["重组式制造台"] =
-    16;
+spaceData["制作台Mk.Ⅰ"] = spaceData["制作台Mk.Ⅱ"] = spaceData["制作台Mk.Ⅲ"] = spaceData["重组式制造台"] = 16;
 spaceData["电弧熔炉"] = spaceData["位面熔炉"] = spaceData["负熵熔炉"] = 16;
 spaceData["原油精炼机"] = 28;
 spaceData["化工厂"] = 35;
@@ -4246,14 +4242,14 @@ var defaultAccValue = "无";
 var version = "20240202"; //版本号，用来更新data.json的缓存
 
 // 配方查找索引 - 优化查找性能从 O(n) 到 O(1)
-var recipeIndexByProduct = {};  // 产物名 → [配方索引数组]
+var recipeIndexByProduct = {}; // 产物名 → [配方索引数组]
 var recipeIndexByMaterial = {}; // 原料名 → [配方索引数组]
 
 function f_initData() {
   // 清空索引，准备重建
   recipeIndexByProduct = {};
   recipeIndexByMaterial = {};
-  
+
   $(data).each(function (i, item) {
     item.id = i; //配方的id，用index设置，data改变时应该重置配方
 
@@ -4265,7 +4261,7 @@ function f_initData() {
       }
       recipeIndexByProduct[productName].push(i);
     }
-    
+
     // 构建原料索引
     if (item.q) {
       for (var j = 0; j < item.q.length; j++) {
@@ -4544,13 +4540,7 @@ function f_fillData() {
         for (var j = 0; j < item.s.length; j++) {
           if ($.inArray(item.s[j].name, names) == -1) {
             names.push(item.s[j].name);
-            jgroup.append(
-              "<option value='" +
-                item.s[j].name +
-                "'>" +
-                item.s[j].name +
-                "</option>"
-            );
+            jgroup.append("<option value='" + item.s[j].name + "'>" + item.s[j].name + "</option>");
           }
         }
       }
@@ -4593,13 +4583,7 @@ function getIconImg(name) {
   if (name == "轨道采集器(巨冰)") name = "轨道采集器";
 
   if (icons[name]) {
-    title.push(
-      "<img class='sicon' src='data:image/png;base64," +
-        icons[name] +
-        "' title='" +
-        name +
-        "' />"
-    );
+    title.push("<img class='sicon' src='data:image/png;base64," + icons[name] + "' title='" + name + "' />");
   } else {
     title.push(name);
   }
@@ -4629,11 +4613,8 @@ function getPfTitle(item, info) {
   var speed1_5 = parseFloat($("#speed1_5").val());
 
   function calculateBaseNumber(t, item_array, item_index, info, csdsize, speed1_5) {
-      // 但是item.t是什么（ 这和item.time有啥区别吗（
-      return (
-          (csdsize / ((60 / (t || 1)) * info.speed * (item_array[item_index].n || 1))) *
-          speed1_5
-      );
+    // 但是item.t是什么（ 这和item.time有啥区别吗（
+    return (csdsize / ((60 / (t || 1)) * info.speed * (item_array[item_index].n || 1))) * speed1_5;
   }
 
   for (var j = 0; j < item.q.length; j++) {
@@ -4648,10 +4629,9 @@ function getPfTitle(item, info) {
         csdsize = 720;
       }
       var number =
-          info.accValue === "增产"
-              ? calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5)
-              : calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5) /
-                getAccSpeed(info.accType, info.accValue);
+        info.accValue === "增产"
+          ? calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5)
+          : calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
       // console.log(1+' '+speed1_5);
       // title.push("<sub class='maxOneBeltIn'>" + number.toFixed(pointLength));//输出为小数 跟随主设置
       title.push("<sub class='maxOneBeltIn'>" + number.toFixed(1)); //输出为小数 保留 0.1
@@ -4675,8 +4655,7 @@ function getPfTitle(item, info) {
         csdsize = 720;
       }
       var number =
-          calculateBaseNumber(item.t, item.s, j, info, csdsize, speed1_5) /
-          getAccSpeed(info.accType, info.accValue);
+        calculateBaseNumber(item.t, item.s, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
       // console.log(2+' '+speed1_5);
       // title.push("<sub class='maxOneBeltOut'>" + number.toFixed(pointLength));//输出为小数 跟随主设置
       title.push("<sub class='maxOneBeltOut'>" + number.toFixed(1)); //输出为小数 保留 0.1
@@ -4750,7 +4729,7 @@ function find(name, normalize_recipe) {
   // 使用索引查找，替代遍历 O(n) → O(1)
   var indices = recipeIndexByProduct[name];
   if (indices && indices.length > 0) {
-    return get(data[indices[0]]);  // 返回第一个匹配的配方
+    return get(data[indices[0]]); // 返回第一个匹配的配方
   }
 }
 
@@ -4768,10 +4747,7 @@ function f_add3(name) {
     var info = getValue(currentItem);
     for (var i = 0; i < currentItem.s.length; i++) {
       if (currentItem.s[i].name == name) {
-        number =
-          ((parseInt(v) * 60) / (currentItem.t || 1)) *
-          info.speed *
-          (currentItem.s[i].n || 1);
+        number = ((parseInt(v) * 60) / (currentItem.t || 1)) * info.speed * (currentItem.s[i].n || 1);
       }
       number *= getAccSpeed(accType, accValue);
     }
@@ -4866,17 +4842,13 @@ function f_init() {
             // Number.isInteger(this.number_editor_number) &&
             this.items_editor_number > 0
           ) {
-            multiple =
-              this.items_editor_number /
-              this.items[this.items_editor_index].number2;
+            multiple = this.items_editor_number / this.items[this.items_editor_index].number2;
 
             for (var i = 0; i < this.xqs.length; i++) {
               this.xqs[i].number *= multiple;
             }
             update_all();
-            multiple =
-              this.items_editor_number /
-              this.items[this.items_editor_index].number2;
+            multiple = this.items_editor_number / this.items[this.items_editor_index].number2;
 
             for (var i = 0; i < this.xqs.length; i++) {
               this.xqs[i].number *= multiple;
@@ -4931,13 +4903,7 @@ function f_init() {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "大型采矿机") {
-            this.m[i].speed =
-              1 *
-              20 *
-              0.01 *
-              parseFloat($("#selore").val()) *
-              0.01 *
-              parseFloat($("#speed1_6").val());
+            this.m[i].speed = 1 * 20 * 0.01 * parseFloat($("#selore").val()) * 0.01 * parseFloat($("#speed1_6").val());
           }
         }
       }
@@ -4950,31 +4916,16 @@ function f_init() {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "矿脉") {
-            this.m[i].speed = Math.min(
-              0.5 * 1 * 0.01 * parseFloat($("#selore").val()),
-              30
-            );
+            this.m[i].speed = Math.min(0.5 * 1 * 0.01 * parseFloat($("#selore").val()), 30);
           }
           if (this.m[i].name == "采矿机") {
-            this.m[i].speed = Math.min(
-              0.5 * 6 * 0.01 * parseFloat($("#selore").val()),
-              30
-            );
+            this.m[i].speed = Math.min(0.5 * 6 * 0.01 * parseFloat($("#selore").val()), 30);
           }
           if (this.m[i].name == "大型采矿机") {
-            this.m[i].speed =
-              1 *
-              20 *
-              0.01 *
-              parseFloat($("#selore").val()) *
-              0.01 *
-              parseFloat($("#speed1_6").val());
+            this.m[i].speed = 1 * 20 * 0.01 * parseFloat($("#selore").val()) * 0.01 * parseFloat($("#speed1_6").val());
           }
           if (this.m[i].name == "抽水机") {
-            this.m[i].speed = Math.min(
-              (50 * 0.01 * parseFloat($("#selore").val())) / 60,
-              30
-            );
+            this.m[i].speed = Math.min((50 * 0.01 * parseFloat($("#selore").val())) / 60, 30);
           }
         }
       }
@@ -4986,12 +4937,12 @@ function f_init() {
     var $moreSetting = $("#MoreSetting");
     if ($moreSetting.hasClass("show")) {
       $moreSetting.removeClass("show");
-      setTimeout(function() {
+      setTimeout(function () {
         $moreSetting.hide();
       }, 300);
     } else {
       $moreSetting.show();
-      setTimeout(function() {
+      setTimeout(function () {
         $moreSetting.addClass("show");
       }, 10);
     }
@@ -5011,8 +4962,7 @@ function f_init() {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "分馏塔") {
-            this.m[i].speed =
-              parseFloat($("#fractionatorSpeed").val()) / (0.01 * 60);
+            this.m[i].speed = parseFloat($("#fractionatorSpeed").val()) / (0.01 * 60);
           }
         }
       }
@@ -5069,12 +5019,7 @@ function f_init() {
       return sum;
     }
     $(data).each(function () {
-      if (
-        this.s &&
-        (this.s[0].name == "氢" ||
-          this.s[0].name == "重氢" ||
-          this.s[0].name == "可燃冰")
-      ) {
+      if (this.s && (this.s[0].name == "氢" || this.s[0].name == "重氢" || this.s[0].name == "可燃冰")) {
         if (this.m) {
           for (var i = 0; i < this.m.length; i++) {
             if (this.m[i].name == "轨道采集器(气态)") {
@@ -5344,12 +5289,7 @@ function loadNumber(itemName, n) {
     if ($.inArray(itemName, ig_names) != -1) {
       return;
     }
-    if (
-      (itemName == "增产剂Mk.Ⅰ" ||
-        itemName == "增产剂Mk.Ⅱ" ||
-        itemName == "增产剂Mk.Ⅲ") &&
-      n < 0.1
-    ) {
+    if ((itemName == "增产剂Mk.Ⅰ" || itemName == "增产剂Mk.Ⅱ" || itemName == "增产剂Mk.Ⅲ") && n < 0.1) {
       return;
     }
     var item = find(itemName, true); // [normalize_recipe=true]
@@ -5378,9 +5318,9 @@ function loadNumber(itemName, n) {
         var r = (n * (q.n || 1)) / (item.n || 1);
         var v = 1,
           tm = 0;
-        if (accType == "增产剂Mk.Ⅰ") (v = 1.125), (tm = 12);
-        else if (accType == "增产剂Mk.Ⅱ") (v = 1.2), (tm = 24);
-        else if (accType == "增产剂Mk.Ⅲ") (v = 1.25), (tm = 60);
+        if (accType == "增产剂Mk.Ⅰ") ((v = 1.125), (tm = 12));
+        else if (accType == "增产剂Mk.Ⅱ") ((v = 1.2), (tm = 24));
+        else if (accType == "增产剂Mk.Ⅲ") ((v = 1.25), (tm = 60));
         // 自喷涂
         if ($("#selfAcc")[0].checked) tm = tm * v - 1;
         if (accValue == "增产" && item.noExtra) accValue = "无";
@@ -5524,8 +5464,7 @@ function fixGzSpeed() {
                 } else {
                   item = find("临界光子", true);
                   accType = (settings[item.id] || {}).accType || defaultAccType;
-                  accValue =
-                    (settings[item.id] || {}).accValue || defaultAccValue;
+                  accValue = (settings[item.id] || {}).accValue || defaultAccValue;
                   if (accValue === "加速") {
                     switch (accType) {
                       case "增产剂Mk.Ⅰ":
@@ -5563,12 +5502,7 @@ function update_all() {
   for (var m = 0; m < singleMake.length; m++) {
     var item = data[singleMake[m].id]; //配方
     var info = getValue(item);
-    var times = parseFloat(
-      (
-        (60 * parseInt(singleMake[m].number) * info.speed) /
-        (item.t || 1)
-      ).toFixed(6)
-    );
+    var times = parseFloat(((60 * parseInt(singleMake[m].number) * info.speed) / (item.t || 1)).toFixed(6));
     // (60 * parseInt(singleMake[m].number) * info.speed) / (item.t || 1);
 
     for (var i = 0; i < item.s.length; i++) {
@@ -5621,8 +5555,7 @@ function update_all() {
             fixValue2Times = item.n / (item.n - item.q[j].n);
           }
         }
-        xh.value2 =
-          (xh.value2 / getAccSpeed(accType, accValue)) * fixValue2Times;
+        xh.value2 = (xh.value2 / getAccSpeed(accType, accValue)) * fixValue2Times;
       }
     }
   }
@@ -5716,15 +5649,15 @@ function update_all() {
       number2: xh_list[i].value2
         ? xh_list[i].value2.toFixed(pointLength)
         : ["精炼油", "氢", "石墨烯", "重氢"].includes(xh_list[i].name)
-        ? (0.0).toFixed(pointLength)
-        : "",
+          ? (0.0).toFixed(pointLength)
+          : "",
       number2full:
         img +
         (xh_list[i].value2
           ? xh_list[i].value2.toFixed(pointLength)
           : ["精炼油", "氢", "石墨烯", "重氢"].includes(xh_list[i].name)
-          ? (0.0).toFixed(pointLength)
-          : ""),
+            ? (0.0).toFixed(pointLength)
+            : ""),
       number2img: img,
       time: info.time.toFixed(pointLength),
       t: info.t.toFixed(pointLength),
@@ -5740,12 +5673,10 @@ function update_all() {
     };
     if (!outitem.number2) outitem.number2full = "";
     if (xh_list[i].name == "太阳帆") {
-      outitem.numberOther =
-        "(可供" + getIconShow("电磁轨道弹射器", outitem.number1 / 20) + ")";
+      outitem.numberOther = "(可供" + getIconShow("电磁轨道弹射器", outitem.number1 / 20) + ")";
     }
     if (xh_list[i].name == "小型运载火箭") {
-      outitem.numberOther =
-        "(可供" + getIconShow("垂直发射井", outitem.number1 / 5) + ")";
+      outitem.numberOther = "(可供" + getIconShow("垂直发射井", outitem.number1 / 5) + ")";
     }
     addTotal(info.name, Math.ceil(outitem.number2), settings[item.id]);
     // 增产剂总和
@@ -5798,10 +5729,7 @@ function update_all() {
       outitem.accType.push({
         class: one == accType ? "m selected" : "m",
         itemName: item.name,
-        href:
-          one == accType
-            ? "javascript:void(0)"
-            : 'javascript: selectAccType("' + item.id + '","' + one + '")',
+        href: one == accType ? "javascript:void(0)" : 'javascript: selectAccType("' + item.id + '","' + one + '")',
         name: one,
         title: one,
         showName: one.replace("增产剂", ""),
@@ -5814,10 +5742,7 @@ function update_all() {
       outitem.accValue.push({
         class: one == accValue ? "m selected" : "m",
         itemName: item.name,
-        href:
-          one == accValue
-            ? "javascript:void(0)"
-            : 'javascript: selectAccValue("' + item.id + '","' + one + '")',
+        href: one == accValue ? "javascript:void(0)" : 'javascript: selectAccValue("' + item.id + '","' + one + '")',
         name: one,
         title: one,
         showName: one,
@@ -5834,9 +5759,7 @@ function update_all() {
     var outitem = {
       name: out_list[i].name,
       number1: out_list[i].value.toFixed(pointLength),
-      number2: out_list[i].value2
-        ? out_list[i].value2.toFixed(pointLength)
-        : "",
+      number2: out_list[i].value2 ? out_list[i].value2.toFixed(pointLength) : "",
       time: info.time.toFixed(pointLength),
       t: info.t.toFixed(pointLength),
       speed: info.speed.toFixed(pointLength),
@@ -5892,7 +5815,10 @@ function selectPf(name, value) {
     settings_pf = old_settings_pf;
     update_all();
     if (e.name == "RangeError") {
-      cocoMessage.warning("无法切换到X射线裂解(制氢)/重整精炼(制精炼油)公式？请尝试先将对应的另一条(分别为制精炼油/制氢)默认公式切换为其他公式。", 6000);
+      cocoMessage.warning(
+        "无法切换到X射线裂解(制氢)/重整精炼(制精炼油)公式？请尝试先将对应的另一条(分别为制精炼油/制氢)默认公式切换为其他公式。",
+        6000
+      );
     }
     throw e;
   }
@@ -5940,9 +5866,7 @@ function f_remove_ig(name) {
 function projectsUpdate() {
   $("#selprojects").html("");
   $(projects).each(function () {
-    $("#selprojects").append(
-      "<option value='" + this.name + "'>" + this.name + "</option>"
-    );
+    $("#selprojects").append("<option value='" + this.name + "'>" + this.name + "</option>");
   });
   if (projects.length) {
     $("#projectdiv").show();
@@ -6003,12 +5927,12 @@ function f_add() {
   var $uiSelector = $("#UIselector");
   if ($uiSelector.hasClass("show")) {
     $uiSelector.removeClass("show");
-    setTimeout(function() {
+    setTimeout(function () {
       $uiSelector.hide();
     }, 250);
   } else {
     $uiSelector.show();
-    setTimeout(function() {
+    setTimeout(function () {
       $uiSelector.addClass("show");
     }, 10);
   }
@@ -6043,9 +5967,7 @@ function f_split(obj) {
     })(i);
   }
   $("#Split").append("<p>设备数量：</p>");
-  $("#Split").append(
-    "<div><input type='text' value='1' class='split-number' /></div>"
-  );
+  $("#Split").append("<div><input type='text' value='1' class='split-number' /></div>");
   $("#Split").append("<div><button>确定</button> </div>");
   $("#Split")
     .find("button")
@@ -6102,22 +6024,14 @@ function f_initIcons() {
   });
   $("#UIselector")
     .html(
-      '<div id="selector" class="selector" style="width: ' +
-        w +
-        "px; height: " +
-        h +
-        'px"><div id="tabs"></div></div>'
+      '<div id="selector" class="selector" style="width: ' + w + "px; height: " + h + 'px"><div id="tabs"></div></div>'
     )
     .hide();
   var w = 900;
   var h = 700;
 
-  var jimg1 = $(
-    "<div class='tab selected'><img src='./img/component-icon.png'/></div>"
-  ).appendTo("#tabs");
-  var jimg2 = $(
-    "<div class='tab'><img src='./img/factory-icon.png'/></div>"
-  ).appendTo("#tabs");
+  var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png'/></div>").appendTo("#tabs");
+  var jimg2 = $("<div class='tab'><img src='./img/factory-icon.png'/></div>").appendTo("#tabs");
 
   jimg1.click(function () {
     jicons2.removeClass("icons-selected");
@@ -6132,29 +6046,25 @@ function f_initIcons() {
     jimg2.addClass("selected");
   });
 
-  var jicons = $('<div class="icons icons-selected"></div>').appendTo(
-    "#selector"
-  );
+  var jicons = $('<div class="icons icons-selected"></div>').appendTo("#selector");
   addIcons(jicons, game_data.icons1);
   var jicons2 = $('<div class="icons"></div>').appendTo("#selector");
   addIcons(jicons2, game_data.icons2);
 
   function addIcons(jicons, icons) {
-	jicons.width(w - 80).height(h - 150); //调整图形框架宽度/高度
+    jicons.width(w - 80).height(h - 150); //调整图形框架宽度/高度
 
     for (var i = 0; i < 9; i++) {
       var jrow = $("<div class='iconrow'></div>").appendTo(jicons);
       for (var j = 0; j < 14; j++) {
-        var jicon = $("<div class='icon'><div class='s'></div></div>").appendTo(
-          jrow
-        );
+        var jicon = $("<div class='icon'><div class='s'></div></div>").appendTo(jrow);
         jicon.click(function () {
           var name = $(this).attr("data-name");
           if (!name) return;
           f_add3(name);
           var $uiSelector = $("#UIselector");
           $uiSelector.removeClass("show");
-          setTimeout(function() {
+          setTimeout(function () {
             $uiSelector.hide();
           }, 250);
         });
@@ -6413,9 +6323,7 @@ function getRecipe() {
       return;
     }
 
-    const recipeHtml = nodeList[4]
-      .getElementsByTagName("div")[0]
-      .getElementsByClassName("pf selected")[0];
+    const recipeHtml = nodeList[4].getElementsByTagName("div")[0].getElementsByClassName("pf selected")[0];
     let input = [];
     let output = [];
     let recipeId = 0;
@@ -6462,9 +6370,7 @@ function getRecipe() {
         }
       }
     }
-    const acceleratorModeName = nodeList[6]
-      .getElementsByClassName("m selected")[0]
-      .getAttribute("data-modein");
+    const acceleratorModeName = nodeList[6].getElementsByClassName("m selected")[0].getAttribute("data-modein");
     let acceleratorMode = -1; // 不使用增产剂
     if (acceleratorModeName === "加速") {
       acceleratorMode = 1;
@@ -6478,10 +6384,7 @@ function getRecipe() {
         .getAttribute("data-modein");
       if (proliferator) {
         if (proliferator !== recipeProliferator) {
-          cocoMessage.warning(
-            "检测到不同等级的增产剂选择，生成蓝图时所有配方必须采用同类型增产剂，请重新设置",
-            4000
-          );
+          cocoMessage.warning("检测到不同等级的增产剂选择，生成蓝图时所有配方必须采用同类型增产剂，请重新设置", 4000);
           throw `unsupported proliferator config`;
         }
       } else {
@@ -6492,8 +6395,7 @@ function getRecipe() {
     if (isInput) {
       // 还是input就说明这个是原矿，蓝图不需要考虑原矿的生产建筑，且原矿的rate（每秒需求量）需重新计算
       output = input;
-      output[0].rate =
-        parseFloat(nodeList[2].getElementsByTagName("span")[0].innerText) / 60;
+      output[0].rate = parseFloat(nodeList[2].getElementsByTagName("span")[0].innerText) / 60;
       building = null;
       input = null;
       if (output[0].name === "hydrogen") {
@@ -6508,9 +6410,7 @@ function getRecipe() {
       // 移除小数点后的0：5.000 -> 5, 5.100 -> 5.1
       let outputRate = parseFloat(outputRateText).toString();
       blueprintTitle = outputItemName + "-" + outputRate + "min";
-      let resultList = document.querySelectorAll(
-        "#result > div:nth-child(1) > span"
-      );
+      let resultList = document.querySelectorAll("#result > div:nth-child(1) > span");
       let outputItemNameList = [];
       for (let i = 0; i < resultList.length - 1; i++) {
         let result = resultList[i];
@@ -6590,8 +6490,8 @@ let _loadingOverlay = null;
 
 function showLoadingDialog() {
   if (!_loadingOverlay) {
-    _loadingOverlay = document.createElement('div');
-    _loadingOverlay.id = 'blueprint-loading-overlay';
+    _loadingOverlay = document.createElement("div");
+    _loadingOverlay.id = "blueprint-loading-overlay";
     _loadingOverlay.innerHTML = `
       <style>
         @keyframes bp-loading-spin {
@@ -6618,13 +6518,13 @@ function showLoadingDialog() {
     `;
     document.body.appendChild(_loadingOverlay);
   } else {
-    _loadingOverlay.style.display = 'block';
+    _loadingOverlay.style.display = "block";
   }
 }
 
 function hideLoadingDialog() {
   if (_loadingOverlay) {
-    _loadingOverlay.style.display = 'none';
+    _loadingOverlay.style.display = "none";
   }
 }
 
@@ -6643,9 +6543,7 @@ function generateBlueprint() {
   }
   let config = {
     maxSorterNumOneBelt: 8, // 一个传送带节点连接的最大分拣器数量
-    conveyorBeltStackLayer: parseInt(
-      document.getElementById("conveyorBeltStackLayer").value
-    ), // 传送带物品最大堆叠层数
+    conveyorBeltStackLayer: parseInt(document.getElementById("conveyorBeltStackLayer").value), // 传送带物品最大堆叠层数
     x_y_ratio: parseFloat(document.getElementById("x_y_ratio").value), // 长宽比
     // compactLayout: document.getElementById('compactLayout').checked,  // 是否采用紧凑布局（紧凑布局的蓝图中炼油厂、化工厂和对撞机在布局上会更紧凑，适合摆放在赤道带，在高纬度可能会出现碰撞问题）
     compactLayout: false,
@@ -6657,9 +6555,7 @@ function generateBlueprint() {
     selfSpray: document.getElementById("selfAcc").checked, // 是否自喷涂增产剂
     generateTeslaTower: document.getElementById("generateTeslaTower").checked, // 是否自动插电线杆
     teslaTowerInterval: 10, // 同一排内电线杆距离
-    teslaTowerLineInterval: parseInt(
-      document.getElementById("teslaTowerLineInterval").value
-    ), // 电线杆间隔几排
+    teslaTowerLineInterval: parseInt(document.getElementById("teslaTowerLineInterval").value), // 电线杆间隔几排
     // onlyConveyorBeltMk3Downgrade: document.getElementById('onlyConveyorBeltMk3Downgrade').checked  // 三级传送带运力降级
     onlyConveyorBeltMk3Downgrade: false, // 三级传送带运力降级
     stackLayers: document.getElementById("stackLayers").checked ? 4 : 1, // 建筑堆叠层数（开关开启=4层堆叠，关闭=1层普通模式）
@@ -6676,18 +6572,16 @@ function generateBlueprint() {
     outputRecipe,
     config
   )
-    .then((bpStr) => {
-      navigator.clipboard
-        .writeText(bpStr)
-        .then(() => cocoMessage.success("已复制到粘贴板", 1000));
+    .then(bpStr => {
+      navigator.clipboard.writeText(bpStr).then(() => cocoMessage.success("已复制到粘贴板", 1000));
     })
-    .catch((err) => {
+    .catch(err => {
       // 兼容降级：静默吞掉连点拦截的 Error，避免在 UI 弹出报错气泡扰乱用户
       if (err.message === "ERR_ALREADY_RUNNING") {
         console.warn("[拦截] 蓝图生成任务正在进行中，已忽略重复点击");
         return;
       }
-      if (typeof window !== 'undefined' && window.cocoMessage) {
+      if (typeof window !== "undefined" && window.cocoMessage) {
         cocoMessage.error(`蓝图生成失败: ${err.message}`, 5000);
       }
     })

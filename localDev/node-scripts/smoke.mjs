@@ -11,7 +11,7 @@ async function assertFileExists(filePath) {
 function assertSyntax(filePath) {
   const check = spawnSync(process.execPath, ["--check", filePath], {
     stdio: "pipe",
-    encoding: "utf8"
+    encoding: "utf8",
   });
 
   if (check.status !== 0) {
@@ -37,7 +37,7 @@ async function main() {
   console.log("smoke: core files and syntax checks passed.");
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error("smoke: failed.");
   console.error(error.message || error);
   process.exit(1);

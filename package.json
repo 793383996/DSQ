@@ -2,14 +2,22 @@
   "name": "dsq",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Engineering scaffold for the DSQ static frontend project.",
   "scripts": {
-    "lint": "node ./localDev/node-scripts/lint.mjs",
-    "format:check": "node ./localDev/node-scripts/format-check.mjs",
+    "lint": "eslint Scripts localDev --max-warnings 100",
+    "lint:fix": "eslint Scripts localDev --fix",
+    "format:check": "prettier --check \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
+    "format": "prettier --write \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "smoke": "node ./localDev/node-scripts/smoke.mjs",
     "ci:check": "npm run lint && npm run format:check && npm run smoke"
   },
   "engines": {
     "node": "20.19.x"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.0.0"
   }
 }
