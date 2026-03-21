@@ -2,7 +2,15 @@ import { access, constants, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const DIST_ROOT = path.join(process.cwd(), "dist");
-const REQUIRED_FILES = ["index.html", "Scripts/data.js", "Scripts/blueprint.js", "Scripts/calc-core.js"];
+const REQUIRED_FILES = [
+  "index.html",
+  "Scripts/data.storage.js",
+  "Scripts/data.js",
+  "Scripts/data.bootstrap.js",
+  "Scripts/blueprint.constants.js",
+  "Scripts/blueprint.js",
+  "Scripts/calc-core.js",
+];
 
 async function assertExists(filePath) {
   await access(filePath, constants.F_OK);

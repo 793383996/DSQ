@@ -2,7 +2,10 @@ import globals from "globals";
 
 const legacyFiles = [
   "Scripts/data.js",
+  "Scripts/data.storage.js",
+  "Scripts/data.bootstrap.js",
   "Scripts/blueprint.js",
+  "Scripts/blueprint.constants.js",
   "Scripts/blueprint.facade.js",
   "Scripts/blueprint.worker.js",
   "Scripts/jquery.tips.js",
@@ -47,8 +50,19 @@ const globalVars = {
   BlueprintFacade: "readonly",
   BlueprintWorker: "readonly",
   Blueprint: "readonly",
+  DSQBlueprintConstants: "readonly",
   ErrorMonitor: "readonly",
   PerformanceTracker: "readonly",
+  saveData: "readonly",
+  getData: "readonly",
+  saveSetting: "readonly",
+  loadSetting: "readonly",
+  saveSettingTime: "readonly",
+  loadSettingTime: "readonly",
+  saveSettingPf: "readonly",
+  loadSettingPf: "readonly",
+  saveSettingProjects: "readonly",
+  loadSettingProjects: "readonly",
 };
 
 export default [
@@ -81,6 +95,29 @@ export default [
       globals: globalVars,
     },
     rules: legacyRules,
+  },
+  {
+    files: ["Scripts/data.storage.js", "Scripts/data.bootstrap.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "script",
+      globals: {
+        ...globalVars,
+        version: "readonly",
+        settings: "writable",
+        settings_time: "writable",
+        settings_pf: "writable",
+        projects: "writable",
+        game_data: "writable",
+        isDataLoaded: "writable",
+        f_init: "readonly",
+        f_initIcons: "readonly",
+      },
+    },
+    rules: {
+      ...legacyRules,
+      "no-unused-vars": "off",
+    },
   },
   {
     files: ["localDev/**/*.mjs"],

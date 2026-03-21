@@ -2,7 +2,14 @@ import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-const REQUIRED_FILES = ["index.html", "Scripts/data.js", "Scripts/blueprint.js"];
+const REQUIRED_FILES = [
+  "index.html",
+  "Scripts/data.storage.js",
+  "Scripts/data.js",
+  "Scripts/data.bootstrap.js",
+  "Scripts/blueprint.constants.js",
+  "Scripts/blueprint.js",
+];
 
 async function assertFileExists(filePath) {
   await access(filePath, constants.F_OK);
@@ -27,11 +34,19 @@ async function main() {
 
   const html = await readFile("index.html", "utf8");
 
-  if (!html.includes("Scripts/data.js") || !html.includes("Scripts/blueprint")) {
+  if (
+    !html.includes("Scripts/data.storage.js") ||
+    !html.includes("Scripts/data.js") ||
+    !html.includes("Scripts/blueprint.constants.js") ||
+    !html.includes("Scripts/blueprint")
+  ) {
     throw new Error("Smoke check failed: index.html does not include expected core script references.");
   }
 
   assertSyntax("Scripts/data.js");
+  assertSyntax("Scripts/data.storage.js");
+  assertSyntax("Scripts/data.bootstrap.js");
+  assertSyntax("Scripts/blueprint.constants.js");
   assertSyntax("Scripts/blueprint.js");
 
   console.log("smoke: core files and syntax checks passed.");

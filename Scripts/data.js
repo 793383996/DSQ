@@ -4239,6 +4239,7 @@ spaceData["粒子对撞机"] = 45;
 var defaultAccType = "增产剂Mk.Ⅰ";
 var defaultAccValue = "无";
 
+// eslint-disable-next-line no-unused-vars
 var version = "20240202"; //版本号，用来更新data.json的缓存
 
 // 配方查找索引 - 优化查找性能从 O(n) 到 O(1)
@@ -4354,61 +4355,9 @@ function f_initData() {
 var pointLength = 3;
 var settingsLocal = {}; //不存储cookie
 var settings = {};
-function saveData(key, value) {
-  if (window.localStorage) {
-    localStorage.setItem(key, value);
-  } else {
-    $.cookie(key, value);
-  }
-}
-function getData(key) {
-  if (window.localStorage) {
-    return localStorage.getItem(key);
-  } else {
-    return $.cookie(key);
-  }
-}
-function saveSetting() {
-  saveData("machine_settings" + version, JSON.stringify(settings));
-}
-function loadSetting() {
-  var json = getData("machine_settings" + version);
-  if (json) {
-    eval("settings = " + json);
-  }
-  document.getElementById("onlyConveyorBeltMk3").checked = true;
-  document.getElementById("onlySorterMk3").checked = true;
-}
 var settings_time = {};
-function saveSettingTime() {
-  saveData("machine_settings_time" + version, JSON.stringify(settings_time));
-}
-function loadSettingTime() {
-  var json = getData("machine_settings_time" + version);
-  if (json) {
-    eval("settings_time = " + json);
-  }
-}
 var settings_pf = {};
-function saveSettingPf() {
-  saveData("machine_settings_pf" + version, JSON.stringify(settings_pf));
-}
-function loadSettingPf() {
-  var json = getData("machine_settings_pf" + version);
-  if (json) {
-    eval("settings_pf = " + json);
-  }
-}
 var projects = [];
-function saveSettingProjects() {
-  saveData("settings_projects" + version, JSON.stringify(projects));
-}
-function loadSettingProjects() {
-  var json = getData("settings_projects" + version);
-  if (json) {
-    eval("projects = " + json);
-  }
-}
 //获取配方默认的机器
 function getMachine(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
@@ -4499,23 +4448,6 @@ var singleMake = [];
 var xqss = [];
 var game_data = {};
 var isDataLoaded = false;
-$(function () {
-  $.ajax({
-    url: "./Scripts/data.json?v" + version,
-    dataType: "json",
-    timeout: 1000000,
-    success: function (data) {
-      game_data = data;
-      isDataLoaded = true;
-      f_initIcons();
-    },
-    error: function () {
-      alert("游戏资源加载失败，图标将无法显示正常，请刷新再试");
-    },
-  });
-
-  f_init();
-});
 
 function getGroup() {
   var groups = [];
@@ -4784,6 +4716,7 @@ function addItem(item, number) {
 
 var app = null;
 // 这里加入了一些用法和一些变量，用于处理“设备数量”处的输入框
+// eslint-disable-next-line no-unused-vars
 function f_init() {
   app = new Vue({
     el: "#result",
@@ -6007,6 +5940,7 @@ var icons_define = {
   可燃冰: [-1, 2, 7, "可燃冰"],
 };
 var icons = {};
+// eslint-disable-next-line no-unused-vars
 function f_initIcons() {
   var reg = /^(\d)-(\d{1,2})-(.*)+/;
   for (var i = 0; i < game_data.icons1.length; i++) {

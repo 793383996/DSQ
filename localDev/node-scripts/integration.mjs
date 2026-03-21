@@ -8,7 +8,10 @@ const PORT = 4173;
 const KEY_URLS = [
   "/",
   "/index.html",
+  "/Scripts/data.storage.js",
   "/Scripts/data.js",
+  "/Scripts/data.bootstrap.js",
+  "/Scripts/blueprint.constants.js",
   "/Scripts/blueprint.js",
   "/Scripts/calc-core.js",
   "/quote/explanation.html",
