@@ -785,15 +785,7 @@ class Blueprint {
     const foundationStartIndex = baseCount + 1;
     for (let layer = 0; layer < stackLayers; layer++) {
       const foundationZ = (layer - 1) * zStep; // z=-10, 0, 10, 20
-      const foundationBuilding = this.getBuildingTemplate();
-      foundationBuilding.itemId = 1131;
-      foundationBuilding.modelIndex = 37;
-      foundationBuilding.localOffset = [
-        { x: 0, y: 0, z: foundationZ },
-        { x: 0, y: 0, z: foundationZ },
-      ];
-      foundationBuilding.inputToSlot = 1;
-      foundationBuilding.parameters = null;
+      const foundationBuilding = modelFactory.createFoundationBuilding(this.getBuildingTemplate(), foundationZ);
       this.buildings.push(foundationBuilding);
     }
 
@@ -835,64 +827,41 @@ class Blueprint {
 
       // 创建克隆体
       for (const base of cloneableBuildings) {
-        const clone = this.getBuildingTemplate();
-
-        // 复制基础属性
-        clone.itemId = base.itemId;
-        clone.modelIndex = base.modelIndex;
-        clone.areaIndex = base.areaIndex;
-        clone.recipeId = base.recipeId;
-        clone.filterId = base.filterId;
-        clone.outputToSlot = base.outputToSlot;
-        clone.inputFromSlot = base.inputFromSlot;
-        clone.outputFromSlot = base.outputFromSlot;
-        clone.inputToSlot = base.inputToSlot;
-        clone.outputOffset = base.outputOffset;
-        clone.inputOffset = base.inputOffset;
-
-        // 应用z偏移
-        clone.localOffset = base.localOffset
-          ? base.localOffset.map(o => ({
-              x: o.x,
-              y: o.y,
-              z: (o.z || 0) + zOffset,
-            }))
-          : null;
-
-        clone.yaw = base.yaw ? base.yaw.slice() : [0, 0];
-
-        if (base.parameters !== null && base.parameters !== undefined) {
-          clone.parameters = JSON.parse(JSON.stringify(base.parameters));
-        } else {
-          clone.parameters = null;
-        }
-
         // index引用重映射
         // outputObjIdx：所有克隆体的outputObjIdx指向z=0的传送带（不通过indexMap）
         //           这样4层都连接到同一套传送带网络
         // inputObjIdx：设备的inputObjIdx需要指向该层对应的地基
+        let outputObjIdx;
         if (indexMap.has(base.outputObjIdx)) {
-          clone.outputObjIdx = indexMap.get(base.outputObjIdx);
+          outputObjIdx = indexMap.get(base.outputObjIdx);
         } else {
-          clone.outputObjIdx = base.outputObjIdx;
+          outputObjIdx = base.outputObjIdx;
         }
 
         // 设备（生产建筑）的inputObjIdx指向该层对应的地基
         // 分拣器的inputObjIdx保持指向同层设备
+        let inputObjIdx;
         if (base.inputObjIdx === -1) {
           // 如果base设备没有连接地基（inputObjIdx = -1），则指向该层对应的地基
           // 地基索引计算：foundationStartIndex + layer
           // layer=1 → z=10 设备 → z=0 地基 (foundationStartIndex + 1)
           // layer=2 → z=20 设备 → z=10 地基 (foundationStartIndex + 2)
           // layer=3 → z=30 设备 → z=20 地基 (foundationStartIndex + 3)
-          clone.inputObjIdx = foundationStartIndex + layer;
+          inputObjIdx = foundationStartIndex + layer;
         } else if (indexMap.has(base.inputObjIdx)) {
           // 分拣器等指向同层克隆设备
-          clone.inputObjIdx = indexMap.get(base.inputObjIdx);
+          inputObjIdx = indexMap.get(base.inputObjIdx);
         } else {
-          clone.inputObjIdx = base.inputObjIdx;
+          inputObjIdx = base.inputObjIdx;
         }
 
+        const clone = modelFactory.cloneBuildingForLayer(
+          this.getBuildingTemplate(),
+          base,
+          zOffset,
+          outputObjIdx,
+          inputObjIdx
+        );
         this.buildings.push(clone);
       }
     }

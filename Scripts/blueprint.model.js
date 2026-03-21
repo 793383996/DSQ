@@ -202,6 +202,46 @@
     };
   }
 
+  function createFoundationBuilding(template, foundationZ) {
+    template.itemId = 1131;
+    template.modelIndex = 37;
+    template.localOffset = [
+      { x: 0, y: 0, z: foundationZ },
+      { x: 0, y: 0, z: foundationZ },
+    ];
+    template.inputToSlot = 1;
+    template.parameters = null;
+    return template;
+  }
+
+  function cloneBuildingForLayer(template, base, zOffset, outputObjIdx, inputObjIdx) {
+    template.itemId = base.itemId;
+    template.modelIndex = base.modelIndex;
+    template.areaIndex = base.areaIndex;
+    template.recipeId = base.recipeId;
+    template.filterId = base.filterId;
+    template.outputToSlot = base.outputToSlot;
+    template.inputFromSlot = base.inputFromSlot;
+    template.outputFromSlot = base.outputFromSlot;
+    template.inputToSlot = base.inputToSlot;
+    template.outputOffset = base.outputOffset;
+    template.inputOffset = base.inputOffset;
+
+    template.localOffset = base.localOffset
+      ? base.localOffset.map(o => ({
+          x: o.x,
+          y: o.y,
+          z: (o.z || 0) + zOffset,
+        }))
+      : null;
+    template.yaw = base.yaw ? base.yaw.slice() : [0, 0];
+    template.parameters =
+      base.parameters !== null && base.parameters !== undefined ? JSON.parse(JSON.stringify(base.parameters)) : null;
+    template.outputObjIdx = outputObjIdx;
+    template.inputObjIdx = inputObjIdx;
+    return template;
+  }
+
   root.DSQBlueprintModel = {
     createBlueprintTemplate,
     createBuildingTemplate,
@@ -213,5 +253,7 @@
     createStackedLabBuilding,
     createSorter,
     createSorterOwnerRecord,
+    createFoundationBuilding,
+    cloneBuildingForLayer,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

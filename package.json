@@ -11,11 +11,12 @@
     "format:check": "prettier --check \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "format": "prettier --write \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "smoke": "node ./localDev/node-scripts/smoke.mjs",
+    "test:blueprint": "node ./localDev/node-scripts/blueprint-regression.mjs",
     "build": "node ./localDev/node-scripts/build.mjs",
     "verify:dist": "node ./localDev/node-scripts/verify-dist.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run format:check && npm run smoke && npm run test:unit && npm run build && npm run verify:dist && npm run test:integration"
+    "ci:check": "npm run lint && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run build && npm run verify:dist && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"
