@@ -11,7 +11,8 @@
     "format:check": "prettier --check \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "format": "prettier --write \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "smoke": "node ./localDev/node-scripts/smoke.mjs",
-    "ci:check": "npm run lint && npm run format:check && npm run smoke"
+    "test:unit": "vitest run",
+    "ci:check": "npm run lint && npm run format:check && npm run smoke && npm run test:unit"
   },
   "engines": {
     "node": "20.19.x"
@@ -21,7 +22,8 @@
     "globals": "^16.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
     "Scripts/**/*.js": [

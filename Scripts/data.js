@@ -4598,22 +4598,16 @@ function getIconShow(name, number) {
 }
 // 获取加了加速剂后的实际速度
 function getAccSpeed(type, value) {
-  if (["增产", "加速"].indexOf(value) === -1) {
-    return 1;
+  if (window.DSQCalcCore && typeof window.DSQCalcCore.getAccSpeed === "function") {
+    return window.DSQCalcCore.getAccSpeed(type, value);
   }
-  // 增产剂每种等级以及工作类型的增产效率，inc: 增产/acc: 加速
-  var accSpeed = { inc: [1.125, 1.2, 1.25], acc: [1.25, 1.5, 2] };
-  var type_index = ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"].indexOf(type);
-  // 默认是Mk.Ⅰ（也是界面上默认的）
-  type_index = type_index >= 0 ? type_index : 0;
-  return value == "增产" ? accSpeed.inc[type_index] : accSpeed.acc[type_index];
+  return 1;
 }
 function getPfTitle(item, info) {
   var title = [];
   var speed1_5 = parseFloat($("#speed1_5").val());
-
+  var calcCore = window.DSQCalcCore;
   function calculateBaseNumber(t, item_array, item_index, info, csdsize, speed1_5) {
-    // 但是item.t是什么（ 这和item.time有啥区别吗（
     return (csdsize / ((60 / (t || 1)) * info.speed * (item_array[item_index].n || 1))) * speed1_5;
   }
 
@@ -4622,14 +4616,24 @@ function getPfTitle(item, info) {
 
     if (info && $("#showMaxOneBelt").get(0).checked) {
       var csd = $("#csd").val();
-      var csdsize = 1800;
-      if (csd == "传送带") {
+      var csdsize = calcCore ? calcCore.getBeltSpeed(csd) : 1800;
+      if (!calcCore && csd == "传送带") {
         csdsize = 360;
-      } else if (csd == "高速传送带") {
+      } else if (!calcCore && csd == "高速传送带") {
         csdsize = 720;
       }
-      var number =
-        info.accValue === "增产"
+      var number = calcCore
+        ? calcCore.calculateMaxMachinesPerBelt({
+            recipeTime: item.t,
+            machineSpeed: info.speed,
+            itemCount: item.q[j].n || 1,
+            beltSpeed: csdsize,
+            stackLayer: speed1_5,
+            accType: info.accType,
+            accValue: info.accValue,
+            direction: "input",
+          })
+        : info.accValue === "增产"
           ? calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5)
           : calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
       // console.log(1+' '+speed1_5);
@@ -4648,14 +4652,24 @@ function getPfTitle(item, info) {
 
     if (info && $("#showMaxOneBelt").get(0).checked) {
       var csd = $("#csd").val();
-      var csdsize = 1800;
-      if (csd == "传送带") {
+      var csdsize = calcCore ? calcCore.getBeltSpeed(csd) : 1800;
+      if (!calcCore && csd == "传送带") {
         csdsize = 360;
-      } else if (csd == "高速传送带") {
+      } else if (!calcCore && csd == "高速传送带") {
         csdsize = 720;
       }
-      var number =
-        calculateBaseNumber(item.t, item.s, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
+      var number = calcCore
+        ? calcCore.calculateMaxMachinesPerBelt({
+            recipeTime: item.t,
+            machineSpeed: info.speed,
+            itemCount: item.s[j].n || 1,
+            beltSpeed: csdsize,
+            stackLayer: speed1_5,
+            accType: info.accType,
+            accValue: info.accValue,
+            direction: "output",
+          })
+        : calculateBaseNumber(item.t, item.s, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
       // console.log(2+' '+speed1_5);
       // title.push("<sub class='maxOneBeltOut'>" + number.toFixed(pointLength));//输出为小数 跟随主设置
       title.push("<sub class='maxOneBeltOut'>" + number.toFixed(1)); //输出为小数 保留 0.1

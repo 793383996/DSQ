@@ -32,6 +32,9 @@ jobs:
       - name: Run smoke tests
         run: npm run smoke
 
+      - name: Run unit tests
+        run: npm run test:unit
+
       - name: CI Check Summary
         if: always()
         run: |
@@ -39,3 +42,4 @@ jobs:
           echo "- Lint: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Format: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Smoke: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit tests: Completed" >> $GITHUB_STEP_SUMMARY
