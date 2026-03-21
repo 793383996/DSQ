@@ -1005,7 +1005,6 @@ class Blueprint {
         let inputRate = roundState.inputRate;
         let inputData = roundState.inputData;
         let outputData = roundState.outputData;
-        let doneSorterNum = roundState.doneSorterNum;
         const sorterBucket = this.sorters[itemName];
         const abortReason = layoutFactory.getConveyorIterationAbortReason(item, sorterBucket);
         if (abortReason === "missing_sorters") {
@@ -1025,7 +1024,6 @@ class Blueprint {
           inputData = sourceResult.inputData;
           inputRate = sourceResult.remainingInputRate;
           doneRate = sourceResult.doneRate;
-          doneSorterNum = sourceResult.doneSorterNum;
         } else {
           // 说明是原料
           const rawInputResult = layoutFactory.applyRawInputRound(itemName, inputRate, itemMap);
@@ -1036,73 +1034,45 @@ class Blueprint {
         }
         totalDoneRate += doneRate;
         let outputRate = doneRate; // 当前传送带实际运力
-        doneSorterNum = 0;
         // 重新排序以提高输出传送带中，X射线裂解(氢)和重整精炼(精炼油)的输入优先级
         if (["hydrogen", "refinedOil"].includes(itemName) && item.toBuildingNum !== 0) {
           sorterBucket.input = layoutFactory.reorderPriorityInputSorters(itemName, sorterBucket.input);
         }
         if (item.toBuildingNum !== 0) {
-          for (let j = sorterBucket.input.length - 1; j >= 0; j--) {
-            // 核心修复：防崩与运力对齐
-            // 堆叠模式下，分拣器数组内记录的 rate 是单层设备的需求。
-            // 但在物理上，该节点将被克隆 stackLayers 份，Mk4 的总拿取速率是单层的 stackLayers 倍。
-            // 必须将扣除的实际运力放大，否则会导致将所有机器挂载在第一条传送带上，造成尾部严重饥饿。
-            let actualSorterRate = sorterBucket.input[j].rate;
-            let columnLoad = layoutFactory.calculateColumnLoad(actualSorterRate, item.fromBuildingNum, stackLayers);
-
-            if (layoutFactory.shouldCreateSupplementSorter(totalDoneRate, item.rate, outputRate, columnLoad, zero)) {
-              // 当前带输出运力不能满足分拣器且还会生成新的传送带，则传送带新增一个节点单独该分拣器连接上，同时给对应建筑增加一个分拣器连到下一个节点
-              // console.log(`${itemName}: need add sorter`)
-              outputData.push([sorterBucket.input[j].index]);
-              const sourceSorter = sorterBucket.input[j];
-              const newSorterRate = layoutFactory.calculateSupplementSorterRate(
-                columnLoad,
-                outputRate,
-                item.fromBuildingNum,
-                stackLayers
-              );
-              let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
-              sorterBucket.input.unshift(
-                modelFactory.createSorterOwnerRecord(
-                  newSorter.index,
-                  newSorterRate,
-                  sourceSorter.ownerObjIdx,
-                  sourceSorter.ownerName,
-                  sourceSorter.ownerOffset,
-                  sourceSorter.recipeID
-                )
-              );
-              sorterBucket.input.pop();
-              break;
-            }
-
-            // 当前传送带连接分拣器达到上限，连接下一个传送带
-            // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
-            // 修复：当 totalDoneRate >= item.rate 但 outputData 还未覆盖所有 inputData 时，仍需继续生成
-            // 修复：使用与输出分拣器相同的均匀分配策略
-            layoutFactory.appendSorterIndexToNodeData(
-              outputData,
-              sorterBucket.input[j].index,
-              doneSorterNum,
-              sortersPerNode
+          const outputResult = layoutFactory.consumeOutputInputSortersForRound(
+            sorterBucket.input,
+            item.fromBuildingNum,
+            item.rate,
+            totalDoneRate,
+            outputRate,
+            stackLayers,
+            zero,
+            sortersPerNode
+          );
+          outputData = outputResult.outputData;
+          outputRate = outputResult.outputRate;
+          if (outputResult.supplementPlan) {
+            const sourceSorter = outputResult.supplementPlan.sourceSorter;
+            const newSorterRate = outputResult.supplementPlan.newSorterRate;
+            let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
+            sorterBucket.input.unshift(
+              modelFactory.createSorterOwnerRecord(
+                newSorter.index,
+                newSorterRate,
+                sourceSorter.ownerObjIdx,
+                sourceSorter.ownerName,
+                sourceSorter.ownerOffset,
+                sourceSorter.recipeID
+              )
             );
-            outputRate -= columnLoad;
             sorterBucket.input.pop();
-            doneSorterNum++;
-            if (outputRate <= 0) {
-              if (layoutFactory.shouldContinueAfterOutputRateDepleted(j, totalDoneRate, item.rate)) {
-                // 有分拣器还未连接 并且 不会再生成新的传送带了
-                // 这种情况就是建筑非整数时计算误差导致的，继续处理未连接的分拣器就可以了
-                continue;
-              }
-              break;
-            }
           }
         } else {
           // 说明是终产物
-          outputData.push([]);
-          parameters = layoutFactory.createItemCountParameter(itemName, outputRate, itemMap);
-          needSprayCoater = false;
+          const finalOutput = layoutFactory.createFinalProductOutputRound(itemName, outputRate, itemMap);
+          outputData = finalOutput.outputData;
+          parameters = finalOutput.parameters;
+          needSprayCoater = finalOutput.needSprayCoater;
         }
 
         let direction = layoutFactory.getConveyorDirection(item.fromBuildingNum); // 终产物/中间产物为+1，原料为-1

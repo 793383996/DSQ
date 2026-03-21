@@ -901,6 +901,66 @@
     };
   }
 
+  function consumeOutputInputSortersForRound(
+    inputSorters,
+    fromBuildingNum,
+    itemRate,
+    totalDoneRate,
+    outputRateStart,
+    stackLayers,
+    zero,
+    sortersPerNode
+  ) {
+    const outputData = [];
+    let outputRate = outputRateStart;
+    let doneSorterNum = 0;
+
+    for (let j = inputSorters.length - 1; j >= 0; j--) {
+      const sourceSorter = inputSorters[j];
+      const columnLoad = calculateColumnLoad(sourceSorter.rate, fromBuildingNum, stackLayers);
+
+      if (shouldCreateSupplementSorter(totalDoneRate, itemRate, outputRate, columnLoad, zero)) {
+        outputData.push([sourceSorter.index]);
+        return {
+          outputData,
+          outputRate,
+          doneSorterNum,
+          supplementPlan: {
+            sourceSorter,
+            newSorterRate: calculateSupplementSorterRate(columnLoad, outputRate, fromBuildingNum, stackLayers),
+          },
+        };
+      }
+
+      appendSorterIndexToNodeData(outputData, sourceSorter.index, doneSorterNum, sortersPerNode);
+      outputRate -= columnLoad;
+      inputSorters.pop();
+      doneSorterNum++;
+
+      if (outputRate <= 0) {
+        if (shouldContinueAfterOutputRateDepleted(j, totalDoneRate, itemRate)) {
+          continue;
+        }
+        break;
+      }
+    }
+
+    return {
+      outputData,
+      outputRate,
+      doneSorterNum,
+      supplementPlan: null,
+    };
+  }
+
+  function createFinalProductOutputRound(itemName, outputRate, itemMap) {
+    return {
+      outputData: [[]],
+      parameters: createItemCountParameter(itemName, outputRate, itemMap),
+      needSprayCoater: false,
+    };
+  }
+
   function sortItemSummary(itemSummary) {
     const newSummary = {};
     const proliferator = ["proliferatorMk3", "proliferatorMk2", "proliferatorMk1"];
@@ -971,6 +1031,8 @@
     createConveyorRoundState,
     consumeSourceOutputSorters,
     applyRawInputRound,
+    consumeOutputInputSortersForRound,
+    createFinalProductOutputRound,
     sortItemSummary,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
