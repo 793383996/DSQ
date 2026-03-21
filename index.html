@@ -1,11 +1,52 @@
-<html>
+<!DOCTYPE html>
+<html lang="zh-CN">
 
 <head>
-  <title>戴森球计划量产量化计算器工具</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="keywords" content="戴森球计划,量产量化工具,量产量化计算器,自动化工具,生产工具" />
-  <meta name="description" content="《戴森球计划》自动化量产计算器，可以全自动计算量产某个产品的具体产能需求。" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  
+  <title>戴森球计划量产量化计算器 - 自动化生产规划工具</title>
+  <meta name="keywords" content="戴森球计划,量产量化工具,量产量化计算器,自动化工具,生产工具,Dyson Sphere Program,生产计算器,蓝图生成" />
+  <meta name="description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。帮助玩家优化生产线布局，提高生产效率。" />
+  <meta name="author" content="DSQ Calculator" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://dsq.vercel.app/" />
+  
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="戴森球计划量产量化计算器" />
+  <meta property="og:description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。" />
+  <meta property="og:url" content="https://dsq.vercel.app/" />
+  <meta property="og:site_name" content="戴森球计划量产量化计算器" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:image" content="https://dsq.vercel.app/og-image.png" />
+  
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="戴森球计划量产量化计算器" />
+  <meta name="twitter:description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。" />
+  <meta name="twitter:image" content="https://dsq.vercel.app/og-image.png" />
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "戴森球计划量产量化计算器",
+    "description": "《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。",
+    "url": "https://dsq.vercel.app/",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Web Browser",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "CNY"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "DSQ Calculator"
+    }
+  }
+  </script>
+  
   <style>
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
@@ -35,19 +76,26 @@
   <link rel="stylesheet" type="text/css" href="./Scripts/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/svg+xml" href="/public/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#2980b9">
 </head>
 
 <body>
-  <!-- 页面标题 -->
-  <div style="text-align: center; margin-bottom: 10px; padding: 10px 0;">
-    <h1 style="margin: 0; font-size: 28px; font-weight: 600; background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-      戴森球计划量产量化计算器
-    </h1>
-    <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
-  </div>
+  <a href="#main-content" class="skip-link">跳转到主要内容</a>
+  
+  <header role="banner">
+    <div style="text-align: center; margin-bottom: 10px; padding: 10px 0;">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 600; background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        戴森球计划量产量化计算器
+      </h1>
+      <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
+    </div>
+  </header>
 
+  <main id="main-content" role="main">
   <!-- 顶部控制区域 -->
-  <div class="control-bar">
+  <div class="control-bar" role="toolbar" aria-label="产量控制">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">每分钟产量：</span>
@@ -397,6 +445,10 @@
       </table>
     </div>
   </div>
+  </main>
+  
+  <footer role="contentinfo" style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 20px;">
+    <p>&copy; 2024 戴森球计划量产量化计算器 | <a href="https://github.com" style="color: #2980b9;">GitHub</a></p>
+  </footer>
 </body>
-
 </html>
