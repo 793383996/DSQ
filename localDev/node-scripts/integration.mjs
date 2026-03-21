@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const DIST_ROOT = path.join(process.cwd(), "dist");
-const PORT = 4173;
+const HOST = "127.0.0.1";
 
 const KEY_URLS = [
   "/",
@@ -14,6 +14,7 @@ const KEY_URLS = [
   "/Scripts/data.ui-bindings.js",
   "/Scripts/data.bootstrap.js",
   "/Scripts/blueprint.constants.js",
+  "/Scripts/blueprint.serializer.js",
   "/Scripts/blueprint.js",
   "/Scripts/calc-core.js",
   "/quote/explanation.html",
@@ -71,17 +72,26 @@ async function assertHttpOk(url) {
 
 async function main() {
   const server = createStaticServer();
+  let baseUrl = "";
   await new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(PORT, "127.0.0.1", resolve);
+    server.listen(0, HOST, () => {
+      const addr = server.address();
+      if (!addr || typeof addr !== "object") {
+        reject(new Error("integration: could not resolve listen address."));
+        return;
+      }
+      baseUrl = `http://${HOST}:${addr.port}`;
+      resolve();
+    });
   });
 
   try {
     for (const pathname of KEY_URLS) {
-      await assertHttpOk(`http://127.0.0.1:${PORT}${pathname}`);
+      await assertHttpOk(`${baseUrl}${pathname}`);
     }
 
-    const htmlResponse = await assertHttpOk(`http://127.0.0.1:${PORT}/index.html`);
+    const htmlResponse = await assertHttpOk(`${baseUrl}/index.html`);
     const html = await htmlResponse.text();
     for (const marker of REQUIRED_MARKERS) {
       if (!html.includes(marker)) {

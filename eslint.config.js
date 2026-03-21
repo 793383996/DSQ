@@ -7,6 +7,7 @@ const legacyFiles = [
   "Scripts/data.storage.js",
   "Scripts/data.bootstrap.js",
   "Scripts/blueprint.js",
+  "Scripts/blueprint.serializer.js",
   "Scripts/blueprint.constants.js",
   "Scripts/blueprint.facade.js",
   "Scripts/blueprint.worker.js",
