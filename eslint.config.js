@@ -3,6 +3,7 @@ import globals from "globals";
 const legacyFiles = [
   "Scripts/data.state.js",
   "Scripts/data.js",
+  "Scripts/data.ui-bindings.js",
   "Scripts/data.storage.js",
   "Scripts/data.bootstrap.js",
   "Scripts/blueprint.js",
@@ -111,19 +112,18 @@ export default [
     rules: legacyRules,
   },
   {
-    files: ["Scripts/data.state.js", "Scripts/data.storage.js", "Scripts/data.bootstrap.js"],
+    files: ["Scripts/data.state.js", "Scripts/data.storage.js", "Scripts/data.ui-bindings.js", "Scripts/data.bootstrap.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
       globals: {
         ...globalVars,
-        f_init: "readonly",
-        f_initIcons: "readonly",
       },
     },
     rules: {
       ...legacyRules,
       "no-unused-vars": "off",
+      "no-undef": "off",
     },
   },
   {

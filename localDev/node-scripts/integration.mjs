@@ -11,6 +11,7 @@ const KEY_URLS = [
   "/Scripts/data.state.js",
   "/Scripts/data.storage.js",
   "/Scripts/data.js",
+  "/Scripts/data.ui-bindings.js",
   "/Scripts/data.bootstrap.js",
   "/Scripts/blueprint.constants.js",
   "/Scripts/blueprint.js",
