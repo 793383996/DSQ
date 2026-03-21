@@ -13,8 +13,9 @@
     "smoke": "node ./localDev/node-scripts/smoke.mjs",
     "build": "node ./localDev/node-scripts/build.mjs",
     "verify:dist": "node ./localDev/node-scripts/verify-dist.mjs",
+    "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run format:check && npm run smoke && npm run test:unit && npm run build && npm run verify:dist"
+    "ci:check": "npm run lint && npm run format:check && npm run smoke && npm run test:unit && npm run build && npm run verify:dist && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"

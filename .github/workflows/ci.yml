@@ -41,6 +41,9 @@ jobs:
       - name: Verify dist assets
         run: npm run verify:dist
 
+      - name: Run integration tests
+        run: npm run test:integration
+
       - name: CI Check Summary
         if: always()
         run: |
@@ -51,3 +54,4 @@ jobs:
           echo "- Unit tests: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Build dist: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Verify dist: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration tests: Completed" >> $GITHUB_STEP_SUMMARY
