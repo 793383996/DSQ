@@ -998,13 +998,14 @@ class Blueprint {
       );
 
       for (let totalDoneRate = 0; item.rate - totalDoneRate > zero; ) {
-        let needSprayCoater = item.needProliferator;
-        let doneRate = 0;
-        let parameters = null;
-        let inputRate = Math.min(maxTransportSpeed, item.rate - totalDoneRate);
-        let inputData = [];
-        let outputData = [];
-        let doneSorterNum = 0;
+        const roundState = layoutFactory.createConveyorRoundState(item, totalDoneRate, maxTransportSpeed);
+        let needSprayCoater = roundState.needSprayCoater;
+        let doneRate = roundState.doneRate;
+        let parameters = roundState.parameters;
+        let inputRate = roundState.inputRate;
+        let inputData = roundState.inputData;
+        let outputData = roundState.outputData;
+        let doneSorterNum = roundState.doneSorterNum;
         const sorterBucket = this.sorters[itemName];
         const abortReason = layoutFactory.getConveyorIterationAbortReason(item, sorterBucket);
         if (abortReason === "missing_sorters") {
@@ -1015,29 +1016,22 @@ class Blueprint {
           break;
         }
         if (item.fromBuildingNum !== 0) {
-          for (let j = sorterBucket.output.length - 1; j >= 0; j--) {
-            if (!layoutFactory.shouldConnectSourceSorter(sorterBucket.output[j].rate, inputRate, zero)) {
-              // 当前带接受运力不能满足分拣器，则该分拣器连接下一个带上的节点
-              break;
-            }
-            // 修复：改进分配算法，确保每个节点均匀分配分拣器
-            // 当 doneSorterNum 是 sortersPerNode 的倍数时创建新节点
-            layoutFactory.appendSorterIndexToNodeData(
-              inputData,
-              sorterBucket.output[j].index,
-              doneSorterNum,
-              sortersPerNode
-            );
-            inputRate -= sorterBucket.output[j].rate;
-            doneRate += sorterBucket.output[j].rate;
-            sorterBucket.output.pop();
-            doneSorterNum++;
-          }
+          const sourceResult = layoutFactory.consumeSourceOutputSorters(
+            sorterBucket.output,
+            inputRate,
+            zero,
+            sortersPerNode
+          );
+          inputData = sourceResult.inputData;
+          inputRate = sourceResult.remainingInputRate;
+          doneRate = sourceResult.doneRate;
+          doneSorterNum = sourceResult.doneSorterNum;
         } else {
           // 说明是原料
-          inputData.push([]);
-          parameters = layoutFactory.createItemCountParameter(itemName, inputRate, itemMap);
-          doneRate += inputRate;
+          const rawInputResult = layoutFactory.applyRawInputRound(itemName, inputRate, itemMap);
+          inputData = rawInputResult.inputData;
+          parameters = rawInputResult.parameters;
+          doneRate = rawInputResult.doneRate;
           // inputRate = 0
         }
         totalDoneRate += doneRate;

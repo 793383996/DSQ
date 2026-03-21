@@ -858,6 +858,49 @@
     return !(sourceSorterRate - inputRate > zero);
   }
 
+  function createConveyorRoundState(item, totalDoneRate, maxTransportSpeed) {
+    return {
+      needSprayCoater: item.needProliferator,
+      doneRate: 0,
+      parameters: null,
+      inputRate: Math.min(maxTransportSpeed, item.rate - totalDoneRate),
+      inputData: [],
+      outputData: [],
+      doneSorterNum: 0,
+    };
+  }
+
+  function consumeSourceOutputSorters(outputSorters, inputRate, zero, sortersPerNode) {
+    const inputData = [];
+    let doneRate = 0;
+    let doneSorterNum = 0;
+    let remainingInputRate = inputRate;
+    for (let j = outputSorters.length - 1; j >= 0; j--) {
+      if (!shouldConnectSourceSorter(outputSorters[j].rate, remainingInputRate, zero)) {
+        break;
+      }
+      appendSorterIndexToNodeData(inputData, outputSorters[j].index, doneSorterNum, sortersPerNode);
+      remainingInputRate -= outputSorters[j].rate;
+      doneRate += outputSorters[j].rate;
+      outputSorters.pop();
+      doneSorterNum++;
+    }
+    return {
+      inputData,
+      doneRate,
+      doneSorterNum,
+      remainingInputRate,
+    };
+  }
+
+  function applyRawInputRound(itemName, inputRate, itemMap) {
+    return {
+      inputData: [[]],
+      parameters: createItemCountParameter(itemName, inputRate, itemMap),
+      doneRate: inputRate,
+    };
+  }
+
   function sortItemSummary(itemSummary) {
     const newSummary = {};
     const proliferator = ["proliferatorMk3", "proliferatorMk2", "proliferatorMk1"];
@@ -925,6 +968,9 @@
     buildConveyorItemSummary,
     getConveyorIterationAbortReason,
     shouldConnectSourceSorter,
+    createConveyorRoundState,
+    consumeSourceOutputSorters,
+    applyRawInputRound,
     sortItemSummary,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
