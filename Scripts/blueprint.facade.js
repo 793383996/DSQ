@@ -20,6 +20,9 @@ class BlueprintFacade {
       return Promise.reject(new Error("ERR_ALREADY_RUNNING"));
     }
     this._isGenerating = true;
+    const releaseLock = () => {
+      BlueprintFacade._isGenerating = false;
+    };
 
     return new Promise((resolve, reject) => {
       // 防护边界：检查 Worker 支持，低版本兜底 (Compat)
@@ -62,21 +65,32 @@ class BlueprintFacade {
         } catch (e) {
           reject(e);
         } finally {
-          this._isGenerating = false;
+          releaseLock();
         }
         return;
       }
 
-      const worker = new Worker("Scripts/blueprint.worker.js");
+      let worker = null;
+      try {
+        worker = new Worker("Scripts/blueprint.worker.js");
+      } catch (err) {
+        releaseLock();
+        reject(err instanceof Error ? err : new Error(String(err)));
+        return;
+      }
       const taskId = Date.now().toString(36) + Math.random().toString(36).substr(2);
 
       // 监听器清理卫语句：确保在任何退出路径下都终止线程
       const cleanup = () => {
+        if (!worker) {
+          releaseLock();
+          return;
+        }
         worker.onmessage = null;
         worker.onerror = null;
         worker.terminate();
         // 释放互斥锁
-        BlueprintFacade._isGenerating = false;
+        releaseLock();
       };
 
       worker.onmessage = e => {
@@ -105,7 +119,12 @@ class BlueprintFacade {
       };
 
       // 使用结构化克隆传递配置实体 (Immutable Transfer)
-      worker.postMessage({ taskId, title, iconId, recipe, config });
+      try {
+        worker.postMessage({ taskId, title, iconId, recipe, config });
+      } catch (err) {
+        cleanup();
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
     });
   }
 }
