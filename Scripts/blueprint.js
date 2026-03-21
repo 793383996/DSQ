@@ -1,8 +1,16 @@
 const _bpGlobal = typeof globalThis !== "undefined" ? globalThis : window;
 const { itemMap, productionCategory, buildingType, buildingMap, recipeMap } = _bpGlobal.DSQBlueprintConstants || {};
+const modelFactory = _bpGlobal.DSQBlueprintModel;
+const layoutFactory = _bpGlobal.DSQBlueprintLayout;
 
 if (!_bpGlobal.DSQBlueprintConstants) {
   throw new Error("Missing DSQBlueprintConstants. Load Scripts/blueprint.constants.js before blueprint.js.");
+}
+if (!modelFactory) {
+  throw new Error("Missing DSQBlueprintModel. Load Scripts/blueprint.model.js before blueprint.js.");
+}
+if (!layoutFactory) {
+  throw new Error("Missing DSQBlueprintLayout. Load Scripts/blueprint.layout.js before blueprint.js.");
 }
 
 class Blueprint {
@@ -31,33 +39,7 @@ class Blueprint {
     this.itemSummary = {};
     this.conveyorStartOffsetX = 0;
     this.lastProductionBuildingType = -1;
-    this.blueprintTemplate = {
-      header: {
-        layout: 10,
-        icons: iconId,
-        time: new Date(),
-        gameVersion: "0.9.26.13026",
-        shortDesc: title,
-        desc: "",
-      },
-      version: 1,
-      cursorOffset: { x: 0, y: 0 },
-      cursorTargetArea: 0,
-      dragBoxSize: { x: 1, y: 1 },
-      primaryAreaIdx: 0,
-      areas: [
-        {
-          index: 0,
-          parentIndex: -1,
-          tropicAnchor: 0,
-          areaSegments: 200,
-          anchorLocalOffset: { x: 0, y: 0 },
-          size: { x: 1, y: 1 },
-          // size: this.blueprintSize
-        },
-      ],
-      buildings: [],
-    };
+    this.blueprintTemplate = modelFactory.createBlueprintTemplate(title, iconId);
   }
 
   mapRecipeID() {
@@ -112,61 +94,24 @@ class Blueprint {
 
   getBuildingTemplate() {
     this.buildingIndex++;
-    return {
-      index: this.buildingIndex,
-      areaIndex: 0,
-      localOffset: null,
-      yaw: [0, 0],
-      itemId: 0,
-      modelIndex: 0,
-      outputObjIdx: -1,
-      inputObjIdx: -1,
-      outputToSlot: 0,
-      inputFromSlot: 0,
-      outputFromSlot: 0,
-      inputToSlot: 0,
-      outputOffset: 0,
-      inputOffset: 0,
-      recipeId: 0,
-      filterId: 0,
-      parameters: null,
-    };
+    return modelFactory.createBuildingTemplate(this.buildingIndex);
   }
 
   newSprayCoater(offset, yaw) {
     // 在offset位置生成一个喷涂机， direction<0 表示沿y轴负方向，否则为y轴正方向
-    let sc = this.getBuildingTemplate();
-    sc.localOffset = [offset, offset];
-    sc.yaw = yaw;
-    sc.itemId = buildingMap.sprayCoater.itemId;
-    sc.modelIndex = buildingMap.sprayCoater.modelIndex;
-    sc.outputToSlot = 14;
-    sc.inputFromSlot = 15;
-    sc.outputFromSlot = 15;
-    sc.inputToSlot = 14;
-    return sc;
+    return modelFactory.createSprayCoater(this.getBuildingTemplate(), offset, yaw, buildingMap.sprayCoater);
   }
 
   newConveyorNode(offset, yaw, conveyor, outputObjIdx, outputToSlot, parameters) {
-    return {
-      index: ++this.buildingIndex,
-      areaIndex: 0,
-      localOffset: [offset, offset],
-      yaw: yaw,
-      itemId: conveyor.itemId,
-      modelIndex: conveyor.modelIndex,
-      outputObjIdx: outputObjIdx,
-      inputObjIdx: -1,
-      outputToSlot: outputToSlot,
-      inputFromSlot: 0,
-      outputFromSlot: 0,
-      inputToSlot: 1,
-      outputOffset: 0,
-      inputOffset: 0,
-      recipeId: 0,
-      filterId: 0,
-      parameters: parameters,
-    };
+    return modelFactory.createConveyorNode(
+      ++this.buildingIndex,
+      offset,
+      yaw,
+      conveyor,
+      outputObjIdx,
+      outputToSlot,
+      parameters
+    );
   }
 
   newConveyor(conveyor, direction, inputData, outputData, parameters = null, needSprayCoater = false) {
@@ -444,436 +389,16 @@ class Blueprint {
   }
 
   calculateSorterLocalOffsetAndYaw(buildingOffset, type, slotIndex, rotate = 0) {
-    // rotate = 0 表示分拣器出货， 1 表示进货
-    let data = {
-      offset: [],
-      yaw: [],
-    };
-    if (type === productionCategory.smelter || type === productionCategory.assembling) {
-      switch (slotIndex) {
-        case 8:
-          data.offset = [
-            { x: buildingOffset.x - 0.9, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x - 0.9, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 7:
-          data.offset = [
-            { x: buildingOffset.x, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 6:
-          data.offset = [
-            { x: buildingOffset.x + 0.9, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x + 0.9, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 5:
-          data.offset = [
-            { x: buildingOffset.x + 1, y: buildingOffset.y - 0.8, z: 0 },
-            { x: buildingOffset.x + 2, y: buildingOffset.y - 0.8, z: 0 },
-          ];
-          data.yaw = [(90 + rotate * 180) % 360, (90 + rotate * 180) % 360];
-          break;
-        case 4:
-          data.offset = [
-            { x: buildingOffset.x + 1, y: buildingOffset.y, z: 0 },
-            { x: buildingOffset.x + 2, y: buildingOffset.y, z: 0 },
-          ];
-          data.yaw = [(90 + rotate * 180) % 360, (90 + rotate * 180) % 360];
-          break;
-        case 3:
-          data.offset = [
-            { x: buildingOffset.x + 1, y: buildingOffset.y + 0.8, z: 0 },
-            { x: buildingOffset.x + 2, y: buildingOffset.y + 0.8, z: 0 },
-          ];
-          data.yaw = [(90 + rotate * 180) % 360, (90 + rotate * 180) % 360];
-          break;
-        default:
-          throw `calculateSorterLocalOffset error: unsupported slotIndex < 3 for smelter or assembling - ${slotIndex}`;
-      }
-    } else if (type === productionCategory.plant) {
-      switch (slotIndex) {
-        case 6:
-          // data.offset = [{x: buildingOffset.x-1, y: buildingOffset.y-1, z: 0}, {x: buildingOffset.x-1, y: buildingOffset.y-2, z: 0}]
-          data.offset = [
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 5:
-          data.offset = [
-            { x: buildingOffset.x, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 4:
-          // data.offset = [{x: buildingOffset.x+1, y: buildingOffset.y-1, z: 0}, {x: buildingOffset.x+1, y: buildingOffset.y-2, z: 0}]
-          data.offset = [
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 3:
-          // data.offset = [{x: buildingOffset.x+2, y: buildingOffset.y-1, z: 0}, {x: buildingOffset.x+2, y: buildingOffset.y-2, z: 0}]
-          data.offset = [
-            { x: buildingOffset.x + 1.6, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x + 1.6, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [(180 + rotate * 180) % 360, (180 + rotate * 180) % 360];
-          break;
-        case 2:
-          data.offset = [
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y + 2, z: 0 },
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y + 3, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 1:
-          data.offset = [
-            { x: buildingOffset.x, y: buildingOffset.y + 2, z: 0 },
-            { x: buildingOffset.x, y: buildingOffset.y + 3, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 0:
-          data.offset = [
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y + 2, z: 0 },
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y + 3, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        default:
-          throw `unsupported: plant slot < 0`;
-      }
-    } else if (type === productionCategory.refinery) {
-      switch (slotIndex) {
-        case 8:
-          data.offset = [
-            { x: buildingOffset.x - 3, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x - 4, y: buildingOffset.y - 1, z: 0 },
-          ];
-          data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360];
-          break;
-        case 7:
-          data.offset = [
-            { x: buildingOffset.x - 3, y: buildingOffset.y, z: 0 },
-            { x: buildingOffset.x - 4, y: buildingOffset.y, z: 0 },
-          ];
-          data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360];
-          break;
-        case 6:
-          data.offset = [
-            { x: buildingOffset.x - 3, y: buildingOffset.y + 1, z: 0 },
-            { x: buildingOffset.x - 4, y: buildingOffset.y + 1, z: 0 },
-          ];
-          data.yaw = [(270 + rotate * 180) % 360, (270 + rotate * 180) % 360];
-          break;
-        case 5:
-          data.offset = [
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y + 1, z: 0 },
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y + 2, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 4:
-          data.offset = [
-            { x: buildingOffset.x, y: buildingOffset.y + 1, z: 0 },
-            { x: buildingOffset.x, y: buildingOffset.y + 2, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 3:
-          data.offset = [
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y + 1, z: 0 },
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y + 2, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 2:
-          data.offset = [
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x + 0.8, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 1:
-          data.offset = [
-            { x: buildingOffset.x, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 0:
-          data.offset = [
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y - 2, z: 0 },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        default:
-          throw `unsupported: refinery slot < 0`;
-      }
-    } else if (type === productionCategory.collider) {
-      switch (slotIndex) {
-        case 8:
-          data.offset = [
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y - 2, z: 0 },
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y - 3, z: 0 },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 7:
-          data.offset = [
-            { x: buildingOffset.x - 1.6, y: buildingOffset.y - 2, z: 0 },
-            { x: buildingOffset.x - 1.6, y: buildingOffset.y - 3, z: 0 },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 6:
-          data.offset = [
-            { x: buildingOffset.x - 2.4, y: buildingOffset.y - 2, z: 0 },
-            { x: buildingOffset.x - 2.4, y: buildingOffset.y - 3, z: 0 },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 5:
-          data.offset = [
-            { x: buildingOffset.x - 4, y: buildingOffset.y - 1, z: 0 },
-            { x: buildingOffset.x - 5, y: buildingOffset.y - 1, z: 0 },
-          ];
-          data.yaw = [270 + ((rotate * 180) % 360), 270 + ((rotate * 270) % 360)];
-          break;
-        case 4:
-          data.offset = [
-            { x: buildingOffset.x - 4, y: buildingOffset.y, z: 0 },
-            { x: buildingOffset.x - 5, y: buildingOffset.y, z: 0 },
-          ];
-          data.yaw = [270 + ((rotate * 180) % 360), 270 + ((rotate * 270) % 360)];
-          break;
-        case 3:
-          data.offset = [
-            { x: buildingOffset.x - 4, y: buildingOffset.y + 1, z: 0 },
-            { x: buildingOffset.x - 5, y: buildingOffset.y + 1, z: 0 },
-          ];
-          data.yaw = [270 + ((rotate * 180) % 360), 270 + ((rotate * 270) % 360)];
-          break;
-        case 2:
-          data.offset = [
-            { x: buildingOffset.x - 2.4, y: buildingOffset.y + 2, z: 0 },
-            { x: buildingOffset.x - 2.4, y: buildingOffset.y + 3, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 1:
-          data.offset = [
-            { x: buildingOffset.x - 1.6, y: buildingOffset.y + 2, z: 0 },
-            { x: buildingOffset.x - 1.6, y: buildingOffset.y + 3, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        case 0:
-          data.offset = [
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y + 2, z: 0 },
-            { x: buildingOffset.x - 0.8, y: buildingOffset.y + 3, z: 0 },
-          ];
-          data.yaw = [(rotate * 180) % 360, (rotate * 180) % 360];
-          break;
-        default:
-          throw `unsupported: collider slot < 0`;
-      }
-    } else if (type === productionCategory.lab) {
-      switch (slotIndex) {
-        case 11:
-          data.offset = [
-            {
-              x: buildingOffset.x + 2,
-              y: buildingOffset.y + 0.8,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x + 3,
-              y: buildingOffset.y + 0.8,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [90 + ((rotate * 180) % 360), 90 + ((rotate * 180) % 360)];
-          break;
-        case 10:
-          data.offset = [
-            {
-              x: buildingOffset.x + 2,
-              y: buildingOffset.y,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x + 3,
-              y: buildingOffset.y,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [90 + ((rotate * 180) % 360), 90 + ((rotate * 180) % 360)];
-          break;
-        case 9:
-          data.offset = [
-            {
-              x: buildingOffset.x + 2,
-              y: buildingOffset.y - 0.8,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x + 3,
-              y: buildingOffset.y - 0.8,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [90 + ((rotate * 180) % 360), 90 + ((rotate * 180) % 360)];
-          break;
-        case 8:
-          data.offset = [
-            {
-              x: buildingOffset.x + 0.8,
-              y: buildingOffset.y - 2,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x + 0.8,
-              y: buildingOffset.y - 3,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 7:
-          data.offset = [
-            {
-              x: buildingOffset.x,
-              y: buildingOffset.y - 2,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x,
-              y: buildingOffset.y - 3,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 6:
-          data.offset = [
-            {
-              x: buildingOffset.x - 0.8,
-              y: buildingOffset.y - 2,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x - 0.8,
-              y: buildingOffset.y - 3,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [180 + ((rotate * 180) % 360), 180 + ((rotate * 180) % 360)];
-          break;
-        case 5:
-          data.offset = [
-            {
-              x: buildingOffset.x - 2,
-              y: buildingOffset.y - 0.8,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x - 3,
-              y: buildingOffset.y - 0.8,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [270 + ((rotate * 180) % 360), 270 + ((rotate * 180) % 360)];
-          break;
-        case 4:
-          data.offset = [
-            {
-              x: buildingOffset.x - 2,
-              y: buildingOffset.y,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x - 3,
-              y: buildingOffset.y,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [270 + ((rotate * 180) % 360), 270 + ((rotate * 180) % 360)];
-          break;
-        case 3:
-          data.offset = [
-            {
-              x: buildingOffset.x - 2,
-              y: buildingOffset.y + 0.8,
-              z: buildingOffset.z,
-            },
-            {
-              x: buildingOffset.x - 3,
-              y: buildingOffset.y + 0.8,
-              z: buildingOffset.z,
-            },
-          ];
-          data.yaw = [270 + ((rotate * 180) % 360), 270 + ((rotate * 180) % 360)];
-          break;
-        default:
-          throw `unsupported: lab slot < 3`;
-      }
-    } else {
-      throw `calculateSorterLocalOffset error: unsupported production category - ${type}`;
-    }
-    if (rotate === 1) {
-      data.offset.reverse();
-    }
-    return data;
+    return layoutFactory.calculateSorterLocalOffsetAndYaw(buildingOffset, type, slotIndex, rotate, productionCategory);
   }
 
   calculateTeslaTowerOffset(buildingOffset, category) {
-    let offset = {};
-    let distance = 0;
-    switch (category) {
-      case productionCategory.smelter:
-        offset = { x: buildingOffset.x - 1, y: buildingOffset.y - 2, z: 0 };
-        distance = 3;
-        break;
-      case productionCategory.assembling:
-        offset = { x: buildingOffset.x + 2, y: buildingOffset.y - 2, z: 0 };
-        distance = 3;
-        break;
-      case productionCategory.plant:
-        offset = { x: buildingOffset.x + 3, y: buildingOffset.y - 2, z: 0 };
-        distance = 7;
-        break;
-      case productionCategory.refinery:
-        offset = { x: buildingOffset.x - 3, y: buildingOffset.y - 2, z: 0 };
-        distance = 7;
-        break;
-      case productionCategory.collider:
-        offset = { x: buildingOffset.x + 1, y: buildingOffset.y - 3, z: 0 };
-        distance = 10;
-        break;
-      case productionCategory.lab:
-        offset = { x: buildingOffset.x + 3, y: buildingOffset.y - 3, z: 0 };
-        distance = 6;
-        break;
-      default:
-        cocoMessage.error("未知的建筑类型", 4000);
-        throw `unknown building category: ${category}`;
-    }
-    return {
-      offset: offset,
-      distance: distance,
-    };
+    return layoutFactory.calculateTeslaTowerOffset(
+      buildingOffset,
+      category,
+      productionCategory,
+      typeof cocoMessage !== "undefined" ? cocoMessage : null
+    );
   }
 
   newProductionBuilding(subRecipe) {
@@ -919,38 +444,14 @@ class Blueprint {
       if (subRecipe.acceleratorMode === 1) {
         acceleratorMode = 1;
       }
-      let newBuilding = {
-        index: this.buildingIndex,
-        areaIndex: 0,
-        localOffset: [
-          {
-            x: buildingX,
-            y: buildingY,
-            z: buildingZ,
-          },
-          {
-            x: buildingX,
-            y: buildingY,
-            z: buildingZ,
-          },
-        ],
-        yaw: buildingArea.yaw,
-        itemId: buildingMap[subRecipe.building.name].itemId,
-        modelIndex: buildingMap[subRecipe.building.name].modelIndex,
-        outputObjIdx: -1,
-        inputObjIdx: -1,
-        outputToSlot: 0,
-        inputFromSlot: 0,
-        outputFromSlot: 0,
-        inputToSlot: 0,
-        outputOffset: 0,
-        inputOffset: 0,
-        recipeId: parseInt(subRecipe.recipeID),
-        filterId: 0,
-        parameters: {
-          acceleratorMode: acceleratorMode,
-        },
-      };
+      let newBuilding = modelFactory.createProductionBuilding(
+        this.buildingIndex,
+        { x: buildingX, y: buildingY, z: buildingZ },
+        buildingArea.yaw,
+        buildingMap[subRecipe.building.name],
+        subRecipe.recipeID,
+        acceleratorMode
+      );
 
       let stackLabBuildingIndexList = [];
       let layers = 1;
@@ -1010,10 +511,11 @@ class Blueprint {
               this.blueprintSize.x - buildingX < this.config.teslaTowerInterval)
           ) {
             // 生成电力感应塔
-            let teslaTower = this.getBuildingTemplate();
-            teslaTower.itemId = buildingMap.teslaTower.itemId;
-            teslaTower.modelIndex = buildingMap.teslaTower.modelIndex;
-            teslaTower.localOffset = [teslaTowerOffset.offset, teslaTowerOffset.offset];
+            let teslaTower = modelFactory.createSinglePointBuilding(
+              this.getBuildingTemplate(),
+              buildingMap.teslaTower,
+              teslaTowerOffset.offset
+            );
             teslaTowerDistance = 0;
             hasTeslaTowerThisLine = true;
             this.buildingArray[this.buildingArray.length - 1].push({

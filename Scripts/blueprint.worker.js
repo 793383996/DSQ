@@ -5,7 +5,14 @@
  */
 
 // 引入依赖项，注意路径需对齐项目真实路径
-self.importScripts("pako.js", "blueprint.constants.js", "blueprint.serializer.js", "blueprint.js");
+self.importScripts(
+  "pako.js",
+  "blueprint.constants.js",
+  "blueprint.serializer.js",
+  "blueprint.model.js",
+  "blueprint.layout.js",
+  "blueprint.js"
+);
 
 self.onmessage = function (e) {
   const { taskId, title, iconId, recipe, config } = e.data;

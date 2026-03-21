@@ -11,6 +11,8 @@ const REQUIRED_FILES = [
   "Scripts/data.bootstrap.js",
   "Scripts/blueprint.constants.js",
   "Scripts/blueprint.serializer.js",
+  "Scripts/blueprint.model.js",
+  "Scripts/blueprint.layout.js",
   "Scripts/blueprint.js",
 ];
 
@@ -44,6 +46,8 @@ async function main() {
     !html.includes("Scripts/data.ui-bindings.js") ||
     !html.includes("Scripts/blueprint.constants.js") ||
     !html.includes("Scripts/blueprint.serializer.js") ||
+    !html.includes("Scripts/blueprint.model.js") ||
+    !html.includes("Scripts/blueprint.layout.js") ||
     !html.includes("Scripts/blueprint")
   ) {
     throw new Error("Smoke check failed: index.html does not include expected core script references.");
@@ -56,6 +60,8 @@ async function main() {
   assertSyntax("Scripts/data.bootstrap.js");
   assertSyntax("Scripts/blueprint.constants.js");
   assertSyntax("Scripts/blueprint.serializer.js");
+  assertSyntax("Scripts/blueprint.model.js");
+  assertSyntax("Scripts/blueprint.layout.js");
   assertSyntax("Scripts/blueprint.js");
 
   console.log("smoke: core files and syntax checks passed.");
