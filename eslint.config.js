@@ -7,6 +7,7 @@ const legacyFiles = [
   "Scripts/blueprint.worker.js",
   "Scripts/jquery.tips.js",
   "Scripts/cocoMessage.js",
+  "Scripts/error-monitor.js",
 ];
 
 const strictRules = {
@@ -35,6 +36,21 @@ const legacyRules = {
   "prefer-arrow-callback": "off",
 };
 
+const globalVars = {
+  ...globals.browser,
+  ...globals.jquery,
+  Vue: "readonly",
+  pako: "readonly",
+  cocoMessage: "readonly",
+  data: "writable",
+  blueprint: "writable",
+  BlueprintFacade: "readonly",
+  BlueprintWorker: "readonly",
+  Blueprint: "readonly",
+  ErrorMonitor: "readonly",
+  PerformanceTracker: "readonly",
+};
+
 export default [
   {
     ignores: [
@@ -53,18 +69,7 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
-      globals: {
-        ...globals.browser,
-        ...globals.jquery,
-        Vue: "readonly",
-        pako: "readonly",
-        cocoMessage: "readonly",
-        data: "writable",
-        blueprint: "writable",
-        BlueprintFacade: "readonly",
-        BlueprintWorker: "readonly",
-        Blueprint: "readonly",
-      },
+      globals: globalVars,
     },
     rules: strictRules,
   },
@@ -73,18 +78,7 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
-      globals: {
-        ...globals.browser,
-        ...globals.jquery,
-        Vue: "readonly",
-        pako: "readonly",
-        cocoMessage: "readonly",
-        data: "writable",
-        blueprint: "writable",
-        BlueprintFacade: "readonly",
-        BlueprintWorker: "readonly",
-        Blueprint: "readonly",
-      },
+      globals: globalVars,
     },
     rules: legacyRules,
   },

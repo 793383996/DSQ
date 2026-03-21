@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run smoke tests
+        run: npm run smoke
+
+      - name: CI Check Summary
+        if: always()
+        run: |
+          echo "## CI Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Format: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Smoke: Completed" >> $GITHUB_STEP_SUMMARY
