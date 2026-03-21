@@ -714,6 +714,36 @@
     return j > 0 && totalDoneRate >= itemRate;
   }
 
+  function attachSorterToOwnerAndPlanShift(rowEntries, ownerObjIdx, ownerCategory, newSorterIndex, productionCategory) {
+    let found = false;
+    let startMove = false;
+    const entriesToShift = [];
+    for (const entry of rowEntries) {
+      if (entry.index === ownerObjIdx) {
+        entry.sorterList.push(newSorterIndex);
+        found = true;
+        startMove = shouldStartShiftAfterSupplement(ownerCategory, entry.sorterList.length, productionCategory);
+        if (!startMove) {
+          break;
+        }
+      } else if (startMove) {
+        entriesToShift.push(entry);
+      }
+    }
+    return {
+      found,
+      entriesToShift,
+    };
+  }
+
+  function collectBuildingGroupIndexes(buildingGroupEntry) {
+    const indexes = [buildingGroupEntry.index];
+    for (const sorterIndex of buildingGroupEntry.sorterList) {
+      indexes.push(sorterIndex);
+    }
+    return indexes;
+  }
+
   root.DSQBlueprintLayout = {
     calculateProductionBuildingPlacement,
     calculateSorterLocalOffsetAndYaw,
@@ -740,5 +770,7 @@
     shouldStartShiftAfterSupplement,
     appendSorterIndexToNodeData,
     shouldContinueAfterOutputRateDepleted,
+    attachSorterToOwnerAndPlanShift,
+    collectBuildingGroupIndexes,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

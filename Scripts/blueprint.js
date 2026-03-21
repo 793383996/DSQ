@@ -473,13 +473,10 @@ class Blueprint {
   }
 
   moveBuildingGroupRight(buildingGroupEntry) {
-    let toMoveNum = 1 + buildingGroupEntry.sorterList.length;
+    const indexesToMove = layoutFactory.collectBuildingGroupIndexes(buildingGroupEntry);
+    let toMoveNum = indexesToMove.length;
     for (let b of this.buildings) {
-      if (b.index === buildingGroupEntry.index) {
-        b.localOffset[0].x += 1;
-        b.localOffset[1].x += 1;
-        toMoveNum--;
-      } else if (buildingGroupEntry.sorterList.includes(b.index)) {
+      if (indexesToMove.includes(b.index)) {
         b.localOffset[0].x += 1;
         b.localOffset[1].x += 1;
         toMoveNum--;
@@ -491,31 +488,19 @@ class Blueprint {
   }
 
   attachSupplementSorterAndShift(ownerObjIdx, ownerName, newSorterIndex) {
-    let startMove = false;
-    let findTargetBuilding = false;
+    const ownerCategory = buildingMap[ownerName].category;
     for (let i = 0; i < this.buildingArray.length; i++) {
-      for (let k = 0; k < this.buildingArray[i].length; k++) {
-        const buildingGroupEntry = this.buildingArray[i][k];
-        if (buildingGroupEntry.index === ownerObjIdx) {
-          buildingGroupEntry.sorterList.push(newSorterIndex);
-          findTargetBuilding = true;
-          const ownerCategory = buildingMap[ownerName].category;
-          if (
-            layoutFactory.shouldStartShiftAfterSupplement(
-              ownerCategory,
-              buildingGroupEntry.sorterList.length,
-              productionCategory
-            )
-          ) {
-            startMove = true;
-          } else {
-            break;
-          }
-        } else if (startMove) {
-          this.moveBuildingGroupRight(buildingGroupEntry);
+      const plan = layoutFactory.attachSorterToOwnerAndPlanShift(
+        this.buildingArray[i],
+        ownerObjIdx,
+        ownerCategory,
+        newSorterIndex,
+        productionCategory
+      );
+      if (plan.found) {
+        for (const entry of plan.entriesToShift) {
+          this.moveBuildingGroupRight(entry);
         }
-      }
-      if (findTargetBuilding) {
         break;
       }
     }
@@ -1211,14 +1196,16 @@ class Blueprint {
                 stackLayers
               );
               let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
-              this.sorters[itemName].input.unshift({
-                index: newSorter.index,
-                rate: newSorterRate,
-                ownerObjIdx: sourceSorter.ownerObjIdx,
-                ownerName: sourceSorter.ownerName,
-                ownerOffset: sourceSorter.ownerOffset,
-                recipeID: sourceSorter.recipeID,
-              });
+              this.sorters[itemName].input.unshift(
+                modelFactory.createSorterOwnerRecord(
+                  newSorter.index,
+                  newSorterRate,
+                  sourceSorter.ownerObjIdx,
+                  sourceSorter.ownerName,
+                  sourceSorter.ownerOffset,
+                  sourceSorter.recipeID
+                )
+              );
               this.sorters[itemName].input.pop();
               break;
             }
