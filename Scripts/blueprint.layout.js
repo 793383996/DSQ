@@ -644,6 +644,76 @@
     return firstSprayOffset;
   }
 
+  function reorderPriorityInputSorters(itemName, inputSorters) {
+    if (!["hydrogen", "refinedOil"].includes(itemName)) {
+      return inputSorters;
+    }
+    const reordered = [];
+    for (let i = inputSorters.length - 1; i >= 0; i--) {
+      const sorter = inputSorters[i];
+      if (
+        !((itemName === "hydrogen" && sorter.recipeID === 58) || (itemName === "refinedOil" && sorter.recipeID === 121))
+      ) {
+        reordered.push(sorter);
+      }
+    }
+    for (let i = inputSorters.length - 1; i >= 0; i--) {
+      const sorter = inputSorters[i];
+      if (
+        (itemName === "hydrogen" && sorter.recipeID === 58) ||
+        (itemName === "refinedOil" && sorter.recipeID === 121)
+      ) {
+        reordered.push(sorter);
+      }
+    }
+    return reordered;
+  }
+
+  function calculateColumnLoad(actualSorterRate, fromBuildingNum, stackLayers) {
+    if (fromBuildingNum === 0 && stackLayers > 1) {
+      return actualSorterRate * stackLayers;
+    }
+    return actualSorterRate;
+  }
+
+  function shouldCreateSupplementSorter(totalDoneRate, itemRate, outputRate, columnLoad, zero) {
+    return totalDoneRate + zero < itemRate && outputRate + zero < columnLoad;
+  }
+
+  function calculateSupplementSorterRate(columnLoad, outputRate, fromBuildingNum, stackLayers) {
+    const newColumnLoad = columnLoad - outputRate;
+    if (fromBuildingNum === 0 && stackLayers > 1) {
+      return newColumnLoad / stackLayers;
+    }
+    return newColumnLoad;
+  }
+
+  function selectSupplementSorterOutputSlot(ownerCategory, productionCategory) {
+    if ([productionCategory.assembling, productionCategory.smelter, productionCategory.lab].includes(ownerCategory)) {
+      return 3;
+    }
+    if (ownerCategory === productionCategory.collider) {
+      return 2;
+    }
+    return 0;
+  }
+
+  function shouldStartShiftAfterSupplement(ownerCategory, sorterListLength, productionCategory) {
+    return ownerCategory === productionCategory.smelter && sorterListLength === 3;
+  }
+
+  function appendSorterIndexToNodeData(nodeData, sorterIndex, doneSorterNum, sortersPerNode) {
+    if (doneSorterNum % sortersPerNode === 0) {
+      nodeData.push([sorterIndex]);
+    } else {
+      nodeData[nodeData.length - 1].push(sorterIndex);
+    }
+  }
+
+  function shouldContinueAfterOutputRateDepleted(j, totalDoneRate, itemRate) {
+    return j > 0 && totalDoneRate >= itemRate;
+  }
+
   root.DSQBlueprintLayout = {
     calculateProductionBuildingPlacement,
     calculateSorterLocalOffsetAndYaw,
@@ -662,5 +732,13 @@
     getConveyorDirection,
     selectSprayCoaterConveyor,
     findFirstSprayOffset,
+    reorderPriorityInputSorters,
+    calculateColumnLoad,
+    shouldCreateSupplementSorter,
+    calculateSupplementSorterRate,
+    selectSupplementSorterOutputSlot,
+    shouldStartShiftAfterSupplement,
+    appendSorterIndexToNodeData,
+    shouldContinueAfterOutputRateDepleted,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

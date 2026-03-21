@@ -472,6 +472,70 @@ class Blueprint {
     );
   }
 
+  moveBuildingGroupRight(buildingGroupEntry) {
+    let toMoveNum = 1 + buildingGroupEntry.sorterList.length;
+    for (let b of this.buildings) {
+      if (b.index === buildingGroupEntry.index) {
+        b.localOffset[0].x += 1;
+        b.localOffset[1].x += 1;
+        toMoveNum--;
+      } else if (buildingGroupEntry.sorterList.includes(b.index)) {
+        b.localOffset[0].x += 1;
+        b.localOffset[1].x += 1;
+        toMoveNum--;
+      }
+      if (toMoveNum <= 0) {
+        break;
+      }
+    }
+  }
+
+  attachSupplementSorterAndShift(ownerObjIdx, ownerName, newSorterIndex) {
+    let startMove = false;
+    let findTargetBuilding = false;
+    for (let i = 0; i < this.buildingArray.length; i++) {
+      for (let k = 0; k < this.buildingArray[i].length; k++) {
+        const buildingGroupEntry = this.buildingArray[i][k];
+        if (buildingGroupEntry.index === ownerObjIdx) {
+          buildingGroupEntry.sorterList.push(newSorterIndex);
+          findTargetBuilding = true;
+          const ownerCategory = buildingMap[ownerName].category;
+          if (
+            layoutFactory.shouldStartShiftAfterSupplement(
+              ownerCategory,
+              buildingGroupEntry.sorterList.length,
+              productionCategory
+            )
+          ) {
+            startMove = true;
+          } else {
+            break;
+          }
+        } else if (startMove) {
+          this.moveBuildingGroupRight(buildingGroupEntry);
+        }
+      }
+      if (findTargetBuilding) {
+        break;
+      }
+    }
+  }
+
+  createSupplementInputSorter(sourceSorter, newSorterRate) {
+    const sorterDef = layoutFactory.selectSorterByRate(newSorterRate, this.config, buildingMap);
+    const ownerCategory = buildingMap[sourceSorter.ownerName].category;
+    const outputToSlot = layoutFactory.selectSupplementSorterOutputSlot(ownerCategory, productionCategory);
+    const newSorter = this.createConfiguredSorter(sorterDef, sourceSorter.ownerOffset, ownerCategory, outputToSlot, 1, {
+      outputObjIdx: sourceSorter.ownerObjIdx,
+      outputToSlot,
+      inputToSlot: 1,
+      parameters: { length: 1 },
+    });
+    this.buildings.push(newSorter);
+    this.attachSupplementSorterAndShift(sourceSorter.ownerObjIdx, sourceSorter.ownerName, newSorter.index);
+    return newSorter;
+  }
+
   newProductionBuilding(subRecipe) {
     let hasTeslaTowerThisLine = false;
     let teslaTowerDistance = 0;
@@ -1098,11 +1162,12 @@ class Blueprint {
             }
             // 修复：改进分配算法，确保每个节点均匀分配分拣器
             // 当 doneSorterNum 是 sortersPerNode 的倍数时创建新节点
-            if (doneSorterNum % sortersPerNode === 0) {
-              inputData.push([this.sorters[itemName].output[j].index]);
-            } else {
-              inputData[inputData.length - 1].push(this.sorters[itemName].output[j].index);
-            }
+            layoutFactory.appendSorterIndexToNodeData(
+              inputData,
+              this.sorters[itemName].output[j].index,
+              doneSorterNum,
+              sortersPerNode
+            );
             inputRate -= this.sorters[itemName].output[j].rate;
             doneRate += this.sorters[itemName].output[j].rate;
             this.sorters[itemName].output.pop();
@@ -1118,30 +1183,12 @@ class Blueprint {
         totalDoneRate += doneRate;
         let outputRate = doneRate; // 当前传送带实际运力
         doneSorterNum = 0;
-        let refineryNum = 0; // X射线裂解/重整精炼工厂数量
         // 重新排序以提高输出传送带中，X射线裂解(氢)和重整精炼(精炼油)的输入优先级
         if (["hydrogen", "refinedOil"].includes(itemName) && item.toBuildingNum !== 0) {
-          let input2 = [];
-          for (let j = this.sorters[itemName].input.length - 1; j >= 0; j--) {
-            if (
-              !(
-                (itemName === "hydrogen" && this.sorters[itemName].input[j].recipeID === 58) ||
-                (itemName === "refinedOil" && this.sorters[itemName].input[j].recipeID === 121)
-              )
-            ) {
-              input2.push(this.sorters[itemName].input[j]);
-            }
-          }
-          refineryNum = this.sorters[itemName].input.length - input2.length;
-          for (let j = this.sorters[itemName].input.length - 1; j >= 0; j--) {
-            if (
-              (itemName === "hydrogen" && this.sorters[itemName].input[j].recipeID === 58) ||
-              (itemName === "refinedOil" && this.sorters[itemName].input[j].recipeID === 121)
-            ) {
-              input2.push(this.sorters[itemName].input[j]);
-            }
-          }
-          this.sorters[itemName].input = input2;
+          this.sorters[itemName].input = layoutFactory.reorderPriorityInputSorters(
+            itemName,
+            this.sorters[itemName].input
+          );
         }
         if (item.toBuildingNum !== 0) {
           for (let j = this.sorters[itemName].input.length - 1; j >= 0; j--) {
@@ -1150,101 +1197,27 @@ class Blueprint {
             // 但在物理上，该节点将被克隆 stackLayers 份，Mk4 的总拿取速率是单层的 stackLayers 倍。
             // 必须将扣除的实际运力放大，否则会导致将所有机器挂载在第一条传送带上，造成尾部严重饥饿。
             let actualSorterRate = this.sorters[itemName].input[j].rate;
-            let columnLoad =
-              item.fromBuildingNum === 0 && stackLayers > 1 ? actualSorterRate * stackLayers : actualSorterRate;
+            let columnLoad = layoutFactory.calculateColumnLoad(actualSorterRate, item.fromBuildingNum, stackLayers);
 
-            if (totalDoneRate + zero < item.rate && outputRate + zero < columnLoad) {
+            if (layoutFactory.shouldCreateSupplementSorter(totalDoneRate, item.rate, outputRate, columnLoad, zero)) {
               // 当前带输出运力不能满足分拣器且还会生成新的传送带，则传送带新增一个节点单独该分拣器连接上，同时给对应建筑增加一个分拣器连到下一个节点
               // console.log(`${itemName}: need add sorter`)
               outputData.push([this.sorters[itemName].input[j].index]);
-              const newColumnLoad = columnLoad - outputRate;
-              const newSorterRate =
-                item.fromBuildingNum === 0 && stackLayers > 1 ? newColumnLoad / stackLayers : newColumnLoad;
-              let sorter = buildingMap.sorterMk1;
-              if (this.config.useSorterMk4 || this.config.onlySorterMk3 || newSorterRate > sorter.sortingSpeed) {
-                // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
-                sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
-              }
-              let newSorter = this.getBuildingTemplate();
-              // console.log(`new sorter: ${newSorter.index}`)
-              newSorter.itemId = sorter.itemId;
-              newSorter.modelIndex = sorter.modelIndex;
-              newSorter.outputObjIdx = this.sorters[itemName].input[j].ownerObjIdx;
-              if (
-                [productionCategory.assembling, productionCategory.smelter, productionCategory.lab].includes(
-                  buildingMap[this.sorters[itemName].input[j].ownerName].category
-                )
-              ) {
-                // 熔炉、制造台和研究站追加到3号槽位
-                newSorter.outputToSlot = 3;
-              } else if (
-                buildingMap[this.sorters[itemName].input[j].ownerName].category === productionCategory.collider
-              ) {
-                newSorter.outputToSlot = 2;
-              } else {
-                // 其他追加到0号槽位
-                newSorter.outputToSlot = 0;
-              }
-              newSorter.inputToSlot = 1;
-              newSorter.parameters = { length: 1 };
-              const offsetInfo = this.calculateSorterLocalOffsetAndYaw(
-                this.sorters[itemName].input[j].ownerOffset,
-                buildingMap[this.sorters[itemName].input[j].ownerName].category,
-                newSorter.outputToSlot,
-                1
+              const sourceSorter = this.sorters[itemName].input[j];
+              const newSorterRate = layoutFactory.calculateSupplementSorterRate(
+                columnLoad,
+                outputRate,
+                item.fromBuildingNum,
+                stackLayers
               );
-              newSorter.localOffset = offsetInfo.offset;
-              newSorter.yaw = offsetInfo.yaw;
-              // console.log(newSorter)
-              this.buildings.push(newSorter);
-              // console.log(`add sorter for ${this.sorters[itemName].input[j].ownerObjIdx}`)
-              let startMove = false;
-              let findTargetBuilding = false;
-              for (let i = 0; i < this.buildingArray.length; i++) {
-                for (let k = 0; k < this.buildingArray[i].length; k++) {
-                  if (this.buildingArray[i][k].index === this.sorters[itemName].input[j].ownerObjIdx) {
-                    this.buildingArray[i][k].sorterList.push(newSorter.index);
-                    findTargetBuilding = true;
-                    if (
-                      buildingMap[this.sorters[itemName].input[j].ownerName].category === productionCategory.smelter &&
-                      this.buildingArray[i][k].sorterList.length === 3
-                    ) {
-                      // 熔炉加入新分拣器后分拣器总数为3，则之前分拣器总数为2，需要扩展熔炉侧边空间，即对后续建筑进行建筑位移
-                      startMove = true;
-                    } else {
-                      break;
-                    }
-                  } else if (startMove) {
-                    // move building and sorters
-                    let toMoveNum = 1 + this.buildingArray[i][k].sorterList.length;
-                    for (let b of this.buildings) {
-                      if (b.index === this.buildingArray[i][k].index) {
-                        // console.log(`move ${b.index}`)
-                        b.localOffset[0].x += 1;
-                        b.localOffset[1].x += 1;
-                        toMoveNum--;
-                      } else if (this.buildingArray[i][k].sorterList.includes(b.index)) {
-                        b.localOffset[0].x += 1;
-                        b.localOffset[1].x += 1;
-                        toMoveNum--;
-                      }
-                      if (toMoveNum <= 0) {
-                        break;
-                      }
-                    }
-                  }
-                }
-                if (findTargetBuilding) {
-                  break;
-                }
-              }
+              let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
               this.sorters[itemName].input.unshift({
                 index: newSorter.index,
                 rate: newSorterRate,
-                ownerObjIdx: this.sorters[itemName].input[j].ownerObjIdx,
-                ownerName: this.sorters[itemName].input[j].ownerName,
-                ownerOffset: this.sorters[itemName].input[j].ownerOffset,
-                recipeID: this.sorters[itemName].input[j].recipeID,
+                ownerObjIdx: sourceSorter.ownerObjIdx,
+                ownerName: sourceSorter.ownerName,
+                ownerOffset: sourceSorter.ownerOffset,
+                recipeID: sourceSorter.recipeID,
               });
               this.sorters[itemName].input.pop();
               break;
@@ -1254,16 +1227,17 @@ class Blueprint {
             // 修复：移除refineryNum修正，避免节点提前创建导致换列时粘连
             // 修复：当 totalDoneRate >= item.rate 但 outputData 还未覆盖所有 inputData 时，仍需继续生成
             // 修复：使用与输出分拣器相同的均匀分配策略
-            if (doneSorterNum % sortersPerNode === 0) {
-              outputData.push([this.sorters[itemName].input[j].index]);
-            } else {
-              outputData[outputData.length - 1].push(this.sorters[itemName].input[j].index);
-            }
+            layoutFactory.appendSorterIndexToNodeData(
+              outputData,
+              this.sorters[itemName].input[j].index,
+              doneSorterNum,
+              sortersPerNode
+            );
             outputRate -= columnLoad;
             this.sorters[itemName].input.pop();
             doneSorterNum++;
             if (outputRate <= 0) {
-              if (j > 0 && totalDoneRate >= item.rate) {
+              if (layoutFactory.shouldContinueAfterOutputRateDepleted(j, totalDoneRate, item.rate)) {
                 // 有分拣器还未连接 并且 不会再生成新的传送带了
                 // 这种情况就是建筑非整数时计算误差导致的，继续处理未连接的分拣器就可以了
                 continue;
