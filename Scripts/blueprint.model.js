@@ -121,6 +121,87 @@
     return template;
   }
 
+  function configureLabBuilding(building) {
+    building.outputToSlot = 14;
+    building.inputFromSlot = 15;
+    building.outputFromSlot = 15;
+    building.inputToSlot = 14;
+    if (!building.parameters) {
+      building.parameters = {};
+    }
+    building.parameters.researchMode = 1;
+    return building;
+  }
+
+  function createStackedLabBuilding(
+    template,
+    baseOffset,
+    yaw,
+    labBuildingDef,
+    labHeight,
+    recipeId,
+    acceleratorMode,
+    layer,
+    inputObjIdx
+  ) {
+    template.localOffset = [
+      { x: baseOffset.x, y: baseOffset.y, z: labHeight * layer },
+      { x: baseOffset.x, y: baseOffset.y, z: labHeight * layer },
+    ];
+    template.yaw = yaw;
+    template.itemId = labBuildingDef.itemId;
+    template.modelIndex = labBuildingDef.modelIndex;
+    template.recipeId = parseInt(recipeId);
+    template.inputObjIdx = inputObjIdx;
+    template.outputToSlot = 14;
+    template.inputFromSlot = 15;
+    template.outputFromSlot = 15;
+    template.inputToSlot = 14;
+    template.parameters = {
+      acceleratorMode: acceleratorMode,
+      researchMode: 1,
+    };
+    return template;
+  }
+
+  function createSorter(template, sorterDef, options) {
+    template.itemId = sorterDef.itemId;
+    template.modelIndex = sorterDef.modelIndex;
+    if (typeof options.inputObjIdx === "number") {
+      template.inputObjIdx = options.inputObjIdx;
+    }
+    if (typeof options.outputObjIdx === "number") {
+      template.outputObjIdx = options.outputObjIdx;
+    }
+    if (typeof options.outputToSlot === "number") {
+      template.outputToSlot = options.outputToSlot;
+    }
+    if (typeof options.inputToSlot === "number") {
+      template.inputToSlot = options.inputToSlot;
+    }
+    if (typeof options.inputFromSlot === "number") {
+      template.inputFromSlot = options.inputFromSlot;
+    }
+    if (typeof options.filterId === "number") {
+      template.filterId = options.filterId;
+    }
+    template.parameters = options.parameters || null;
+    template.localOffset = options.localOffset;
+    template.yaw = options.yaw;
+    return template;
+  }
+
+  function createSorterOwnerRecord(index, rate, ownerObjIdx, ownerName, ownerOffset, recipeID) {
+    return {
+      index,
+      rate,
+      ownerObjIdx,
+      ownerName,
+      ownerOffset: { x: ownerOffset.x, y: ownerOffset.y, z: ownerOffset.z },
+      recipeID: parseInt(recipeID),
+    };
+  }
+
   root.DSQBlueprintModel = {
     createBlueprintTemplate,
     createBuildingTemplate,
@@ -128,5 +209,9 @@
     createConveyorNode,
     createProductionBuilding,
     createSinglePointBuilding,
+    configureLabBuilding,
+    createStackedLabBuilding,
+    createSorter,
+    createSorterOwnerRecord,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

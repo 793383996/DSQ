@@ -1,6 +1,42 @@
 // Scripts/blueprint.layout.js
 // 从 blueprint.js 抽离的布局计算逻辑。
 (function (root) {
+  function calculateProductionBuildingPlacement(blueprintSize, occupiedArea, buildingArea) {
+    const lastIndex = occupiedArea.length - 1;
+    let buildingX;
+    let buildingY;
+    const buildingZ = 0;
+    let needNewLine = false;
+
+    if (blueprintSize.x - occupiedArea[lastIndex].x2 >= buildingArea.x / 2) {
+      buildingX = occupiedArea[lastIndex].x2 + 1 + buildingArea.centerPoint[3];
+      buildingY = occupiedArea[lastIndex - 1].y2 + 1 + buildingArea.centerPoint[0];
+      occupiedArea[lastIndex].x2 += buildingArea.x;
+      if (buildingY + buildingArea.centerPoint[2] > occupiedArea[lastIndex].y2) {
+        occupiedArea[lastIndex].y2 = buildingY + buildingArea.centerPoint[2];
+      }
+    } else {
+      needNewLine = true;
+      buildingX = buildingArea.centerPoint[3];
+      buildingY = buildingArea.centerPoint[0] + occupiedArea[lastIndex].y2 + 1;
+      occupiedArea.push({
+        x1: 0,
+        y1: buildingY - buildingArea.centerPoint[0],
+        x2: buildingX + buildingArea.centerPoint[1],
+        y2: buildingY + buildingArea.centerPoint[2],
+      });
+    }
+
+    return {
+      needNewLine,
+      offset: {
+        x: buildingX,
+        y: buildingY,
+        z: buildingZ,
+      },
+    };
+  }
+
   function calculateSorterLocalOffsetAndYaw(buildingOffset, type, slotIndex, rotate, productionCategory) {
     // rotate = 0 表示分拣器出货， 1 表示进货
     let data = {
@@ -434,8 +470,72 @@
     };
   }
 
+  function selectSorterByRate(actualRate, config, buildingMap) {
+    let sorter = buildingMap.sorterMk1;
+    if (config.useSorterMk4 || config.onlySorterMk3 || actualRate > sorter.sortingSpeed) {
+      sorter = config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
+    }
+    return sorter;
+  }
+
+  function upsertSorterFlow(sorters, itemName, flowType, entry) {
+    if (!sorters[itemName]) {
+      sorters[itemName] = {};
+    }
+    if (!sorters[itemName][flowType]) {
+      sorters[itemName][flowType] = [];
+    }
+    sorters[itemName][flowType].push(entry);
+  }
+
+  function getNextSorterSlotIndex(slotIndex, category, compactLayout, productionCategory) {
+    let nextSlotIndex = slotIndex - 1;
+    if (!compactLayout && category === productionCategory.collider && nextSlotIndex === 5) {
+      nextSlotIndex = 2;
+    }
+    return nextSlotIndex;
+  }
+
+  function planProductionSorters(actualRate, slotIndex, isInput, category, config, buildingMap, productionCategory) {
+    const sorter = selectSorterByRate(actualRate, config, buildingMap);
+    const rotate = isInput ? 1 : 0;
+    const entries = [];
+    let remainingRate = actualRate;
+
+    if (category === productionCategory.lab && actualRate > sorter.sortingSpeed) {
+      entries.push({
+        slotIndex: slotIndex - 3,
+        rotate,
+        rate: sorter.sortingSpeed,
+        // 保持原有行为：研究站额外输入分拣器也登记到 output 侧。
+        flowType: "output",
+        linkMode: isInput ? "input_extra" : "output",
+      });
+      remainingRate -= sorter.sortingSpeed;
+    }
+
+    entries.push({
+      slotIndex,
+      rotate,
+      rate: remainingRate,
+      flowType: isInput ? "input" : "output",
+      linkMode: isInput ? "input" : "output",
+    });
+
+    return {
+      sorter,
+      entries,
+      nextSlotIndex: getNextSorterSlotIndex(slotIndex, category, config.compactLayout, productionCategory),
+    };
+  }
+
   root.DSQBlueprintLayout = {
+    calculateProductionBuildingPlacement,
     calculateSorterLocalOffsetAndYaw,
     calculateTeslaTowerOffset,
+    selectSorterByRate,
+    upsertSorterFlow,
+    getNextSorterSlotIndex,
+    planProductionSorters,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

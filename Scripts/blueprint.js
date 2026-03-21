@@ -392,12 +392,91 @@ class Blueprint {
     return layoutFactory.calculateSorterLocalOffsetAndYaw(buildingOffset, type, slotIndex, rotate, productionCategory);
   }
 
+  calculateProductionBuildingPlacement(buildingArea) {
+    return layoutFactory.calculateProductionBuildingPlacement(this.blueprintSize, this.occupiedArea, buildingArea);
+  }
+
   calculateTeslaTowerOffset(buildingOffset, category) {
     return layoutFactory.calculateTeslaTowerOffset(
       buildingOffset,
       category,
       productionCategory,
       typeof cocoMessage !== "undefined" ? cocoMessage : null
+    );
+  }
+
+  selectSorterByRate(actualRate) {
+    return layoutFactory.selectSorterByRate(actualRate, this.config, buildingMap);
+  }
+
+  upsertSorterRecord(itemName, flowType, sorterIndex, rate, ownerObjIdx, ownerName, ownerOffset, recipeID) {
+    const entry = modelFactory.createSorterOwnerRecord(
+      sorterIndex,
+      rate,
+      ownerObjIdx,
+      ownerName,
+      ownerOffset,
+      recipeID
+    );
+    layoutFactory.upsertSorterFlow(this.sorters, itemName, flowType, entry);
+  }
+
+  createConfiguredSorter(sorterDef, buildingOffset, category, slotIndex, rotate, options) {
+    const offsetInfo = this.calculateSorterLocalOffsetAndYaw(buildingOffset, category, slotIndex, rotate);
+    const sorterOptions = Object.assign({}, options, {
+      localOffset: offsetInfo.offset,
+      yaw: offsetInfo.yaw,
+    });
+    return modelFactory.createSorter(this.getBuildingTemplate(), sorterDef, sorterOptions);
+  }
+
+  getNextSorterSlotIndex(slotIndex, category) {
+    return layoutFactory.getNextSorterSlotIndex(slotIndex, category, this.config.compactLayout, productionCategory);
+  }
+
+  planProductionSorters(actualRate, slotIndex, isInput, category) {
+    return layoutFactory.planProductionSorters(
+      actualRate,
+      slotIndex,
+      isInput,
+      category,
+      this.config,
+      buildingMap,
+      productionCategory
+    );
+  }
+
+  appendPlannedSorter(
+    sorterDef,
+    ownerOffset,
+    buildingCategory,
+    planEntry,
+    sorterOptions,
+    itemName,
+    nowBuildingIndex,
+    ownerName,
+    recipeID,
+    sorterList
+  ) {
+    const newSorter = this.createConfiguredSorter(
+      sorterDef,
+      ownerOffset,
+      buildingCategory,
+      planEntry.slotIndex,
+      planEntry.rotate,
+      sorterOptions
+    );
+    this.buildings.push(newSorter);
+    sorterList.push(newSorter.index);
+    this.upsertSorterRecord(
+      itemName,
+      planEntry.flowType,
+      newSorter.index,
+      planEntry.rate,
+      nowBuildingIndex,
+      ownerName,
+      ownerOffset,
+      recipeID
     );
   }
 
@@ -409,36 +488,14 @@ class Blueprint {
       this.lastProductionBuildingType = buildingMap[subRecipe.building.name].category;
       let buildingArea, buildingX, buildingY, buildingZ;
       buildingArea = this.calculateBuildingArea(subRecipe);
-      // }
-      let needNewLine = false;
-      // console.log(this.occupiedArea)
-      // console.log(this.blueprintSize)
-      if (this.blueprintSize.x - this.occupiedArea[this.occupiedArea.length - 1].x2 >= buildingArea.x / 2) {
-        // 在当前行继续添加
-        // this.buildingArray[this.buildingArray.length-1].push({index: this.buildingIndex, sorterList: sorterList})
-        buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1 + buildingArea.centerPoint[3];
-        buildingY = this.occupiedArea[this.occupiedArea.length - 2].y2 + 1 + buildingArea.centerPoint[0];
-        buildingZ = 0;
-        this.occupiedArea[this.occupiedArea.length - 1].x2 += buildingArea.x;
-        if (buildingY + buildingArea.centerPoint[2] > this.occupiedArea[this.occupiedArea.length - 1].y2) {
-          // 当一行中出现更宽（y轴方向为宽度）的建筑时，占地区域的y2需要更新
-          this.occupiedArea[this.occupiedArea.length - 1].y2 = buildingY + buildingArea.centerPoint[2];
-        }
-      } else {
-        // 新的一行
-        needNewLine = true;
+      const placement = this.calculateProductionBuildingPlacement(buildingArea);
+      let needNewLine = placement.needNewLine;
+      buildingX = placement.offset.x;
+      buildingY = placement.offset.y;
+      buildingZ = placement.offset.z;
+      if (needNewLine) {
         hasTeslaTowerThisLine = false;
         teslaTowerDistance = 0;
-        // this.buildingArray.push([{index: this.buildingIndex, sorterList: sorterList}])
-        buildingX = buildingArea.centerPoint[3];
-        buildingY = buildingArea.centerPoint[0] + this.occupiedArea[this.occupiedArea.length - 1].y2 + 1;
-        buildingZ = 0;
-        this.occupiedArea.push({
-          x1: 0,
-          y1: buildingY - buildingArea.centerPoint[0],
-          x2: buildingX + buildingArea.centerPoint[1],
-          y2: buildingY + buildingArea.centerPoint[2],
-        });
       }
       let acceleratorMode = 0;
       if (subRecipe.acceleratorMode === 1) {
@@ -457,35 +514,22 @@ class Blueprint {
       let layers = 1;
       if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
         // 堆叠处理研究站
-        newBuilding.outputToSlot = 14;
-        newBuilding.inputFromSlot = 15;
-        newBuilding.outputFromSlot = 15;
-        newBuilding.inputToSlot = 14;
-        newBuilding.parameters.researchMode = 1;
+        modelFactory.configureLabBuilding(newBuilding);
         this.buildings.push(newBuilding);
         for (i++; i < subRecipe.building.num && layers < this.config.maxLabLayers; i++, layers++) {
-          let labBuilding = this.getBuildingTemplate();
-          labBuilding.localOffset = [
+          let labBuilding = modelFactory.createStackedLabBuilding(
+            this.getBuildingTemplate(),
             { x: buildingX, y: buildingY, z: buildingZ },
-            { x: buildingX, y: buildingY, z: buildingZ },
-          ];
-          labBuilding.localOffset[0].z = buildingMap.lab.height * layers;
-          labBuilding.localOffset[1].z = buildingMap.lab.height * layers;
-          labBuilding.yaw = newBuilding.yaw;
-          labBuilding.itemId = buildingMap[subRecipe.building.name].itemId;
-          labBuilding.modelIndex = buildingMap[subRecipe.building.name].modelIndex;
-          labBuilding.recipeId = parseInt(subRecipe.recipeID);
-          labBuilding.inputObjIdx = this.buildingIndex - 1;
-          labBuilding.outputToSlot = 14;
-          labBuilding.inputFromSlot = 15;
-          labBuilding.outputFromSlot = 15;
-          labBuilding.inputToSlot = 14;
-          labBuilding.parameters = {
-            acceleratorMode: acceleratorMode,
-            researchMode: 1,
-          };
+            newBuilding.yaw,
+            buildingMap[subRecipe.building.name],
+            buildingMap.lab.height,
+            subRecipe.recipeID,
+            acceleratorMode,
+            layers,
+            this.buildingIndex - 1
+          );
           this.buildings.push(labBuilding);
-          stackLabBuildingIndexList.push(this.buildingIndex);
+          stackLabBuildingIndexList.push(labBuilding.index);
         }
         i--;
       } else {
@@ -545,140 +589,34 @@ class Blueprint {
         }
       }
 
+      const ownerOffset = { x: buildingX, y: buildingY, z: buildingZ };
+      const ownerName = subRecipe.building.name;
+      const buildingCategory = buildingMap[ownerName].category;
       for (let outputItem of subRecipe.output) {
         let actual_rate = outputItem.rate * productionSpeed * actual_building_num * extra_rate;
-        let sorter = buildingMap.sorterMk1;
-        if (this.config.useSorterMk4 || this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
-          // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
-          sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
-        }
-        if (
-          buildingMap[subRecipe.building.name].category === productionCategory.lab &&
-          actual_rate > sorter.sortingSpeed
-        ) {
-          // 研究站层数过高时会出现一个分拣器无法满足运力的问题，追加额外分拣器
-          let newSorter2 = this.getBuildingTemplate();
-          newSorter2.itemId = sorter.itemId;
-          newSorter2.modelIndex = sorter.modelIndex;
-          newSorter2.inputObjIdx = nowBuildingIndex;
-          newSorter2.outputToSlot = -1;
-          newSorter2.inputToSlot = 1;
-          newSorter2.inputFromSlot = slotIndex - 3;
-          newSorter2.filterId = itemMap[outputItem.name].iconId;
-          newSorter2.parameters = { length: 1 };
-          const offsetInfo2 = this.calculateSorterLocalOffsetAndYaw(
-            { x: buildingX, y: buildingY, z: buildingZ },
-            buildingMap[subRecipe.building.name].category,
-            slotIndex - 3
+        const sortPlan = this.planProductionSorters(actual_rate, slotIndex, false, buildingCategory);
+        for (let planEntry of sortPlan.entries) {
+          this.appendPlannedSorter(
+            sortPlan.sorter,
+            ownerOffset,
+            buildingCategory,
+            planEntry,
+            {
+              inputObjIdx: nowBuildingIndex,
+              outputToSlot: -1,
+              inputToSlot: 1,
+              inputFromSlot: planEntry.slotIndex,
+              filterId: itemMap[outputItem.name].iconId,
+              parameters: { length: 1 },
+            },
+            outputItem.name,
+            nowBuildingIndex,
+            ownerName,
+            subRecipe.recipeID,
+            sorterList
           );
-          newSorter2.localOffset = offsetInfo2.offset;
-          newSorter2.yaw = offsetInfo2.yaw;
-          this.buildings.push(newSorter2);
-          sorterList.push(this.buildingIndex);
-          if (this.sorters[outputItem.name]) {
-            // 已存在就append
-            if (this.sorters[outputItem.name].output) {
-              this.sorters[outputItem.name].output.push({
-                index: newSorter2.index,
-                rate: sorter.sortingSpeed,
-                ownerObjIdx: nowBuildingIndex, // 分拣器附属生产建筑的index
-                ownerName: subRecipe.building.name,
-                ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                recipeID: parseInt(subRecipe.recipeID),
-              });
-            } else {
-              this.sorters[outputItem.name].output = [
-                {
-                  index: newSorter2.index,
-                  rate: sorter.sortingSpeed,
-                  ownerObjIdx: nowBuildingIndex,
-                  ownerName: subRecipe.building.name,
-                  ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                  recipeID: parseInt(subRecipe.recipeID),
-                },
-              ];
-            }
-          } else {
-            // 不存在就新建
-            this.sorters[outputItem.name] = {
-              output: [
-                {
-                  index: newSorter2.index,
-                  rate: sorter.sortingSpeed,
-                  ownerObjIdx: nowBuildingIndex,
-                  ownerName: subRecipe.building.name,
-                  ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                  recipeID: parseInt(subRecipe.recipeID),
-                },
-              ],
-            };
-          }
-          actual_rate -= sorter.sortingSpeed;
         }
-        let newSorter = this.getBuildingTemplate();
-        newSorter.itemId = sorter.itemId;
-        newSorter.modelIndex = sorter.modelIndex;
-        newSorter.inputObjIdx = nowBuildingIndex;
-        newSorter.outputToSlot = -1;
-        newSorter.inputToSlot = 1;
-        newSorter.inputFromSlot = slotIndex;
-        newSorter.filterId = itemMap[outputItem.name].iconId;
-        newSorter.parameters = { length: 1 };
-        const offsetInfo = this.calculateSorterLocalOffsetAndYaw(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          buildingMap[subRecipe.building.name].category,
-          slotIndex
-        );
-        newSorter.localOffset = offsetInfo.offset;
-        newSorter.yaw = offsetInfo.yaw;
-        this.buildings.push(newSorter);
-        sorterList.push(this.buildingIndex);
-        // this.buildingArray[this.buildingArray.length-1].push({index: this.buildingIndex, type: buildingType.sorter})
-        if (this.sorters[outputItem.name]) {
-          // 已存在就append
-          if (this.sorters[outputItem.name].output) {
-            this.sorters[outputItem.name].output.push({
-              index: newSorter.index,
-              rate: actual_rate,
-              ownerObjIdx: nowBuildingIndex, // 分拣器附属生产建筑的index
-              ownerName: subRecipe.building.name,
-              ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-              recipeID: parseInt(subRecipe.recipeID),
-            });
-          } else {
-            this.sorters[outputItem.name].output = [
-              {
-                index: newSorter.index,
-                rate: actual_rate,
-                ownerObjIdx: nowBuildingIndex,
-                ownerName: subRecipe.building.name,
-                ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                recipeID: parseInt(subRecipe.recipeID),
-              },
-            ];
-          }
-        } else {
-          // 不存在就新建
-          this.sorters[outputItem.name] = {
-            output: [
-              {
-                index: newSorter.index,
-                rate: actual_rate,
-                ownerObjIdx: nowBuildingIndex,
-                ownerName: subRecipe.building.name,
-                ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                recipeID: parseInt(subRecipe.recipeID),
-              },
-            ],
-          };
-        }
-        slotIndex--;
-        if (!this.config.compactLayout) {
-          // 非紧凑布局，调整对撞机的分拣器连接点
-          if (buildingMap[subRecipe.building.name].category === productionCategory.collider && slotIndex === 5) {
-            slotIndex = 2;
-          }
-        }
+        slotIndex = sortPlan.nextSlotIndex;
       }
       for (let inputItem of subRecipe.input) {
         let actual_rate = inputItem.rate * productionSpeed * actual_building_num;
@@ -686,140 +624,33 @@ class Blueprint {
           // 加速时原料也要加速；增产时则不需要
           actual_rate *= extra_rate;
         }
-        let sorter = buildingMap.sorterMk1;
-        if (this.config.useSorterMk4 || this.config.onlySorterMk3 || actual_rate > sorter.sortingSpeed) {
-          // 一级分拣器不够用时升级，useSorterMk4时使用四级集装分拣器，否则使用三级
-          sorter = this.config.useSorterMk4 ? buildingMap.sorterMk4 : buildingMap.sorterMk3;
-        }
-
-        if (
-          buildingMap[subRecipe.building.name].category === productionCategory.lab &&
-          actual_rate > sorter.sortingSpeed
-        ) {
-          // 研究站层数过高时会出现一个分拣器无法满足运力的问题，追加额外分拣器
-          let newSorter2 = this.getBuildingTemplate();
-          newSorter2.itemId = sorter.itemId;
-          newSorter2.modelIndex = sorter.modelIndex;
-          newSorter2.inputObjIdx = nowBuildingIndex;
-          newSorter2.outputToSlot = slotIndex - 3;
-          newSorter2.inputToSlot = 1;
-          newSorter2.filterId = itemMap[inputItem.name].iconId;
-          newSorter2.parameters = { length: 1 };
-          const offsetInfo2 = this.calculateSorterLocalOffsetAndYaw(
-            { x: buildingX, y: buildingY, z: buildingZ },
-            buildingMap[subRecipe.building.name].category,
-            slotIndex - 3,
-            1
-          );
-          newSorter2.localOffset = offsetInfo2.offset;
-          newSorter2.yaw = offsetInfo2.yaw;
-          this.buildings.push(newSorter2);
-          sorterList.push(this.buildingIndex);
-          if (this.sorters[inputItem.name]) {
-            // 已存在就append
-            if (this.sorters[inputItem.name].output) {
-              this.sorters[inputItem.name].output.push({
-                index: newSorter2.index,
-                rate: sorter.sortingSpeed,
-                ownerObjIdx: nowBuildingIndex, // 分拣器附属生产建筑的index
-                ownerName: subRecipe.building.name,
-                ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                recipeID: parseInt(subRecipe.recipeID),
-              });
-            } else {
-              this.sorters[inputItem.name].output = [
-                {
-                  index: newSorter2.index,
-                  rate: sorter.sortingSpeed,
-                  ownerObjIdx: nowBuildingIndex,
-                  ownerName: subRecipe.building.name,
-                  ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                  recipeID: parseInt(subRecipe.recipeID),
-                },
-              ];
-            }
-          } else {
-            // 不存在就新建
-            this.sorters[inputItem.name] = {
-              output: [
-                {
-                  index: newSorter2.index,
-                  rate: sorter.sortingSpeed,
-                  ownerObjIdx: nowBuildingIndex,
-                  ownerName: subRecipe.building.name,
-                  ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                  recipeID: parseInt(subRecipe.recipeID),
-                },
-              ],
-            };
-          }
-          actual_rate -= sorter.sortingSpeed;
-        }
-
-        let newSorter = this.getBuildingTemplate();
-        newSorter.itemId = sorter.itemId;
-        newSorter.modelIndex = sorter.modelIndex;
-        newSorter.outputObjIdx = nowBuildingIndex;
-        newSorter.outputToSlot = slotIndex;
-        newSorter.inputToSlot = 1;
-        newSorter.filterId = itemMap[inputItem.name].iconId;
-        newSorter.parameters = { length: 1 };
-        const offsetInfo = this.calculateSorterLocalOffsetAndYaw(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          buildingMap[subRecipe.building.name].category,
-          slotIndex,
-          1
-        );
-        newSorter.localOffset = offsetInfo.offset;
-        newSorter.yaw = offsetInfo.yaw;
-        this.buildings.push(newSorter);
-        sorterList.push(this.buildingIndex);
-        // this.buildingArray[this.buildingArray.length-1].push({index: this.buildingIndex, type: buildingType.sorter})
-        if (this.sorters[inputItem.name]) {
-          // 已存在就append
-          if (this.sorters[inputItem.name].input) {
-            this.sorters[inputItem.name].input.push({
-              index: newSorter.index,
-              rate: actual_rate,
-              ownerObjIdx: nowBuildingIndex, // 分拣器附属生产建筑的index
-              ownerName: subRecipe.building.name,
-              ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-              recipeID: parseInt(subRecipe.recipeID),
-            });
-          } else {
-            this.sorters[inputItem.name].input = [
-              {
-                index: newSorter.index,
-                rate: actual_rate,
-                ownerObjIdx: nowBuildingIndex,
-                ownerName: subRecipe.building.name,
-                ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                recipeID: parseInt(subRecipe.recipeID),
-              },
-            ];
-          }
-        } else {
-          // 不存在就新建
-          this.sorters[inputItem.name] = {
-            input: [
-              {
-                index: newSorter.index,
-                rate: actual_rate,
-                ownerObjIdx: nowBuildingIndex,
-                ownerName: subRecipe.building.name,
-                ownerOffset: { x: buildingX, y: buildingY, z: buildingZ },
-                recipeID: parseInt(subRecipe.recipeID),
-              },
-            ],
+        const sortPlan = this.planProductionSorters(actual_rate, slotIndex, true, buildingCategory);
+        for (let planEntry of sortPlan.entries) {
+          const sorterOptions = {
+            outputToSlot: planEntry.slotIndex,
+            inputToSlot: 1,
+            filterId: itemMap[inputItem.name].iconId,
+            parameters: { length: 1 },
           };
-        }
-        slotIndex--;
-        if (!this.config.compactLayout) {
-          // 非紧凑布局，调整对撞机的分拣器连接点
-          if (buildingMap[subRecipe.building.name].category === productionCategory.collider && slotIndex === 5) {
-            slotIndex = 2;
+          if (planEntry.linkMode === "input_extra") {
+            sorterOptions.inputObjIdx = nowBuildingIndex;
+          } else {
+            sorterOptions.outputObjIdx = nowBuildingIndex;
           }
+          this.appendPlannedSorter(
+            sortPlan.sorter,
+            ownerOffset,
+            buildingCategory,
+            planEntry,
+            sorterOptions,
+            inputItem.name,
+            nowBuildingIndex,
+            ownerName,
+            subRecipe.recipeID,
+            sorterList
+          );
         }
+        slotIndex = sortPlan.nextSlotIndex;
       }
 
       if (needNewLine) {
