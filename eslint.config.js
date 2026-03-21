@@ -1,6 +1,7 @@
 import globals from "globals";
 
 const legacyFiles = [
+  "Scripts/data.state.js",
   "Scripts/data.js",
   "Scripts/data.storage.js",
   "Scripts/data.bootstrap.js",
@@ -63,6 +64,19 @@ const globalVars = {
   loadSettingPf: "readonly",
   saveSettingProjects: "readonly",
   loadSettingProjects: "readonly",
+  version: "writable",
+  pointLength: "writable",
+  settingsLocal: "writable",
+  settings: "writable",
+  settings_time: "writable",
+  settings_pf: "writable",
+  projects: "writable",
+  currentItem: "writable",
+  xqs: "writable",
+  singleMake: "writable",
+  xqss: "writable",
+  game_data: "writable",
+  isDataLoaded: "writable",
 };
 
 export default [
@@ -97,19 +111,12 @@ export default [
     rules: legacyRules,
   },
   {
-    files: ["Scripts/data.storage.js", "Scripts/data.bootstrap.js"],
+    files: ["Scripts/data.state.js", "Scripts/data.storage.js", "Scripts/data.bootstrap.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
       globals: {
         ...globalVars,
-        version: "readonly",
-        settings: "writable",
-        settings_time: "writable",
-        settings_pf: "writable",
-        projects: "writable",
-        game_data: "writable",
-        isDataLoaded: "writable",
         f_init: "readonly",
         f_initIcons: "readonly",
       },

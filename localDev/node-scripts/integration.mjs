@@ -8,6 +8,7 @@ const PORT = 4173;
 const KEY_URLS = [
   "/",
   "/index.html",
+  "/Scripts/data.state.js",
   "/Scripts/data.storage.js",
   "/Scripts/data.js",
   "/Scripts/data.bootstrap.js",

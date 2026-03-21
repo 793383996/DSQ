@@ -4,6 +4,7 @@ import path from "node:path";
 const DIST_ROOT = path.join(process.cwd(), "dist");
 const REQUIRED_FILES = [
   "index.html",
+  "Scripts/data.state.js",
   "Scripts/data.storage.js",
   "Scripts/data.js",
   "Scripts/data.bootstrap.js",

@@ -4239,9 +4239,6 @@ spaceData["粒子对撞机"] = 45;
 var defaultAccType = "增产剂Mk.Ⅰ";
 var defaultAccValue = "无";
 
-// eslint-disable-next-line no-unused-vars
-var version = "20240202"; //版本号，用来更新data.json的缓存
-
 // 配方查找索引 - 优化查找性能从 O(n) 到 O(1)
 var recipeIndexByProduct = {}; // 产物名 → [配方索引数组]
 var recipeIndexByMaterial = {}; // 原料名 → [配方索引数组]
@@ -4351,13 +4348,7 @@ function f_initData() {
   });
   // console.log(data);
 }
-// 这里决定所有数字保留小数的位数，设为2
-var pointLength = 3;
-var settingsLocal = {}; //不存储cookie
-var settings = {};
-var settings_time = {};
-var settings_pf = {};
-var projects = [];
+// 全局状态迁移至 Scripts/data.state.js，保持旧调用方式不变。
 //获取配方默认的机器
 function getMachine(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
@@ -4437,17 +4428,6 @@ function getValue(arg) {
     accValue: accValue,
   };
 }
-
-var currentItem = null;
-
-//要计算的目标
-var xqs = [];
-//独立生产 [{ id :"配方id",number : 1 }] 配置了这个，将独立生产以后再计算其他
-var singleMake = [];
-
-var xqss = [];
-var game_data = {};
-var isDataLoaded = false;
 
 function getGroup() {
   var groups = [];
