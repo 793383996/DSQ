@@ -405,10 +405,6 @@ class Blueprint {
     );
   }
 
-  selectSorterByRate(actualRate) {
-    return layoutFactory.selectSorterByRate(actualRate, this.config, buildingMap);
-  }
-
   upsertSorterRecord(itemName, flowType, sorterIndex, rate, ownerObjIdx, ownerName, ownerOffset, recipeID) {
     const entry = modelFactory.createSorterOwnerRecord(
       sorterIndex,
@@ -428,10 +424,6 @@ class Blueprint {
       yaw: offsetInfo.yaw,
     });
     return modelFactory.createSorter(this.getBuildingTemplate(), sorterDef, sorterOptions);
-  }
-
-  getNextSorterSlotIndex(slotIndex, category) {
-    return layoutFactory.getNextSorterSlotIndex(slotIndex, category, this.config.compactLayout, productionCategory);
   }
 
   planProductionSorters(actualRate, slotIndex, isInput, category) {
@@ -573,27 +565,27 @@ class Blueprint {
 
       // 添加分拣器
       let slotIndex = buildingMap[subRecipe.building.name].slotMaxIndex;
-      let productionSpeed = buildingMap[subRecipe.building.name].productionSpeed;
+      const productionContext = layoutFactory.calculateProductionContext(
+        subRecipe.building.num,
+        i,
+        buildingMap[subRecipe.building.name].category === productionCategory.lab ? stackLabBuildingIndexList.length : 0,
+        buildingMap[subRecipe.building.name].productionSpeed,
+        this.recipe.proliferator,
+        subRecipe.acceleratorMode,
+        itemMap
+      );
       let sorterList = [];
-      let actual_building_num = Math.min(1, subRecipe.building.num - i); // 建筑不是整数的时候，最后一个建筑分拣器实际rate会更低
-      if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
-        actual_building_num += stackLabBuildingIndexList.length;
-      }
-
-      let extra_rate = 1;
-      if (this.recipe.proliferator) {
-        if (subRecipe.acceleratorMode === 0) {
-          extra_rate += itemMap[this.recipe.proliferator].extra_rate;
-        } else if (subRecipe.acceleratorMode === 1) {
-          extra_rate += itemMap[this.recipe.proliferator].accelerate;
-        }
-      }
 
       const ownerOffset = { x: buildingX, y: buildingY, z: buildingZ };
       const ownerName = subRecipe.building.name;
       const buildingCategory = buildingMap[ownerName].category;
       for (let outputItem of subRecipe.output) {
-        let actual_rate = outputItem.rate * productionSpeed * actual_building_num * extra_rate;
+        let actual_rate = layoutFactory.calculateOutputActualRate(
+          outputItem.rate,
+          productionContext.productionSpeed,
+          productionContext.actualBuildingNum,
+          productionContext.extraRate
+        );
         const sortPlan = this.planProductionSorters(actual_rate, slotIndex, false, buildingCategory);
         for (let planEntry of sortPlan.entries) {
           this.appendPlannedSorter(
@@ -619,11 +611,13 @@ class Blueprint {
         slotIndex = sortPlan.nextSlotIndex;
       }
       for (let inputItem of subRecipe.input) {
-        let actual_rate = inputItem.rate * productionSpeed * actual_building_num;
-        if (subRecipe.acceleratorMode === 1) {
-          // 加速时原料也要加速；增产时则不需要
-          actual_rate *= extra_rate;
-        }
+        let actual_rate = layoutFactory.calculateInputActualRate(
+          inputItem.rate,
+          productionContext.productionSpeed,
+          productionContext.actualBuildingNum,
+          productionContext.extraRate,
+          subRecipe.acceleratorMode
+        );
         const sortPlan = this.planProductionSorters(actual_rate, slotIndex, true, buildingCategory);
         for (let planEntry of sortPlan.entries) {
           const sorterOptions = {
@@ -1051,31 +1045,25 @@ class Blueprint {
     // 例：stackLayers=4, max=8 → z=0 每节点 2 个分拣器 → 克隆后 2×4=8 ≤ 8
     // 修复：确保sortersPerNode至少为2，这样克隆后每个节点可以连接8个分拣器（2×4）
     // 满足普通模式下所有节点的需求（普通模式有节点需要连接8个分拣器）
-    const sortersPerNode =
-      stackLayers > 1
-        ? Math.max(2, Math.floor((this.config.maxSorterNumOneBelt - 1) / stackLayers))
-        : this.config.maxSorterNumOneBelt;
+    const sortersPerNode = layoutFactory.calculateSortersPerNode(this.config.maxSorterNumOneBelt, stackLayers);
     for (let item in itemSummary) {
       const itemName = item;
       // console.log(itemName)
       item = itemSummary[item];
 
-      let conveyorBelt = buildingMap.conveyorBeltMk1;
-      if (this.config.onlyConveyorBeltMk3) {
-        conveyorBelt = buildingMap.conveyorBeltMK3;
-      } else if (item.rate >= conveyorBelt.transportSpeed) {
-        if (item.rate === conveyorBelt.transportSpeed && this.config.upgradeConveyorBelt) {
-          conveyorBelt = buildingMap.conveyorBeltMK3; // 直接使用三级传送带，跳过二级
-        } else if (item.rate > conveyorBelt.transportSpeed) {
-          conveyorBelt = buildingMap.conveyorBeltMK3;
-        }
-      }
+      let conveyorBelt = layoutFactory.selectConveyorForRate(
+        item.rate,
+        this.config.onlyConveyorBeltMk3,
+        this.config.upgradeConveyorBelt,
+        buildingMap.conveyorBeltMk1,
+        buildingMap.conveyorBeltMK3
+      );
 
-      let maxTransportSpeed = buildingMap.conveyorBeltMK3.transportSpeed;
-      if (item.fromBuildingNum === 0) {
-        // 只有原料可以堆叠，中间产物不支持堆叠
-        maxTransportSpeed = buildingMap.conveyorBeltMK3.transportSpeed * this.config.conveyorBeltStackLayer;
-      }
+      let maxTransportSpeed = layoutFactory.calculateMaxTransportSpeed(
+        item.fromBuildingNum,
+        buildingMap.conveyorBeltMK3.transportSpeed,
+        this.config.conveyorBeltStackLayer
+      );
 
       for (let totalDoneRate = 0; item.rate - totalDoneRate > zero; ) {
         let needSprayCoater = item.needProliferator;
@@ -1123,10 +1111,7 @@ class Blueprint {
         } else {
           // 说明是原料
           inputData.push([]);
-          parameters = {
-            iconId: itemMap[itemName].iconId,
-            count: (inputRate * 60).toFixed(0),
-          };
+          parameters = layoutFactory.createItemCountParameter(itemName, inputRate, itemMap);
           doneRate += inputRate;
           // inputRate = 0
         }
@@ -1289,17 +1274,11 @@ class Blueprint {
         } else {
           // 说明是终产物
           outputData.push([]);
-          parameters = {
-            iconId: itemMap[itemName].iconId,
-            count: (outputRate * 60).toFixed(0),
-          };
+          parameters = layoutFactory.createItemCountParameter(itemName, outputRate, itemMap);
           needSprayCoater = false;
         }
 
-        let direction = 1; // 表示传送带方向沿y轴正方向，用于终产物和中间产物
-        if (item.fromBuildingNum === 0) {
-          direction = -1; // y轴负方向，用于原料
-        }
+        let direction = layoutFactory.getConveyorDirection(item.fromBuildingNum); // 终产物/中间产物为+1，原料为-1
         // console.log(itemName, inputData, outputData, direction)
         this.newConveyor(conveyorBelt, direction, inputData, outputData, parameters, needSprayCoater);
       }
@@ -1319,27 +1298,14 @@ class Blueprint {
     if (this.sprayCoaterOffsetList.length === 0) {
       return;
     }
-    let conveyor = buildingMap.conveyorBeltMk1;
-    if (this.config.onlyConveyorBeltMk3) {
-      conveyor = buildingMap.conveyorBeltMK3;
-    } else if (
-      this.itemSummary[this.recipe.proliferator] &&
-      this.itemSummary[this.recipe.proliferator].rate > conveyor.transportSpeed
-    ) {
-      conveyor = buildingMap.conveyorBeltMK3;
-    } else if (!this.itemSummary[this.recipe.proliferator]) {
-      conveyor = buildingMap.conveyorBeltMK3;
-    }
-    let firstSprayOffset = this.sprayCoaterOffsetList[0];
-    for (let spray of this.sprayCoaterOffsetList) {
-      if (spray.y > firstSprayOffset.y) {
-        firstSprayOffset = spray;
-        continue;
-      }
-      if (spray.y === firstSprayOffset.y && spray.x < firstSprayOffset.x) {
-        firstSprayOffset = spray;
-      }
-    }
+    let conveyor = layoutFactory.selectSprayCoaterConveyor(
+      this.itemSummary,
+      this.recipe.proliferator,
+      this.config.onlyConveyorBeltMk3,
+      buildingMap.conveyorBeltMk1,
+      buildingMap.conveyorBeltMK3
+    );
+    let firstSprayOffset = layoutFactory.findFirstSprayOffset(this.sprayCoaterOffsetList);
     // console.log(this.sprayCoaterOffsetList)
     // console.log(firstSprayOffset)
 

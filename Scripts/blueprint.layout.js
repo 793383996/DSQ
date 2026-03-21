@@ -529,6 +529,121 @@
     };
   }
 
+  function calculateProductionContext(
+    buildingNum,
+    currentBuildingIndex,
+    stackLabCount,
+    productionSpeed,
+    recipeProliferator,
+    acceleratorMode,
+    itemMap
+  ) {
+    let actualBuildingNum = Math.min(1, buildingNum - currentBuildingIndex);
+    actualBuildingNum += stackLabCount;
+
+    let extraRate = 1;
+    if (recipeProliferator) {
+      if (acceleratorMode === 0) {
+        extraRate += itemMap[recipeProliferator].extra_rate;
+      } else if (acceleratorMode === 1) {
+        extraRate += itemMap[recipeProliferator].accelerate;
+      }
+    }
+
+    return {
+      actualBuildingNum,
+      productionSpeed,
+      extraRate,
+    };
+  }
+
+  function calculateOutputActualRate(itemRate, productionSpeed, actualBuildingNum, extraRate) {
+    return itemRate * productionSpeed * actualBuildingNum * extraRate;
+  }
+
+  function calculateInputActualRate(itemRate, productionSpeed, actualBuildingNum, extraRate, acceleratorMode) {
+    let rate = itemRate * productionSpeed * actualBuildingNum;
+    if (acceleratorMode === 1) {
+      rate *= extraRate;
+    }
+    return rate;
+  }
+
+  function calculateSortersPerNode(maxSorterNumOneBelt, stackLayers) {
+    if (stackLayers > 1) {
+      return Math.max(2, Math.floor((maxSorterNumOneBelt - 1) / stackLayers));
+    }
+    return maxSorterNumOneBelt;
+  }
+
+  function selectConveyorForRate(itemRate, onlyConveyorBeltMk3, upgradeConveyorBelt, conveyorBeltMk1, conveyorBeltMk3) {
+    let conveyorBelt = conveyorBeltMk1;
+    if (onlyConveyorBeltMk3) {
+      conveyorBelt = conveyorBeltMk3;
+    } else if (itemRate >= conveyorBelt.transportSpeed) {
+      if (itemRate === conveyorBelt.transportSpeed && upgradeConveyorBelt) {
+        conveyorBelt = conveyorBeltMk3;
+      } else if (itemRate > conveyorBelt.transportSpeed) {
+        conveyorBelt = conveyorBeltMk3;
+      }
+    }
+    return conveyorBelt;
+  }
+
+  function calculateMaxTransportSpeed(fromBuildingNum, mk3TransportSpeed, conveyorBeltStackLayer) {
+    if (fromBuildingNum === 0) {
+      return mk3TransportSpeed * conveyorBeltStackLayer;
+    }
+    return mk3TransportSpeed;
+  }
+
+  function createItemCountParameter(itemName, ratePerSecond, itemMap) {
+    return {
+      iconId: itemMap[itemName].iconId,
+      count: (ratePerSecond * 60).toFixed(0),
+    };
+  }
+
+  function getConveyorDirection(fromBuildingNum) {
+    if (fromBuildingNum === 0) {
+      return -1;
+    }
+    return 1;
+  }
+
+  function selectSprayCoaterConveyor(
+    itemSummary,
+    proliferatorName,
+    onlyConveyorBeltMk3,
+    conveyorBeltMk1,
+    conveyorBeltMk3
+  ) {
+    if (onlyConveyorBeltMk3) {
+      return conveyorBeltMk3;
+    }
+    if (itemSummary[proliferatorName] && itemSummary[proliferatorName].rate > conveyorBeltMk1.transportSpeed) {
+      return conveyorBeltMk3;
+    }
+    if (!itemSummary[proliferatorName]) {
+      return conveyorBeltMk3;
+    }
+    return conveyorBeltMk1;
+  }
+
+  function findFirstSprayOffset(sprayCoaterOffsetList) {
+    let firstSprayOffset = sprayCoaterOffsetList[0];
+    for (let spray of sprayCoaterOffsetList) {
+      if (spray.y > firstSprayOffset.y) {
+        firstSprayOffset = spray;
+        continue;
+      }
+      if (spray.y === firstSprayOffset.y && spray.x < firstSprayOffset.x) {
+        firstSprayOffset = spray;
+      }
+    }
+    return firstSprayOffset;
+  }
+
   root.DSQBlueprintLayout = {
     calculateProductionBuildingPlacement,
     calculateSorterLocalOffsetAndYaw,
@@ -537,5 +652,15 @@
     upsertSorterFlow,
     getNextSorterSlotIndex,
     planProductionSorters,
+    calculateProductionContext,
+    calculateOutputActualRate,
+    calculateInputActualRate,
+    calculateSortersPerNode,
+    selectConveyorForRate,
+    calculateMaxTransportSpeed,
+    createItemCountParameter,
+    getConveyorDirection,
+    selectSprayCoaterConveyor,
+    findFirstSprayOffset,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
