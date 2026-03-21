@@ -744,6 +744,154 @@
     return indexes;
   }
 
+  function calculateRecipeExtraRate(recipeProliferator, acceleratorMode, itemMap) {
+    let extraRate = 1;
+    if (recipeProliferator) {
+      if (acceleratorMode === 0) {
+        extraRate += itemMap[recipeProliferator].extra_rate;
+      } else if (acceleratorMode === 1) {
+        extraRate += itemMap[recipeProliferator].accelerate;
+      }
+    }
+    return extraRate;
+  }
+
+  function calculateRecipeBuildingCount(subRecipe, maxLabLayers, buildingMap, productionCategory) {
+    if (!subRecipe || !subRecipe.building) {
+      return 0;
+    }
+    if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
+      return Math.ceil(subRecipe.building.num / maxLabLayers);
+    }
+    return subRecipe.building.num;
+  }
+
+  function buildConveyorItemSummary(
+    subRecipes,
+    recipeProliferator,
+    maxLabLayers,
+    itemMap,
+    buildingMap,
+    productionCategory
+  ) {
+    const itemSummary = {};
+    for (const subRecipe of subRecipes) {
+      const extraRate = calculateRecipeExtraRate(recipeProliferator, subRecipe.acceleratorMode, itemMap);
+      for (const outputItem of subRecipe.output) {
+        let outputRate = 0;
+        let fromBuildingNum = 0;
+        if (subRecipe.input === null) {
+          outputRate = outputItem.rate;
+        } else {
+          fromBuildingNum = calculateRecipeBuildingCount(subRecipe, maxLabLayers, buildingMap, productionCategory);
+          outputRate =
+            outputItem.rate * buildingMap[subRecipe.building.name].productionSpeed * subRecipe.building.num * extraRate;
+        }
+        if (itemSummary[outputItem.name]) {
+          itemSummary[outputItem.name].fromBuildingNum += fromBuildingNum;
+          itemSummary[outputItem.name].rate += outputRate;
+        } else {
+          itemSummary[outputItem.name] = {
+            rate: outputRate,
+            fromBuildingNum,
+            toBuildingNum: 0,
+          };
+        }
+      }
+
+      if (subRecipe.input === null) {
+        continue;
+      }
+
+      const toBuildingNum = calculateRecipeBuildingCount(subRecipe, maxLabLayers, buildingMap, productionCategory);
+      const actualNum = subRecipe.building.originalNum || subRecipe.building.num;
+      for (const inputItem of subRecipe.input) {
+        const inputRateBase = inputItem.rate * buildingMap[subRecipe.building.name].productionSpeed * actualNum;
+        const itemInputRate = subRecipe.acceleratorMode === 1 ? inputRateBase * extraRate : inputRateBase;
+        const needProliferator = subRecipe.acceleratorMode !== -1;
+
+        if (itemSummary[inputItem.name]) {
+          itemSummary[inputItem.name].toBuildingNum += toBuildingNum;
+          if (!itemSummary[inputItem.name].needProliferator && needProliferator) {
+            itemSummary[inputItem.name].needProliferator = true;
+          }
+          itemSummary[inputItem.name].inputRate += itemInputRate;
+        } else {
+          itemSummary[inputItem.name] = {
+            rate: 0,
+            inputRate: itemInputRate,
+            fromBuildingNum: 0,
+            toBuildingNum,
+            needProliferator,
+          };
+        }
+      }
+    }
+
+    for (const key in itemSummary) {
+      if (itemSummary[key].rate === 0 && itemSummary[key].inputRate !== 0) {
+        itemSummary[key].rate = itemSummary[key].inputRate;
+      }
+    }
+    return itemSummary;
+  }
+
+  function getConveyorIterationAbortReason(item, sorterBucket) {
+    if (!sorterBucket) {
+      return "missing_sorters";
+    }
+    if (item.fromBuildingNum !== 0 && (!sorterBucket.output || sorterBucket.output.length === 0)) {
+      return "no_output_sorters";
+    }
+    if (
+      item.fromBuildingNum === 0 &&
+      item.toBuildingNum !== 0 &&
+      sorterBucket.input &&
+      sorterBucket.input.length === 0
+    ) {
+      return "no_input_sorters";
+    }
+    return null;
+  }
+
+  function shouldConnectSourceSorter(sourceSorterRate, inputRate, zero) {
+    return !(sourceSorterRate - inputRate > zero);
+  }
+
+  function sortItemSummary(itemSummary) {
+    const newSummary = {};
+    const proliferator = ["proliferatorMk3", "proliferatorMk2", "proliferatorMk1"];
+    const outItems = ["refinedOil", "hydrogen", "graphene", "deuterium"];
+    for (let i = 0; i < proliferator.length; i++) {
+      if (itemSummary[proliferator[i]] && itemSummary[proliferator[i]].toBuildingNum === 0) {
+        newSummary[proliferator[i]] = itemSummary[proliferator[i]];
+        break;
+      }
+    }
+    for (const key in itemSummary) {
+      if (itemSummary[key].fromBuildingNum === 0) {
+        newSummary[key] = itemSummary[key];
+      }
+    }
+    for (const key in itemSummary) {
+      if (itemSummary[key].toBuildingNum === 0) {
+        newSummary[key] = itemSummary[key];
+      }
+    }
+    for (let i = 0; i < outItems.length; i++) {
+      const outItem = outItems[i];
+      if (itemSummary[outItem] && itemSummary[outItem].fromBuildingNum - itemSummary[outItem].toBuildingNum > 0) {
+        newSummary[outItem] = itemSummary[outItem];
+      }
+    }
+    for (const key in itemSummary) {
+      if (itemSummary[key].toBuildingNum !== 0 && itemSummary[key].fromBuildingNum !== 0) {
+        newSummary[key] = itemSummary[key];
+      }
+    }
+    return newSummary;
+  }
+
   root.DSQBlueprintLayout = {
     calculateProductionBuildingPlacement,
     calculateSorterLocalOffsetAndYaw,
@@ -772,5 +920,11 @@
     shouldContinueAfterOutputRateDepleted,
     attachSorterToOwnerAndPlanShift,
     collectBuildingGroupIndexes,
+    calculateRecipeExtraRate,
+    calculateRecipeBuildingCount,
+    buildConveyorItemSummary,
+    getConveyorIterationAbortReason,
+    shouldConnectSourceSorter,
+    sortItemSummary,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

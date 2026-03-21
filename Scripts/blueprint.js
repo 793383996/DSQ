@@ -945,135 +945,18 @@ class Blueprint {
   }
 
   sortItemSummary(itemSummary) {
-    // 排序，增产剂(取最高等级)、原料、终产物、多余产物(精炼油、氢、石墨烯、重氢)、其余中间产物
-    let newSummary = {};
-    let proliferator = ["proliferatorMk3", "proliferatorMk2", "proliferatorMk1"];
-    let outItem = ["refinedOil", "hydrogen", "graphene", "deuterium"];
-    for (let key in proliferator) {
-      if (itemSummary[proliferator[key]] && itemSummary[proliferator[key]].toBuildingNum === 0) {
-        newSummary[proliferator[key]] = itemSummary[proliferator[key]];
-        break;
-      }
-    }
-    for (let key in itemSummary) {
-      if (itemSummary[key].fromBuildingNum === 0) {
-        newSummary[key] = itemSummary[key];
-      }
-    }
-    for (let key in itemSummary) {
-      if (itemSummary[key].toBuildingNum === 0) {
-        newSummary[key] = itemSummary[key];
-      }
-    }
-    for (let key in outItem) {
-      if (
-        itemSummary[outItem[key]] &&
-        itemSummary[outItem[key]].fromBuildingNum - itemSummary[outItem[key]].toBuildingNum > 0
-      ) {
-        newSummary[outItem[key]] = itemSummary[outItem[key]];
-      }
-    }
-    for (let key in itemSummary) {
-      if (itemSummary[key].toBuildingNum !== 0 && itemSummary[key].fromBuildingNum !== 0) {
-        newSummary[key] = itemSummary[key];
-      }
-    }
-    return newSummary;
+    return layoutFactory.sortItemSummary(itemSummary);
   }
 
   generateConveyorBelts() {
-    let itemSummary = {};
-    // 计算物料统计信息，每个物料的产出速率、从多少个建筑产出、供给多少个建筑使用
-    for (let subRecipe of this.recipe.subRecipes) {
-      let extra_rate = 1;
-      if (this.recipe.proliferator) {
-        if (subRecipe.acceleratorMode === 0) {
-          extra_rate += itemMap[this.recipe.proliferator].extra_rate;
-        } else if (subRecipe.acceleratorMode === 1) {
-          extra_rate += itemMap[this.recipe.proliferator].accelerate;
-        }
-      }
-      for (let outputItem of subRecipe.output) {
-        let outputRate = 0;
-        let fromBuildingNum = 0;
-        if (subRecipe.input === null) {
-          outputRate = outputItem.rate;
-        } else {
-          if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
-            // 研究站可堆叠，需特殊处理
-            fromBuildingNum = Math.ceil(subRecipe.building.num / this.config.maxLabLayers);
-          } else {
-            fromBuildingNum = subRecipe.building.num;
-          }
-          outputRate =
-            outputItem.rate *
-            buildingMap[subRecipe.building.name].productionSpeed *
-            subRecipe.building.num *
-            extra_rate;
-        }
-        if (itemSummary[outputItem.name]) {
-          itemSummary[outputItem.name].fromBuildingNum += fromBuildingNum;
-          itemSummary[outputItem.name].rate += outputRate;
-        } else {
-          itemSummary[outputItem.name] = {
-            rate: outputRate,
-            fromBuildingNum: fromBuildingNum,
-            toBuildingNum: 0,
-          };
-        }
-      }
-      if (subRecipe.input === null) {
-        continue;
-      }
-      for (let inputItem of subRecipe.input) {
-        let toBuildingNum = 0;
-        if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
-          toBuildingNum = Math.ceil(subRecipe.building.num / this.config.maxLabLayers);
-        } else {
-          toBuildingNum = subRecipe.building.num;
-        }
-        // 堆叠模式：使用原始设备数量计算原料需求
-        // 因为所有层的设备共享 z=0 层的传送带，原料需要满足所有层的需求
-        const actualNum = subRecipe.building.originalNum || subRecipe.building.num;
-        if (itemSummary[inputItem.name]) {
-          itemSummary[inputItem.name].toBuildingNum += toBuildingNum;
-          if (!itemSummary[inputItem.name].needProliferator && subRecipe.acceleratorMode !== -1) {
-            itemSummary[inputItem.name].needProliferator = true;
-          }
-          if (subRecipe.acceleratorMode === 1) {
-            // 加速时原料额外消耗
-            itemSummary[inputItem.name].inputRate +=
-              inputItem.rate * buildingMap[subRecipe.building.name].productionSpeed * actualNum * extra_rate;
-          } else {
-            // 无增产剂或增产时原料速率不变
-            itemSummary[inputItem.name].inputRate +=
-              inputItem.rate * buildingMap[subRecipe.building.name].productionSpeed * actualNum;
-          }
-        } else {
-          let itemInputRate = inputItem.rate * buildingMap[subRecipe.building.name].productionSpeed * actualNum;
-          if (subRecipe.acceleratorMode === 1) {
-            itemInputRate *= extra_rate;
-          }
-          let needProliferator = false;
-          if (subRecipe.acceleratorMode !== -1) {
-            needProliferator = true;
-          }
-          itemSummary[inputItem.name] = {
-            rate: 0,
-            inputRate: itemInputRate,
-            fromBuildingNum: 0,
-            toBuildingNum: toBuildingNum,
-            needProliferator: needProliferator,
-          };
-        }
-      }
-    }
-    for (let key in itemSummary) {
-      // rate为0（rate是按output计算的）但inputRate不为0，说明该物品是被排除的中间产物， 把inputRate赋值给rate，生成蓝图时该产物就会被当作原料
-      if (itemSummary[key].rate === 0 && itemSummary[key].inputRate !== 0) {
-        itemSummary[key].rate = itemSummary[key].inputRate;
-      }
-    }
+    let itemSummary = layoutFactory.buildConveyorItemSummary(
+      this.recipe.subRecipes,
+      this.recipe.proliferator,
+      this.config.maxLabLayers,
+      itemMap,
+      buildingMap,
+      productionCategory
+    );
     // console.log(itemSummary)
     // throw `break`
     itemSummary = this.sortItemSummary(itemSummary);
@@ -1122,26 +1005,18 @@ class Blueprint {
         let inputData = [];
         let outputData = [];
         let doneSorterNum = 0;
-        // 修复：添加空值检查，防止 this.sorters[itemName] 不存在时抛出异常
-        if (!this.sorters[itemName]) {
+        const sorterBucket = this.sorters[itemName];
+        const abortReason = layoutFactory.getConveyorIterationAbortReason(item, sorterBucket);
+        if (abortReason === "missing_sorters") {
           console.warn(`[蓝图警告] 物品 ${itemName} 没有对应的分拣器数据`);
           break;
         }
-        // 修复：浮点精度导致所有分拣器已消耗但循环未终止，安全退出防止死循环或错位节点
-        if (item.fromBuildingNum !== 0 && this.sorters[itemName].output.length === 0) {
-          break;
-        }
-        if (
-          item.fromBuildingNum === 0 &&
-          item.toBuildingNum !== 0 &&
-          this.sorters[itemName].input &&
-          this.sorters[itemName].input.length === 0
-        ) {
+        if (abortReason) {
           break;
         }
         if (item.fromBuildingNum !== 0) {
-          for (let j = this.sorters[itemName].output.length - 1; j >= 0; j--) {
-            if (this.sorters[itemName].output[j].rate - inputRate > zero) {
+          for (let j = sorterBucket.output.length - 1; j >= 0; j--) {
+            if (!layoutFactory.shouldConnectSourceSorter(sorterBucket.output[j].rate, inputRate, zero)) {
               // 当前带接受运力不能满足分拣器，则该分拣器连接下一个带上的节点
               break;
             }
@@ -1149,13 +1024,13 @@ class Blueprint {
             // 当 doneSorterNum 是 sortersPerNode 的倍数时创建新节点
             layoutFactory.appendSorterIndexToNodeData(
               inputData,
-              this.sorters[itemName].output[j].index,
+              sorterBucket.output[j].index,
               doneSorterNum,
               sortersPerNode
             );
-            inputRate -= this.sorters[itemName].output[j].rate;
-            doneRate += this.sorters[itemName].output[j].rate;
-            this.sorters[itemName].output.pop();
+            inputRate -= sorterBucket.output[j].rate;
+            doneRate += sorterBucket.output[j].rate;
+            sorterBucket.output.pop();
             doneSorterNum++;
           }
         } else {
@@ -1170,25 +1045,22 @@ class Blueprint {
         doneSorterNum = 0;
         // 重新排序以提高输出传送带中，X射线裂解(氢)和重整精炼(精炼油)的输入优先级
         if (["hydrogen", "refinedOil"].includes(itemName) && item.toBuildingNum !== 0) {
-          this.sorters[itemName].input = layoutFactory.reorderPriorityInputSorters(
-            itemName,
-            this.sorters[itemName].input
-          );
+          sorterBucket.input = layoutFactory.reorderPriorityInputSorters(itemName, sorterBucket.input);
         }
         if (item.toBuildingNum !== 0) {
-          for (let j = this.sorters[itemName].input.length - 1; j >= 0; j--) {
+          for (let j = sorterBucket.input.length - 1; j >= 0; j--) {
             // 核心修复：防崩与运力对齐
             // 堆叠模式下，分拣器数组内记录的 rate 是单层设备的需求。
             // 但在物理上，该节点将被克隆 stackLayers 份，Mk4 的总拿取速率是单层的 stackLayers 倍。
             // 必须将扣除的实际运力放大，否则会导致将所有机器挂载在第一条传送带上，造成尾部严重饥饿。
-            let actualSorterRate = this.sorters[itemName].input[j].rate;
+            let actualSorterRate = sorterBucket.input[j].rate;
             let columnLoad = layoutFactory.calculateColumnLoad(actualSorterRate, item.fromBuildingNum, stackLayers);
 
             if (layoutFactory.shouldCreateSupplementSorter(totalDoneRate, item.rate, outputRate, columnLoad, zero)) {
               // 当前带输出运力不能满足分拣器且还会生成新的传送带，则传送带新增一个节点单独该分拣器连接上，同时给对应建筑增加一个分拣器连到下一个节点
               // console.log(`${itemName}: need add sorter`)
-              outputData.push([this.sorters[itemName].input[j].index]);
-              const sourceSorter = this.sorters[itemName].input[j];
+              outputData.push([sorterBucket.input[j].index]);
+              const sourceSorter = sorterBucket.input[j];
               const newSorterRate = layoutFactory.calculateSupplementSorterRate(
                 columnLoad,
                 outputRate,
@@ -1196,7 +1068,7 @@ class Blueprint {
                 stackLayers
               );
               let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
-              this.sorters[itemName].input.unshift(
+              sorterBucket.input.unshift(
                 modelFactory.createSorterOwnerRecord(
                   newSorter.index,
                   newSorterRate,
@@ -1206,7 +1078,7 @@ class Blueprint {
                   sourceSorter.recipeID
                 )
               );
-              this.sorters[itemName].input.pop();
+              sorterBucket.input.pop();
               break;
             }
 
@@ -1216,12 +1088,12 @@ class Blueprint {
             // 修复：使用与输出分拣器相同的均匀分配策略
             layoutFactory.appendSorterIndexToNodeData(
               outputData,
-              this.sorters[itemName].input[j].index,
+              sorterBucket.input[j].index,
               doneSorterNum,
               sortersPerNode
             );
             outputRate -= columnLoad;
-            this.sorters[itemName].input.pop();
+            sorterBucket.input.pop();
             doneSorterNum++;
             if (outputRate <= 0) {
               if (layoutFactory.shouldContinueAfterOutputRateDepleted(j, totalDoneRate, item.rate)) {
