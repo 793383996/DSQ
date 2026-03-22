@@ -281,6 +281,25 @@ function testClonePlanningHelpers(context) {
   assert.equal(plans[1].clones[1].inputObjIdx, 202, "clone-plan-helper: layer 2 linked clone index should map.");
 }
 
+function testBeltLoadValidationHelper(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  assert.ok(layout, "belt-load-helper: DSQBlueprintLayout should be loaded.");
+
+  const buildings = [
+    { index: 10, itemId: 2003, outputObjIdx: -1, inputObjIdx: -1 },
+    { index: 11, itemId: 2001, outputObjIdx: -1, inputObjIdx: -1 },
+    { index: 100, itemId: 2014, outputObjIdx: 10, inputObjIdx: -1 },
+    { index: 101, itemId: 2014, outputObjIdx: 10, inputObjIdx: 11 },
+    { index: 102, itemId: 2014, outputObjIdx: 14, inputObjIdx: 99 },
+  ];
+  const warnings = Array.from(layout.validateBeltLoad(buildings, 1));
+  assert.deepEqual(
+    warnings,
+    ["传送带节点10超载: 2个分拣器 (限制: 1)"],
+    "belt-load-helper: should warn when belt node sorter load exceeds configured threshold."
+  );
+}
+
 function testSupplementSorterHelpers(context) {
   const layout = readBinding(context, "DSQBlueprintLayout");
   const model = readBinding(context, "DSQBlueprintModel");
@@ -352,6 +371,202 @@ function testSelfSprayLayoutHelpers(context) {
   );
 }
 
+function testSprayMainLineHelper(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  assert.ok(layout, "spray-mainline-helper: DSQBlueprintLayout should be loaded.");
+
+  const sameRowSprays = [
+    { x: 2, y: 6, z: 0 },
+    { x: 5, y: 6, z: 0 },
+  ];
+  const sameRowPlan = layout.planSprayCoaterMainLine(sameRowSprays, sameRowSprays[0]);
+  assert.equal(sameRowPlan.error, null, "spray-mainline-helper: same-row route should be generated.");
+  assert.equal(sameRowPlan.nodeOffsets.length, 3, "spray-mainline-helper: same-row route should include 3 nodes.");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(sameRowPlan.terminalOffset)),
+    { x: 6, y: 6, z: 1 },
+    "spray-mainline-helper: terminal offset should continue to +x direction for same-row route."
+  );
+
+  const invalidSprays = [
+    { x: 2, y: 1, z: 0 },
+    { x: 6, y: 4, z: 0 },
+  ];
+  const invalidPlan = layout.planSprayCoaterMainLine(invalidSprays, invalidSprays[0]);
+  assert.equal(invalidPlan.error, "route_failed", "spray-mainline-helper: invalid route should return route_failed.");
+}
+
+function testSprayExecutionPlanHelper(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  const constants = readBinding(context, "DSQBlueprintConstants");
+  assert.ok(layout && constants, "spray-exec-helper: layout/constants should be loaded.");
+
+  const productionCategory = constants.productionCategory;
+  const baseOffsets = [
+    { x: 2, y: 6, z: 0 },
+    { x: 5, y: 6, z: 0 },
+  ];
+  const firstSprayOffset = baseOffsets[0];
+
+  const noSelfPlan = layout.planSprayCoaterConveyorExecution(
+    baseOffsets.map(o => ({ ...o })),
+    firstSprayOffset,
+    false,
+    4,
+    productionCategory.lab,
+    productionCategory
+  );
+  assert.equal(
+    noSelfPlan.selfSprayPlan,
+    null,
+    "spray-exec-helper: selfSpray=false should not include self-spray plan."
+  );
+  assert.equal(
+    noSelfPlan.entryNodePlan[0].useProliferatorParameters,
+    true,
+    "spray-exec-helper: selfSpray=false should inject proliferator on first entry node."
+  );
+  assert.equal(noSelfPlan.mainLinePlan.error, null, "spray-exec-helper: no-self route should be generated.");
+
+  const selfPlan = layout.planSprayCoaterConveyorExecution(
+    baseOffsets.map(o => ({ ...o })),
+    firstSprayOffset,
+    true,
+    4,
+    productionCategory.lab,
+    productionCategory
+  );
+  assert.ok(selfPlan.selfSprayPlan, "spray-exec-helper: selfSpray=true should include self-spray plan.");
+  assert.equal(
+    selfPlan.entryNodePlan[0].useProliferatorParameters,
+    false,
+    "spray-exec-helper: selfSpray=true should consume proliferator before entry nodes."
+  );
+  assert.ok(
+    selfPlan.selfSprayPlan.conveyorNodeOffsets.length > 0,
+    "spray-exec-helper: self-spray plan should include conveyor nodes."
+  );
+}
+
+function testSprayNodeSequenceHelper(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  const constants = readBinding(context, "DSQBlueprintConstants");
+  assert.ok(layout && constants, "spray-seq-helper: layout/constants should be loaded.");
+
+  const productionCategory = constants.productionCategory;
+  const baseOffsets = [
+    { x: 2, y: 6, z: 0 },
+    { x: 5, y: 6, z: 0 },
+  ];
+  const firstSprayOffset = baseOffsets[0];
+
+  const noSelfPlan = layout.planSprayCoaterConveyorExecution(
+    baseOffsets.map(o => ({ ...o })),
+    firstSprayOffset,
+    false,
+    4,
+    productionCategory.lab,
+    productionCategory
+  );
+  const noSelfSeq = Array.from(layout.buildSprayConveyorNodeSequence(noSelfPlan, { iconId: 1234 }), node =>
+    JSON.parse(JSON.stringify(node))
+  );
+  assert.equal(noSelfSeq[0].parameters.iconId, 1234, "spray-seq-helper: no-self first node should carry proliferator.");
+  assert.equal(
+    noSelfSeq[noSelfSeq.length - 1].outputObjIdx,
+    -1,
+    "spray-seq-helper: terminal node should end the spray conveyor chain."
+  );
+  assert.equal(noSelfSeq[noSelfSeq.length - 1].outputToSlot, -1, "spray-seq-helper: terminal slot should be -1.");
+
+  const selfPlan = layout.planSprayCoaterConveyorExecution(
+    baseOffsets.map(o => ({ ...o })),
+    firstSprayOffset,
+    true,
+    4,
+    productionCategory.lab,
+    productionCategory
+  );
+  const selfSeq = Array.from(layout.buildSprayConveyorNodeSequence(selfPlan, { iconId: 5678 }), node =>
+    JSON.parse(JSON.stringify(node))
+  );
+  assert.equal(
+    selfSeq[0].parameters.iconId,
+    5678,
+    "spray-seq-helper: self-spray first core node should carry proliferator."
+  );
+  assert.equal(
+    selfSeq[selfPlan.selfSprayPlan.conveyorNodeOffsets.length].parameters,
+    null,
+    "spray-seq-helper: first entry node should not carry proliferator after self-spray consumption."
+  );
+}
+
+function testSprayActionPlanHelper(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  const constants = readBinding(context, "DSQBlueprintConstants");
+  assert.ok(layout && constants, "spray-action-helper: layout/constants should be loaded.");
+
+  const productionCategory = constants.productionCategory;
+  const baseOffsets = [
+    { x: 2, y: 6, z: 0 },
+    { x: 5, y: 6, z: 0 },
+  ];
+  const firstSprayOffset = baseOffsets[0];
+
+  const selfPlan = layout.planSprayCoaterConveyorExecution(
+    baseOffsets.map(o => ({ ...o })),
+    firstSprayOffset,
+    true,
+    4,
+    productionCategory.lab,
+    productionCategory
+  );
+  const actionPlan = Array.from(layout.buildSprayConveyorActionPlan(selfPlan, { iconId: 4321 }), action =>
+    JSON.parse(JSON.stringify(action))
+  );
+  assert.equal(
+    actionPlan[0].type,
+    "sprayCoater",
+    "spray-action-helper: self-spray plan should start with spray coater action."
+  );
+  assert.equal(actionPlan[1].type, "node", "spray-action-helper: spray coater should be followed by node actions.");
+  assert.equal(
+    actionPlan[actionPlan.length - 1].outputObjIdxMode,
+    "fixed",
+    "spray-action-helper: terminal node action should use fixed output mode."
+  );
+  assert.equal(
+    actionPlan[actionPlan.length - 1].outputObjIdx,
+    -1,
+    "spray-action-helper: terminal node action should point to -1 output index."
+  );
+
+  const resolvedNextIdx = layout.resolveSprayNodeOutputObjIdx({ outputObjIdxMode: "next", outputObjIdx: null }, 100);
+  const resolvedFixedIdx = layout.resolveSprayNodeOutputObjIdx({ outputObjIdxMode: "fixed", outputObjIdx: -1 }, 100);
+  assert.equal(resolvedNextIdx, 102, "spray-action-helper: next output mode should map to current index + 2.");
+  assert.equal(resolvedFixedIdx, -1, "spray-action-helper: fixed output mode should keep explicit output index.");
+}
+
+function testSprayErrorHelper(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  assert.ok(layout, "spray-error-helper: DSQBlueprintLayout should be loaded.");
+
+  const okResult = layout.resolveSprayCoaterMainLineError(null);
+  assert.equal(okResult, null, "spray-error-helper: null error code should not produce error payload.");
+
+  const routeFailedResult = JSON.parse(JSON.stringify(layout.resolveSprayCoaterMainLineError("route_failed")));
+  assert.deepEqual(
+    routeFailedResult,
+    {
+      message: "喷涂剂排线错误",
+      duration: 4000,
+      throwReason: "generate sprayCoater error",
+    },
+    "spray-error-helper: route_failed should map to expected UI/throw payload."
+  );
+}
+
 async function testFacadeLockReleaseOnWorkerCtorFailure() {
   const context = createBrowserLikeContext();
   context.Worker = class WorkerCtorFail {
@@ -415,8 +630,14 @@ async function main() {
   testSprayAndStackFlow(runtimeContext);
   testRefineryMultiOutputFlow(runtimeContext);
   testClonePlanningHelpers(runtimeContext);
+  testBeltLoadValidationHelper(runtimeContext);
   testSupplementSorterHelpers(runtimeContext);
   testSelfSprayLayoutHelpers(runtimeContext);
+  testSprayMainLineHelper(runtimeContext);
+  testSprayExecutionPlanHelper(runtimeContext);
+  testSprayNodeSequenceHelper(runtimeContext);
+  testSprayActionPlanHelper(runtimeContext);
+  testSprayErrorHelper(runtimeContext);
 
   await testFacadeLockReleaseOnWorkerCtorFailure();
   await testFacadeLockReleaseOnPostMessageFailure();

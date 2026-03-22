@@ -731,6 +731,232 @@
     };
   }
 
+  function planSprayCoaterMainLine(sprayCoaterOffsetList, firstSprayOffset) {
+    const nodeOffsets = [];
+    let doneNum = 1;
+    let nowSpray = firstSprayOffset;
+    let direction = 1;
+
+    while (doneNum < sprayCoaterOffsetList.length) {
+      for (const spray of sprayCoaterOffsetList) {
+        if (spray.y !== nowSpray.y) {
+          continue;
+        }
+        if (direction === 1) {
+          if (spray.x > nowSpray.x) {
+            for (let x = nowSpray.x + 1; x <= spray.x; x++) {
+              nodeOffsets.push({ x, y: nowSpray.y, z: 1 });
+            }
+            nowSpray = spray;
+            doneNum++;
+          }
+        } else if (spray.x < nowSpray.x) {
+          for (let x = nowSpray.x - 1; x >= spray.x; x--) {
+            nodeOffsets.push({ x, y: nowSpray.y, z: 1 });
+          }
+          nowSpray = spray;
+          doneNum++;
+        }
+      }
+      if (doneNum === sprayCoaterOffsetList.length) {
+        break;
+      }
+
+      let findNext = false;
+      sprayCoaterOffsetList.reverse();
+      for (let delta = 2; !findNext; delta += 2) {
+        if (delta > nowSpray.y) {
+          return {
+            error: "route_failed",
+          };
+        }
+        for (const spray of sprayCoaterOffsetList) {
+          if (spray.y !== nowSpray.y - delta) {
+            continue;
+          }
+          let lastNodeOffset = nowSpray;
+          if (direction === 1 && spray.x > nowSpray.x) {
+            for (let x = nowSpray.x + 1; x <= spray.x; x++) {
+              lastNodeOffset = { x, y: nowSpray.y, z: 1 };
+              nodeOffsets.push(lastNodeOffset);
+            }
+          } else if (direction === -1 && spray.x < nowSpray.x) {
+            for (let x = nowSpray.x - 1; x >= spray.x; x--) {
+              lastNodeOffset = { x, y: nowSpray.y, z: 1 };
+              nodeOffsets.push(lastNodeOffset);
+            }
+          }
+          lastNodeOffset = {
+            x: lastNodeOffset.x + direction,
+            y: lastNodeOffset.y,
+            z: 1,
+          };
+          nodeOffsets.push(lastNodeOffset);
+          for (let i = 1; i <= delta; i++) {
+            lastNodeOffset = { x: lastNodeOffset.x, y: nowSpray.y - i, z: 1 };
+            nodeOffsets.push(lastNodeOffset);
+          }
+          if (direction === -1 && spray.x > lastNodeOffset.x + 1) {
+            for (let x = lastNodeOffset.x + 1; x < spray.x; x++) {
+              nodeOffsets.push({ x, y: lastNodeOffset.y, z: 1 });
+            }
+          } else if (direction === 1 && spray.x < lastNodeOffset.x - 1) {
+            for (let x = lastNodeOffset.x - 1; x > spray.x; x--) {
+              nodeOffsets.push({ x, y: lastNodeOffset.y, z: 1 });
+            }
+          }
+          nodeOffsets.push({ x: spray.x, y: spray.y, z: 1 });
+          doneNum++;
+          nowSpray = spray;
+          findNext = true;
+          break;
+        }
+      }
+      direction = -direction;
+    }
+
+    return {
+      error: null,
+      nodeOffsets,
+      terminalOffset: { x: nowSpray.x + direction, y: nowSpray.y, z: 1 },
+    };
+  }
+
+  function planSprayCoaterConveyorExecution(
+    sprayCoaterOffsetList,
+    firstSprayOffset,
+    selfSpray,
+    conveyorStartOffsetX,
+    lastProductionBuildingType,
+    productionCategory
+  ) {
+    let selfSprayPlan = null;
+    let proliferatorOnEntry = true;
+
+    if (selfSpray) {
+      const selfSprayConveyorStartOffset = calculateSelfSprayStartOffset(
+        firstSprayOffset,
+        lastProductionBuildingType,
+        productionCategory
+      );
+      selfSprayPlan = buildSelfSprayStructurePlan(conveyorStartOffsetX, selfSprayConveyorStartOffset, firstSprayOffset);
+      proliferatorOnEntry = false;
+    }
+
+    const entryNodePlan = [
+      {
+        offset: { x: firstSprayOffset.x - 1, y: firstSprayOffset.y, z: 1 },
+        useProliferatorParameters: proliferatorOnEntry,
+      },
+      {
+        offset: { x: firstSprayOffset.x, y: firstSprayOffset.y, z: 1 },
+        useProliferatorParameters: false,
+      },
+    ];
+
+    const mainLinePlan = planSprayCoaterMainLine(sprayCoaterOffsetList, firstSprayOffset);
+
+    return {
+      selfSprayPlan,
+      entryNodePlan,
+      mainLinePlan,
+    };
+  }
+
+  function buildSprayConveyorNodeSequence(sprayExecutionPlan, proliferatorParameters) {
+    const sequence = [];
+    let entryParameters = proliferatorParameters;
+
+    if (sprayExecutionPlan.selfSprayPlan) {
+      for (let i = 0; i < sprayExecutionPlan.selfSprayPlan.conveyorNodeOffsets.length; i++) {
+        sequence.push({
+          offset: sprayExecutionPlan.selfSprayPlan.conveyorNodeOffsets[i],
+          outputObjIdx: null,
+          outputToSlot: 1,
+          parameters: i === 0 ? proliferatorParameters : null,
+        });
+      }
+      entryParameters = null;
+    }
+
+    for (const entryNode of sprayExecutionPlan.entryNodePlan) {
+      sequence.push({
+        offset: entryNode.offset,
+        outputObjIdx: null,
+        outputToSlot: 1,
+        parameters: entryNode.useProliferatorParameters ? entryParameters : null,
+      });
+    }
+
+    for (const nodeOffset of sprayExecutionPlan.mainLinePlan.nodeOffsets) {
+      sequence.push({
+        offset: nodeOffset,
+        outputObjIdx: null,
+        outputToSlot: 1,
+        parameters: null,
+      });
+    }
+
+    sequence.push({
+      offset: sprayExecutionPlan.mainLinePlan.terminalOffset,
+      outputObjIdx: -1,
+      outputToSlot: -1,
+      parameters: null,
+    });
+
+    return sequence;
+  }
+
+  function buildSprayConveyorActionPlan(sprayExecutionPlan, proliferatorParameters) {
+    const actions = [];
+    if (sprayExecutionPlan.selfSprayPlan) {
+      actions.push({
+        type: "sprayCoater",
+        offset: sprayExecutionPlan.selfSprayPlan.sprayCoaterOffset,
+        yaw: [0, 0],
+      });
+    }
+
+    const nodeSequence = buildSprayConveyorNodeSequence(sprayExecutionPlan, proliferatorParameters);
+    for (const nodeSpec of nodeSequence) {
+      actions.push({
+        type: "node",
+        offset: nodeSpec.offset,
+        yaw: [0, 0],
+        outputObjIdxMode: nodeSpec.outputObjIdx === null ? "next" : "fixed",
+        outputObjIdx: nodeSpec.outputObjIdx,
+        outputToSlot: nodeSpec.outputToSlot,
+        parameters: nodeSpec.parameters,
+      });
+    }
+    return actions;
+  }
+
+  function resolveSprayNodeOutputObjIdx(nodeAction, currentBuildingIndex) {
+    if (nodeAction.outputObjIdxMode === "next") {
+      return currentBuildingIndex + 2;
+    }
+    return nodeAction.outputObjIdx;
+  }
+
+  function resolveSprayCoaterMainLineError(errorCode) {
+    if (!errorCode) {
+      return null;
+    }
+    if (errorCode === "route_failed") {
+      return {
+        message: "喷涂剂排线错误",
+        duration: 4000,
+        throwReason: "generate sprayCoater error",
+      };
+    }
+    return {
+      message: "喷涂剂排线错误",
+      duration: 4000,
+      throwReason: "generate sprayCoater error",
+    };
+  }
+
   function reorderPriorityInputSorters(itemName, inputSorters) {
     if (!["hydrogen", "refinedOil"].includes(itemName)) {
       return inputSorters;
@@ -938,6 +1164,50 @@
     }
 
     return layerPlans;
+  }
+
+  function createBeltIndexSet(buildings, beltItemIds) {
+    const beltIndexes = new Set();
+    for (const b of buildings) {
+      if (beltItemIds.has(b.itemId)) {
+        beltIndexes.add(b.index);
+      }
+    }
+    return beltIndexes;
+  }
+
+  function collectSorterBeltLoad(buildings, beltIndexes, sorterItemId) {
+    const beltLoad = new Map();
+    for (const b of buildings) {
+      if (b.itemId !== sorterItemId) {
+        continue;
+      }
+      if (b.outputObjIdx >= 0) {
+        beltLoad.set(b.outputObjIdx, (beltLoad.get(b.outputObjIdx) || 0) + 1);
+      }
+      if (b.inputObjIdx >= 0 && b.inputObjIdx !== b.outputObjIdx && beltIndexes.has(b.inputObjIdx)) {
+        beltLoad.set(b.inputObjIdx, (beltLoad.get(b.inputObjIdx) || 0) + 1);
+      }
+    }
+    return beltLoad;
+  }
+
+  function buildBeltLoadWarnings(beltLoad, maxSorterNumOneBelt) {
+    const warnings = [];
+    for (const [beltIdx, load] of beltLoad) {
+      if (load > maxSorterNumOneBelt) {
+        warnings.push(`传送带节点${beltIdx}超载: ${load}个分拣器 (限制: ${maxSorterNumOneBelt})`);
+      }
+    }
+    return warnings;
+  }
+
+  function validateBeltLoad(buildings, maxSorterNumOneBelt) {
+    const beltItemIds = new Set([2001, 2002, 2003]);
+    const sorterItemId = 2014;
+    const beltIndexes = createBeltIndexSet(buildings, beltItemIds);
+    const beltLoad = collectSorterBeltLoad(buildings, beltIndexes, sorterItemId);
+    return buildBeltLoadWarnings(beltLoad, maxSorterNumOneBelt);
   }
 
   function buildConveyorItemSummary(
@@ -1283,6 +1553,12 @@
     findFirstSprayOffset,
     calculateSelfSprayStartOffset,
     buildSelfSprayStructurePlan,
+    planSprayCoaterMainLine,
+    planSprayCoaterConveyorExecution,
+    buildSprayConveyorNodeSequence,
+    buildSprayConveyorActionPlan,
+    resolveSprayNodeOutputObjIdx,
+    resolveSprayCoaterMainLineError,
     reorderPriorityInputSorters,
     calculateColumnLoad,
     shouldCreateSupplementSorter,
@@ -1301,6 +1577,7 @@
     resolveClonedInputObjIdx,
     createFoundationZOffsets,
     planCloneLayers,
+    validateBeltLoad,
     buildConveyorItemSummary,
     getConveyorIterationAbortReason,
     shouldConnectSourceSorter,

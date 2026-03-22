@@ -818,28 +818,7 @@ class Blueprint {
   }
 
   validateBeltLoad() {
-    const beltLoad = new Map();
-
-    for (const b of this.buildings) {
-      if (b.itemId === 2014) {
-        if (b.outputObjIdx >= 0) {
-          beltLoad.set(b.outputObjIdx, (beltLoad.get(b.outputObjIdx) || 0) + 1);
-        }
-        if (b.inputObjIdx >= 0 && b.inputObjIdx !== b.outputObjIdx) {
-          const beltIdx = this.findBeltIndex(b.inputObjIdx);
-          if (beltIdx >= 0) {
-            beltLoad.set(beltIdx, (beltLoad.get(beltIdx) || 0) + 1);
-          }
-        }
-      }
-    }
-
-    const warnings = [];
-    for (const [beltIdx, load] of beltLoad) {
-      if (load > this.config.maxSorterNumOneBelt) {
-        warnings.push(`传送带节点${beltIdx}超载: ${load}个分拣器 (限制: ${this.config.maxSorterNumOneBelt})`);
-      }
-    }
+    const warnings = layoutFactory.validateBeltLoad(this.buildings, this.config.maxSorterNumOneBelt);
 
     if (warnings.length > 0) {
       console.warn(`[蓝图验证] 发现${warnings.length}个传送带超载问题:`);
@@ -847,16 +826,6 @@ class Blueprint {
     }
 
     return warnings;
-  }
-
-  findBeltIndex(objIdx) {
-    const beltItemIds = new Set([2001, 2002, 2003]);
-    for (const b of this.buildings) {
-      if (b.index === objIdx && beltItemIds.has(b.itemId)) {
-        return objIdx;
-      }
-    }
-    return -1;
   }
 
   sortItemSummary(itemSummary) {
@@ -986,180 +955,32 @@ class Blueprint {
     let proliferatorParameters = {
       iconId: itemMap[this.recipe.proliferator].iconId,
     };
+    const sprayExecutionPlan = layoutFactory.planSprayCoaterConveyorExecution(
+      this.sprayCoaterOffsetList,
+      firstSprayOffset,
+      this.config.selfSpray,
+      this.conveyorStartOffsetX,
+      this.lastProductionBuildingType,
+      productionCategory
+    );
 
-    if (this.config.selfSpray) {
-      const selfSprayConveyorStartOffset = layoutFactory.calculateSelfSprayStartOffset(
-        firstSprayOffset,
-        this.lastProductionBuildingType,
-        productionCategory
-      );
-      const selfSprayPlan = layoutFactory.buildSelfSprayStructurePlan(
-        this.conveyorStartOffsetX,
-        selfSprayConveyorStartOffset,
-        firstSprayOffset
-      );
-      this.buildings.push(this.newSprayCoater(selfSprayPlan.sprayCoaterOffset, [0, 0]));
-
-      for (let i = 0; i < selfSprayPlan.conveyorNodeOffsets.length; i++) {
-        const nodeParameters = i === 0 ? proliferatorParameters : null;
-        this.buildings.push(
-          this.newConveyorNode(
-            selfSprayPlan.conveyorNodeOffsets[i],
-            [0, 0],
-            conveyor,
-            this.buildingIndex + 2,
-            1,
-            nodeParameters
-          )
-        );
-      }
-      proliferatorParameters = null;
+    const sprayMainLineError = layoutFactory.resolveSprayCoaterMainLineError(sprayExecutionPlan.mainLinePlan.error);
+    if (sprayMainLineError) {
+      cocoMessage.error(sprayMainLineError.message, sprayMainLineError.duration);
+      throw sprayMainLineError.throwReason;
     }
-    this.buildings.push(
-      this.newConveyorNode(
-        { x: firstSprayOffset.x - 1, y: firstSprayOffset.y, z: 1 },
-        [0, 0],
-        conveyor,
-        this.buildingIndex + 2,
-        1,
-        proliferatorParameters
-      )
-    );
-    this.buildings.push(
-      this.newConveyorNode(
-        { x: firstSprayOffset.x, y: firstSprayOffset.y, z: 1 },
-        [0, 0],
-        conveyor,
-        this.buildingIndex + 2,
-        1,
-        null
-      )
-    );
-    let doneNum = 1;
-    let nowSpray = firstSprayOffset;
-    let direction = 1;
-    while (doneNum < this.sprayCoaterOffsetList.length) {
-      for (let spray of this.sprayCoaterOffsetList) {
-        if (spray.y === nowSpray.y) {
-          if (direction === 1) {
-            // x 轴正向
-            if (spray.x > nowSpray.x) {
-              for (let x = nowSpray.x + 1; x <= spray.x; x++) {
-                // console.log({x: x, y: nowSpray.y, z: 1})
-                this.buildings.push(
-                  this.newConveyorNode({ x: x, y: nowSpray.y, z: 1 }, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-                );
-              }
-              nowSpray = spray;
-              doneNum++;
-            }
-          } else {
-            // x 轴负向
-            if (spray.x < nowSpray.x) {
-              for (let x = nowSpray.x - 1; x >= spray.x; x--) {
-                // console.log({x: x, y: nowSpray.y, z: 1})
-                this.buildings.push(
-                  this.newConveyorNode({ x: x, y: nowSpray.y, z: 1 }, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-                );
-              }
-              nowSpray = spray;
-              doneNum++;
-            }
-          }
-        }
-      }
-      if (doneNum === this.sprayCoaterOffsetList.length) {
-        break;
-      }
 
-      let findNext = false;
-      this.sprayCoaterOffsetList.reverse();
-      for (let delta = 2; !findNext; delta += 2) {
-        if (delta > nowSpray.y) {
-          cocoMessage.error("喷涂剂排线错误", 4000);
-          throw `generate sprayCoater error`;
-        }
-        for (let spray of this.sprayCoaterOffsetList) {
-          if (spray.y === nowSpray.y - delta) {
-            let lastNodeOffset = nowSpray;
-            if (direction === 1 && spray.x > nowSpray.x) {
-              for (let x = nowSpray.x + 1; x <= spray.x; x++) {
-                lastNodeOffset = { x: x, y: nowSpray.y, z: 1 };
-                // console.log(lastNodeOffset)
-                this.buildings.push(
-                  this.newConveyorNode(lastNodeOffset, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-                );
-              }
-            } else if (direction === -1 && spray.x < nowSpray.x) {
-              for (let x = nowSpray.x - 1; x >= spray.x; x--) {
-                lastNodeOffset = { x: x, y: nowSpray.y, z: 1 };
-                // console.log(lastNodeOffset)
-                this.buildings.push(
-                  this.newConveyorNode(lastNodeOffset, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-                );
-              }
-            }
-            lastNodeOffset = {
-              x: lastNodeOffset.x + direction,
-              y: lastNodeOffset.y,
-              z: 1,
-            };
-            this.buildings.push(
-              this.newConveyorNode(lastNodeOffset, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-            );
-            for (let i = 1; i <= delta; i++) {
-              lastNodeOffset = { x: lastNodeOffset.x, y: nowSpray.y - i, z: 1 };
-              this.buildings.push(
-                this.newConveyorNode(lastNodeOffset, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-              );
-            }
-            lastNodeOffset = { x: lastNodeOffset.x, y: lastNodeOffset.y, z: 1 };
-            if (direction === -1 && spray.x > lastNodeOffset.x + 1) {
-              for (let x = lastNodeOffset.x + 1; x < spray.x; x++) {
-                this.buildings.push(
-                  this.newConveyorNode(
-                    { x: x, y: lastNodeOffset.y, z: 1 },
-                    [0, 0],
-                    conveyor,
-                    this.buildingIndex + 2,
-                    1,
-                    null
-                  )
-                );
-              }
-            } else if (direction === 1 && spray.x < lastNodeOffset.x - 1) {
-              for (let x = lastNodeOffset.x - 1; x > spray.x; x--) {
-                this.buildings.push(
-                  this.newConveyorNode(
-                    { x: x, y: lastNodeOffset.y, z: 1 },
-                    [0, 0],
-                    conveyor,
-                    this.buildingIndex + 2,
-                    1,
-                    null
-                  )
-                );
-              }
-            }
-            this.buildings.push(
-              this.newConveyorNode({ x: spray.x, y: spray.y, z: 1 }, [0, 0], conveyor, this.buildingIndex + 2, 1, null)
-            );
-            doneNum++;
-            nowSpray = spray;
-            findNext = true;
-            break;
-          }
-        }
+    const sprayActionPlan = layoutFactory.buildSprayConveyorActionPlan(sprayExecutionPlan, proliferatorParameters);
+    for (const action of sprayActionPlan) {
+      if (action.type === "sprayCoater") {
+        this.buildings.push(this.newSprayCoater(action.offset, action.yaw));
+        continue;
       }
-      // console.log(`next spray ${nowSpray}`)
-
-      // console.log({x: nowSpray.x+direction, y: nowSpray.y, z: 1})
-      direction = -direction;
-      // break
+      const outputObjIdx = layoutFactory.resolveSprayNodeOutputObjIdx(action, this.buildingIndex);
+      this.buildings.push(
+        this.newConveyorNode(action.offset, action.yaw, conveyor, outputObjIdx, action.outputToSlot, action.parameters)
+      );
     }
-    this.buildings.push(
-      this.newConveyorNode({ x: nowSpray.x + direction, y: nowSpray.y, z: 1 }, [0, 0], conveyor, -1, -1, null)
-    );
   }
 
   toStr() {
