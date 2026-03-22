@@ -3,6 +3,7 @@ import globals from "globals";
 const legacyFiles = [
   "Scripts/data.state.js",
   "Scripts/data.js",
+  "Scripts/data.recipe-init.js",
   "Scripts/data.recipe.js",
   "Scripts/data.ui-bindings.js",
   "Scripts/data.storage.js",
@@ -120,6 +121,7 @@ export default [
     files: [
       "Scripts/data.state.js",
       "Scripts/data.storage.js",
+      "Scripts/data.recipe-init.js",
       "Scripts/data.recipe.js",
       "Scripts/data.blueprint.js",
       "Scripts/data.ui-bindings.js",

@@ -7,6 +7,7 @@ const REQUIRED_FILES = [
   "Scripts/data.state.js",
   "Scripts/data.storage.js",
   "Scripts/data.js",
+  "Scripts/data.recipe-init.js",
   "Scripts/data.recipe.js",
   "Scripts/data.blueprint.js",
   "Scripts/data.ui-bindings.js",
@@ -45,6 +46,7 @@ async function main() {
     !html.includes("Scripts/data.state.js") ||
     !html.includes("Scripts/data.storage.js") ||
     !html.includes("Scripts/data.js") ||
+    !html.includes("Scripts/data.recipe-init.js") ||
     !html.includes("Scripts/data.recipe.js") ||
     !html.includes("Scripts/data.blueprint.js") ||
     !html.includes("Scripts/data.ui-bindings.js") ||
@@ -59,6 +61,7 @@ async function main() {
 
   assertSyntax("Scripts/data.state.js");
   assertSyntax("Scripts/data.js");
+  assertSyntax("Scripts/data.recipe-init.js");
   assertSyntax("Scripts/data.recipe.js");
   assertSyntax("Scripts/data.blueprint.js");
   assertSyntax("Scripts/data.ui-bindings.js");
