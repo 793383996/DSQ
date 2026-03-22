@@ -7,6 +7,7 @@ const REQUIRED_FILES = [
   "Scripts/data.state.js",
   "Scripts/data.storage.js",
   "Scripts/data.js",
+  "Scripts/data.blueprint.js",
   "Scripts/data.ui-bindings.js",
   "Scripts/data.bootstrap.js",
   "Scripts/blueprint.constants.js",
