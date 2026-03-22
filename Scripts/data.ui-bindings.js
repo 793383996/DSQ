@@ -1156,18 +1156,31 @@ function f_save() {
 function f_add() {
   if (!isDataLoaded) {
     alert("游戏资源尚未加载完毕");
+    return;
   }
   var $uiSelector = $("#UIselector");
-  if ($uiSelector.hasClass("show")) {
-    $uiSelector.removeClass("show");
+  if ($uiSelector.is(":visible")) {
+    closeUISelector();
+  } else {
+    openUISelector();
+  }
+}
+function openUISelector() {
+  var $uiSelector = $("#UIselector");
+  $uiSelector.show();
+  setTimeout(function () {
+    $uiSelector.addClass("show");
+  }, 10);
+}
+function closeUISelector() {
+  var $uiSelector = $("#UIselector");
+  $uiSelector.removeClass("show");
+  if ($uiSelector.is(":visible")) {
     setTimeout(function () {
       $uiSelector.hide();
     }, 250);
   } else {
-    $uiSelector.show();
-    setTimeout(function () {
-      $uiSelector.addClass("show");
-    }, 10);
+    $uiSelector.hide();
   }
 }
 function actions(that) {
@@ -1249,19 +1262,16 @@ function f_initIcons() {
   app.icons = Object.freeze(icons);
   $(document).click(function (e) {
     if (!$(e.target).closest("#UIselector").length) {
-      $("#UIselector").hide();
+      closeUISelector();
     }
     if (!$(e.target).closest("#Split").length) {
       $("#Split").hide();
     }
   });
-  $("#UIselector")
-    .html(
-      '<div id="selector" class="selector" style="width: ' + w + "px; height: " + h + 'px"><div id="tabs"></div></div>'
-    )
-    .hide();
   var w = 900;
-  var h = 700;
+  $("#UIselector")
+    .html('<div id="selector" class="selector" style="width: ' + w + 'px; height: auto;"><div id="tabs"></div></div>')
+    .hide();
 
   var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png'/></div>").appendTo("#tabs");
   var jimg2 = $("<div class='tab'><img src='./img/factory-icon.png'/></div>").appendTo("#tabs");
@@ -1285,7 +1295,7 @@ function f_initIcons() {
   addIcons(jicons2, game_data.icons2);
 
   function addIcons(jicons, icons) {
-    jicons.width(w - 80).height(h - 150); //调整图形框架宽度/高度
+    jicons.width(w - 80).css("height", "auto"); // 自适应高度，避免写入固定高度
 
     for (var i = 0; i < 9; i++) {
       var jrow = $("<div class='iconrow'></div>").appendTo(jicons);
@@ -1295,11 +1305,7 @@ function f_initIcons() {
           var name = $(this).attr("data-name");
           if (!name) return;
           f_add3(name);
-          var $uiSelector = $("#UIselector");
-          $uiSelector.removeClass("show");
-          setTimeout(function () {
-            $uiSelector.hide();
-          }, 250);
+          closeUISelector();
         });
       }
     }

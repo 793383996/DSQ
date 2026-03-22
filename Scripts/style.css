@@ -223,6 +223,10 @@
             flex-direction: column;
             padding: 20px;
             display: none;
+            height: auto;
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .selector .icons-selected {
@@ -271,7 +275,6 @@
         .icons {
             background: rgba(226, 232, 240, 0.95);
             clear: both;
-            margin-top: 40px;
             margin-left: 20px;
             border-radius: 12px;
         }
