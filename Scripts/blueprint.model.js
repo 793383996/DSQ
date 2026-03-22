@@ -202,6 +202,17 @@
     };
   }
 
+  function createSupplementSorterOwnerRecord(index, rate, sourceSorter) {
+    return createSorterOwnerRecord(
+      index,
+      rate,
+      sourceSorter.ownerObjIdx,
+      sourceSorter.ownerName,
+      sourceSorter.ownerOffset,
+      sourceSorter.recipeID
+    );
+  }
+
   function createFoundationBuilding(template, foundationZ) {
     template.itemId = 1131;
     template.modelIndex = 37;
@@ -253,6 +264,7 @@
     createStackedLabBuilding,
     createSorter,
     createSorterOwnerRecord,
+    createSupplementSorterOwnerRecord,
     createFoundationBuilding,
     cloneBuildingForLayer,
   };

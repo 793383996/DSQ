@@ -937,17 +937,12 @@ class Blueprint {
           const sourceSorter = roundPlan.supplementPlan.sourceSorter;
           const newSorterRate = roundPlan.supplementPlan.newSorterRate;
           let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
-          sorterBucket.input.unshift(
-            modelFactory.createSorterOwnerRecord(
-              newSorter.index,
-              newSorterRate,
-              sourceSorter.ownerObjIdx,
-              sourceSorter.ownerName,
-              sourceSorter.ownerOffset,
-              sourceSorter.recipeID
-            )
+          const supplementRecord = modelFactory.createSupplementSorterOwnerRecord(
+            newSorter.index,
+            newSorterRate,
+            sourceSorter
           );
-          sorterBucket.input.pop();
+          layoutFactory.applySupplementSorterToInputBucket(sorterBucket.input, supplementRecord);
         }
 
         let direction = layoutFactory.getConveyorDirection(item.fromBuildingNum); // 终产物/中间产物为+1，原料为-1

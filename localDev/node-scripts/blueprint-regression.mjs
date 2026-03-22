@@ -281,6 +281,39 @@ function testClonePlanningHelpers(context) {
   assert.equal(plans[1].clones[1].inputObjIdx, 202, "clone-plan-helper: layer 2 linked clone index should map.");
 }
 
+function testSupplementSorterHelpers(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  const model = readBinding(context, "DSQBlueprintModel");
+  assert.ok(layout && model, "supplement-helper: layout/model factories should be loaded.");
+
+  const sourceSorter = {
+    ownerObjIdx: 501,
+    ownerName: "assemblingMachineMk1",
+    ownerOffset: { x: 12, y: 8, z: 0 },
+    recipeID: 6,
+  };
+  const record = model.createSupplementSorterOwnerRecord(700, 1.5, sourceSorter);
+  assert.equal(record.index, 700, "supplement-helper: record index should match supplement sorter index.");
+  assert.equal(record.rate, 1.5, "supplement-helper: record rate should match supplement sorter rate.");
+  assert.equal(record.ownerObjIdx, 501, "supplement-helper: ownerObjIdx should come from source sorter.");
+  assert.equal(
+    record.ownerName,
+    "assemblingMachineMk1",
+    "supplement-helper: ownerName should come from source sorter."
+  );
+  assert.equal(record.recipeID, 6, "supplement-helper: recipeID should come from source sorter.");
+
+  const inputSorters = [{ index: 1 }, { index: 2 }, { index: 3 }];
+  layout.applySupplementSorterToInputBucket(inputSorters, record);
+  assert.equal(inputSorters.length, 3, "supplement-helper: bucket length should stay unchanged after apply.");
+  assert.equal(
+    inputSorters[0].index,
+    700,
+    "supplement-helper: new supplement record should be inserted at bucket head."
+  );
+  assert.equal(inputSorters[2].index, 2, "supplement-helper: oldest tail entry should be popped.");
+}
+
 async function testFacadeLockReleaseOnWorkerCtorFailure() {
   const context = createBrowserLikeContext();
   context.Worker = class WorkerCtorFail {
@@ -344,6 +377,7 @@ async function main() {
   testSprayAndStackFlow(runtimeContext);
   testRefineryMultiOutputFlow(runtimeContext);
   testClonePlanningHelpers(runtimeContext);
+  testSupplementSorterHelpers(runtimeContext);
 
   await testFacadeLockReleaseOnWorkerCtorFailure();
   await testFacadeLockReleaseOnPostMessageFailure();

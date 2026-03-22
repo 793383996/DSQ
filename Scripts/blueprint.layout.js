@@ -1048,6 +1048,16 @@
     };
   }
 
+  function applySupplementSorterToInputBucket(inputSorters, newSorterRecord) {
+    if (!Array.isArray(inputSorters) || !newSorterRecord) {
+      return;
+    }
+    inputSorters.unshift(newSorterRecord);
+    if (inputSorters.length > 0) {
+      inputSorters.pop();
+    }
+  }
+
   function planConveyorRound(
     itemName,
     item,
@@ -1210,6 +1220,7 @@
     applyRawInputRound,
     consumeOutputInputSortersForRound,
     createFinalProductOutputRound,
+    applySupplementSorterToInputBucket,
     planConveyorRound,
     sortItemSummary,
   };
