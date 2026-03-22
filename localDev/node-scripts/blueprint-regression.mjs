@@ -314,6 +314,44 @@ function testSupplementSorterHelpers(context) {
   assert.equal(inputSorters[2].index, 2, "supplement-helper: oldest tail entry should be popped.");
 }
 
+function testSelfSprayLayoutHelpers(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  const constants = readBinding(context, "DSQBlueprintConstants");
+  assert.ok(layout && constants, "self-spray-helper: layout/constants should be loaded.");
+
+  const productionCategory = constants.productionCategory;
+  const firstSprayOffset = { x: 10, y: 8, z: 0 };
+  const startOffset = JSON.parse(
+    JSON.stringify(layout.calculateSelfSprayStartOffset(firstSprayOffset, productionCategory.lab, productionCategory))
+  );
+  assert.deepEqual(
+    startOffset,
+    { x: 10, y: 10, z: 0 },
+    "self-spray-helper: lab should shift self-spray start offset by +2 on y-axis."
+  );
+
+  const plan = layout.buildSelfSprayStructurePlan(4, startOffset, firstSprayOffset);
+  const sprayCoaterOffset = JSON.parse(JSON.stringify(plan.sprayCoaterOffset));
+  assert.deepEqual(
+    sprayCoaterOffset,
+    { x: 3, y: 14, z: 0 },
+    "self-spray-helper: spray coater offset should match expected anchor position."
+  );
+
+  const nodeOffsets = Array.from(plan.conveyorNodeOffsets, offset => JSON.parse(JSON.stringify(offset)));
+  assert.equal(nodeOffsets.length, 28, "self-spray-helper: structure plan should include core + bridge nodes.");
+  assert.deepEqual(
+    nodeOffsets[0],
+    { x: 3, y: 16, z: 0 },
+    "self-spray-helper: first conveyor node should be the proliferator input node."
+  );
+  assert.deepEqual(
+    nodeOffsets[nodeOffsets.length - 1],
+    { x: 9, y: 9, z: 1 },
+    "self-spray-helper: final bridge node should match expected vertical link endpoint."
+  );
+}
+
 async function testFacadeLockReleaseOnWorkerCtorFailure() {
   const context = createBrowserLikeContext();
   context.Worker = class WorkerCtorFail {
@@ -378,6 +416,7 @@ async function main() {
   testRefineryMultiOutputFlow(runtimeContext);
   testClonePlanningHelpers(runtimeContext);
   testSupplementSorterHelpers(runtimeContext);
+  testSelfSprayLayoutHelpers(runtimeContext);
 
   await testFacadeLockReleaseOnWorkerCtorFailure();
   await testFacadeLockReleaseOnPostMessageFailure();

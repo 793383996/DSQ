@@ -644,6 +644,93 @@
     return firstSprayOffset;
   }
 
+  function calculateSelfSprayStartOffset(firstSprayOffset, lastProductionBuildingType, productionCategory) {
+    const selfSprayConveyorStartOffset = {
+      x: firstSprayOffset.x,
+      y: firstSprayOffset.y,
+      z: firstSprayOffset.z,
+    };
+    switch (lastProductionBuildingType) {
+      case productionCategory.lab:
+      case productionCategory.collider:
+        selfSprayConveyorStartOffset.y += 2;
+        break;
+      case productionCategory.plant:
+        selfSprayConveyorStartOffset.y += 1;
+        break;
+      default:
+        break;
+    }
+    return selfSprayConveyorStartOffset;
+  }
+
+  function buildSelfSprayCoreNodeOffsets(conveyorStartOffsetX, selfSprayConveyorStartOffset) {
+    const y = selfSprayConveyorStartOffset.y;
+    return [
+      { x: conveyorStartOffsetX - 1, y: y + 6, z: 0 },
+      { x: conveyorStartOffsetX - 1, y: y + 5, z: 0 },
+      { x: conveyorStartOffsetX - 1, y: y + 4, z: 0 },
+      { x: conveyorStartOffsetX - 1, y: y + 3, z: 0 },
+      { x: conveyorStartOffsetX - 1, y: y + 2, z: 0 },
+      { x: conveyorStartOffsetX - 2, y: y + 2, z: 0 },
+      { x: conveyorStartOffsetX - 2, y: y + 3, z: 0 },
+      { x: conveyorStartOffsetX - 2, y: y + 4, z: 0.5 },
+      { x: conveyorStartOffsetX - 2, y: y + 5, z: 1 },
+      { x: conveyorStartOffsetX - 2, y: y + 6, z: 1 },
+      { x: conveyorStartOffsetX - 1, y: y + 6, z: 1 },
+      { x: conveyorStartOffsetX, y: y + 6, z: 1 },
+      { x: conveyorStartOffsetX, y: y + 5, z: 1 },
+      { x: conveyorStartOffsetX, y: y + 4, z: 1 },
+      { x: conveyorStartOffsetX, y: y + 3, z: 1 },
+      { x: conveyorStartOffsetX - 1, y: y + 3, z: 1 },
+      { x: conveyorStartOffsetX - 2, y: y + 3, z: 1 },
+      { x: conveyorStartOffsetX - 2, y: y + 2, z: 1 },
+      { x: conveyorStartOffsetX - 2, y: y + 1, z: 1 },
+      { x: conveyorStartOffsetX - 1, y: y + 1, z: 1 },
+    ];
+  }
+
+  function buildSelfSprayHorizontalBridgeOffsets(conveyorStartOffsetX, selfSprayConveyorStartOffset) {
+    const offsets = [];
+    for (let i = 0; i < selfSprayConveyorStartOffset.x - conveyorStartOffsetX; i++) {
+      offsets.push({
+        x: conveyorStartOffsetX + i,
+        y: selfSprayConveyorStartOffset.y + 1,
+        z: 1,
+      });
+    }
+    return offsets;
+  }
+
+  function buildSelfSprayVerticalBridgeOffsets(selfSprayConveyorStartOffset, firstSprayOffset) {
+    const offsets = [];
+    for (let i = 0; i < selfSprayConveyorStartOffset.y - firstSprayOffset.y; i++) {
+      offsets.push({
+        x: selfSprayConveyorStartOffset.x - 1,
+        y: selfSprayConveyorStartOffset.y - i,
+        z: 1,
+      });
+    }
+    return offsets;
+  }
+
+  function buildSelfSprayStructurePlan(conveyorStartOffsetX, selfSprayConveyorStartOffset, firstSprayOffset) {
+    const sprayCoaterOffset = {
+      x: conveyorStartOffsetX - 1,
+      y: selfSprayConveyorStartOffset.y + 4,
+      z: 0,
+    };
+    const conveyorNodeOffsets = [
+      ...buildSelfSprayCoreNodeOffsets(conveyorStartOffsetX, selfSprayConveyorStartOffset),
+      ...buildSelfSprayHorizontalBridgeOffsets(conveyorStartOffsetX, selfSprayConveyorStartOffset),
+      ...buildSelfSprayVerticalBridgeOffsets(selfSprayConveyorStartOffset, firstSprayOffset),
+    ];
+    return {
+      sprayCoaterOffset,
+      conveyorNodeOffsets,
+    };
+  }
+
   function reorderPriorityInputSorters(itemName, inputSorters) {
     if (!["hydrogen", "refinedOil"].includes(itemName)) {
       return inputSorters;
@@ -1194,6 +1281,8 @@
     getConveyorDirection,
     selectSprayCoaterConveyor,
     findFirstSprayOffset,
+    calculateSelfSprayStartOffset,
+    buildSelfSprayStructurePlan,
     reorderPriorityInputSorters,
     calculateColumnLoad,
     shouldCreateSupplementSorter,
