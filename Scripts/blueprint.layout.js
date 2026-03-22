@@ -1166,6 +1166,33 @@
     return layerPlans;
   }
 
+  function flattenCloneLayerPlans(cloneLayerPlans) {
+    const clonePlans = [];
+    for (const layerPlan of cloneLayerPlans) {
+      for (const clonePlan of layerPlan.clones) {
+        clonePlans.push(clonePlan);
+      }
+    }
+    return clonePlans;
+  }
+
+  function buildCloneStackExecutionPlan(baseBuildings, buildingMap, stackLayers, zStep, firstCloneIndex) {
+    const foundationStartIndex = baseBuildings.length + 1;
+    const foundationZOffsets = createFoundationZOffsets(stackLayers, zStep);
+    const cloneableBuildings = collectCloneableBuildings(baseBuildings, buildingMap);
+    const cloneLayerPlans = planCloneLayers(
+      cloneableBuildings,
+      stackLayers,
+      zStep,
+      foundationStartIndex,
+      firstCloneIndex
+    );
+    return {
+      foundationZOffsets,
+      clonePlans: flattenCloneLayerPlans(cloneLayerPlans),
+    };
+  }
+
   function createBeltIndexSet(buildings, beltItemIds) {
     const beltIndexes = new Set();
     for (const b of buildings) {
@@ -1577,6 +1604,7 @@
     resolveClonedInputObjIdx,
     createFoundationZOffsets,
     planCloneLayers,
+    buildCloneStackExecutionPlan,
     validateBeltLoad,
     buildConveyorItemSummary,
     getConveyorIterationAbortReason,

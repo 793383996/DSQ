@@ -776,41 +776,30 @@ class Blueprint {
 
     // --- 1. 记录z=0层的全部建筑 ---
     const baseBuildings = this.buildings.slice();
-    const baseCount = baseBuildings.length;
+    const cloneExecutionPlan = layoutFactory.buildCloneStackExecutionPlan(
+      baseBuildings,
+      buildingMap,
+      stackLayers,
+      zStep,
+      this.buildingIndex + stackLayers + 1
+    );
 
     // --- 2. 生成地基（每层独立地基）---
-    // 每层设备都需要连接到该层对应的地基
-    // 注意：地基在 baseBuildings 之后生成，所以第一个地基的 index = baseCount + 1
-    // 后续地基按顺序递增：baseCount+1, baseCount+2, baseCount+3, baseCount+4
-    const foundationStartIndex = baseCount + 1;
-    const foundationZOffsets = layoutFactory.createFoundationZOffsets(stackLayers, zStep);
-    for (const foundationZ of foundationZOffsets) {
+    for (const foundationZ of cloneExecutionPlan.foundationZOffsets) {
       const foundationBuilding = modelFactory.createFoundationBuilding(this.getBuildingTemplate(), foundationZ);
       this.buildings.push(foundationBuilding);
     }
 
-    // --- 3. 识别需跳过的建筑类型 ---
-    const cloneableBuildings = layoutFactory.collectCloneableBuildings(baseBuildings, buildingMap);
-
     // --- 4. 逐层克隆 ---
-    const cloneLayerPlans = layoutFactory.planCloneLayers(
-      cloneableBuildings,
-      stackLayers,
-      zStep,
-      foundationStartIndex,
-      this.buildingIndex + 1
-    );
-    for (const layerPlan of cloneLayerPlans) {
-      for (const clonePlan of layerPlan.clones) {
-        const clone = modelFactory.cloneBuildingForLayer(
-          this.getBuildingTemplate(),
-          clonePlan.base,
-          clonePlan.zOffset,
-          clonePlan.outputObjIdx,
-          clonePlan.inputObjIdx
-        );
-        this.buildings.push(clone);
-      }
+    for (const clonePlan of cloneExecutionPlan.clonePlans) {
+      const clone = modelFactory.cloneBuildingForLayer(
+        this.getBuildingTemplate(),
+        clonePlan.base,
+        clonePlan.zOffset,
+        clonePlan.outputObjIdx,
+        clonePlan.inputObjIdx
+      );
+      this.buildings.push(clone);
     }
 
     // 修复：添加克隆后验证机制，检查传送带节点负载

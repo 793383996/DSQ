@@ -252,7 +252,9 @@ function testRefineryMultiOutputFlow(context) {
 
 function testClonePlanningHelpers(context) {
   const layout = readBinding(context, "DSQBlueprintLayout");
+  const constants = readBinding(context, "DSQBlueprintConstants");
   assert.ok(layout, "clone-plan-helper: DSQBlueprintLayout should be loaded.");
+  assert.ok(constants && constants.buildingMap, "clone-plan-helper: blueprint constants should be loaded.");
 
   const foundationOffsets = Array.from(layout.createFoundationZOffsets(4, 10));
   assert.deepEqual(
@@ -279,6 +281,42 @@ function testClonePlanningHelpers(context) {
   assert.equal(plans[0].clones[1].inputObjIdx, 200, "clone-plan-helper: layer 1 linked clone index should map.");
   assert.equal(plans[1].clones[0].inputObjIdx, 102, "clone-plan-helper: layer 2 foundation index should be mapped.");
   assert.equal(plans[1].clones[1].inputObjIdx, 202, "clone-plan-helper: layer 2 linked clone index should map.");
+
+  const baseBuildings = [
+    {
+      index: 1,
+      itemId: constants.buildingMap.assemblingMachineMk1.itemId,
+      inputObjIdx: -1,
+      outputObjIdx: -1,
+    },
+    {
+      index: 2,
+      itemId: constants.buildingMap.assemblingMachineMk1.itemId,
+      inputObjIdx: 1,
+      outputObjIdx: -1,
+    },
+  ];
+  const executionPlan = layout.buildCloneStackExecutionPlan(baseBuildings, constants.buildingMap, 3, 10, 300);
+  assert.deepEqual(
+    Array.from(executionPlan.foundationZOffsets),
+    [-10, 0, 10],
+    "clone-plan-helper: clone execution plan should provide foundation z offsets."
+  );
+  assert.equal(
+    executionPlan.clonePlans.length,
+    4,
+    "clone-plan-helper: clone execution plan should flatten layer clones."
+  );
+  assert.equal(
+    executionPlan.clonePlans[0].inputObjIdx,
+    4,
+    "clone-plan-helper: layer 1 first clone should map to the expected foundation index."
+  );
+  assert.equal(
+    executionPlan.clonePlans[1].inputObjIdx,
+    300,
+    "clone-plan-helper: layer 1 second clone should map linked input index to firstCloneIndex."
+  );
 }
 
 function testBeltLoadValidationHelper(context) {
