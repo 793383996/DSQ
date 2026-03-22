@@ -913,86 +913,53 @@ class Blueprint {
       );
 
       for (let totalDoneRate = 0; item.rate - totalDoneRate > zero; ) {
-        const roundState = layoutFactory.createConveyorRoundState(item, totalDoneRate, maxTransportSpeed);
-        let needSprayCoater = roundState.needSprayCoater;
-        let doneRate = roundState.doneRate;
-        let parameters = roundState.parameters;
-        let inputRate = roundState.inputRate;
-        let inputData = roundState.inputData;
-        let outputData = roundState.outputData;
         const sorterBucket = this.sorters[itemName];
-        const abortReason = layoutFactory.getConveyorIterationAbortReason(item, sorterBucket);
-        if (abortReason === "missing_sorters") {
+        const roundPlan = layoutFactory.planConveyorRound(
+          itemName,
+          item,
+          totalDoneRate,
+          maxTransportSpeed,
+          sorterBucket,
+          stackLayers,
+          sortersPerNode,
+          zero,
+          itemMap
+        );
+        if (roundPlan.abortReason === "missing_sorters") {
           console.warn(`[蓝图警告] 物品 ${itemName} 没有对应的分拣器数据`);
           break;
         }
-        if (abortReason) {
+        if (roundPlan.abortReason) {
           break;
         }
-        if (item.fromBuildingNum !== 0) {
-          const sourceResult = layoutFactory.consumeSourceOutputSorters(
-            sorterBucket.output,
-            inputRate,
-            zero,
-            sortersPerNode
+        totalDoneRate = roundPlan.nextTotalDoneRate;
+        if (roundPlan.supplementPlan) {
+          const sourceSorter = roundPlan.supplementPlan.sourceSorter;
+          const newSorterRate = roundPlan.supplementPlan.newSorterRate;
+          let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
+          sorterBucket.input.unshift(
+            modelFactory.createSorterOwnerRecord(
+              newSorter.index,
+              newSorterRate,
+              sourceSorter.ownerObjIdx,
+              sourceSorter.ownerName,
+              sourceSorter.ownerOffset,
+              sourceSorter.recipeID
+            )
           );
-          inputData = sourceResult.inputData;
-          inputRate = sourceResult.remainingInputRate;
-          doneRate = sourceResult.doneRate;
-        } else {
-          // 说明是原料
-          const rawInputResult = layoutFactory.applyRawInputRound(itemName, inputRate, itemMap);
-          inputData = rawInputResult.inputData;
-          parameters = rawInputResult.parameters;
-          doneRate = rawInputResult.doneRate;
-          // inputRate = 0
-        }
-        totalDoneRate += doneRate;
-        let outputRate = doneRate; // 当前传送带实际运力
-        // 重新排序以提高输出传送带中，X射线裂解(氢)和重整精炼(精炼油)的输入优先级
-        if (["hydrogen", "refinedOil"].includes(itemName) && item.toBuildingNum !== 0) {
-          sorterBucket.input = layoutFactory.reorderPriorityInputSorters(itemName, sorterBucket.input);
-        }
-        if (item.toBuildingNum !== 0) {
-          const outputResult = layoutFactory.consumeOutputInputSortersForRound(
-            sorterBucket.input,
-            item.fromBuildingNum,
-            item.rate,
-            totalDoneRate,
-            outputRate,
-            stackLayers,
-            zero,
-            sortersPerNode
-          );
-          outputData = outputResult.outputData;
-          outputRate = outputResult.outputRate;
-          if (outputResult.supplementPlan) {
-            const sourceSorter = outputResult.supplementPlan.sourceSorter;
-            const newSorterRate = outputResult.supplementPlan.newSorterRate;
-            let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
-            sorterBucket.input.unshift(
-              modelFactory.createSorterOwnerRecord(
-                newSorter.index,
-                newSorterRate,
-                sourceSorter.ownerObjIdx,
-                sourceSorter.ownerName,
-                sourceSorter.ownerOffset,
-                sourceSorter.recipeID
-              )
-            );
-            sorterBucket.input.pop();
-          }
-        } else {
-          // 说明是终产物
-          const finalOutput = layoutFactory.createFinalProductOutputRound(itemName, outputRate, itemMap);
-          outputData = finalOutput.outputData;
-          parameters = finalOutput.parameters;
-          needSprayCoater = finalOutput.needSprayCoater;
+          sorterBucket.input.pop();
         }
 
         let direction = layoutFactory.getConveyorDirection(item.fromBuildingNum); // 终产物/中间产物为+1，原料为-1
         // console.log(itemName, inputData, outputData, direction)
-        this.newConveyor(conveyorBelt, direction, inputData, outputData, parameters, needSprayCoater);
+        this.newConveyor(
+          conveyorBelt,
+          direction,
+          roundPlan.inputData,
+          roundPlan.outputData,
+          roundPlan.parameters,
+          roundPlan.needSprayCoater
+        );
       }
     }
   }

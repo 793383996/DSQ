@@ -1048,6 +1048,90 @@
     };
   }
 
+  function planConveyorRound(
+    itemName,
+    item,
+    totalDoneRate,
+    maxTransportSpeed,
+    sorterBucket,
+    stackLayers,
+    sortersPerNode,
+    zero,
+    itemMap
+  ) {
+    const abortReason = getConveyorIterationAbortReason(item, sorterBucket);
+    if (abortReason) {
+      return { abortReason };
+    }
+
+    const roundState = createConveyorRoundState(item, totalDoneRate, maxTransportSpeed);
+    let needSprayCoater = roundState.needSprayCoater;
+    let doneRate = roundState.doneRate;
+    let parameters = roundState.parameters;
+    let inputRate = roundState.inputRate;
+    let inputData = roundState.inputData;
+    let outputData = roundState.outputData;
+
+    if (item.fromBuildingNum !== 0) {
+      const sourceResult = consumeSourceOutputSorters(sorterBucket.output, inputRate, zero, sortersPerNode);
+      inputData = sourceResult.inputData;
+      inputRate = sourceResult.remainingInputRate;
+      doneRate = sourceResult.doneRate;
+    } else {
+      const rawInputResult = applyRawInputRound(itemName, inputRate, itemMap);
+      inputData = rawInputResult.inputData;
+      parameters = rawInputResult.parameters;
+      doneRate = rawInputResult.doneRate;
+    }
+
+    const nextTotalDoneRate = totalDoneRate + doneRate;
+    let outputRate = doneRate;
+    if (["hydrogen", "refinedOil"].includes(itemName) && item.toBuildingNum !== 0) {
+      sorterBucket.input = reorderPriorityInputSorters(itemName, sorterBucket.input);
+    }
+
+    if (item.toBuildingNum !== 0) {
+      const outputResult = consumeOutputInputSortersForRound(
+        sorterBucket.input,
+        item.fromBuildingNum,
+        item.rate,
+        nextTotalDoneRate,
+        outputRate,
+        stackLayers,
+        zero,
+        sortersPerNode
+      );
+      outputData = outputResult.outputData;
+      outputRate = outputResult.outputRate;
+      return {
+        abortReason: null,
+        inputData,
+        outputData,
+        parameters,
+        needSprayCoater,
+        nextTotalDoneRate,
+        outputRate,
+        supplementPlan: outputResult.supplementPlan,
+      };
+    }
+
+    const finalOutput = createFinalProductOutputRound(itemName, outputRate, itemMap);
+    outputData = finalOutput.outputData;
+    parameters = finalOutput.parameters;
+    needSprayCoater = finalOutput.needSprayCoater;
+
+    return {
+      abortReason: null,
+      inputData,
+      outputData,
+      parameters,
+      needSprayCoater,
+      nextTotalDoneRate,
+      outputRate,
+      supplementPlan: null,
+    };
+  }
+
   function sortItemSummary(itemSummary) {
     const newSummary = {};
     const proliferator = ["proliferatorMk3", "proliferatorMk2", "proliferatorMk1"];
@@ -1126,6 +1210,7 @@
     applyRawInputRound,
     consumeOutputInputSortersForRound,
     createFinalProductOutputRound,
+    planConveyorRound,
     sortItemSummary,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

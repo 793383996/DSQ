@@ -250,6 +250,37 @@ function testRefineryMultiOutputFlow(context) {
   );
 }
 
+function testClonePlanningHelpers(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  assert.ok(layout, "clone-plan-helper: DSQBlueprintLayout should be loaded.");
+
+  const foundationOffsets = Array.from(layout.createFoundationZOffsets(4, 10));
+  assert.deepEqual(
+    foundationOffsets,
+    [-10, 0, 10, 20],
+    "clone-plan-helper: foundation z offsets should follow expected pattern."
+  );
+
+  const emptyPlans = layout.planCloneLayers([], 4, 10, 101, 201);
+  assert.equal(emptyPlans.length, 3, "clone-plan-helper: empty clone source should still create layer plans.");
+  assert.ok(
+    emptyPlans.every(plan => Array.isArray(plan.clones) && plan.clones.length === 0),
+    "clone-plan-helper: empty clone source should produce empty clone lists."
+  );
+
+  const cloneableBuildings = [
+    { index: 11, inputObjIdx: -1, outputObjIdx: 31 },
+    { index: 12, inputObjIdx: 11, outputObjIdx: 999 },
+  ];
+  const plans = layout.planCloneLayers(cloneableBuildings, 3, 10, 100, 200);
+
+  assert.equal(plans.length, 2, "clone-plan-helper: stackLayers=3 should create 2 clone layer plans.");
+  assert.equal(plans[0].clones[0].inputObjIdx, 101, "clone-plan-helper: layer 1 foundation index should be mapped.");
+  assert.equal(plans[0].clones[1].inputObjIdx, 200, "clone-plan-helper: layer 1 linked clone index should map.");
+  assert.equal(plans[1].clones[0].inputObjIdx, 102, "clone-plan-helper: layer 2 foundation index should be mapped.");
+  assert.equal(plans[1].clones[1].inputObjIdx, 202, "clone-plan-helper: layer 2 linked clone index should map.");
+}
+
 async function testFacadeLockReleaseOnWorkerCtorFailure() {
   const context = createBrowserLikeContext();
   context.Worker = class WorkerCtorFail {
@@ -312,6 +343,7 @@ async function main() {
   testBasicAssemblerFlow(runtimeContext);
   testSprayAndStackFlow(runtimeContext);
   testRefineryMultiOutputFlow(runtimeContext);
+  testClonePlanningHelpers(runtimeContext);
 
   await testFacadeLockReleaseOnWorkerCtorFailure();
   await testFacadeLockReleaseOnPostMessageFailure();
