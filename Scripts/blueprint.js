@@ -783,84 +783,31 @@ class Blueprint {
     // 注意：地基在 baseBuildings 之后生成，所以第一个地基的 index = baseCount + 1
     // 后续地基按顺序递增：baseCount+1, baseCount+2, baseCount+3, baseCount+4
     const foundationStartIndex = baseCount + 1;
-    for (let layer = 0; layer < stackLayers; layer++) {
-      const foundationZ = (layer - 1) * zStep; // z=-10, 0, 10, 20
+    const foundationZOffsets = layoutFactory.createFoundationZOffsets(stackLayers, zStep);
+    for (const foundationZ of foundationZOffsets) {
       const foundationBuilding = modelFactory.createFoundationBuilding(this.getBuildingTemplate(), foundationZ);
       this.buildings.push(foundationBuilding);
     }
 
     // --- 3. 识别需跳过的建筑类型 ---
-    const labItemIds = new Set([buildingMap.lab.itemId, buildingMap["自演化研究站"].itemId]);
-    const beltItemIds = new Set([2001, 2002, 2003]);
-    const sprayCoaterItemId = buildingMap.sprayCoater.itemId;
-    const teslaTowerItemId = 2201; // 电力感应塔
-
-    const labIndices = new Set();
-    for (const b of baseBuildings) {
-      if (labItemIds.has(b.itemId)) {
-        labIndices.add(b.index);
-      }
-    }
-
-    // 过滤出需要克隆的建筑（排除Lab、传送带、喷涂机、电力感应塔）
-    // 电力感应塔只保留z=0层，克隆层不需要（z=0层的电杆可以为所有层供电）
-    const cloneableBuildings = baseBuildings.filter(b => {
-      if (labItemIds.has(b.itemId)) return false;
-      if (labIndices.has(b.inputObjIdx) || labIndices.has(b.outputObjIdx)) return false;
-      if (beltItemIds.has(b.itemId)) return false;
-      if (b.itemId === sprayCoaterItemId) return false;
-      if (b.itemId === teslaTowerItemId) return false;
-      return true;
-    });
+    const cloneableBuildings = layoutFactory.collectCloneableBuildings(baseBuildings, buildingMap);
 
     // --- 4. 逐层克隆 ---
-    for (let layer = 1; layer < stackLayers; layer++) {
-      const zOffset = layer * zStep;
-
-      // 预分配index映射表
-      const indexMap = new Map();
-      let nextIndex = this.buildingIndex + 1;
-      for (const base of cloneableBuildings) {
-        indexMap.set(base.index, nextIndex);
-        nextIndex++;
-      }
-
-      // 创建克隆体
-      for (const base of cloneableBuildings) {
-        // index引用重映射
-        // outputObjIdx：所有克隆体的outputObjIdx指向z=0的传送带（不通过indexMap）
-        //           这样4层都连接到同一套传送带网络
-        // inputObjIdx：设备的inputObjIdx需要指向该层对应的地基
-        let outputObjIdx;
-        if (indexMap.has(base.outputObjIdx)) {
-          outputObjIdx = indexMap.get(base.outputObjIdx);
-        } else {
-          outputObjIdx = base.outputObjIdx;
-        }
-
-        // 设备（生产建筑）的inputObjIdx指向该层对应的地基
-        // 分拣器的inputObjIdx保持指向同层设备
-        let inputObjIdx;
-        if (base.inputObjIdx === -1) {
-          // 如果base设备没有连接地基（inputObjIdx = -1），则指向该层对应的地基
-          // 地基索引计算：foundationStartIndex + layer
-          // layer=1 → z=10 设备 → z=0 地基 (foundationStartIndex + 1)
-          // layer=2 → z=20 设备 → z=10 地基 (foundationStartIndex + 2)
-          // layer=3 → z=30 设备 → z=20 地基 (foundationStartIndex + 3)
-          inputObjIdx = foundationStartIndex + layer;
-        } else if (indexMap.has(base.inputObjIdx)) {
-          // 分拣器等指向同层克隆设备
-          inputObjIdx = indexMap.get(base.inputObjIdx);
-        } else {
-          inputObjIdx = base.inputObjIdx;
-        }
-
+    const cloneLayerPlans = layoutFactory.planCloneLayers(
+      cloneableBuildings,
+      stackLayers,
+      zStep,
+      foundationStartIndex,
+      this.buildingIndex + 1
+    );
+    for (const layerPlan of cloneLayerPlans) {
+      for (const clonePlan of layerPlan.clones) {
         const clone = modelFactory.cloneBuildingForLayer(
           this.getBuildingTemplate(),
-          base,
-          zOffset,
-          outputObjIdx,
-          inputObjIdx
+          clonePlan.base,
+          clonePlan.zOffset,
+          clonePlan.outputObjIdx,
+          clonePlan.inputObjIdx
         );
         this.buildings.push(clone);
       }
@@ -871,7 +818,6 @@ class Blueprint {
   }
 
   validateBeltLoad() {
-    const beltItemIds = new Set([2001, 2002, 2003]);
     const beltLoad = new Map();
 
     for (const b of this.buildings) {

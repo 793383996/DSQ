@@ -766,6 +766,93 @@
     return subRecipe.building.num;
   }
 
+  function collectCloneableBuildings(baseBuildings, buildingMap) {
+    const labItemIds = new Set([buildingMap.lab.itemId, buildingMap["自演化研究站"].itemId]);
+    const beltItemIds = new Set([2001, 2002, 2003]);
+    const sprayCoaterItemId = buildingMap.sprayCoater.itemId;
+    const teslaTowerItemId = 2201; // 电力感应塔
+
+    const labIndices = new Set();
+    for (const b of baseBuildings) {
+      if (labItemIds.has(b.itemId)) {
+        labIndices.add(b.index);
+      }
+    }
+
+    // 过滤出需要克隆的建筑（排除Lab、传送带、喷涂机、电力感应塔）
+    // 电力感应塔只保留z=0层，克隆层不需要（z=0层的电杆可以为所有层供电）
+    return baseBuildings.filter(b => {
+      if (labItemIds.has(b.itemId)) return false;
+      if (labIndices.has(b.inputObjIdx) || labIndices.has(b.outputObjIdx)) return false;
+      if (beltItemIds.has(b.itemId)) return false;
+      if (b.itemId === sprayCoaterItemId) return false;
+      if (b.itemId === teslaTowerItemId) return false;
+      return true;
+    });
+  }
+
+  function createCloneLayerIndexMap(cloneableBuildings, nextIndexStart) {
+    const indexMap = new Map();
+    let nextIndex = nextIndexStart;
+    for (const base of cloneableBuildings) {
+      indexMap.set(base.index, nextIndex);
+      nextIndex++;
+    }
+    return indexMap;
+  }
+
+  function resolveClonedOutputObjIdx(baseOutputObjIdx, indexMap) {
+    if (indexMap.has(baseOutputObjIdx)) {
+      return indexMap.get(baseOutputObjIdx);
+    }
+    return baseOutputObjIdx;
+  }
+
+  function resolveClonedInputObjIdx(baseInputObjIdx, indexMap, foundationStartIndex, layer) {
+    if (baseInputObjIdx === -1) {
+      return foundationStartIndex + layer;
+    }
+    if (indexMap.has(baseInputObjIdx)) {
+      return indexMap.get(baseInputObjIdx);
+    }
+    return baseInputObjIdx;
+  }
+
+  function createFoundationZOffsets(stackLayers, zStep) {
+    const offsets = [];
+    for (let layer = 0; layer < stackLayers; layer++) {
+      offsets.push((layer - 1) * zStep);
+    }
+    return offsets;
+  }
+
+  function planCloneLayers(cloneableBuildings, stackLayers, zStep, foundationStartIndex, firstCloneIndex) {
+    const layerPlans = [];
+    let nextIndexStart = firstCloneIndex;
+
+    for (let layer = 1; layer < stackLayers; layer++) {
+      const indexMap = createCloneLayerIndexMap(cloneableBuildings, nextIndexStart);
+      const clones = [];
+
+      for (const base of cloneableBuildings) {
+        clones.push({
+          base,
+          zOffset: layer * zStep,
+          outputObjIdx: resolveClonedOutputObjIdx(base.outputObjIdx, indexMap),
+          inputObjIdx: resolveClonedInputObjIdx(base.inputObjIdx, indexMap, foundationStartIndex, layer),
+        });
+      }
+
+      layerPlans.push({
+        layer,
+        clones,
+      });
+      nextIndexStart += cloneableBuildings.length;
+    }
+
+    return layerPlans;
+  }
+
   function buildConveyorItemSummary(
     subRecipes,
     recipeProliferator,
@@ -1025,6 +1112,12 @@
     collectBuildingGroupIndexes,
     calculateRecipeExtraRate,
     calculateRecipeBuildingCount,
+    collectCloneableBuildings,
+    createCloneLayerIndexMap,
+    resolveClonedOutputObjIdx,
+    resolveClonedInputObjIdx,
+    createFoundationZOffsets,
+    planCloneLayers,
     buildConveyorItemSummary,
     getConveyorIterationAbortReason,
     shouldConnectSourceSorter,
