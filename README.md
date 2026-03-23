@@ -130,6 +130,6 @@ DSQ/
 
 ## 社区与协作
 
-- 常见问题：<https://github.com/122474363/DSQ/wiki>
-- 问题反馈与任务：<https://github.com/122474363/DSQ/issues>
-- 讨论群：<http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=UzzPv3ic7Fk9EDCyHo_4gkWQLR3WEA9Y&authKey=ysjOY0JQOSpT2ZCLkttSzI73sXyzu%2FXEqJXMmY2O645LpO6GOD5lRBrjdalqpO5k&noverify=0&group_code=53309723>
+- 常见问题：<https://github.com/793383996/DSQ/wiki>
+- 问题反馈与任务：<https://github.com/793383996/DSQ/issues>
+
