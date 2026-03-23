@@ -470,6 +470,20 @@ function generateBlueprint() {
 
   // 现代状态管理：显示全局 Loading 状态，防范重入互调
   showLoadingDialog();
+  const tracker = typeof window !== "undefined" ? window.PerformanceTracker : null;
+  const metricName = tracker ? `blueprint_generation_${Date.now()}` : null;
+  let metricCommitted = false;
+  if (tracker && metricName) {
+    tracker.startMeasure(metricName);
+  }
+  function commitBlueprintMetric(success, errorMessage = null) {
+    if (!tracker || !metricName || metricCommitted) {
+      return;
+    }
+    metricCommitted = true;
+    const duration = tracker.endMeasure(metricName);
+    tracker.trackBlueprintGeneration(success, typeof duration === "number" ? duration : 0, errorMessage);
+  }
 
   BlueprintFacade.generateAsync(
     recipe.blueprintTitle,
@@ -477,10 +491,13 @@ function generateBlueprint() {
     outputRecipe,
     config
   )
-    .then(bpStr => {
-      navigator.clipboard.writeText(bpStr).then(() => cocoMessage.success("已复制到粘贴板", 1000));
+    .then(async bpStr => {
+      await navigator.clipboard.writeText(bpStr);
+      cocoMessage.success("已复制到粘贴板", 1000);
+      commitBlueprintMetric(true);
     })
     .catch(err => {
+      commitBlueprintMetric(false, err && err.message ? err.message : "unknown_error");
       // 兼容降级：静默吞掉连点拦截的 Error，避免在 UI 弹出报错气泡扰乱用户
       if (err.message === "ERR_ALREADY_RUNNING") {
         console.warn("[拦截] 蓝图生成任务正在进行中，已忽略重复点击");
