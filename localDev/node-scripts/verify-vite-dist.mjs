@@ -13,6 +13,8 @@ const REQUIRED_FILES = [
   "legal/terms.html",
   "legal/cookies.html",
   "legal/security.html",
+  "locales/zh-CN.json",
+  "locales/en-US.json",
   "SECURITY.md",
 ];
 

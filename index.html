@@ -55,6 +55,7 @@
     }
   </style>
   <script src="./Scripts/error-monitor.js"></script>
+  <script src="./Scripts/i18n.js"></script>
   <script src="./Scripts/jquery-2.2.4.min.js"></script>
   <script src="./Scripts/jquery.cookie.min.js"></script>
   <script src="./Scripts/vue.min.js"></script>
@@ -96,14 +97,21 @@
 </head>
 
 <body>
-  <a href="#main-content" class="skip-link">跳转到主要内容</a>
+  <a href="#main-content" class="skip-link" data-i18n="skip.main">跳转到主要内容</a>
   
   <header role="banner">
     <div style="text-align: center; margin-bottom: 10px; padding: 10px 0;">
-      <h1 style="margin: 0; font-size: 28px; font-weight: 600; background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+      <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <label for="langSwitcher" data-i18n="locale.label" style="font-size: 13px; color: #64748b;">语言</label>
+        <select id="langSwitcher" aria-label="语言切换" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
+          <option value="zh-CN">简体中文</option>
+          <option value="en-US">English</option>
+        </select>
+      </div>
+      <h1 data-i18n="hero.title" style="margin: 0; font-size: 28px; font-weight: 600; background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
         戴森球计划量产量化计算器
       </h1>
-      <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
+      <p data-i18n="hero.subtitle" style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
     </div>
   </header>
 
@@ -112,19 +120,19 @@
   <div class="control-bar" role="toolbar" aria-label="产量控制">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="color: #4a5568;">每分钟产量：</span>
+        <span data-i18n="control.rate_per_min" style="color: #4a5568;">每分钟产量：</span>
         <input type="text" id="txtnumber" aria-label="每分钟产量" value="60" style="min-width: 70px;" />
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="color: #4a5568;">或生产设备数：</span>
+        <span data-i18n="control.device_count" style="color: #4a5568;">或生产设备数：</span>
         <input type="number" id="selmaince" aria-label="生产设备数" min="1" max="1000" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
       </div>
       <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
       </a>
       <div class="custom-dropdown">
-        <button id="btnSetting">参数设置</button>
-        <button id="btnReset1" style="background: linear-gradient(135deg, #f97316, #ea580c);">修复计算空白</button>
+        <button id="btnSetting" data-i18n="control.settings">参数设置</button>
+        <button id="btnReset1" data-i18n="control.fix_blank" style="background: linear-gradient(135deg, #f97316, #ea580c);">修复计算空白</button>
       </div>
     </div>
   </div>
@@ -132,7 +140,7 @@
   <!-- 选项控制区域 -->
   <div class="control-bar">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
-      <input type="checkbox" id="hideSource" /><label for="hideSource">隐藏原料</label>
+      <input type="checkbox" id="hideSource" /><label for="hideSource" data-i18n="control.hide_source">隐藏原料</label>
       <select id="selmodein" aria-label="制造台类型">
         <option value="制作台Mk.Ⅰ">制作台Mk.Ⅰ</option>
         <option value="制作台Mk.Ⅱ">制作台Mk.Ⅱ</option>
@@ -164,13 +172,13 @@
       </select>
     </div>
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
-      <input type="checkbox" id="selfAcc" checked /><label for="selfAcc">自喷涂增产剂</label>
-      <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP">外部输入增产剂</label>
-      <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt">1条传送带最高支持设备数量</label>
+      <input type="checkbox" id="selfAcc" checked /><label for="selfAcc" data-i18n="control.self_acc">自喷涂增产剂</label>
+      <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP" data-i18n="control.external_acc">外部输入增产剂</label>
+      <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt" data-i18n="control.max_one_belt">1条传送带最高支持设备数量</label>
       <span id="projectdiv" style="display:none;">
         <select id="selprojects" aria-label="方案列表"></select>
-        <button id="btnLoadProject">加载方案</button>
-        <button id="btnReset5" style="background: linear-gradient(135deg, #f97316, #ea580c);">重置方案</button>
+        <button id="btnLoadProject" data-i18n="control.load_project">加载方案</button>
+        <button id="btnReset5" data-i18n="control.reset_project" style="background: linear-gradient(135deg, #f97316, #ea580c);">重置方案</button>
       </span>
     </div>
   </div>
@@ -254,9 +262,9 @@
         </span>
       </span>
       <span v-if="xqs && xqs.length" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
-        <button id="btnResetRequirement" data-click-action="resetRequirement" style="background: linear-gradient(135deg, #ef4444, #dc2626);">重置</button>
-        <button id="btnSaveProject" data-click-action="saveProject" style="background: linear-gradient(135deg, #10b981, #059669);">保存方案</button>
-        <button id="btnGenerateBlueprint" data-click-action="generateBlueprint" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">生成蓝图</button>
+        <button id="btnResetRequirement" data-click-action="resetRequirement" data-i18n="action.reset_requirement" style="background: linear-gradient(135deg, #ef4444, #dc2626);">重置</button>
+        <button id="btnSaveProject" data-click-action="saveProject" data-i18n="action.save_project" style="background: linear-gradient(135deg, #10b981, #059669);">保存方案</button>
+        <button id="btnGenerateBlueprint" data-click-action="generateBlueprint" data-i18n="action.generate_blueprint" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">生成蓝图</button>
        
         <!-- <br/> -->
         <!-- <span id="blueprintConfig" style="display: none">蓝图配置： -->
@@ -270,7 +278,7 @@
         <!-- <label for="x_y_ratio">蓝图长宽比</label><input type="number" id="x_y_ratio" min="1" step="0.1" value="2"> -->
         <!-- </div> -->
         <!-- </span> -->
-        <br /><small>(右键可取消单项需求；单击数字可编辑数量)</small>
+        <br /><small data-i18n="hint.requirement_edit">(右键可取消单项需求；单击数字可编辑数量)</small>
       </span>
       </span>
     </div>
@@ -413,14 +421,14 @@
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                 <span title="包含自喷涂所需" style="color: #d97706;">总喷涂增产剂数量：{{totalAcc}}</span>
-                <a href="#" id="btnExcludeAccLine" data-click-action="excludeAccLine" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
+                <a href="#" id="btnExcludeAccLine" data-click-action="excludeAccLine" data-i18n="action.exclude_acc_line" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
                 <span style="color: #0891b2;">占地格子数：{{totalSpace}}</span>
                 <span style="color: #059669;">耗能估算：{{totalEnergy}}M</span>
               </div>
             </td>
           </tr>
           <tr class="" v-if="items2 && items2.length">
-            <td colspan="8" align="left">多余产物 <br />(负数代表多余、正数代表缺少，如1000则需要额外补齐，-1000则需要额外消耗) </td>
+            <td colspan="8" align="left"><span data-i18n="table.excess_products">多余产物</span> <br />(负数代表多余、正数代表缺少，如1000则需要额外补齐，-1000则需要额外消耗) </td>
           </tr>
           <tr v-for="item in items2" v-bind:class="item.rowClass">
             <td></td>
@@ -466,10 +474,10 @@
     <p>
       &copy; 2024 戴森球计划量产量化计算器 |
       <a href="https://github.com" style="color: #2980b9;">GitHub</a> |
-      <a id="linkPrivacyPolicy" href="/legal/privacy.html" style="color: #2980b9;">隐私政策</a> |
-      <a id="linkTermsOfService" href="/legal/terms.html" style="color: #2980b9;">服务条款</a> |
-      <a id="linkCookiePolicy" href="/legal/cookies.html" style="color: #2980b9;">Cookie 说明</a> |
-      <a id="linkSecurityPolicy" href="/legal/security.html" style="color: #2980b9;">安全披露</a>
+      <a id="linkPrivacyPolicy" href="/legal/privacy.html" data-i18n="footer.privacy" style="color: #2980b9;">隐私政策</a> |
+      <a id="linkTermsOfService" href="/legal/terms.html" data-i18n="footer.terms" style="color: #2980b9;">服务条款</a> |
+      <a id="linkCookiePolicy" href="/legal/cookies.html" data-i18n="footer.cookies" style="color: #2980b9;">Cookie 说明</a> |
+      <a id="linkSecurityPolicy" href="/legal/security.html" data-i18n="footer.security" style="color: #2980b9;">安全披露</a>
     </p>
   </footer>
 </body>

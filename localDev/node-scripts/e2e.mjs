@@ -181,6 +181,26 @@ async function runE2EAttempt(attempt) {
       await waitForDataReady(page);
     });
 
+    // Case 0: 语言切换 -> 刷新保持
+    await runStep("locale-persistence", async () => {
+      await page.selectOption("#langSwitcher", "en-US");
+      await page.waitForFunction(
+        () => {
+          const settingButton = document.querySelector("#btnSetting");
+          return !!settingButton && settingButton.textContent.trim() === "Settings";
+        },
+        null,
+        { timeout: 10000 }
+      );
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForDataReady(page);
+      const locale = await page.inputValue("#langSwitcher");
+      assert.equal(locale, "en-US", "e2e: locale should persist after reload.");
+      const settingText = await page.locator("#btnSetting").first().textContent();
+      assert.equal((settingText || "").trim(), "Settings", "e2e: translated text should be restored after reload.");
+    });
+
     // Case 1: 新增需求 -> 触发计算 -> 展示结果
     await runStep("add-requirement", async () => {
       await addRequirement(page, "齿轮");

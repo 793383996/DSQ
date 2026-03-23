@@ -5,7 +5,7 @@ const ROOT = process.cwd();
 const DIST_DIR = path.join(ROOT, "dist");
 
 const STATIC_FILES = ["robots.txt", "sitemap.xml", "favicon.ico", "favicon.svg", "og-image.png", "SECURITY.md"];
-const STATIC_DIRS = ["Scripts", "img", "quote", "legal", ".well-known"];
+const STATIC_DIRS = ["Scripts", "img", "quote", "legal", "locales", ".well-known"];
 
 async function exists(targetPath) {
   try {
