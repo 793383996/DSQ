@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
 
-const REQUIRED_GLOBAL_HEADERS = ["X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy", "Permissions-Policy"];
+const REQUIRED_GLOBAL_HEADERS = [
+  "X-Content-Type-Options",
+  "X-Frame-Options",
+  "Referrer-Policy",
+  "Permissions-Policy",
+  "Content-Security-Policy-Report-Only",
+];
 
 function normalizeHeaderKeys(headers) {
   return new Set(headers.map(entry => (entry && entry.key ? String(entry.key).toLowerCase() : "")));

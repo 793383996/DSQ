@@ -77,6 +77,7 @@
   <script src="./Scripts/blueprint.layout.js"></script>
   <script src="./Scripts/blueprint.js"></script>
   <script src="./Scripts/blueprint.facade.js"></script>
+  <script src="./Scripts/index.events.js"></script>
   <script>
     $(function () {
       var includes = $('[data-include]');
@@ -112,13 +113,13 @@
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">每分钟产量：</span>
-        <input type="text" id="txtnumber" aria-label="每分钟产量" value="60" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px;" />
+        <input type="text" id="txtnumber" aria-label="每分钟产量" value="60" style="min-width: 70px;" />
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">或生产设备数：</span>
-        <input type="number" id="selmaince" aria-label="生产设备数" min="1" max="1000" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
+        <input type="number" id="selmaince" aria-label="生产设备数" min="1" max="1000" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
       </div>
-      <a href="javascript:f_add()" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
+      <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
       </a>
       <div class="custom-dropdown">
@@ -216,8 +217,8 @@
             <!-- <span class="label">紧凑布局</span><input type="checkbox" id="compactLayout">（高纬度可能出现碰撞）<br/> -->
             <!-- <span class="label">临界运力传送带自升级</span><input type="checkbox" id="upgradeConveyorBelt"><br /> -->
             <span class="label">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" aria-label="只使用三级传送带" checked><br />
-            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" aria-label="只使用三级分拣器" checked onchange="if(this.checked) document.getElementById('useSorterMk4').checked=false"><br />
-            <span class="label">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" aria-label="只使用四级分拣器" onchange="if(this.checked) document.getElementById('onlySorterMk3').checked=false"><br />
+            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" aria-label="只使用三级分拣器" checked><br />
+            <span class="label">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" aria-label="只使用四级分拣器"><br />
             <!-- <span class="label">三级传送带运力降级</span><input type="checkbox" id="onlyConveyorBeltMk3Downgrade">（三级传送带运力锁定在1680/min，可在一定程度上解决蓝图产量低于预期的问题）<br/> -->
             <span class="label">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" aria-label="自动插入电力感应塔" checked="checked"><br />
             <span class="label">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" aria-label="电力感应塔间隔排数" min="1" max="2"
@@ -253,9 +254,9 @@
         </span>
       </span>
       <span v-if="xqs && xqs.length" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
-        <button onclick="f_reset()" style="background: linear-gradient(135deg, #ef4444, #dc2626);">重置</button>
-        <button onclick="f_save()" style="background: linear-gradient(135deg, #10b981, #059669);">保存方案</button>
-        <button onclick="generateBlueprint()" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">生成蓝图</button>
+        <button id="btnResetRequirement" data-click-action="resetRequirement" style="background: linear-gradient(135deg, #ef4444, #dc2626);">重置</button>
+        <button id="btnSaveProject" data-click-action="saveProject" style="background: linear-gradient(135deg, #10b981, #059669);">保存方案</button>
+        <button id="btnGenerateBlueprint" data-click-action="generateBlueprint" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">生成蓝图</button>
        
         <!-- <br/> -->
         <!-- <span id="blueprintConfig" style="display: none">蓝图配置： -->
@@ -280,7 +281,7 @@
           v-bind:title="name" v-bind:oncontextmenu="'f_remove_ig(\'' + name + '\'); return false'" />
         <span class="name" v-else=v-else>{{name}}</span>
       </span>
-      <button onclick="f_reset_ig()">重置</button>
+      <button id="btnResetExclude" data-click-action="resetExclude">重置</button>
       <br /><small>(右键可取消单项排除)</small>
     </div>
     <div class="list">
@@ -339,10 +340,11 @@
           </tr>
           <tr v-for="(item, index_item) in items" v-bind:class="item.rowClass">
             <td class="opcell">
-              <a href="javascript:void(0)" v-bind:data-name="item.name" onclick="f_ig(this)">排除</a>
-              <a href="javascript:void(0)" v-if=" item.pf &&  item.pf.length > 1" v-bind:data-name="item.name"
-                onclick="f_split(this)">多配方</a>
-              <a href="javascript:void(0)" v-bind:data-name="item.name" onclick="f_tag(this)">标注</a>
+              <a href="#" data-action="ig" v-bind:data-name="item.name">排除</a>
+              <a href="#" data-action="split" v-if=" item.pf &&  item.pf.length > 1" v-bind:data-name="item.name">
+                多配方
+              </a>
+              <a href="#" data-action="tag" v-bind:data-name="item.name">标注</a>
             </td>
             <td class="cell-name" v-bind:data-name="item.name">
               <img v-bind:src="'data:image/png;base64,' + icons[item.name]" style="width:40px;height:40px;"
@@ -411,7 +413,7 @@
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                 <span title="包含自喷涂所需" style="color: #d97706;">总喷涂增产剂数量：{{totalAcc}}</span>
-                <a href="javascript:f_ig_acc()" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
+                <a href="#" id="btnExcludeAccLine" data-click-action="excludeAccLine" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
                 <span style="color: #0891b2;">占地格子数：{{totalSpace}}</span>
                 <span style="color: #059669;">耗能估算：{{totalEnergy}}M</span>
               </div>

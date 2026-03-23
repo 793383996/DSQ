@@ -31,7 +31,7 @@ const REQUIRED_MARKERS = [
   'id="txtnumber"',
   'id="selmaince"',
   'id="btnSetting"',
-  'onclick="generateBlueprint()"',
+  'id="btnGenerateBlueprint"',
   'id="main-content"',
 ];
 
