@@ -32,6 +32,9 @@ jobs:
       - name: Run smoke tests
         run: npm run smoke
 
+      - name: Run blueprint regression tests
+        run: npm run test:blueprint
+
       - name: Run unit tests
         run: npm run test:unit
 
@@ -51,6 +54,7 @@ jobs:
           echo "- Lint: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Format: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Smoke: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Blueprint regression: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Unit tests: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Build dist: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Verify dist: Completed" >> $GITHUB_STEP_SUMMARY
