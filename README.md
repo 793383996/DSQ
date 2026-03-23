@@ -29,13 +29,27 @@ npm ci
 npm run ci:check
 ```
 
-4. 本地 HTTPS 预览（可选，蓝图复制建议使用，约 2-3 分钟）
-
+4. 本地调试（约 5 分钟）
+- 开发态联调（源码 + 热更新）：
 ```bash
-python https_server.py
+npx vite --host 127.0.0.1 --port 5173 --strictPort
 ```
+访问：`http://127.0.0.1:5173`
 
-浏览器访问：`https://localhost:8444`
+- 构建产物预览（接近线上）：
+```bash
+npm run build
+npx vite preview --host 127.0.0.1 --port 4173 --strictPort
+```
+访问：`http://127.0.0.1:4173`
+
+- 自动化调试入口（基于 `dist`）：
+```bash
+npm run build
+npm run test:integration
+npm run test:e2e
+npm run test:a11y
+```
 
 5. 提交流程演练（约 5 分钟）
 
@@ -50,6 +64,8 @@ git push origin feat/your-topic
 说明：
 - `pre-commit` 会自动执行 `lint-staged`
 - `pre-push` 会自动执行 `npm run ci:check`
+- `https_server.py` 为历史本地运行方案，当前不再作为推荐调试入口
+- 蓝图复制链路当前强制 `https` 协议，`http` 本地页会提示并中断复制；建议通过 `npm run test:e2e` 或 HTTPS 预览环境验证
 
 ## 常用脚本
 
