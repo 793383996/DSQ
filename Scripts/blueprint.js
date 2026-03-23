@@ -876,7 +876,7 @@ class Blueprint {
     return layoutFactory.sortItemSummary(itemSummary);
   }
 
-  generateConveyorBelts() {
+  buildConveyorItemSummary() {
     let itemSummary = layoutFactory.buildConveyorItemSummary(
       this.recipe.subRecipes,
       this.recipe.proliferator,
@@ -885,19 +885,93 @@ class Blueprint {
       buildingMap,
       productionCategory
     );
-    // console.log(itemSummary)
-    // throw `break`
     itemSummary = this.sortItemSummary(itemSummary);
     this.itemSummary = itemSummary;
+    return itemSummary;
+  }
+
+  prepareConveyorRoutingSpace() {
+    this.conveyorStartOffsetX = this.occupiedArea[this.occupiedArea.length - 1].x2;
+    this.occupiedArea[this.occupiedArea.length - 1].x2++; // x轴方向空一格用于喷涂剂走线
+    this.occupiedArea[this.occupiedArea.length - 2].y2++; // y轴方向空一格避免喷涂机和建筑碰撞
+  }
+
+  applyConveyorSupplementPlan(roundPlan, sorterBucket) {
+    if (!roundPlan.supplementPlan) {
+      return;
+    }
+    const sourceSorter = roundPlan.supplementPlan.sourceSorter;
+    const newSorterRate = roundPlan.supplementPlan.newSorterRate;
+    const newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
+    const supplementRecord = modelFactory.createSupplementSorterOwnerRecord(
+      newSorter.index,
+      newSorterRate,
+      sourceSorter
+    );
+    layoutFactory.applySupplementSorterToInputBucket(sorterBucket.input, supplementRecord);
+  }
+
+  executeConveyorRound(item, conveyorBelt, roundPlan) {
+    const direction = layoutFactory.getConveyorDirection(item.fromBuildingNum); // 终产物/中间产物为+1，原料为-1
+    this.newConveyor(
+      conveyorBelt,
+      direction,
+      roundPlan.inputData,
+      roundPlan.outputData,
+      roundPlan.parameters,
+      roundPlan.needSprayCoater
+    );
+  }
+
+  processConveyorItem(itemName, item, stackLayers, sortersPerNode, zero) {
+    const conveyorBelt = layoutFactory.selectConveyorForRate(
+      item.rate,
+      this.config.onlyConveyorBeltMk3,
+      this.config.upgradeConveyorBelt,
+      buildingMap.conveyorBeltMk1,
+      buildingMap.conveyorBeltMK3
+    );
+    const maxTransportSpeed = layoutFactory.calculateMaxTransportSpeed(
+      item.fromBuildingNum,
+      buildingMap.conveyorBeltMK3.transportSpeed,
+      this.config.conveyorBeltStackLayer
+    );
+    const sorterBucket = this.sorters[itemName];
+
+    for (let totalDoneRate = 0; item.rate - totalDoneRate > zero; ) {
+      const roundPlan = layoutFactory.planConveyorRound(
+        itemName,
+        item,
+        totalDoneRate,
+        maxTransportSpeed,
+        sorterBucket,
+        stackLayers,
+        sortersPerNode,
+        zero,
+        itemMap
+      );
+      if (roundPlan.abortReason === "missing_sorters") {
+        console.warn(`[蓝图警告] 物品 ${itemName} 没有对应的分拣器数据`);
+        break;
+      }
+      if (roundPlan.abortReason) {
+        break;
+      }
+      totalDoneRate = roundPlan.nextTotalDoneRate;
+      this.applyConveyorSupplementPlan(roundPlan, sorterBucket);
+      this.executeConveyorRound(item, conveyorBelt, roundPlan);
+    }
+  }
+
+  generateConveyorBelts() {
+    const itemSummary = this.buildConveyorItemSummary();
 
     // 堆叠模式：设备垂直堆叠，传送带只在一层
     // 每层设备数量 = 普通模式/stackLayers，总设备数量 ≈ 普通模式
     // 传送带需要支撑的产能和普通模式一样，所以rate不需要放大
     const stackLayers = this.config.stackLayers || 1;
 
-    this.conveyorStartOffsetX = this.occupiedArea[this.occupiedArea.length - 1].x2;
-    this.occupiedArea[this.occupiedArea.length - 1].x2++; // x轴方向空一格用于喷涂剂走线
-    this.occupiedArea[this.occupiedArea.length - 2].y2++; // y轴方向空一格避免喷涂机和建筑碰撞
+    this.prepareConveyorRoutingSpace();
     // 生成传送带并连接到分拣器
     const zero = 0.0000000001; // rate是每秒生产量，除不尽时会有精度误差，小数点后16位都是准确的，取0.0000000001为判断标准足够了。
     // 堆叠模式：z=0 层每个传送带节点的分拣器在 cloneToStackLayers 后被克隆 stackLayers 倍
@@ -906,69 +980,8 @@ class Blueprint {
     // 修复：确保sortersPerNode至少为2，这样克隆后每个节点可以连接8个分拣器（2×4）
     // 满足普通模式下所有节点的需求（普通模式有节点需要连接8个分拣器）
     const sortersPerNode = layoutFactory.calculateSortersPerNode(this.config.maxSorterNumOneBelt, stackLayers);
-    for (let item in itemSummary) {
-      const itemName = item;
-      // console.log(itemName)
-      item = itemSummary[item];
-
-      let conveyorBelt = layoutFactory.selectConveyorForRate(
-        item.rate,
-        this.config.onlyConveyorBeltMk3,
-        this.config.upgradeConveyorBelt,
-        buildingMap.conveyorBeltMk1,
-        buildingMap.conveyorBeltMK3
-      );
-
-      let maxTransportSpeed = layoutFactory.calculateMaxTransportSpeed(
-        item.fromBuildingNum,
-        buildingMap.conveyorBeltMK3.transportSpeed,
-        this.config.conveyorBeltStackLayer
-      );
-
-      for (let totalDoneRate = 0; item.rate - totalDoneRate > zero; ) {
-        const sorterBucket = this.sorters[itemName];
-        const roundPlan = layoutFactory.planConveyorRound(
-          itemName,
-          item,
-          totalDoneRate,
-          maxTransportSpeed,
-          sorterBucket,
-          stackLayers,
-          sortersPerNode,
-          zero,
-          itemMap
-        );
-        if (roundPlan.abortReason === "missing_sorters") {
-          console.warn(`[蓝图警告] 物品 ${itemName} 没有对应的分拣器数据`);
-          break;
-        }
-        if (roundPlan.abortReason) {
-          break;
-        }
-        totalDoneRate = roundPlan.nextTotalDoneRate;
-        if (roundPlan.supplementPlan) {
-          const sourceSorter = roundPlan.supplementPlan.sourceSorter;
-          const newSorterRate = roundPlan.supplementPlan.newSorterRate;
-          let newSorter = this.createSupplementInputSorter(sourceSorter, newSorterRate);
-          const supplementRecord = modelFactory.createSupplementSorterOwnerRecord(
-            newSorter.index,
-            newSorterRate,
-            sourceSorter
-          );
-          layoutFactory.applySupplementSorterToInputBucket(sorterBucket.input, supplementRecord);
-        }
-
-        let direction = layoutFactory.getConveyorDirection(item.fromBuildingNum); // 终产物/中间产物为+1，原料为-1
-        // console.log(itemName, inputData, outputData, direction)
-        this.newConveyor(
-          conveyorBelt,
-          direction,
-          roundPlan.inputData,
-          roundPlan.outputData,
-          roundPlan.parameters,
-          roundPlan.needSprayCoater
-        );
-      }
+    for (const [itemName, item] of Object.entries(itemSummary)) {
+      this.processConveyorItem(itemName, item, stackLayers, sortersPerNode, zero);
     }
   }
 
