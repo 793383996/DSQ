@@ -839,14 +839,22 @@ class Blueprint {
       this.buildingIndex + stackLayers + 1
     );
 
-    // --- 2. 生成地基（每层独立地基）---
-    for (const foundationZ of cloneExecutionPlan.foundationZOffsets) {
+    this.appendCloneFoundations(cloneExecutionPlan.foundationZOffsets);
+    this.appendClonedBuildings(cloneExecutionPlan.clonePlans);
+
+    // 修复：添加克隆后验证机制，检查传送带节点负载
+    this.validateBeltLoad();
+  }
+
+  appendCloneFoundations(foundationZOffsets) {
+    for (const foundationZ of foundationZOffsets) {
       const foundationBuilding = modelFactory.createFoundationBuilding(this.getBuildingTemplate(), foundationZ);
       this.buildings.push(foundationBuilding);
     }
+  }
 
-    // --- 4. 逐层克隆 ---
-    for (const clonePlan of cloneExecutionPlan.clonePlans) {
+  appendClonedBuildings(clonePlans) {
+    for (const clonePlan of clonePlans) {
       const clone = modelFactory.cloneBuildingForLayer(
         this.getBuildingTemplate(),
         clonePlan.base,
@@ -856,9 +864,6 @@ class Blueprint {
       );
       this.buildings.push(clone);
     }
-
-    // 修复：添加克隆后验证机制，检查传送带节点负载
-    this.validateBeltLoad();
   }
 
   validateBeltLoad() {
@@ -994,22 +999,16 @@ class Blueprint {
     }
   }
 
-  generateConveyorBeltsForSprayCoater() {
-    if (this.sprayCoaterOffsetList.length === 0) {
-      return;
-    }
-    let conveyor = layoutFactory.selectSprayCoaterConveyor(
+  buildSprayExecutionContext() {
+    const conveyor = layoutFactory.selectSprayCoaterConveyor(
       this.itemSummary,
       this.recipe.proliferator,
       this.config.onlyConveyorBeltMk3,
       buildingMap.conveyorBeltMk1,
       buildingMap.conveyorBeltMK3
     );
-    let firstSprayOffset = layoutFactory.findFirstSprayOffset(this.sprayCoaterOffsetList);
-    // console.log(this.sprayCoaterOffsetList)
-    // console.log(firstSprayOffset)
-
-    let proliferatorParameters = {
+    const firstSprayOffset = layoutFactory.findFirstSprayOffset(this.sprayCoaterOffsetList);
+    const proliferatorParameters = {
       iconId: itemMap[this.recipe.proliferator].iconId,
     };
     const sprayExecutionPlan = layoutFactory.planSprayCoaterConveyorExecution(
@@ -1020,14 +1019,22 @@ class Blueprint {
       this.lastProductionBuildingType,
       productionCategory
     );
+    return {
+      conveyor,
+      proliferatorParameters,
+      sprayExecutionPlan,
+    };
+  }
 
+  assertSprayExecutionPlanValid(sprayExecutionPlan) {
     const sprayMainLineError = layoutFactory.resolveSprayCoaterMainLineError(sprayExecutionPlan.mainLinePlan.error);
     if (sprayMainLineError) {
       cocoMessage.error(sprayMainLineError.message, sprayMainLineError.duration);
       throw sprayMainLineError.throwReason;
     }
+  }
 
-    const sprayActionPlan = layoutFactory.buildSprayConveyorActionPlan(sprayExecutionPlan, proliferatorParameters);
+  executeSprayConveyorActionPlan(conveyor, sprayActionPlan) {
     for (const action of sprayActionPlan) {
       if (action.type === "sprayCoater") {
         this.buildings.push(this.newSprayCoater(action.offset, action.yaw));
@@ -1038,6 +1045,16 @@ class Blueprint {
         this.newConveyorNode(action.offset, action.yaw, conveyor, outputObjIdx, action.outputToSlot, action.parameters)
       );
     }
+  }
+
+  generateConveyorBeltsForSprayCoater() {
+    if (this.sprayCoaterOffsetList.length === 0) {
+      return;
+    }
+    const { conveyor, proliferatorParameters, sprayExecutionPlan } = this.buildSprayExecutionContext();
+    this.assertSprayExecutionPlanValid(sprayExecutionPlan);
+    const sprayActionPlan = layoutFactory.buildSprayConveyorActionPlan(sprayExecutionPlan, proliferatorParameters);
+    this.executeSprayConveyorActionPlan(conveyor, sprayActionPlan);
   }
 
   toStr() {
