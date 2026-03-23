@@ -44,6 +44,12 @@ jobs:
       - name: Verify dist assets
         run: npm run verify:dist
 
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      - name: Run browser E2E tests
+        run: npm run test:e2e
+
       - name: Run integration tests
         run: npm run test:integration
 
@@ -58,4 +64,5 @@ jobs:
           echo "- Unit tests: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Build dist: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Verify dist: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Browser E2E: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Integration tests: Completed" >> $GITHUB_STEP_SUMMARY
