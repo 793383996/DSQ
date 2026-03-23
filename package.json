@@ -23,6 +23,8 @@
     "security:check": "node ./localDev/node-scripts/security-baseline.mjs && npm run security:vendor",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "monitor:check": "node ./localDev/node-scripts/monitor-baseline.mjs",
+    "perf:lhci": "node ./localDev/node-scripts/run-lhci.mjs",
+    "perf:lhci:quick": "node ./localDev/node-scripts/run-lhci.mjs --quick",
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
@@ -32,6 +34,7 @@
     "node": "20.19.x"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "eslint": "^9.0.0",
     "globals": "^16.0.0",
     "husky": "^9.0.0",
