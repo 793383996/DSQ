@@ -112,11 +112,11 @@
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">每分钟产量：</span>
-        <input type="text" id="txtnumber" value="60" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px;" />
+        <input type="text" id="txtnumber" aria-label="每分钟产量" value="60" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px;" />
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="color: #4a5568;">或生产设备数：</span>
-        <input type="number" id="selmaince" min="1" max="1000" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
+        <input type="number" id="selmaince" aria-label="生产设备数" min="1" max="1000" oninput="this.style.width = (parseFloat(this.value) >= 999 ? 150 : 70) + 'px'" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
       </div>
       <a href="javascript:f_add()" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
@@ -132,32 +132,32 @@
   <div class="control-bar">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
       <input type="checkbox" id="hideSource" /><label for="hideSource">隐藏原料</label>
-      <select id="selmodein">
+      <select id="selmodein" aria-label="制造台类型">
         <option value="制作台Mk.Ⅰ">制作台Mk.Ⅰ</option>
         <option value="制作台Mk.Ⅱ">制作台Mk.Ⅱ</option>
         <option value="制作台Mk.Ⅲ">制作台Mk.Ⅲ</option>
         <option value="重组式制造台">重组式制造台</option>
       </select>
-      <select id="furnace">
+      <select id="furnace" aria-label="熔炉类型">
         <option value="电弧熔炉">电弧熔炉</option>
         <option value="位面熔炉">位面熔炉</option>
         <option value="负熵熔炉">负熵熔炉</option>
       </select>
-      <select id="chemical">
+      <select id="chemical" aria-label="化工厂类型">
         <option value="化工厂">化工厂</option>
         <option value="量子化工厂">量子化工厂</option>
       </select>
-      <select id="accType">
+      <select id="accType" aria-label="增产剂等级">
         <option value="增产剂Mk.Ⅰ">增产剂Mk.Ⅰ</option>
         <option value="增产剂Mk.Ⅱ">增产剂Mk.Ⅱ</option>
         <option value="增产剂Mk.Ⅲ">增产剂Mk.Ⅲ</option>
       </select>
-      <select id="accValue">
+      <select id="accValue" aria-label="增产剂效果">
         <option value="无">无</option>
         <option value="加速">加速</option>
         <option value="增产">增产</option>
       </select>
-      <select id="research">
+      <select id="research" aria-label="研究站类型">
         <option value="矩阵研究站">矩阵研究站</option>
         <option value="自演化研究站">自演化研究站</option>
       </select>
@@ -167,7 +167,7 @@
       <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP">外部输入增产剂</label>
       <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt">1条传送带最高支持设备数量</label>
       <span id="projectdiv" style="display:none;">
-        <select id="selprojects"></select>
+        <select id="selprojects" aria-label="方案列表"></select>
         <button id="btnLoadProject">加载方案</button>
         <button id="btnReset5" style="background: linear-gradient(135deg, #f97316, #ea580c);">重置方案</button>
       </span>
@@ -181,29 +181,29 @@
     <div style="display: flex;">
       <div style="margin-right: 50px;">
         <h4>速度、产量设置：</h4>
-        <p><span class="label">采矿作业速度： </span><input id="selore" class="textbox" type="number" value="100" />% </p>
-        <p><span class="label">分馏塔每分钟产量： </span><input id="fractionatorSpeed" class="textbox" type="number"
+        <p><span class="label">采矿作业速度： </span><input id="selore" aria-label="采矿作业速度百分比" class="textbox" type="number" value="100" />% </p>
+        <p><span class="label">分馏塔每分钟产量： </span><input id="fractionatorSpeed" aria-label="分馏塔每分钟产量" class="textbox" type="number"
             value="18" /> </p>
-        <p><span class="label">大型采矿机：</span><input id="speed1_6" class="textbox" type="number" value="100" /> </p>
-        <p><span class="label">原油速度：</span><input id="oilSpeed" class="textbox" type="number" value="4" /> </p>
-        <p><span class="label">轨道采集-重氢：</span><input data-name="重氢" id="speed1_2" class="speed1 textbox" type="number"
+        <p><span class="label">大型采矿机：</span><input id="speed1_6" aria-label="大型采矿机速度" class="textbox" type="number" value="100" /> </p>
+        <p><span class="label">原油速度：</span><input id="oilSpeed" aria-label="原油速度" class="textbox" type="number" value="4" /> </p>
+        <p><span class="label">轨道采集-重氢：</span><input data-name="重氢" id="speed1_2" aria-label="轨道采集重氢速度" class="speed1 textbox" type="number"
             step="0.01" value="0.02" /> </p>
-        <p><span class="label">轨道采集-可燃冰：</span><input data-name="可燃冰" id="speed1_3" class="speed1 textbox"
+        <p><span class="label">轨道采集-可燃冰：</span><input data-name="可燃冰" id="speed1_3" aria-label="轨道采集可燃冰速度" class="speed1 textbox"
             type="number" step="0.1" value="0.5" /> </p>
-        <p><span class="label">轨道采集-氢(巨冰)：</span><input data-name="氢" id="speed1_4" class="speed1 textbox"
+        <p><span class="label">轨道采集-氢(巨冰)：</span><input data-name="氢" id="speed1_4" aria-label="轨道采集氢巨冰速度" class="speed1 textbox"
             type="number" step="0.1" value="0.5" /> </p>
-        <p><span class="label">轨道采集-氢(气态)：</span><input data-name="氢" id="speed1_1" class="speed1 textbox"
+        <p><span class="label">轨道采集-氢(气态)：</span><input data-name="氢" id="speed1_1" aria-label="轨道采集氢气态速度" class="speed1 textbox"
             type="number" step="0.1" value="1" /> </p>
-        <p><span class="label">临界光子每分钟产量： </span><input id="gzSpeed" class="textbox" type="number" value="5" /> </p>
-        <p><span class="label">小数点后保留： </span><input id="pointLength" class="textbox" type="number" value="1" /> 位</p>
+        <p><span class="label">临界光子每分钟产量： </span><input id="gzSpeed" aria-label="临界光子每分钟产量" class="textbox" type="number" value="5" /> </p>
+        <p><span class="label">小数点后保留： </span><input id="pointLength" aria-label="小数点后保留位数" class="textbox" type="number" value="1" /> 位</p>
       </div>
       <div style="width: 400px;">
         <div>
           <h4>物流配置：</h4>
-          <p><span class="label">运输站集装物流：</span> <input id="speed1_5" class="textbox" type="number" min="1" max="4"
+          <p><span class="label">运输站集装物流：</span> <input id="speed1_5" aria-label="运输站集装物流堆叠层数" class="textbox" type="number" min="1" max="4"
               value="1" /> 传送带堆叠层数</p>
           <p><span class="label">计算传送带支持设备： </span>
-            <select id="csd">
+            <select id="csd" aria-label="计算传送带支持设备类型">
               <option value="传送带">传送带</option>
               <option value="高速传送带">高速传送带</option>
               <option value="极速传送带" selected>极速传送带</option>
@@ -215,20 +215,20 @@
           <div style="margin-left: 1%">
             <!-- <span class="label">紧凑布局</span><input type="checkbox" id="compactLayout">（高纬度可能出现碰撞）<br/> -->
             <!-- <span class="label">临界运力传送带自升级</span><input type="checkbox" id="upgradeConveyorBelt"><br /> -->
-            <span class="label">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" checked><br />
-            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" checked onchange="if(this.checked) document.getElementById('useSorterMk4').checked=false"><br />
-            <span class="label">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" onchange="if(this.checked) document.getElementById('onlySorterMk3').checked=false"><br />
+            <span class="label">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" aria-label="只使用三级传送带" checked><br />
+            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" aria-label="只使用三级分拣器" checked onchange="if(this.checked) document.getElementById('useSorterMk4').checked=false"><br />
+            <span class="label">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" aria-label="只使用四级分拣器" onchange="if(this.checked) document.getElementById('onlySorterMk3').checked=false"><br />
             <!-- <span class="label">三级传送带运力降级</span><input type="checkbox" id="onlyConveyorBeltMk3Downgrade">（三级传送带运力锁定在1680/min，可在一定程度上解决蓝图产量低于预期的问题）<br/> -->
-            <span class="label">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" checked="checked"><br />
-            <span class="label">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" min="1" max="2"
+            <span class="label">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" aria-label="自动插入电力感应塔" checked="checked"><br />
+            <span class="label">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" aria-label="电力感应塔间隔排数" min="1" max="2"
               value="1" class="textbox">（建议取值1或2）<br />
-            <span class="label">传送带物品堆叠层数</span><input type="number" id="conveyorBeltStackLayer" min="1" max="4"
+            <span class="label">传送带物品堆叠层数</span><input type="number" id="conveyorBeltStackLayer" aria-label="传送带物品堆叠层数" min="1" max="4"
               value="4" class="textbox"><br />
-            <span class="label">研究站层数</span><input type="number" id="maxLabLayers" min="1" max="15" value="15"
+            <span class="label">研究站层数</span><input type="number" id="maxLabLayers" aria-label="研究站层数" min="1" max="15" value="15"
               class="textbox"><br />
             <!-- <span class="label">电线杆间隔</span><input type="number" id="teslaTowerInterval" min="1" max="15" value="15" class="textbox"><br/> -->
-            <span class="label">开启堆叠</span><input type="checkbox" id="stackLayers">垂直4层<br />
-            <span class="label">蓝图长宽比</span><input type="number" id="x_y_ratio" min="1" step="0.1" value="2"
+            <span class="label">开启堆叠</span><input type="checkbox" id="stackLayers" aria-label="开启堆叠">垂直4层<br />
+            <span class="label">蓝图长宽比</span><input type="number" id="x_y_ratio" aria-label="蓝图长宽比" min="1" step="0.1" value="2"
               class="textbox"><br />
           </div>
         </div>
