@@ -4,8 +4,8 @@ import path from "node:path";
 const ROOT = process.cwd();
 const DIST_DIR = path.join(ROOT, "dist");
 
-const STATIC_FILES = ["robots.txt", "sitemap.xml", "favicon.ico", "favicon.svg", "og-image.png"];
-const STATIC_DIRS = ["Scripts", "img", "quote", ".well-known"];
+const STATIC_FILES = ["robots.txt", "sitemap.xml", "favicon.ico", "favicon.svg", "og-image.png", "SECURITY.md"];
+const STATIC_DIRS = ["Scripts", "img", "quote", "legal", ".well-known"];
 
 async function exists(targetPath) {
   try {

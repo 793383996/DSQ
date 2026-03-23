@@ -24,6 +24,11 @@ const KEY_URLS = [
   "/Scripts/blueprint.js",
   "/Scripts/calc-core.js",
   "/quote/explanation.html",
+  "/legal/privacy.html",
+  "/legal/terms.html",
+  "/legal/cookies.html",
+  "/legal/security.html",
+  "/SECURITY.md",
   "/img/to.png",
 ];
 
@@ -33,6 +38,10 @@ const REQUIRED_MARKERS = [
   'id="btnSetting"',
   'id="btnGenerateBlueprint"',
   'id="main-content"',
+  'id="linkPrivacyPolicy"',
+  'id="linkTermsOfService"',
+  'id="linkCookiePolicy"',
+  'id="linkSecurityPolicy"',
 ];
 
 function contentType(filePath) {

@@ -9,6 +9,11 @@ const REQUIRED_FILES = [
   "Scripts/blueprint.layout.js",
   "img/to.png",
   "quote/explanation.html",
+  "legal/privacy.html",
+  "legal/terms.html",
+  "legal/cookies.html",
+  "legal/security.html",
+  "SECURITY.md",
 ];
 
 async function assertExists(targetPath) {
