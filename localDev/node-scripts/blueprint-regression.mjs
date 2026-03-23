@@ -338,6 +338,102 @@ function testBeltLoadValidationHelper(context) {
   );
 }
 
+function testConveyorLayoutHelpers(context) {
+  const layout = readBinding(context, "DSQBlueprintLayout");
+  assert.ok(layout, "conveyor-layout-helper: DSQBlueprintLayout should be loaded.");
+
+  const occupiedArea = [
+    { x1: -1, y1: -1, x2: 5, y2: 2 },
+    { x1: 0, y1: 3, x2: 12, y2: 8 },
+    { x1: 0, y1: 9, x2: 20, y2: 10 },
+  ];
+  const startOffset = JSON.parse(JSON.stringify(layout.getConveyorStartOffset(occupiedArea)));
+  assert.deepEqual(
+    startOffset,
+    { x: 21, y: 8, z: 0 },
+    "conveyor-layout-helper: start offset should use last-row x2 and previous-row y2."
+  );
+
+  layout.reserveConveyorColumn(occupiedArea);
+  assert.equal(
+    occupiedArea[occupiedArea.length - 1].x2,
+    21,
+    "conveyor-layout-helper: reserveConveyorColumn should increment current row x2."
+  );
+
+  assert.deepEqual(
+    Array.from(layout.getConveyorNodeYaw(1)),
+    [0, 0],
+    "conveyor-layout-helper: positive direction should use forward yaw."
+  );
+  assert.deepEqual(
+    Array.from(layout.getConveyorNodeYaw(-1)),
+    [180, 180],
+    "conveyor-layout-helper: negative direction should use reverse yaw."
+  );
+
+  const forwardMidLink = JSON.parse(JSON.stringify(layout.resolveConveyorOutputLink(1, 0, 2, 99)));
+  assert.deepEqual(
+    forwardMidLink,
+    { outputObjIdx: 101, outputToSlot: 1 },
+    "conveyor-layout-helper: forward non-terminal node should connect to next conveyor node."
+  );
+  const forwardTailLink = JSON.parse(JSON.stringify(layout.resolveConveyorOutputLink(1, 1, 2, 99)));
+  assert.deepEqual(
+    forwardTailLink,
+    { outputObjIdx: -1, outputToSlot: 0 },
+    "conveyor-layout-helper: forward terminal node should stop linking."
+  );
+  const reverseHeadLink = JSON.parse(JSON.stringify(layout.resolveConveyorOutputLink(-1, 0, 2, 99)));
+  assert.deepEqual(
+    reverseHeadLink,
+    { outputObjIdx: -1, outputToSlot: 0 },
+    "conveyor-layout-helper: reverse first node should keep output detached."
+  );
+  const reverseMidLink = JSON.parse(JSON.stringify(layout.resolveConveyorOutputLink(-1, 1, 2, 99)));
+  assert.deepEqual(
+    reverseMidLink,
+    { outputObjIdx: 99, outputToSlot: 1 },
+    "conveyor-layout-helper: reverse subsequent node should link to current building index."
+  );
+
+  assert.equal(
+    layout.shouldInsertForwardSpraySupportNode(true, 1, 2),
+    true,
+    "conveyor-layout-helper: forward spray support should trigger on even node count."
+  );
+  assert.equal(
+    layout.shouldInsertReverseSpraySupportNode(true, -1, 2),
+    true,
+    "conveyor-layout-helper: reverse spray support should trigger on even node count."
+  );
+  assert.equal(
+    layout.shouldSealForwardConveyorTail(1, 0, 1),
+    true,
+    "conveyor-layout-helper: forward tail should seal when no output groups exist."
+  );
+
+  const forwardSprayRecord = JSON.parse(JSON.stringify(layout.createSprayOffsetRecord(1, 6, 10, 0)));
+  assert.deepEqual(
+    forwardSprayRecord,
+    { x: 6, y: 9, z: 0 },
+    "conveyor-layout-helper: forward spray record should anchor on previous y."
+  );
+  const reverseSprayRecord = JSON.parse(JSON.stringify(layout.createSprayOffsetRecord(-1, 6, 10, 0)));
+  assert.deepEqual(
+    reverseSprayRecord,
+    { x: 6, y: 11, z: 0 },
+    "conveyor-layout-helper: reverse spray record should anchor on next y."
+  );
+
+  layout.updateConveyorOccupiedAreaX(occupiedArea, 42);
+  assert.equal(
+    occupiedArea[occupiedArea.length - 1].x2,
+    42,
+    "conveyor-layout-helper: occupied area x2 should be updated with final conveyor x."
+  );
+}
+
 function testSupplementSorterHelpers(context) {
   const layout = readBinding(context, "DSQBlueprintLayout");
   const model = readBinding(context, "DSQBlueprintModel");
@@ -669,6 +765,7 @@ async function main() {
   testRefineryMultiOutputFlow(runtimeContext);
   testClonePlanningHelpers(runtimeContext);
   testBeltLoadValidationHelper(runtimeContext);
+  testConveyorLayoutHelpers(runtimeContext);
   testSupplementSorterHelpers(runtimeContext);
   testSelfSprayLayoutHelpers(runtimeContext);
   testSprayMainLineHelper(runtimeContext);

@@ -720,6 +720,72 @@
     return 1;
   }
 
+  function getConveyorStartOffset(occupiedArea) {
+    if (!Array.isArray(occupiedArea) || occupiedArea.length < 2) {
+      return { x: 0, y: 0, z: 0 };
+    }
+    return {
+      x: occupiedArea[occupiedArea.length - 1].x2 + 1,
+      y: occupiedArea[occupiedArea.length - 2].y2,
+      z: 0,
+    };
+  }
+
+  function reserveConveyorColumn(occupiedArea) {
+    if (!Array.isArray(occupiedArea) || occupiedArea.length === 0) {
+      return;
+    }
+    occupiedArea[occupiedArea.length - 1].x2 += 1;
+  }
+
+  function getConveyorNodeYaw(direction) {
+    if (direction < 0) {
+      return [180, 180];
+    }
+    return [0, 0];
+  }
+
+  function resolveConveyorOutputLink(direction, outputIndex, outputLength, currentBuildingIndex) {
+    if (direction > 0 && outputIndex === outputLength - 1) {
+      return { outputObjIdx: -1, outputToSlot: 0 };
+    }
+    if (direction < 0 && outputIndex === 0) {
+      return { outputObjIdx: -1, outputToSlot: 0 };
+    }
+    return {
+      outputObjIdx: currentBuildingIndex + 1 + direction,
+      outputToSlot: 1,
+    };
+  }
+
+  function shouldInsertForwardSpraySupportNode(needSprayCoater, direction, nodeNum) {
+    return !!needSprayCoater && direction > 0 && nodeNum % 2 === 0;
+  }
+
+  function shouldInsertReverseSpraySupportNode(needSprayCoater, direction, nodeNum) {
+    return !!needSprayCoater && direction < 0 && nodeNum % 2 === 0;
+  }
+
+  function shouldSealForwardConveyorTail(direction, outputLength, nodeNum) {
+    return direction > 0 && outputLength === 0 && nodeNum > 0;
+  }
+
+  function createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ) {
+    const deltaY = direction > 0 ? -1 : 1;
+    return {
+      x: buildingX,
+      y: buildingY + deltaY,
+      z: buildingZ,
+    };
+  }
+
+  function updateConveyorOccupiedAreaX(occupiedArea, buildingX) {
+    if (!Array.isArray(occupiedArea) || occupiedArea.length === 0 || buildingX <= 0) {
+      return;
+    }
+    occupiedArea[occupiedArea.length - 1].x2 = buildingX;
+  }
+
   function selectSprayCoaterConveyor(
     itemSummary,
     proliferatorName,
@@ -1691,6 +1757,15 @@
     calculateMaxTransportSpeed,
     createItemCountParameter,
     getConveyorDirection,
+    getConveyorStartOffset,
+    reserveConveyorColumn,
+    getConveyorNodeYaw,
+    resolveConveyorOutputLink,
+    shouldInsertForwardSpraySupportNode,
+    shouldInsertReverseSpraySupportNode,
+    shouldSealForwardConveyorTail,
+    createSprayOffsetRecord,
+    updateConveyorOccupiedAreaX,
     selectSprayCoaterConveyor,
     findFirstSprayOffset,
     calculateSelfSprayStartOffset,

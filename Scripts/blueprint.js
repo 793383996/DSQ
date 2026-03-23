@@ -114,6 +114,19 @@ class Blueprint {
     );
   }
 
+  relinkSorters(sorterIndexes, applyLink) {
+    let toChangeNum = sorterIndexes.length;
+    for (const b of this.buildings) {
+      if (toChangeNum <= 0) {
+        break;
+      }
+      if (sorterIndexes.includes(b.index)) {
+        applyLink(b);
+        toChangeNum--;
+      }
+    }
+  }
+
   newConveyor(conveyor, direction, inputData, outputData, parameters = null, needSprayCoater = false) {
     // needSprayCoater = false
     // 在y轴方向生成一条长度为length的传送带, direction = -1 表示y轴负方向， 1表示y轴正方向
@@ -121,138 +134,103 @@ class Blueprint {
       throw `newConveyor error: error conveyor - ${conveyor}`;
     }
     let nodeNum = 0;
-    // 修复：无条件从 occupiedArea 初始化坐标，防止 inputData/outputData 为空时坐标留在 (0,0,0) 导致节点错位
-    let buildingX = this.occupiedArea[this.occupiedArea.length - 1].x2 + 1;
-    let buildingY = this.occupiedArea[this.occupiedArea.length - 2].y2;
-    let buildingZ = 0;
-    this.occupiedArea[this.occupiedArea.length - 1].x2 += 1;
+    const startOffset = layoutFactory.getConveyorStartOffset(this.occupiedArea);
+    let buildingX = startOffset.x;
+    let buildingY = startOffset.y;
+    const buildingZ = startOffset.z;
+    layoutFactory.reserveConveyorColumn(this.occupiedArea);
+
     for (let i = 0; i < inputData.length; i++) {
       if (direction < 0) {
         // 输入带不需要处理input，在最后加一个节点即可
         break;
       }
       buildingY += 1;
-      let outputObjIdx = this.buildingIndex + 2;
-      let outputToSlot = 1;
       this.buildings.push(
         this.newConveyorNode(
           { x: buildingX, y: buildingY, z: buildingZ },
           [0, 0],
           conveyor,
-          outputObjIdx,
-          outputToSlot,
+          this.buildingIndex + 2,
+          1,
           null
         )
       );
       nodeNum++;
-      // 修改分拣器指向这个传送带节点
-      let toChangeNum = inputData[i].length;
-      for (let b of this.buildings) {
-        if (toChangeNum <= 0) {
-          break;
-        }
-        if (inputData[i].includes(b.index)) {
-          b.outputObjIdx = this.buildingIndex;
-          toChangeNum--;
-        }
-      }
+      this.relinkSorters(inputData[i], sorter => {
+        sorter.outputObjIdx = this.buildingIndex;
+      });
     }
+
     let sprayCoaterOffset = {};
-    if (needSprayCoater && direction > 0) {
+    if (layoutFactory.shouldInsertForwardSpraySupportNode(needSprayCoater, direction, nodeNum)) {
       // 添加节点用于放置喷涂机
       // 为避免供料口被堵，喷涂机只放在第偶数个节点上
-      if (nodeNum % 2 === 0) {
-        this.buildings.push(
-          this.newConveyorNode(
-            { x: buildingX, y: buildingY, z: buildingZ },
-            [0, 0],
-            conveyor,
-            this.buildingIndex + 2,
-            1,
-            null
-          )
-        );
-      }
+      this.buildings.push(
+        this.newConveyorNode(
+          { x: buildingX, y: buildingY, z: buildingZ },
+          [0, 0],
+          conveyor,
+          this.buildingIndex + 2,
+          1,
+          null
+        )
+      );
       sprayCoaterOffset = { x: buildingX, y: ++buildingY, z: buildingZ };
-      this.sprayCoaterOffsetList.push({
-        x: buildingX,
-        y: buildingY - 1,
-        z: buildingZ,
-      });
+      this.sprayCoaterOffsetList.push(
+        layoutFactory.createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ)
+      );
       this.buildings.push(this.newConveyorNode(sprayCoaterOffset, [0, 0], conveyor, this.buildingIndex + 2, 1, null));
     }
 
     for (let i = 0; i < outputData.length; i++) {
-      let outputObjIdx = -1;
-      let outputToSlot = 0;
       buildingY += 1;
-      if (!(direction > 0 && i === outputData.length - 1)) {
-        if (!(direction < 0 && i === 0)) {
-          outputObjIdx = this.buildingIndex + 1 + direction;
-        }
-      }
+      const nodeLink = layoutFactory.resolveConveyorOutputLink(direction, i, outputData.length, this.buildingIndex);
       let nodeParameters = null;
       if (direction > 0 && i === outputData.length - 1) {
         nodeParameters = parameters;
       }
-      if (outputObjIdx !== -1) {
-        outputToSlot = 1;
-      }
-      let nodeYaw = [0, 0];
-      if (direction < 0) {
-        nodeYaw = [180, 180];
-      }
+      const nodeYaw = layoutFactory.getConveyorNodeYaw(direction);
       this.buildings.push(
         this.newConveyorNode(
           { x: buildingX, y: buildingY, z: buildingZ },
           nodeYaw,
           conveyor,
-          outputObjIdx,
-          outputToSlot,
+          nodeLink.outputObjIdx,
+          nodeLink.outputToSlot,
           nodeParameters
         )
       );
       nodeNum++;
-      // 修改分拣器指向这个传送带节点
-      let toChangeNum = outputData[i].length;
-      for (let b of this.buildings) {
-        if (toChangeNum <= 0) {
-          break;
-        }
-        if (outputData[i].includes(b.index)) {
-          b.inputObjIdx = this.buildingIndex;
-          b.inputFromSlot = -1;
-          toChangeNum--;
-        }
-      }
+      this.relinkSorters(outputData[i], sorter => {
+        sorter.inputObjIdx = this.buildingIndex;
+        sorter.inputFromSlot = -1;
+      });
     }
-    // 修复：outputData为空时，最后一个节点的outputObjIdx仍指向buildingIndex+2，
-    // 会错误连接到下一个物品的传送带或喷涂机，导致跨物品粘连。此处将其终结为-1。
-    if (direction > 0 && outputData.length === 0 && nodeNum > 0) {
+
+    if (layoutFactory.shouldSealForwardConveyorTail(direction, outputData.length, nodeNum)) {
       this.buildings[this.buildings.length - 1].outputObjIdx = -1;
       this.buildings[this.buildings.length - 1].outputToSlot = 0;
     }
+
     if (direction < 0) {
-      // let outputObjIdx = this.buildingIndex
+      if (layoutFactory.shouldInsertReverseSpraySupportNode(needSprayCoater, direction, nodeNum)) {
+        this.buildings.push(
+          this.newConveyorNode(
+            { x: buildingX, y: ++buildingY, z: buildingZ },
+            [0, 0],
+            conveyor,
+            this.buildingIndex,
+            1,
+            null
+          )
+        );
+      }
       if (needSprayCoater) {
-        if (nodeNum % 2 === 0) {
-          this.buildings.push(
-            this.newConveyorNode(
-              { x: buildingX, y: ++buildingY, z: buildingZ },
-              [0, 0],
-              conveyor,
-              this.buildingIndex,
-              1,
-              null
-            )
-          );
-        }
         sprayCoaterOffset = { x: buildingX, y: ++buildingY, z: buildingZ };
-        this.sprayCoaterOffsetList.push({
-          x: buildingX,
-          y: buildingY + 1,
-          z: buildingZ,
-        });
+        this.sprayCoaterOffsetList.push(
+          layoutFactory.createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ)
+        );
         this.buildings.push(this.newConveyorNode(sprayCoaterOffset, [180, 180], conveyor, this.buildingIndex, 1, null));
         this.buildings.push(
           this.newConveyorNode(
@@ -287,18 +265,10 @@ class Blueprint {
       );
     }
     if (needSprayCoater) {
-      let sprayYaw = [0, 0];
-      if (direction < 0) {
-        sprayYaw = [180, 180];
-      }
+      const sprayYaw = layoutFactory.getConveyorNodeYaw(direction);
       this.buildings.push(this.newSprayCoater(sprayCoaterOffset, sprayYaw));
     }
-
-    // 修复：更新占地区域X坐标，防止下一条传送带粘连
-    // 每条传送带占据1列X坐标，更新x2确保下条传送带从新列开始
-    if (buildingX > 0 && this.occupiedArea.length > 0) {
-      this.occupiedArea[this.occupiedArea.length - 1].x2 = buildingX;
-    }
+    layoutFactory.updateConveyorOccupiedAreaX(this.occupiedArea, buildingX);
   }
 
   calculateBuildingArea(subRecipe) {
