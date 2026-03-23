@@ -4202,4 +4202,5 @@ var data = [
 // 配方初始化与默认配置能力已迁移至 Scripts/data.recipe-init.js。
 // 全局状态迁移至 Scripts/data.state.js，保持旧调用方式不变。
 // 配方查询与展示辅助函数已迁移至 Scripts/data.recipe.js。
+// 配方 UI 展示与需求添加辅助函数已迁移至 Scripts/data.recipe-ui.js。
 // 蓝图生成入口与配方提取逻辑已迁移至 Scripts/data.blueprint.js。

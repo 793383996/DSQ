@@ -9,6 +9,7 @@ const REQUIRED_FILES = [
   "Scripts/data.js",
   "Scripts/data.recipe-init.js",
   "Scripts/data.recipe.js",
+  "Scripts/data.recipe-ui.js",
   "Scripts/data.blueprint.js",
   "Scripts/data.ui-bindings.js",
   "Scripts/data.bootstrap.js",
