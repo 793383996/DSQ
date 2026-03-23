@@ -1,0 +1,81 @@
+{
+  "updatedAt": "2026-03-24",
+  "owner": "growth-frontend",
+  "events": [
+    {
+      "name": "page_view",
+      "description": "页面访问",
+      "trigger": "index.events onReady",
+      "chain": "ui_funnel",
+      "requiredFields": ["path", "locale"]
+    },
+    {
+      "name": "add_requirement_click",
+      "description": "点击新增需求",
+      "trigger": "data-click-action=addRequirement",
+      "chain": "ui_funnel",
+      "requiredFields": ["action"]
+    },
+    {
+      "name": "save_project_click",
+      "description": "点击保存方案",
+      "trigger": "data-click-action=saveProject",
+      "chain": "ui_funnel",
+      "requiredFields": ["action"]
+    },
+    {
+      "name": "generate_blueprint_click",
+      "description": "点击生成蓝图",
+      "trigger": "data-click-action=generateBlueprint",
+      "chain": "ui_funnel",
+      "requiredFields": ["action"]
+    },
+    {
+      "name": "blueprint_generate_attempt",
+      "description": "蓝图任务发起",
+      "trigger": "generateBlueprint() start",
+      "chain": "blueprint_funnel",
+      "requiredFields": ["recipeCount", "stackLayers"]
+    },
+    {
+      "name": "blueprint_generate_success",
+      "description": "蓝图生成成功",
+      "trigger": "generateBlueprint() success",
+      "chain": "blueprint_funnel",
+      "requiredFields": ["recipeCount", "durationMs", "blueprintLength"]
+    },
+    {
+      "name": "blueprint_generate_failed",
+      "description": "蓝图生成失败",
+      "trigger": "generateBlueprint() catch",
+      "chain": "blueprint_funnel",
+      "requiredFields": ["recipeCount", "durationMs", "error"]
+    }
+  ],
+  "funnel": {
+    "name": "weekly_blueprint_conversion",
+    "windowDays": 7,
+    "steps": [
+      { "event": "page_view" },
+      { "event": "add_requirement_click" },
+      { "event": "generate_blueprint_click" },
+      { "event": "blueprint_generate_success" }
+    ]
+  },
+  "retention": {
+    "cohorts": [
+      {
+        "name": "blueprint_creator_retention",
+        "entryEvent": "blueprint_generate_success",
+        "returnEvent": "blueprint_generate_success",
+        "windows": ["D1", "D7", "D30"]
+      }
+    ]
+  },
+  "reporting": {
+    "cadence": "weekly",
+    "dashboard": "monitor-dashboard/business",
+    "owner": "growth-frontend"
+  },
+  "doc": "localDocs/business-metrics-dictionary.md"
+}

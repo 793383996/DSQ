@@ -54,28 +54,50 @@
     }
   }
 
+  function trackBusinessAction(eventName, attributes = {}) {
+    const tracker = root.PerformanceTracker;
+    if (!tracker || typeof tracker.trackBusinessEvent !== "function") {
+      return;
+    }
+    tracker.trackBusinessEvent(eventName, attributes, "ui_funnel");
+  }
+
+  function trackPageView() {
+    const locale = root.DSQI18n && typeof root.DSQI18n.getLocale === "function" ? root.DSQI18n.getLocale() : "unknown";
+    trackBusinessAction("page_view", {
+      path: location.pathname,
+      locale,
+    });
+  }
+
   function handleClickAction(action) {
     if (action === "addRequirement" && typeof root.f_add === "function") {
+      trackBusinessAction("add_requirement_click", { action });
       root.f_add();
       return;
     }
     if (action === "resetRequirement" && typeof root.f_reset === "function") {
+      trackBusinessAction("reset_requirement_click", { action });
       root.f_reset();
       return;
     }
     if (action === "saveProject" && typeof root.f_save === "function") {
+      trackBusinessAction("save_project_click", { action });
       root.f_save();
       return;
     }
     if (action === "generateBlueprint" && typeof root.generateBlueprint === "function") {
+      trackBusinessAction("generate_blueprint_click", { action });
       root.generateBlueprint();
       return;
     }
     if (action === "resetExclude" && typeof root.f_reset_ig === "function") {
+      trackBusinessAction("reset_exclude_click", { action });
       root.f_reset_ig();
       return;
     }
     if (action === "excludeAccLine" && typeof root.f_ig_acc === "function") {
+      trackBusinessAction("exclude_acc_line_click", { action });
       root.f_ig_acc();
     }
   }
@@ -97,6 +119,7 @@
   onReady(() => {
     bindInputWidthById("txtnumber");
     bindInputWidthById("selmaince");
+    trackPageView();
 
     bindMutualExclusiveCheckbox("onlySorterMk3", "useSorterMk4");
     bindMutualExclusiveCheckbox("useSorterMk4", "onlySorterMk3");
