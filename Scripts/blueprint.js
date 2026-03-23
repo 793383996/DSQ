@@ -306,68 +306,13 @@ class Blueprint {
     if (!subRecipe.building) {
       return { area: 0, x: 0, y: 0, centerPoint: [0, 0, 0, 0] };
     }
-    switch (buildingMap[subRecipe.building.name].category) {
-      case productionCategory.smelter:
-        if (subRecipe.output.length + subRecipe.input.length <= 2) {
-          return {
-            area: 12,
-            x: 3,
-            y: 4,
-            centerPoint: [2, 1, 1, 1],
-            yaw: [0, 0],
-          }; // centerPoint中数值依次为中心点到y轴负边界、x轴正边界、y轴正边界和x轴负边界的距离
-        } else {
-          return {
-            area: 16,
-            x: 4,
-            y: 4,
-            centerPoint: [2, 2, 1, 1],
-            yaw: [0, 0],
-          };
-        }
-      case productionCategory.assembling:
-        return { area: 16, x: 4, y: 4, centerPoint: [2, 2, 1, 1], yaw: [0, 0] };
-      case productionCategory.plant:
-        return { area: 48, x: 8, y: 6, centerPoint: [2, 4, 3, 3], yaw: [0, 0] };
-      case productionCategory.refinery:
-        if (this.config.compactLayout) {
-          return {
-            area: 30,
-            x: 7,
-            y: 5,
-            centerPoint: [2, 3, 2, 3],
-            yaw: [90, 90],
-          };
-        }
-        return {
-          area: 40,
-          x: 8,
-          y: 5,
-          centerPoint: [2, 3, 2, 4],
-          yaw: [90, 90],
-        };
-      case productionCategory.collider:
-        if (this.config.compactLayout) {
-          return {
-            area: 66,
-            x: 11,
-            y: 6,
-            centerPoint: [3, 5, 2, 5],
-            yaw: [0, 0],
-          };
-        }
-        return {
-          area: 77,
-          x: 11,
-          y: 7,
-          centerPoint: [3, 5, 3, 5],
-          yaw: [0, 0],
-        };
-      case productionCategory.lab:
-        return { area: 42, x: 7, y: 6, centerPoint: [3, 3, 2, 3], yaw: [0, 0] };
-      default:
-        throw `unknown production build type - ${buildingMap[subRecipe.building.name].type}`;
-    }
+    const buildingDef = buildingMap[subRecipe.building.name];
+    return layoutFactory.calculateBuildingArea(
+      buildingDef.category,
+      subRecipe.output.length + subRecipe.input.length,
+      this.config.compactLayout,
+      productionCategory
+    );
   }
 
   calculateBlueprintArea() {
@@ -785,24 +730,16 @@ class Blueprint {
     // - Lab 不参与克隆（布局复杂，暂不支持）
     // - Lab.num 不缩减，保持完整数量在 z=0 层工作
     // - 这样 Lab 的产能不会损失
-    if (this.config.stackLayers > 1) {
-      for (let subRecipe of this.recipe.subRecipes) {
-        if (subRecipe.building) {
-          // 排除 Lab（不缩减num，保持完整产能）
-          if (buildingMap[subRecipe.building.name].category !== productionCategory.lab) {
-            // 保存原始 num，用于 generateConveyorBelts 中计算原料需求
-            subRecipe.building.originalNum = subRecipe.building.num;
-            subRecipe.building.num = Math.ceil(subRecipe.building.num / this.config.stackLayers);
-          }
-        }
-      }
-    }
+    layoutFactory.normalizeStackLayerRecipeCounts(
+      this.recipe.subRecipes,
+      this.config.stackLayers,
+      buildingMap,
+      productionCategory
+    );
     this.calculateBlueprintArea();
-    if (this.config.onlyConveyorBeltMk3Downgrade) {
-      buildingMap.conveyorBeltMK3.transportSpeed = 28;
-    } else {
-      buildingMap.conveyorBeltMK3.transportSpeed = 30;
-    }
+    buildingMap.conveyorBeltMK3.transportSpeed = layoutFactory.resolveConveyorMk3TransportSpeed(
+      this.config.onlyConveyorBeltMk3Downgrade
+    );
     // console.log(buildingMap)
     // this.blueprintTemplate.areas[0].size = this.blueprintSize
   }

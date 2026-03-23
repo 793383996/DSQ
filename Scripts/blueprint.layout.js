@@ -1,6 +1,90 @@
 // Scripts/blueprint.layout.js
 // 从 blueprint.js 抽离的布局计算逻辑。
 (function (root) {
+  function calculateBuildingArea(buildingCategory, ioCount, compactLayout, productionCategory) {
+    switch (buildingCategory) {
+      case productionCategory.smelter:
+        if (ioCount <= 2) {
+          return {
+            area: 12,
+            x: 3,
+            y: 4,
+            centerPoint: [2, 1, 1, 1],
+            yaw: [0, 0],
+          };
+        }
+        return {
+          area: 16,
+          x: 4,
+          y: 4,
+          centerPoint: [2, 2, 1, 1],
+          yaw: [0, 0],
+        };
+      case productionCategory.assembling:
+        return { area: 16, x: 4, y: 4, centerPoint: [2, 2, 1, 1], yaw: [0, 0] };
+      case productionCategory.plant:
+        return { area: 48, x: 8, y: 6, centerPoint: [2, 4, 3, 3], yaw: [0, 0] };
+      case productionCategory.refinery:
+        if (compactLayout) {
+          return {
+            area: 30,
+            x: 7,
+            y: 5,
+            centerPoint: [2, 3, 2, 3],
+            yaw: [90, 90],
+          };
+        }
+        return {
+          area: 40,
+          x: 8,
+          y: 5,
+          centerPoint: [2, 3, 2, 4],
+          yaw: [90, 90],
+        };
+      case productionCategory.collider:
+        if (compactLayout) {
+          return {
+            area: 66,
+            x: 11,
+            y: 6,
+            centerPoint: [3, 5, 2, 5],
+            yaw: [0, 0],
+          };
+        }
+        return {
+          area: 77,
+          x: 11,
+          y: 7,
+          centerPoint: [3, 5, 3, 5],
+          yaw: [0, 0],
+        };
+      case productionCategory.lab:
+        return { area: 42, x: 7, y: 6, centerPoint: [3, 3, 2, 3], yaw: [0, 0] };
+      default:
+        throw `unknown production build category - ${buildingCategory}`;
+    }
+  }
+
+  function normalizeStackLayerRecipeCounts(subRecipes, stackLayers, buildingMap, productionCategory) {
+    if (!stackLayers || stackLayers <= 1) {
+      return;
+    }
+    for (const subRecipe of subRecipes) {
+      if (!subRecipe.building) {
+        continue;
+      }
+      if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
+        continue;
+      }
+      subRecipe.building.originalNum = subRecipe.building.num;
+      subRecipe.building.num = Math.ceil(subRecipe.building.num / stackLayers);
+    }
+  }
+
+  function resolveConveyorMk3TransportSpeed(onlyConveyorBeltMk3Downgrade) {
+    return onlyConveyorBeltMk3Downgrade ? 28 : 30;
+  }
+
   function calculateProductionBuildingPlacement(blueprintSize, occupiedArea, buildingArea) {
     const lastIndex = occupiedArea.length - 1;
     let buildingX;
@@ -1586,6 +1670,9 @@
   }
 
   root.DSQBlueprintLayout = {
+    calculateBuildingArea,
+    normalizeStackLayerRecipeCounts,
+    resolveConveyorMk3TransportSpeed,
     calculateProductionBuildingPlacement,
     calculateSorterLocalOffsetAndYaw,
     calculateTeslaTowerOffset,
