@@ -2,7 +2,7 @@ import { access, constants, cp, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT = process.cwd();
-const DIST_DIR = path.join(ROOT, "dist-vite");
+const DIST_DIR = path.join(ROOT, "dist");
 
 const STATIC_FILES = ["robots.txt", "sitemap.xml", "favicon.ico", "favicon.svg", "og-image.png"];
 const STATIC_DIRS = ["Scripts", "img", "quote", ".well-known"];
@@ -58,7 +58,7 @@ async function main() {
   }
 
   await copyPublicDirContents();
-  console.log("post-vite-copy: static assets synced to dist-vite/.");
+  console.log("post-vite-copy: static assets synced to dist/.");
 }
 
 main().catch(error => {
