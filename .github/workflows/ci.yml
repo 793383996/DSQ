@@ -41,6 +41,9 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
+      - name: Validate monitor baseline
+        run: npm run monitor:check
+
       - name: Build dist package
         run: npm run build
 
@@ -66,6 +69,7 @@ jobs:
           echo "- Smoke: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Blueprint regression: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Unit tests: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Monitor baseline: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Build dist: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Verify dist: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Browser E2E: Completed" >> $GITHUB_STEP_SUMMARY

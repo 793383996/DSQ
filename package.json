@@ -22,10 +22,11 @@
     "security:vendor": "node ./localDev/node-scripts/vendor-baseline.mjs",
     "security:check": "node ./localDev/node-scripts/security-baseline.mjs && npm run security:vendor",
     "security:audit": "npm audit --omit=dev --audit-level=high",
+    "monitor:check": "node ./localDev/node-scripts/monitor-baseline.mjs",
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run build && npm run verify:dist && npm run test:e2e && npm run test:integration"
+    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run build && npm run verify:dist && npm run test:e2e && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"

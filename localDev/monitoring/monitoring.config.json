@@ -1,0 +1,75 @@
+{
+  "service": "dsq-web",
+  "environment": "production",
+  "releaseSource": "window.__DSQ_RELEASE",
+  "endpointSource": "window.__DSQ_MONITOR_ENDPOINT",
+  "defaultSampleRate": 1,
+  "eventSampleRates": {
+    "error_log": 1,
+    "blueprint_generation": 1,
+    "business_event": 0.5
+  },
+  "requiredContextFields": ["service", "release", "sessionId", "traceId", "route", "chain", "timestamp"],
+  "triageTargetMinutes": 10,
+  "slo": {
+    "window": "15m",
+    "indicators": [
+      {
+        "id": "blueprint_generation_success_rate",
+        "description": "蓝图生成成功率",
+        "target": 0.995,
+        "operator": ">=",
+        "owner": "frontend-oncall"
+      },
+      {
+        "id": "blueprint_generation_p95_ms",
+        "description": "蓝图生成 P95 耗时",
+        "target": 1800,
+        "operator": "<=",
+        "owner": "frontend-oncall"
+      },
+      {
+        "id": "frontend_js_error_rate",
+        "description": "前端 JS 错误率",
+        "target": 0.01,
+        "operator": "<=",
+        "owner": "frontend-oncall"
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "name": "BlueprintSuccessRateWarning",
+      "severity": "warning",
+      "metricId": "blueprint_generation_success_rate",
+      "window": "15m",
+      "threshold": 0.995,
+      "notifyChannels": ["monitor-dashboard", "team-chat"]
+    },
+    {
+      "name": "BlueprintSuccessRateCritical",
+      "severity": "critical",
+      "metricId": "blueprint_generation_success_rate",
+      "window": "15m",
+      "threshold": 0.98,
+      "notifyChannels": ["team-chat", "oncall-phone"]
+    },
+    {
+      "name": "BlueprintP95Critical",
+      "severity": "critical",
+      "metricId": "blueprint_generation_p95_ms",
+      "window": "15m",
+      "threshold": 2500,
+      "notifyChannels": ["team-chat", "oncall-phone"]
+    },
+    {
+      "name": "FrontendErrorRateCritical",
+      "severity": "critical",
+      "metricId": "frontend_js_error_rate",
+      "window": "15m",
+      "threshold": 0.03,
+      "notifyChannels": ["team-chat", "oncall-phone"]
+    }
+  ],
+  "runbook": "localDocs/monitoring-slo-runbook.md"
+}
