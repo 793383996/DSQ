@@ -557,6 +557,31 @@
     };
   }
 
+  function resolveAcceleratorMode(acceleratorModeFlag) {
+    return acceleratorModeFlag === 1 ? 1 : 0;
+  }
+
+  function shouldEvaluateTeslaTowerPlacement(config, buildingArrayLength, needNewLine) {
+    if (!config.generateTeslaTower) {
+      return false;
+    }
+    if (
+      config.teslaTowerLineInterval > 1 &&
+      ((buildingArrayLength && buildingArrayLength % 2 === 0) || (needNewLine && buildingArrayLength % 2 === 1))
+    ) {
+      return true;
+    }
+    return config.teslaTowerLineInterval === 1 && !!buildingArrayLength;
+  }
+
+  function shouldPlaceTeslaTowerForDistance(hasTeslaTowerThisLine, teslaTowerDistance, teslaTowerInterval, remainingX) {
+    return (
+      (hasTeslaTowerThisLine && teslaTowerDistance >= teslaTowerInterval) ||
+      (!hasTeslaTowerThisLine && teslaTowerDistance >= teslaTowerInterval / 2) ||
+      (teslaTowerDistance >= teslaTowerInterval / 2 && remainingX < teslaTowerInterval)
+    );
+  }
+
   function calculateOutputActualRate(itemRate, productionSpeed, actualBuildingNum, extraRate) {
     return itemRate * productionSpeed * actualBuildingNum * extraRate;
   }
@@ -1569,6 +1594,9 @@
     getNextSorterSlotIndex,
     planProductionSorters,
     calculateProductionContext,
+    resolveAcceleratorMode,
+    shouldEvaluateTeslaTowerPlacement,
+    shouldPlaceTeslaTowerForDistance,
     calculateOutputActualRate,
     calculateInputActualRate,
     calculateSortersPerNode,

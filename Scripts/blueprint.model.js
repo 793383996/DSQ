@@ -164,6 +164,51 @@
     return template;
   }
 
+  function createStackedLabChain(
+    createTemplate,
+    totalBuildingNum,
+    startIndex,
+    maxLabLayers,
+    baseOffset,
+    yaw,
+    labBuildingDef,
+    labHeight,
+    recipeId,
+    acceleratorMode,
+    inputObjIdxStart
+  ) {
+    const stackedBuildings = [];
+    const stackedIndexes = [];
+    let consumedCount = 0;
+    let previousIndex = inputObjIdxStart;
+    let layer = 1;
+
+    while (startIndex + consumedCount + 1 < totalBuildingNum && layer < maxLabLayers) {
+      const labBuilding = createStackedLabBuilding(
+        createTemplate(),
+        baseOffset,
+        yaw,
+        labBuildingDef,
+        labHeight,
+        recipeId,
+        acceleratorMode,
+        layer,
+        previousIndex
+      );
+      stackedBuildings.push(labBuilding);
+      stackedIndexes.push(labBuilding.index);
+      previousIndex = labBuilding.index;
+      consumedCount++;
+      layer++;
+    }
+
+    return {
+      stackedBuildings,
+      stackedIndexes,
+      consumedCount,
+    };
+  }
+
   function createSorter(template, sorterDef, options) {
     template.itemId = sorterDef.itemId;
     template.modelIndex = sorterDef.modelIndex;
@@ -262,6 +307,7 @@
     createSinglePointBuilding,
     configureLabBuilding,
     createStackedLabBuilding,
+    createStackedLabChain,
     createSorter,
     createSorterOwnerRecord,
     createSupplementSorterOwnerRecord,

@@ -521,198 +521,253 @@ class Blueprint {
     return newSorter;
   }
 
+  createProductionBuildingAtOffset(subRecipe, buildingDef, buildingArea, buildingOffset, acceleratorMode) {
+    return modelFactory.createProductionBuilding(
+      this.buildingIndex,
+      { x: buildingOffset.x, y: buildingOffset.y, z: buildingOffset.z },
+      buildingArea.yaw,
+      buildingDef,
+      subRecipe.recipeID,
+      acceleratorMode
+    );
+  }
+
+  createLabStackGroup(subRecipe, buildingDef, buildingOffset, newBuilding, acceleratorMode, currentIndex) {
+    if (buildingDef.category !== productionCategory.lab) {
+      return {
+        stackLabBuildingIndexList: [],
+        consumedCount: 0,
+      };
+    }
+
+    modelFactory.configureLabBuilding(newBuilding);
+    const stackResult = modelFactory.createStackedLabChain(
+      () => this.getBuildingTemplate(),
+      subRecipe.building.num,
+      currentIndex,
+      this.config.maxLabLayers,
+      buildingOffset,
+      newBuilding.yaw,
+      buildingDef,
+      buildingMap.lab.height,
+      subRecipe.recipeID,
+      acceleratorMode,
+      newBuilding.index
+    );
+    for (const labBuilding of stackResult.stackedBuildings) {
+      this.buildings.push(labBuilding);
+    }
+    return {
+      stackLabBuildingIndexList: stackResult.stackedIndexes,
+      consumedCount: stackResult.consumedCount,
+    };
+  }
+
+  maybeCreateTeslaTower(buildingOffset, buildingCategory, needNewLine, teslaState) {
+    if (!layoutFactory.shouldEvaluateTeslaTowerPlacement(this.config, this.buildingArray.length, needNewLine)) {
+      return;
+    }
+
+    const teslaTowerOffset = this.calculateTeslaTowerOffset(buildingOffset, buildingCategory);
+    teslaState.teslaTowerDistance += teslaTowerOffset.distance;
+    const remainingX = this.blueprintSize.x - buildingOffset.x;
+    if (
+      !layoutFactory.shouldPlaceTeslaTowerForDistance(
+        teslaState.hasTeslaTowerThisLine,
+        teslaState.teslaTowerDistance,
+        this.config.teslaTowerInterval,
+        remainingX
+      )
+    ) {
+      return;
+    }
+
+    const teslaTower = modelFactory.createSinglePointBuilding(
+      this.getBuildingTemplate(),
+      buildingMap.teslaTower,
+      teslaTowerOffset.offset
+    );
+    teslaState.teslaTowerDistance = 0;
+    teslaState.hasTeslaTowerThisLine = true;
+    const currentRow = this.buildingArray[this.buildingArray.length - 1];
+    if (currentRow) {
+      currentRow.push({
+        index: teslaTower.index,
+        sorterList: [],
+      });
+    }
+    this.buildings.push(teslaTower);
+  }
+
+  appendOutputSortersForProduction(subRecipe, ownerContext, productionContext, slotIndex, sorterList) {
+    for (const outputItem of subRecipe.output) {
+      const actualRate = layoutFactory.calculateOutputActualRate(
+        outputItem.rate,
+        productionContext.productionSpeed,
+        productionContext.actualBuildingNum,
+        productionContext.extraRate
+      );
+      const sortPlan = this.planProductionSorters(actualRate, slotIndex, false, ownerContext.buildingCategory);
+      for (const planEntry of sortPlan.entries) {
+        this.appendPlannedSorter(
+          sortPlan.sorter,
+          ownerContext.ownerOffset,
+          ownerContext.buildingCategory,
+          planEntry,
+          {
+            inputObjIdx: ownerContext.nowBuildingIndex,
+            outputToSlot: -1,
+            inputToSlot: 1,
+            inputFromSlot: planEntry.slotIndex,
+            filterId: itemMap[outputItem.name].iconId,
+            parameters: { length: 1 },
+          },
+          outputItem.name,
+          ownerContext.nowBuildingIndex,
+          ownerContext.ownerName,
+          ownerContext.recipeID,
+          sorterList
+        );
+      }
+      slotIndex = sortPlan.nextSlotIndex;
+    }
+    return slotIndex;
+  }
+
+  appendInputSortersForProduction(subRecipe, ownerContext, productionContext, slotIndex, sorterList) {
+    for (const inputItem of subRecipe.input) {
+      const actualRate = layoutFactory.calculateInputActualRate(
+        inputItem.rate,
+        productionContext.productionSpeed,
+        productionContext.actualBuildingNum,
+        productionContext.extraRate,
+        subRecipe.acceleratorMode
+      );
+      const sortPlan = this.planProductionSorters(actualRate, slotIndex, true, ownerContext.buildingCategory);
+      for (const planEntry of sortPlan.entries) {
+        const sorterOptions = {
+          outputToSlot: planEntry.slotIndex,
+          inputToSlot: 1,
+          filterId: itemMap[inputItem.name].iconId,
+          parameters: { length: 1 },
+        };
+        if (planEntry.linkMode === "input_extra") {
+          sorterOptions.inputObjIdx = ownerContext.nowBuildingIndex;
+        } else {
+          sorterOptions.outputObjIdx = ownerContext.nowBuildingIndex;
+        }
+        this.appendPlannedSorter(
+          sortPlan.sorter,
+          ownerContext.ownerOffset,
+          ownerContext.buildingCategory,
+          planEntry,
+          sorterOptions,
+          inputItem.name,
+          ownerContext.nowBuildingIndex,
+          ownerContext.ownerName,
+          ownerContext.recipeID,
+          sorterList
+        );
+      }
+      slotIndex = sortPlan.nextSlotIndex;
+    }
+    return slotIndex;
+  }
+
+  appendProductionBuildingGroup(needNewLine, nowBuildingIndex, sorterList, stackLabBuildingIndexList) {
+    const currentEntry = {
+      index: nowBuildingIndex,
+      sorterList,
+    };
+    if (needNewLine || this.buildingArray.length === 0) {
+      this.buildingArray.push([currentEntry]);
+    } else {
+      this.buildingArray[this.buildingArray.length - 1].push(currentEntry);
+    }
+
+    const currentRow = this.buildingArray[this.buildingArray.length - 1];
+    for (const labIndex of stackLabBuildingIndexList) {
+      currentRow.push({
+        index: labIndex,
+        sorterList: [],
+      });
+    }
+  }
+
   newProductionBuilding(subRecipe) {
-    let hasTeslaTowerThisLine = false;
-    let teslaTowerDistance = 0;
+    const buildingDef = buildingMap[subRecipe.building.name];
+    this.lastProductionBuildingType = buildingDef.category;
+    const teslaState = {
+      hasTeslaTowerThisLine: false,
+      teslaTowerDistance: 0,
+    };
+
     for (let i = 0; i < subRecipe.building.num; i++) {
       this.buildingIndex++;
-      this.lastProductionBuildingType = buildingMap[subRecipe.building.name].category;
-      let buildingArea, buildingX, buildingY, buildingZ;
-      buildingArea = this.calculateBuildingArea(subRecipe);
+      const buildingArea = this.calculateBuildingArea(subRecipe);
       const placement = this.calculateProductionBuildingPlacement(buildingArea);
-      let needNewLine = placement.needNewLine;
-      buildingX = placement.offset.x;
-      buildingY = placement.offset.y;
-      buildingZ = placement.offset.z;
+      const needNewLine = placement.needNewLine;
+      const buildingOffset = placement.offset;
       if (needNewLine) {
-        hasTeslaTowerThisLine = false;
-        teslaTowerDistance = 0;
+        teslaState.hasTeslaTowerThisLine = false;
+        teslaState.teslaTowerDistance = 0;
       }
-      let acceleratorMode = 0;
-      if (subRecipe.acceleratorMode === 1) {
-        acceleratorMode = 1;
-      }
-      let newBuilding = modelFactory.createProductionBuilding(
-        this.buildingIndex,
-        { x: buildingX, y: buildingY, z: buildingZ },
-        buildingArea.yaw,
-        buildingMap[subRecipe.building.name],
-        subRecipe.recipeID,
+
+      const acceleratorMode = layoutFactory.resolveAcceleratorMode(subRecipe.acceleratorMode);
+      const newBuilding = this.createProductionBuildingAtOffset(
+        subRecipe,
+        buildingDef,
+        buildingArea,
+        buildingOffset,
         acceleratorMode
       );
+      this.buildings.push(newBuilding);
 
-      let stackLabBuildingIndexList = [];
-      let layers = 1;
-      if (buildingMap[subRecipe.building.name].category === productionCategory.lab) {
-        // 堆叠处理研究站
-        modelFactory.configureLabBuilding(newBuilding);
-        this.buildings.push(newBuilding);
-        for (i++; i < subRecipe.building.num && layers < this.config.maxLabLayers; i++, layers++) {
-          let labBuilding = modelFactory.createStackedLabBuilding(
-            this.getBuildingTemplate(),
-            { x: buildingX, y: buildingY, z: buildingZ },
-            newBuilding.yaw,
-            buildingMap[subRecipe.building.name],
-            buildingMap.lab.height,
-            subRecipe.recipeID,
-            acceleratorMode,
-            layers,
-            this.buildingIndex - 1
-          );
-          this.buildings.push(labBuilding);
-          stackLabBuildingIndexList.push(labBuilding.index);
-        }
-        i--;
-      } else {
-        this.buildings.push(newBuilding);
-      }
+      const stackResult = this.createLabStackGroup(
+        subRecipe,
+        buildingDef,
+        buildingOffset,
+        newBuilding,
+        acceleratorMode,
+        i
+      );
+      i += stackResult.consumedCount;
       const nowBuildingIndex = newBuilding.index;
-      if (this.config.generateTeslaTower) {
-        if (
-          (this.config.teslaTowerLineInterval > 1 &&
-            ((this.buildingArray.length && this.buildingArray.length % 2 === 0) ||
-              (needNewLine && this.buildingArray.length % 2 === 1))) ||
-          (this.config.teslaTowerLineInterval === 1 && this.buildingArray.length)
-        ) {
-          let teslaTowerOffset = this.calculateTeslaTowerOffset(
-            { x: buildingX, y: buildingY, z: buildingZ },
-            buildingMap[subRecipe.building.name].category
-          );
-          teslaTowerDistance += teslaTowerOffset.distance;
-          if (
-            (hasTeslaTowerThisLine && teslaTowerDistance >= this.config.teslaTowerInterval) ||
-            (!hasTeslaTowerThisLine && teslaTowerDistance >= this.config.teslaTowerInterval / 2) ||
-            (teslaTowerDistance >= this.config.teslaTowerInterval / 2 &&
-              this.blueprintSize.x - buildingX < this.config.teslaTowerInterval)
-          ) {
-            // 生成电力感应塔
-            let teslaTower = modelFactory.createSinglePointBuilding(
-              this.getBuildingTemplate(),
-              buildingMap.teslaTower,
-              teslaTowerOffset.offset
-            );
-            teslaTowerDistance = 0;
-            hasTeslaTowerThisLine = true;
-            this.buildingArray[this.buildingArray.length - 1].push({
-              index: teslaTower.index,
-              sorterList: [],
-            });
-            this.buildings.push(teslaTower);
-          }
-        }
-      }
+      this.maybeCreateTeslaTower(buildingOffset, buildingDef.category, needNewLine, teslaState);
 
       // 添加分拣器
-      let slotIndex = buildingMap[subRecipe.building.name].slotMaxIndex;
+      let slotIndex = buildingDef.slotMaxIndex;
       const productionContext = layoutFactory.calculateProductionContext(
         subRecipe.building.num,
         i,
-        buildingMap[subRecipe.building.name].category === productionCategory.lab ? stackLabBuildingIndexList.length : 0,
-        buildingMap[subRecipe.building.name].productionSpeed,
+        buildingDef.category === productionCategory.lab ? stackResult.stackLabBuildingIndexList.length : 0,
+        buildingDef.productionSpeed,
         this.recipe.proliferator,
         subRecipe.acceleratorMode,
         itemMap
       );
-      let sorterList = [];
-
-      const ownerOffset = { x: buildingX, y: buildingY, z: buildingZ };
-      const ownerName = subRecipe.building.name;
-      const buildingCategory = buildingMap[ownerName].category;
-      for (let outputItem of subRecipe.output) {
-        let actual_rate = layoutFactory.calculateOutputActualRate(
-          outputItem.rate,
-          productionContext.productionSpeed,
-          productionContext.actualBuildingNum,
-          productionContext.extraRate
-        );
-        const sortPlan = this.planProductionSorters(actual_rate, slotIndex, false, buildingCategory);
-        for (let planEntry of sortPlan.entries) {
-          this.appendPlannedSorter(
-            sortPlan.sorter,
-            ownerOffset,
-            buildingCategory,
-            planEntry,
-            {
-              inputObjIdx: nowBuildingIndex,
-              outputToSlot: -1,
-              inputToSlot: 1,
-              inputFromSlot: planEntry.slotIndex,
-              filterId: itemMap[outputItem.name].iconId,
-              parameters: { length: 1 },
-            },
-            outputItem.name,
-            nowBuildingIndex,
-            ownerName,
-            subRecipe.recipeID,
-            sorterList
-          );
-        }
-        slotIndex = sortPlan.nextSlotIndex;
-      }
-      for (let inputItem of subRecipe.input) {
-        let actual_rate = layoutFactory.calculateInputActualRate(
-          inputItem.rate,
-          productionContext.productionSpeed,
-          productionContext.actualBuildingNum,
-          productionContext.extraRate,
-          subRecipe.acceleratorMode
-        );
-        const sortPlan = this.planProductionSorters(actual_rate, slotIndex, true, buildingCategory);
-        for (let planEntry of sortPlan.entries) {
-          const sorterOptions = {
-            outputToSlot: planEntry.slotIndex,
-            inputToSlot: 1,
-            filterId: itemMap[inputItem.name].iconId,
-            parameters: { length: 1 },
-          };
-          if (planEntry.linkMode === "input_extra") {
-            sorterOptions.inputObjIdx = nowBuildingIndex;
-          } else {
-            sorterOptions.outputObjIdx = nowBuildingIndex;
-          }
-          this.appendPlannedSorter(
-            sortPlan.sorter,
-            ownerOffset,
-            buildingCategory,
-            planEntry,
-            sorterOptions,
-            inputItem.name,
-            nowBuildingIndex,
-            ownerName,
-            subRecipe.recipeID,
-            sorterList
-          );
-        }
-        slotIndex = sortPlan.nextSlotIndex;
-      }
-
-      if (needNewLine) {
-        // 新的一行
-        this.buildingArray.push([{ index: nowBuildingIndex, sorterList: sorterList }]);
-      } else {
-        // 在当前行继续添加
-        this.buildingArray[this.buildingArray.length - 1].push({
-          index: nowBuildingIndex,
-          sorterList: sorterList,
-        });
-      }
-      for (let labIndex of stackLabBuildingIndexList) {
-        // 把堆叠的研究站加进去
-        this.buildingArray[this.buildingArray.length - 1].push({
-          index: labIndex,
-          sorterList: [],
-        });
-      }
+      const sorterList = [];
+      const ownerContext = {
+        nowBuildingIndex,
+        ownerOffset: { x: buildingOffset.x, y: buildingOffset.y, z: buildingOffset.z },
+        ownerName: subRecipe.building.name,
+        recipeID: subRecipe.recipeID,
+        buildingCategory: buildingDef.category,
+      };
+      slotIndex = this.appendOutputSortersForProduction(
+        subRecipe,
+        ownerContext,
+        productionContext,
+        slotIndex,
+        sorterList
+      );
+      this.appendInputSortersForProduction(subRecipe, ownerContext, productionContext, slotIndex, sorterList);
+      this.appendProductionBuildingGroup(
+        needNewLine,
+        nowBuildingIndex,
+        sorterList,
+        stackResult.stackLabBuildingIndexList
+      );
     }
   }
 
