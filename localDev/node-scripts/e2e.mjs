@@ -192,6 +192,15 @@ async function runE2EAttempt(attempt) {
         null,
         { timeout: 10000 }
       );
+      await page.waitForFunction(() => {
+        return new URL(window.location.href).searchParams.get("lang") === "en-US";
+      });
+      const canonicalHref = await page.locator("#canonicalLink").first().getAttribute("href");
+      assert.equal(
+        canonicalHref,
+        "https://dsq.vercel.app/?lang=en-US",
+        "e2e: canonical URL should follow switched locale."
+      );
 
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForDataReady(page);

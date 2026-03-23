@@ -44,6 +44,8 @@ const REQUIRED_MARKERS = [
   'id="linkTermsOfService"',
   'id="linkCookiePolicy"',
   'id="linkSecurityPolicy"',
+  'id="canonicalLink"',
+  'hreflang="en-US"',
 ];
 
 function contentType(filePath) {

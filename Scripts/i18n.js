@@ -2,6 +2,7 @@
   const STORAGE_KEY = "dsq_locale";
   const DEFAULT_LOCALE = "zh-CN";
   const SUPPORTED_LOCALES = new Set(["zh-CN", "en-US"]);
+  const SITE_ORIGIN = "https://dsq.vercel.app";
   const localeCache = {};
   let currentLocale = DEFAULT_LOCALE;
 
@@ -40,15 +41,45 @@
     return DEFAULT_LOCALE;
   }
 
+  function getLocaleFromQuery() {
+    try {
+      const queryLocale = new URL(window.location.href).searchParams.get("lang");
+      return queryLocale ? normalizeLocale(queryLocale) : null;
+    } catch {
+      return null;
+    }
+  }
+
   function getInitialLocale() {
+    const fromQuery = getLocaleFromQuery();
+    if (fromQuery) {
+      return fromQuery;
+    }
+
     const stored = safeGetLocalStorage(STORAGE_KEY);
     if (stored) {
       return normalizeLocale(stored);
     }
+
     if (typeof navigator !== "undefined" && navigator.language) {
       return normalizeLocale(navigator.language);
     }
     return DEFAULT_LOCALE;
+  }
+
+  function getSeoUrl(locale) {
+    return `${SITE_ORIGIN}/?lang=${locale}`;
+  }
+
+  function updateLocaleQuery(locale) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", locale);
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      window.history.replaceState({}, "", next);
+    } catch {
+      // ignore URL sync failures
+    }
   }
 
   async function loadDictionary(locale) {
@@ -77,10 +108,36 @@
     if (title) {
       document.title = title;
     }
-    const description = document.querySelector('meta[name="description"]');
+
     const descriptionText = textOf(dictionary, "meta.description");
+    const description = document.querySelector('meta[name="description"]');
     if (description && descriptionText) {
       description.setAttribute("content", descriptionText);
+    }
+
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription && descriptionText) {
+      ogDescription.setAttribute("content", descriptionText);
+    }
+
+    const twitterDescription = document.querySelector('meta[name="twitter:description"]');
+    if (twitterDescription && descriptionText) {
+      twitterDescription.setAttribute("content", descriptionText);
+    }
+
+    const canonical = document.getElementById("canonicalLink");
+    if (canonical) {
+      canonical.setAttribute("href", getSeoUrl(currentLocale));
+    }
+
+    const ogUrl = document.getElementById("metaOgUrl");
+    if (ogUrl) {
+      ogUrl.setAttribute("content", getSeoUrl(currentLocale));
+    }
+
+    const ogLocale = document.getElementById("metaOgLocale");
+    if (ogLocale) {
+      ogLocale.setAttribute("content", currentLocale === "zh-CN" ? "zh_CN" : "en_US");
     }
   }
 
@@ -112,14 +169,17 @@
   async function setLocale(locale, options = {}) {
     const normalized = normalizeLocale(locale);
     const persist = options.persist !== false;
+    const syncQuery = options.syncQuery !== false;
     const dictionary = await loadDictionary(normalized).catch(async () => {
-      const fallback = DEFAULT_LOCALE;
-      return loadDictionary(fallback);
+      return loadDictionary(DEFAULT_LOCALE);
     });
 
     currentLocale = normalized;
     if (persist) {
       safeSetLocalStorage(STORAGE_KEY, normalized);
+    }
+    if (syncQuery) {
+      updateLocaleQuery(normalized);
     }
 
     applyMeta(dictionary);
@@ -136,13 +196,13 @@
     if (localeSelector && !localeSelector.dataset.i18nBound) {
       localeSelector.dataset.i18nBound = "true";
       localeSelector.addEventListener("change", event => {
-        setLocale(event.target.value, { persist: true }).catch(error => {
+        setLocale(event.target.value, { persist: true, syncQuery: true }).catch(error => {
           console.warn("i18n: failed to switch locale.", error);
         });
       });
     }
 
-    setLocale(getInitialLocale(), { persist: true }).catch(error => {
+    setLocale(getInitialLocale(), { persist: true, syncQuery: true }).catch(error => {
       console.warn("i18n: failed to initialize locale.", error);
     });
   }
