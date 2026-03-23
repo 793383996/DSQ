@@ -7,6 +7,7 @@
   "scripts": {
     "prepare": "husky",
     "lint": "eslint Scripts localDev --max-warnings 100",
+    "lint:baseline": "node ./localDev/node-scripts/lint-baseline.mjs",
     "lint:fix": "eslint Scripts localDev --fix",
     "format:check": "prettier --check \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "format": "prettier --write \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
@@ -17,7 +18,7 @@
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run build && npm run verify:dist && npm run test:e2e && npm run test:integration"
+    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run build && npm run verify:dist && npm run test:e2e && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"

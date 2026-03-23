@@ -26,6 +26,9 @@ jobs:
       - name: Run lint
         run: npm run lint
 
+      - name: Check lint warning baseline
+        run: npm run lint:baseline
+
       - name: Check formatting
         run: npm run format:check
 
@@ -58,6 +61,7 @@ jobs:
         run: |
           echo "## CI Check Results" >> $GITHUB_STEP_SUMMARY
           echo "- Lint: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint baseline: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Format: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Smoke: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Blueprint regression: Completed" >> $GITHUB_STEP_SUMMARY
