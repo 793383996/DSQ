@@ -1,3 +1,45 @@
+function getMonitorEndpoint() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  if (typeof window.__DSQ_MONITOR_ENDPOINT === "string" && window.__DSQ_MONITOR_ENDPOINT.trim()) {
+    return window.__DSQ_MONITOR_ENDPOINT.trim();
+  }
+  try {
+    const endpoint = localStorage.getItem("dsq_monitor_endpoint");
+    return endpoint && endpoint.trim() ? endpoint.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function sendMonitorEvent(eventType, payload) {
+  const endpoint = getMonitorEndpoint();
+  if (!endpoint || typeof navigator === "undefined") {
+    return;
+  }
+  const body = JSON.stringify({
+    eventType,
+    timestamp: new Date().toISOString(),
+    payload,
+  });
+  try {
+    if (typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon(endpoint, blob);
+      return;
+    }
+    await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    });
+  } catch (error) {
+    console.warn("[Monitor] Failed to send event:", error);
+  }
+}
+
 const ErrorMonitor = {
   logs: [],
   maxLogs: 100,
@@ -46,6 +88,7 @@ const ErrorMonitor = {
       this.logs.shift();
     }
     this.persistLogs();
+    sendMonitorEvent("error_log", entry);
   },
 
   persistLogs() {
@@ -128,6 +171,7 @@ const PerformanceTracker = {
     }
 
     console.log("[PerformanceTracker] Blueprint generation:", entry);
+    sendMonitorEvent("blueprint_generation", entry);
     return entry;
   },
 

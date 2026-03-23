@@ -17,6 +17,8 @@
     "build:vite": "vite build && node ./localDev/node-scripts/post-vite-copy.mjs",
     "verify:dist": "node ./localDev/node-scripts/verify-dist.mjs",
     "verify:vite-dist": "node ./localDev/node-scripts/verify-vite-dist.mjs",
+    "security:check": "node ./localDev/node-scripts/security-baseline.mjs",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
