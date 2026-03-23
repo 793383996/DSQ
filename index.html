@@ -131,7 +131,7 @@
         <input type="number" id="selmaince" aria-label="生产设备数" min="1" max="1000" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
       </div>
       <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
+        <img alt="添加需求" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
       </a>
       <div class="custom-dropdown">
         <button id="btnSetting" data-i18n="control.settings">参数设置</button>
@@ -424,7 +424,7 @@
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                 <span title="包含自喷涂所需" style="color: #d97706;">总喷涂增产剂数量：{{totalAcc}}</span>
-                <a href="#" id="btnExcludeAccLine" data-click-action="excludeAccLine" data-i18n="action.exclude_acc_line" style="background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #b45309;">排除增产剂产线</a>
+                <a href="#" id="btnExcludeAccLine" data-click-action="excludeAccLine" data-i18n="action.exclude_acc_line" style="display: inline-block; background: #ffffff; border: 2px solid #111827; padding: 4px 10px; border-radius: 6px; font-size: 14px; line-height: 1.2; color: #111827; font-weight: 700;">排除增产剂产线</a>
                 <span style="color: #0891b2;">占地格子数：{{totalSpace}}</span>
                 <span style="color: #059669;">耗能估算：{{totalEnergy}}M</span>
               </div>
@@ -452,7 +452,7 @@
             <td></td>
           </tr>
           <tr class="">
-            <td colspan="1" align="right">更新说明 </td>
+            <td colspan="1" align="right" style="color: #111827; font-weight: 700; font-size: 20px;">更新说明 </td>
             <td colspan="7">
               <!-- 更新说明开始 -->
               <div data-include="updata"></div>
@@ -460,7 +460,7 @@
             </td>
           </tr>
           <tr class="">
-            <td colspan="1" align="right">使用说明 </td>
+            <td colspan="1" align="right" style="color: #111827; font-weight: 700; font-size: 20px;">使用说明 </td>
             <td colspan="7">
               <!-- 使用说明开始 -->
               <div data-include="explanation"></div>

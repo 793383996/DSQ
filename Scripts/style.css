@@ -203,6 +203,14 @@
             text-decoration: underline;
         }
 
+        [data-include="explanation"] a,
+        [data-include="updata"] a {
+            color: #1d4ed8;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            font-weight: 600;
+        }
+
         /* ========== 图标与图片 ========== */
         .sicon {
             width: 24px;
@@ -462,10 +470,15 @@
         }
 
         #txtnumber,
+        #selmaince,
         #txtore {
             width: 60px;
             height: 32px;
             line-height: 32px;
+            color: #0f172a;
+            background: #ffffff;
+            border: 2px solid #475569;
+            font-weight: 600;
         }
 
         #txtore {

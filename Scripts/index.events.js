@@ -80,6 +80,20 @@
     }
   }
 
+  function handleVersionSelectChange(selectNode) {
+    const url = selectNode.value;
+    if (!url) {
+      return;
+    }
+    if (typeof root.actions === "function") {
+      root.actions(selectNode);
+      return;
+    }
+    if (typeof root.open === "function") {
+      root.open(url, "_blank");
+    }
+  }
+
   onReady(() => {
     bindInputWidthById("txtnumber");
     bindInputWidthById("selmaince");
@@ -100,6 +114,14 @@
       }
       event.preventDefault();
       handleOpActionLink(link);
+    });
+
+    document.addEventListener("change", event => {
+      const versionSelect = event.target.closest("select[data-version-select]");
+      if (!versionSelect) {
+        return;
+      }
+      handleVersionSelectChange(versionSelect);
     });
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);
