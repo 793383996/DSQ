@@ -47,11 +47,11 @@ jobs:
       - name: Validate business metrics baseline
         run: npm run metrics:check
 
-      - name: Build dist package
+      - name: Build dist-vite package
         run: npm run build
 
-      - name: Verify dist assets
-        run: npm run verify:dist
+      - name: Verify dist-vite assets
+        run: npm run verify:vite-dist
 
       - name: Install Playwright browser
         run: npx playwright install chromium
@@ -77,8 +77,8 @@ jobs:
           echo "- Unit tests: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Monitor baseline: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Metrics baseline: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- Build dist: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- Verify dist: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Build dist-vite: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify dist-vite: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Browser E2E: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Accessibility audit: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- Integration tests: Completed" >> $GITHUB_STEP_SUMMARY

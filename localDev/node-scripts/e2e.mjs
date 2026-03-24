@@ -6,7 +6,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 
 const ROOT = process.cwd();
-const DIST_ROOT = path.join(ROOT, "dist");
+const DIST_ROOT = path.join(ROOT, "dist-vite");
 const CERT_PATH = path.join(ROOT, "localhost.crt");
 const KEY_PATH = path.join(ROOT, "localhost.key");
 const ARTIFACT_DIR = path.join(ROOT, "localTest", "e2e-artifacts");

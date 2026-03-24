@@ -1,7 +1,7 @@
 import { access, constants, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-const DIST_ROOT = path.join(process.cwd(), "dist");
+const DIST_ROOT = path.join(process.cwd(), "dist-vite");
 const REQUIRED_FILES = [
   "index.html",
   "Scripts/data.js",
@@ -34,7 +34,7 @@ async function main() {
   const assetEntries = await readdir(assetsDir);
   const hashedAssetCount = assetEntries.filter(name => /-[a-z0-9]{8,}\./i.test(name)).length;
   if (hashedAssetCount === 0) {
-    throw new Error("verify:vite-dist failed: no hashed assets found in dist/assets.");
+    throw new Error("verify:vite-dist failed: no hashed assets found in dist-vite/assets.");
   }
 
   const html = await readFile(path.join(DIST_ROOT, "index.html"), "utf8");

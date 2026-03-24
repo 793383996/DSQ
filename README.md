@@ -43,7 +43,7 @@ npx vite preview --host 127.0.0.1 --port 4173 --strictPort
 ```
 访问：`http://127.0.0.1:4173`
 
-- 自动化调试入口（基于 `dist`）：
+- 自动化调试入口（基于 `dist-vite`）：
 ```bash
 npm run build
 npm run test:integration
@@ -75,8 +75,8 @@ git push origin feat/your-topic
 | Lint | `npm run lint` | ESLint 检查 |
 | Lint 基线 | `npm run lint:baseline` | 冻结并校验 warning 基线 |
 | 格式检查 | `npm run format:check` | Prettier 检查 |
-| 构建 | `npm run build` | Vite 构建并同步静态资产到 `dist/` |
-| 构建校验 | `npm run verify:dist` | 校验 `dist/` 关键产物完整性 |
+| 构建 | `npm run build` | Vite 构建并同步静态资产到 `dist-vite/` |
+| 构建校验 | `npm run verify:vite-dist` | 校验 `dist-vite/` 关键产物完整性 |
 | 单测 | `npm run test:unit` | Vitest 单元测试 |
 | 蓝图回归 | `npm run test:blueprint` | 蓝图核心回归脚本 |
 | E2E | `npm run test:e2e` | Playwright 浏览器级流程检查 |
@@ -99,7 +99,7 @@ git push origin feat/your-topic
 ## 发布与回滚
 
 - Vercel 构建命令：`npm run build`
-- 发布产物目录：`dist`
+- 发布产物目录：`dist-vite`
 - 部署配置：`vercel.json`
 - 发布/回滚标准流程：`localDocs/release-governance-runbook.md`
 
@@ -132,4 +132,3 @@ DSQ/
 
 - 常见问题：<https://github.com/793383996/DSQ/wiki>
 - 问题反馈与任务：<https://github.com/793383996/DSQ/issues>
-

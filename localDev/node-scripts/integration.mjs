@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-const DIST_ROOT = path.join(process.cwd(), "dist");
+const DIST_ROOT = path.join(process.cwd(), "dist-vite");
 const HOST = "127.0.0.1";
 
 const KEY_URLS = [
@@ -118,7 +118,7 @@ async function main() {
       }
     }
 
-    console.log("integration: dist key routes and UI markers passed.");
+    console.log("integration: dist-vite key routes and UI markers passed.");
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

@@ -16,7 +16,6 @@
     "build": "npm run build:vite",
     "build:legacy": "node ./localDev/node-scripts/build.mjs",
     "build:vite": "vite build && node ./localDev/node-scripts/post-vite-copy.mjs",
-    "verify:dist": "node ./localDev/node-scripts/verify-vite-dist.mjs",
     "verify:legacy-dist": "node ./localDev/node-scripts/verify-dist.mjs",
     "verify:vite-dist": "node ./localDev/node-scripts/verify-vite-dist.mjs",
     "security:vendor": "node ./localDev/node-scripts/vendor-baseline.mjs",
@@ -30,7 +29,7 @@
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run build && npm run verify:dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
+    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"

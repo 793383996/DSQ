@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 const ROOT = process.cwd();
-const DIST_ROOT = path.join(ROOT, "dist");
+const DIST_ROOT = path.join(ROOT, "dist-vite");
 const HOST = "127.0.0.1";
 const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 
