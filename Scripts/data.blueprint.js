@@ -1,4 +1,11 @@
 function getRecipe() {
+  function i18nBlueprintText(key, fallback, params) {
+    if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
+      return window.DSQI18n.t(key, params, fallback);
+    }
+    return fallback;
+  }
+
   let recipeList = [];
   const itemNameList = [
     ["矩阵研究站", "lab"],
@@ -204,7 +211,10 @@ function getRecipe() {
     let buildingName = nodeList[3].getElementsByTagName("img")[0];
     //console.log(buildingName);
     if (!buildingName) {
-      cocoMessage.warning("存在生产设施为空的配方，请检查配方列表", 4000);
+      cocoMessage.warning(
+        i18nBlueprintText("message.empty_machine_recipe", "存在生产设施为空的配方，请检查配方列表"),
+        4000
+      );
       throw `unsupported recipe combination`;
     } else {
       buildingName = buildingName.getAttribute("title");
@@ -289,7 +299,13 @@ function getRecipe() {
         .getAttribute("data-modein");
       if (proliferator) {
         if (proliferator !== recipeProliferator) {
-          cocoMessage.warning("检测到不同等级的增产剂选择，生成蓝图时所有配方必须采用同类型增产剂，请重新设置", 4000);
+          cocoMessage.warning(
+            i18nBlueprintText(
+              "message.mixed_proliferator_not_supported",
+              "检测到不同等级的增产剂选择，生成蓝图时所有配方必须采用同类型增产剂，请重新设置"
+            ),
+            4000
+          );
           throw `unsupported proliferator config`;
         }
       } else {
@@ -363,7 +379,7 @@ function getRecipe() {
       proliferator = null;
       break;
     default:
-      cocoMessage.error("未知的增产剂类型", 4000);
+      cocoMessage.error(i18nBlueprintText("error.unknown_proliferator_type", "未知的增产剂类型"), 4000);
       throw `unknown proliferator`;
   }
 
@@ -394,6 +410,13 @@ function getRecipe() {
 let _loadingOverlay = null;
 
 function showLoadingDialog() {
+  function i18nBlueprintText(key, fallback, params) {
+    if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
+      return window.DSQI18n.t(key, params, fallback);
+    }
+    return fallback;
+  }
+
   if (!_loadingOverlay) {
     _loadingOverlay = document.createElement("div");
     _loadingOverlay.id = "blueprint-loading-overlay";
@@ -416,8 +439,8 @@ function showLoadingDialog() {
       <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:9999;">
         <div style="background:#fff;padding:30px 50px;border-radius:12px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
           <div class="bp-loading-spinner"></div>
-          <div style="font-size:16px;color:#333;font-weight:500;">蓝图生成中...</div>
-          <div style="font-size:12px;color:#888;margin-top:8px;">请稍候，正在计算最优布局</div>
+          <div style="font-size:16px;color:#333;font-weight:500;">${i18nBlueprintText("loading.blueprint_generating", "蓝图生成中...")}</div>
+          <div style="font-size:12px;color:#888;margin-top:8px;">${i18nBlueprintText("loading.blueprint_generating_hint", "请稍候，正在计算最优布局")}</div>
         </div>
       </div>
     `;
@@ -434,6 +457,13 @@ function hideLoadingDialog() {
 }
 
 function generateBlueprint() {
+  function i18nBlueprintText(key, fallback, params) {
+    if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
+      return window.DSQI18n.t(key, params, fallback);
+    }
+    return fallback;
+  }
+
   const tracker = typeof window !== "undefined" ? window.PerformanceTracker : null;
   function trackBlueprintBusinessEvent(eventName, attributes = {}) {
     if (!tracker || typeof tracker.trackBusinessEvent !== "function") {
@@ -446,7 +476,9 @@ function generateBlueprint() {
     trackBlueprintBusinessEvent("blueprint_generate_blocked_insecure_origin", {
       protocol: location.protocol,
     });
-    cocoMessage.warning("请使用 https 协议访问以启用复制到剪切板功能");
+    cocoMessage.warning(
+      i18nBlueprintText("message.require_https_for_clipboard", "请使用 https 协议访问以启用复制到剪切板功能")
+    );
     return;
   }
   const recipe = getRecipe();
@@ -509,7 +541,7 @@ function generateBlueprint() {
   )
     .then(async bpStr => {
       await navigator.clipboard.writeText(bpStr);
-      cocoMessage.success("已复制到粘贴板", 1000);
+      cocoMessage.success(i18nBlueprintText("message.blueprint_copied", "已复制到粘贴板"), 1000);
       const durationMs = commitBlueprintMetric(true);
       trackBlueprintBusinessEvent("blueprint_generate_success", {
         recipeCount: outputRecipe.subRecipes.length,
@@ -531,7 +563,10 @@ function generateBlueprint() {
         return;
       }
       if (typeof window !== "undefined" && window.cocoMessage) {
-        cocoMessage.error(`蓝图生成失败: ${err.message}`, 5000);
+        cocoMessage.error(
+          i18nBlueprintText("error.blueprint_generate_failed", "蓝图生成失败: {error}", { error: err.message }),
+          5000
+        );
       }
     })
     .finally(() => {

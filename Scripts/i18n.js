@@ -5,6 +5,7 @@
   const SITE_ORIGIN = "https://dsq.vercel.app";
   const localeCache = {};
   let currentLocale = DEFAULT_LOCALE;
+  let activeDictionary = {};
 
   function safeGetLocalStorage(key) {
     try {
@@ -103,10 +104,84 @@
     return typeof value === "string" ? value : "";
   }
 
+  function interpolate(template, params) {
+    if (typeof template !== "string") {
+      return "";
+    }
+    if (!params || typeof params !== "object") {
+      return template;
+    }
+    return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, token) => {
+      if (!Object.prototype.hasOwnProperty.call(params, token)) {
+        return match;
+      }
+      const value = params[token];
+      return value == null ? "" : String(value);
+    });
+  }
+
+  function t(key, params = null, fallback = "") {
+    const localized = textOf(activeDictionary, key);
+    if (localized) {
+      return interpolate(localized, params);
+    }
+    const defaultLocalized = textOf(localeCache[DEFAULT_LOCALE], key);
+    if (defaultLocalized) {
+      return interpolate(defaultLocalized, params);
+    }
+    if (fallback) {
+      return interpolate(fallback, params);
+    }
+    return key;
+  }
+
+  function applyDataAttributeTranslation(dictionary, datasetKey, attrName) {
+    document.querySelectorAll(`[data-${datasetKey}]`).forEach(node => {
+      const key = node.getAttribute(`data-${datasetKey}`);
+      const translated = textOf(dictionary, key);
+      if (!translated) {
+        return;
+      }
+      if (attrName === "textContent") {
+        node.textContent = translated;
+        return;
+      }
+      if (attrName === "innerHTML") {
+        node.innerHTML = translated;
+        return;
+      }
+      node.setAttribute(attrName, translated);
+    });
+  }
+
+  function applyLegalLinks() {
+    const localizedPath = currentLocale === "en-US" ? "en-US" : "zh-CN";
+    const map = [
+      { id: "linkPrivacyPolicy", zh: "/legal/privacy.html", en: "/legal/privacy.en-US.html" },
+      { id: "linkTermsOfService", zh: "/legal/terms.html", en: "/legal/terms.en-US.html" },
+      { id: "linkCookiePolicy", zh: "/legal/cookies.html", en: "/legal/cookies.en-US.html" },
+      { id: "linkSecurityPolicy", zh: "/legal/security.html", en: "/legal/security.en-US.html" },
+    ];
+    map.forEach(item => {
+      const node = document.getElementById(item.id);
+      if (!node) {
+        return;
+      }
+      const baseHref = currentLocale === "en-US" ? item.en : item.zh;
+      node.setAttribute("href", `${baseHref}?lang=${localizedPath}`);
+    });
+  }
+
   function applyMeta(dictionary) {
     const title = textOf(dictionary, "meta.title");
     if (title) {
       document.title = title;
+    }
+
+    const keywordsText = textOf(dictionary, "meta.keywords");
+    const keywords = document.querySelector('meta[name="keywords"]');
+    if (keywords && keywordsText) {
+      keywords.setAttribute("content", keywordsText);
     }
 
     const descriptionText = textOf(dictionary, "meta.description");
@@ -115,9 +190,27 @@
       description.setAttribute("content", descriptionText);
     }
 
+    const ogTitleText = textOf(dictionary, "meta.og_title") || title;
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle && ogTitleText) {
+      ogTitle.setAttribute("content", ogTitleText);
+    }
+
     const ogDescription = document.querySelector('meta[property="og:description"]');
     if (ogDescription && descriptionText) {
       ogDescription.setAttribute("content", descriptionText);
+    }
+
+    const ogSiteNameText = textOf(dictionary, "meta.og_site_name") || title;
+    const ogSiteName = document.querySelector('meta[property="og:site_name"]');
+    if (ogSiteName && ogSiteNameText) {
+      ogSiteName.setAttribute("content", ogSiteNameText);
+    }
+
+    const twitterTitleText = textOf(dictionary, "meta.twitter_title") || ogTitleText || title;
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twitterTitle && twitterTitleText) {
+      twitterTitle.setAttribute("content", twitterTitleText);
     }
 
     const twitterDescription = document.querySelector('meta[name="twitter:description"]');
@@ -142,21 +235,14 @@
   }
 
   function applyDomText(dictionary) {
-    document.querySelectorAll("[data-i18n]").forEach(node => {
-      const key = node.getAttribute("data-i18n");
-      const translated = textOf(dictionary, key);
-      if (translated) {
-        node.textContent = translated;
-      }
-    });
-
-    document.querySelectorAll("[data-i18n-placeholder]").forEach(node => {
-      const key = node.getAttribute("data-i18n-placeholder");
-      const translated = textOf(dictionary, key);
-      if (translated) {
-        node.setAttribute("placeholder", translated);
-      }
-    });
+    applyDataAttributeTranslation(dictionary, "i18n", "textContent");
+    applyDataAttributeTranslation(dictionary, "i18n-html", "innerHTML");
+    applyDataAttributeTranslation(dictionary, "i18n-placeholder", "placeholder");
+    applyDataAttributeTranslation(dictionary, "i18n-aria-label", "aria-label");
+    applyDataAttributeTranslation(dictionary, "i18n-title", "title");
+    applyDataAttributeTranslation(dictionary, "i18n-alt", "alt");
+    applyDataAttributeTranslation(dictionary, "i18n-label", "label");
+    applyLegalLinks();
 
     const localeSelector = document.getElementById("langSwitcher");
     if (localeSelector) {
@@ -175,6 +261,7 @@
     });
 
     currentLocale = normalized;
+    activeDictionary = dictionary;
     if (persist) {
       safeSetLocalStorage(STORAGE_KEY, normalized);
     }
@@ -189,6 +276,11 @@
 
   function getLocale() {
     return currentLocale;
+  }
+
+  function refresh() {
+    applyMeta(activeDictionary);
+    applyDomText(activeDictionary);
   }
 
   function init() {
@@ -210,6 +302,8 @@
   window.DSQI18n = {
     getLocale,
     setLocale,
+    t,
+    refresh,
   };
 
   if (document.readyState === "loading") {

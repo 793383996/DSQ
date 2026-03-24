@@ -2,6 +2,28 @@
 // 从 data.js 抽离的 UI 初始化、事件绑定与页面交互逻辑。
 
 var app = null;
+
+function i18nText(key, fallback, params) {
+  if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
+    return window.DSQI18n.t(key, params, fallback);
+  }
+  return fallback;
+}
+
+function refreshI18nDom() {
+  if (window.DSQI18n && typeof window.DSQI18n.refresh === "function") {
+    window.DSQI18n.refresh();
+  }
+}
+
+function syncLocalizedLabels() {
+  if (!app) return;
+  app.accTotalLabel = i18nText("table.acc_need_prefix", "需求：");
+  app.totalAccLabel = i18nText("table.total_acc_prefix", "总喷涂增产剂数量：");
+  app.totalSpaceLabel = i18nText("table.total_space_prefix", "占地格子数：");
+  app.totalEnergyLabel = i18nText("table.total_energy_prefix", "耗能估算：");
+}
+
 // 这里加入了一些用法和一些变量，用于处理“设备数量”处的输入框
 function f_init() {
   app = new Vue({
@@ -17,6 +39,10 @@ function f_init() {
       items2: [],
       items0: [],
       ig_names: [],
+      accTotalLabel: "需求：",
+      totalAccLabel: "总喷涂增产剂数量：",
+      totalSpaceLabel: "占地格子数：",
+      totalEnergyLabel: "耗能估算：",
       xps_editor_index: -1,
       xps_editor_number: 0,
       items_editor_index: -1,
@@ -154,6 +180,7 @@ function f_init() {
   });
   f_initData();
   f_fillData();
+  syncLocalizedLabels();
   doSpeed1();
   update_all();
   loadSetting();
@@ -162,6 +189,12 @@ function f_init() {
   loadSettingProjects();
 
   projectsUpdate();
+  window.addEventListener("dsq:locale-changed", function () {
+    syncLocalizedLabels();
+    projectsUpdate();
+    update_all();
+    refreshI18nDom();
+  });
 
   $("#speed1_6").change(function () {
     $(data).each(function () {
@@ -317,7 +350,7 @@ function f_init() {
   });
 
   $("#btnReset1").click(function () {
-    if (confirm("该操作将清除配方并刷新页面！")) {
+    if (confirm(i18nText("dialog.confirm_reset_all", "该操作将清除配方并刷新页面！"))) {
       //重置设备
       settings = {};
       saveSetting();
@@ -476,7 +509,7 @@ function f_init() {
       var msgs = [];
       var name = jname.attr("data-name");
       msgs.push("<p>" + name + "</p>");
-      msgs.push("<p>生产于：</p>");
+      msgs.push("<p>" + i18nText("tooltip.produced_by", "生产于：") + "</p>");
       var pfs = getPfs(name);
       for (var i = 0; i < pfs.length; i++) {
         var title = getPfTitle(pfs[i]);
@@ -484,7 +517,7 @@ function f_init() {
       }
       pfs = getPfsByQ(name);
       if (pfs && pfs.length) {
-        msgs.push("<p>作为原料可生产：</p>");
+        msgs.push("<p>" + i18nText("tooltip.can_produce_as_material", "作为原料可生产：") + "</p>");
 
         for (var i = 0; i < pfs.length; i++) {
           var title = getPfTitle(pfs[i]);
@@ -938,10 +971,16 @@ function update_all() {
     };
     if (!outitem.number2) outitem.number2full = "";
     if (xh_list[i].name == "太阳帆") {
-      outitem.numberOther = "(可供" + getIconShow("电磁轨道弹射器", outitem.number1 / 20) + ")";
+      outitem.numberOther =
+        i18nText("table.number_other.ejector_prefix", "(可供") +
+        getIconShow("电磁轨道弹射器", outitem.number1 / 20) +
+        i18nText("table.number_other.suffix", ")");
     }
     if (xh_list[i].name == "小型运载火箭") {
-      outitem.numberOther = "(可供" + getIconShow("垂直发射井", outitem.number1 / 5) + ")";
+      outitem.numberOther =
+        i18nText("table.number_other.ejector_prefix", "(可供") +
+        getIconShow("垂直发射井", outitem.number1 / 5) +
+        i18nText("table.number_other.suffix", ")");
     }
     addTotal(info.name, Math.ceil(outitem.number2), settings[item.id]);
     // 增产剂总和
@@ -964,17 +1003,17 @@ function update_all() {
         class: info.name == item.m[j].name ? "m selected" : "m",
         itemName: item.name,
         name: item.m[j].name,
-        title: "设备速度:" + item.m[j].speed.toFixed(pointLength),
+        title: i18nText("tooltip.machine_speed_prefix", "设备速度:") + item.m[j].speed.toFixed(pointLength),
         showName: item.m[j].name.replace("制作台", ""),
       };
       if (m.showName == "采矿机") {
-        m.title += " 采矿机按6个矿脉计算(因所限传送带速度最高30)";
+        m.title += i18nText("tooltip.machine_miner_note", " 采矿机按6个矿脉计算(因所限传送带速度最高30)");
       }
       if (m.showName == "大型采矿机") {
-        m.title += " 大型采矿机按20个矿脉计算";
+        m.title += i18nText("tooltip.machine_advanced_miner_note", " 大型采矿机按20个矿脉计算");
       }
       if (m.showName == "矿脉") {
-        m.title += " (速度最高30)";
+        m.title += i18nText("tooltip.machine_ore_note", " (速度最高30)");
       }
       outitem.m.push(m);
     }
@@ -1043,6 +1082,8 @@ function update_all() {
   }
   app.totalSpace = space;
   app.totalAcc = totalAcc.toFixed(2);
+  syncLocalizedLabels();
+  refreshI18nDom();
 }
 function selectM(id, m) {
   settings[id] = settings[id] || {};
@@ -1072,7 +1113,10 @@ function selectPf(name, value) {
     update_all();
     if (e.name == "RangeError") {
       cocoMessage.warning(
-        "无法切换到X射线裂解(制氢)/重整精炼(制精炼油)公式？请尝试先将对应的另一条(分别为制精炼油/制氢)默认公式切换为其他公式。",
+        i18nText(
+          "message.recipe_switch_invalid",
+          "无法切换到X射线裂解(制氢)/重整精炼(制精炼油)公式？请尝试先将对应的另一条(分别为制精炼油/制氢)默认公式切换为其他公式。"
+        ),
         6000
       );
     }
@@ -1133,13 +1177,17 @@ function projectsUpdate() {
 function f_save() {
   let index = 0;
   let product_settings = {};
-  var name = prompt("输入方案名");
+  var name = prompt(i18nText("dialog.prompt_project_name", "输入方案名"));
   if (!name) return;
   for (index = 0; index < projects.length; index++) {
     // 存在相同名称的方案
     if (projects[index].name == name) {
       // 用户取消保存
-      if (!confirm(`已存在名为${name}的方案，继续保存将覆盖原方案`)) {
+      if (
+        !confirm(
+          i18nText("dialog.confirm_project_overwrite", `已存在名为${name}的方案，继续保存将覆盖原方案`, { name })
+        )
+      ) {
         return;
       }
       break;
@@ -1178,7 +1226,7 @@ function f_save() {
 }
 function f_add() {
   if (!isDataLoaded) {
-    alert("游戏资源尚未加载完毕");
+    alert(i18nText("alert.data_not_ready", "游戏资源尚未加载完毕"));
     return;
   }
   var $uiSelector = $("#UIselector");
@@ -1217,10 +1265,10 @@ function actions(that) {
 function f_split(obj) {
   var name = $(obj).attr("data-name");
 
-  $("#Split").html("<p>选择配方：</p>");
+  $("#Split").html(`<p>${i18nText("split.select_recipe", "选择配方：")}</p>`);
   var pfs = getPfs(name);
   if (pfs.length == 1) {
-    alert("不存在多配方");
+    alert(i18nText("alert.no_multiple_recipe", "不存在多配方"));
     return;
   }
   var selected = null;
@@ -1235,14 +1283,14 @@ function f_split(obj) {
       });
     })(i);
   }
-  $("#Split").append("<p>设备数量：</p>");
+  $("#Split").append(`<p>${i18nText("split.device_count", "设备数量：")}</p>`);
   $("#Split").append("<div><input type='text' value='1' class='split-number' /></div>");
-  $("#Split").append("<div><button>确定</button> </div>");
+  $("#Split").append(`<div><button>${i18nText("action.confirm", "确定")}</button> </div>`);
   $("#Split")
     .find("button")
     .click(function () {
       if (!selected) {
-        alert("未选择配方");
+        alert(i18nText("alert.recipe_not_selected", "未选择配方"));
         return;
       }
       singleMake.push({

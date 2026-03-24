@@ -69,7 +69,7 @@ async function waitForDataReady(page) {
 }
 
 async function addRequirement(page, itemName) {
-  await page.locator('a[title="添加"]').first().click();
+  await page.locator("#btnAddRequirement").first().click();
   const iconLocator = page.locator(`#UIselector .icons.icons-selected .icon[title="${itemName}"]`).first();
   await iconLocator.waitFor({ state: "visible", timeout: 20000 });
   await iconLocator.click();
@@ -213,7 +213,7 @@ async function runE2EAttempt(attempt) {
     // Case 1: 新增需求 -> 触发计算 -> 展示结果
     await runStep("add-requirement", async () => {
       await addRequirement(page, "齿轮");
-      await page.locator('button:has-text("生成蓝图")').first().waitFor({ state: "visible", timeout: 10000 });
+      await page.locator("#btnGenerateBlueprint").first().waitFor({ state: "visible", timeout: 10000 });
       const xqsLength = await page.evaluate(() => (Array.isArray(window.xqs) ? window.xqs.length : 0));
       assert.ok(xqsLength > 0, "e2e: adding requirement should update demand list.");
     });
@@ -244,7 +244,7 @@ async function runE2EAttempt(attempt) {
 
     // Case 3: 蓝图生成 -> 返回文本/复制链路
     await runStep("generate-blueprint", async () => {
-      await page.locator('button:has-text("生成蓝图")').first().click();
+      await page.locator("#btnGenerateBlueprint").first().click();
       await page.waitForFunction(
         () => typeof window.__copiedBlueprint === "string" && window.__copiedBlueprint.length > 64,
         null,

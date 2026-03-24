@@ -1,6 +1,13 @@
 // Scripts/data.recipe.js
 // 从 data.js 拆分的配方核心查询与参数解析函数。
 
+function i18nRecipeText(key, fallback, params) {
+  if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
+    return window.DSQI18n.t(key, params, fallback);
+  }
+  return fallback;
+}
+
 function getMachine(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
   if (!item) return null;
@@ -158,8 +165,8 @@ function find(name, normalize_recipe) {
       }
     }
 
-    cocoMessage.warning("重氢分馏塔无法用于生产氢气。", 3000);
-    throw new Error("配方错误！可能是因为该配方净输出为负。");
+    cocoMessage.warning(i18nRecipeText("message.heavy_hydrogen_recipe_invalid", "重氢分馏塔无法用于生产氢气。"), 3000);
+    throw new Error(i18nRecipeText("error.recipe_invalid_negative_output", "配方错误！可能是因为该配方净输出为负。"));
   }
 
   var pf = settings_pf[name];

@@ -70,6 +70,16 @@
     });
   }
 
+  function resolveQuoteIncludePath(name) {
+    const locale = root.DSQI18n && typeof root.DSQI18n.getLocale === "function" ? root.DSQI18n.getLocale() : "zh-CN";
+    const localized = `quote/${name}.${locale}.html`;
+    const fallback = `quote/${name}.html`;
+    if (locale === "zh-CN") {
+      return fallback;
+    }
+    return { localized, fallback };
+  }
+
   function loadQuoteIncludes() {
     const $ = root.jQuery || root.$;
     if (typeof $ !== "function") {
@@ -80,8 +90,18 @@
       return;
     }
     includes.each(function () {
-      const file = "quote/" + $(this).data("include") + ".html";
-      $(this).load(file);
+      const includeName = $(this).data("include");
+      const pathInfo = resolveQuoteIncludePath(includeName);
+      if (typeof pathInfo === "string") {
+        $(this).load(pathInfo);
+        return;
+      }
+      $(this).load(pathInfo.localized, (responseText, status) => {
+        if (status !== "error") {
+          return;
+        }
+        $(this).load(pathInfo.fallback);
+      });
     });
   }
 
@@ -161,6 +181,10 @@
         return;
       }
       handleVersionSelectChange(versionSelect);
+    });
+
+    root.addEventListener("dsq:locale-changed", () => {
+      loadQuoteIncludes();
     });
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);

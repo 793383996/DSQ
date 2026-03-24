@@ -97,9 +97,9 @@
     <div style="text-align: center; margin-bottom: 10px; padding: 10px 0;">
       <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 8px;">
         <label for="langSwitcher" data-i18n="locale.label" style="font-size: 13px; color: #64748b;">语言</label>
-        <select id="langSwitcher" aria-label="语言切换" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
-          <option value="zh-CN">简体中文</option>
-          <option value="en-US">English</option>
+        <select id="langSwitcher" aria-label="语言切换" data-i18n-aria-label="locale.switcher_aria" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
+          <option value="zh-CN" data-i18n="locale.option_zh_cn">简体中文</option>
+          <option value="en-US" data-i18n="locale.option_en_us">English</option>
         </select>
       </div>
       <h1 data-i18n="hero.title" style="margin: 0; font-size: 28px; font-weight: 600; background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
@@ -111,18 +111,18 @@
 
   <main id="main-content" role="main">
   <!-- 顶部控制区域 -->
-  <div class="control-bar" role="toolbar" aria-label="产量控制">
+  <div class="control-bar" role="toolbar" aria-label="产量控制" data-i18n-aria-label="control.toolbar_aria">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span data-i18n="control.rate_per_min" style="color: #4a5568;">每分钟产量：</span>
-        <input type="text" id="txtnumber" aria-label="每分钟产量" value="60" style="min-width: 70px;" />
+        <input type="text" id="txtnumber" aria-label="每分钟产量" data-i18n-aria-label="control.rate_per_min_aria" value="60" style="min-width: 70px;" />
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <span data-i18n="control.device_count" style="color: #4a5568;">或生产设备数：</span>
-        <input type="number" id="selmaince" aria-label="生产设备数" min="1" max="1000" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
+        <input type="number" id="selmaince" aria-label="生产设备数" data-i18n-aria-label="control.device_count_aria" min="1" max="1000" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
       </div>
-      <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加">
-        <img alt="添加需求" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
+      <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加" data-i18n-title="action.add_requirement_title">
+        <img alt="添加需求" data-i18n-alt="action.add_requirement_alt" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
       </a>
       <div class="custom-dropdown">
         <button id="btnSetting" data-i18n="control.settings">参数设置</button>
@@ -135,34 +135,34 @@
   <div class="control-bar">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
       <input type="checkbox" id="hideSource" /><label for="hideSource" data-i18n="control.hide_source">隐藏原料</label>
-      <select id="selmodein" aria-label="制造台类型">
-        <option value="制作台Mk.Ⅰ">制作台Mk.Ⅰ</option>
-        <option value="制作台Mk.Ⅱ">制作台Mk.Ⅱ</option>
-        <option value="制作台Mk.Ⅲ">制作台Mk.Ⅲ</option>
-        <option value="重组式制造台">重组式制造台</option>
+      <select id="selmodein" aria-label="制造台类型" data-i18n-aria-label="control.machine_type_aria">
+        <option value="制作台Mk.Ⅰ" data-i18n="option.machine.mk1">制作台Mk.Ⅰ</option>
+        <option value="制作台Mk.Ⅱ" data-i18n="option.machine.mk2">制作台Mk.Ⅱ</option>
+        <option value="制作台Mk.Ⅲ" data-i18n="option.machine.mk3">制作台Mk.Ⅲ</option>
+        <option value="重组式制造台" data-i18n="option.machine.recomposing">重组式制造台</option>
       </select>
-      <select id="furnace" aria-label="熔炉类型">
-        <option value="电弧熔炉">电弧熔炉</option>
-        <option value="位面熔炉">位面熔炉</option>
-        <option value="负熵熔炉">负熵熔炉</option>
+      <select id="furnace" aria-label="熔炉类型" data-i18n-aria-label="control.furnace_type_aria">
+        <option value="电弧熔炉" data-i18n="option.furnace.arc">电弧熔炉</option>
+        <option value="位面熔炉" data-i18n="option.furnace.plane">位面熔炉</option>
+        <option value="负熵熔炉" data-i18n="option.furnace.negentropy">负熵熔炉</option>
       </select>
-      <select id="chemical" aria-label="化工厂类型">
-        <option value="化工厂">化工厂</option>
-        <option value="量子化工厂">量子化工厂</option>
+      <select id="chemical" aria-label="化工厂类型" data-i18n-aria-label="control.chemical_type_aria">
+        <option value="化工厂" data-i18n="option.chemical.plant">化工厂</option>
+        <option value="量子化工厂" data-i18n="option.chemical.quantum">量子化工厂</option>
       </select>
-      <select id="accType" aria-label="增产剂等级">
-        <option value="增产剂Mk.Ⅰ">增产剂Mk.Ⅰ</option>
-        <option value="增产剂Mk.Ⅱ">增产剂Mk.Ⅱ</option>
-        <option value="增产剂Mk.Ⅲ">增产剂Mk.Ⅲ</option>
+      <select id="accType" aria-label="增产剂等级" data-i18n-aria-label="control.acc_type_aria">
+        <option value="增产剂Mk.Ⅰ" data-i18n="option.acc_type.mk1">增产剂Mk.Ⅰ</option>
+        <option value="增产剂Mk.Ⅱ" data-i18n="option.acc_type.mk2">增产剂Mk.Ⅱ</option>
+        <option value="增产剂Mk.Ⅲ" data-i18n="option.acc_type.mk3">增产剂Mk.Ⅲ</option>
       </select>
-      <select id="accValue" aria-label="增产剂效果">
-        <option value="无">无</option>
-        <option value="加速">加速</option>
-        <option value="增产">增产</option>
+      <select id="accValue" aria-label="增产剂效果" data-i18n-aria-label="control.acc_value_aria">
+        <option value="无" data-i18n="option.acc_value.none">无</option>
+        <option value="加速" data-i18n="option.acc_value.speedup">加速</option>
+        <option value="增产" data-i18n="option.acc_value.production">增产</option>
       </select>
-      <select id="research" aria-label="研究站类型">
-        <option value="矩阵研究站">矩阵研究站</option>
-        <option value="自演化研究站">自演化研究站</option>
+      <select id="research" aria-label="研究站类型" data-i18n-aria-label="control.research_type_aria">
+        <option value="矩阵研究站" data-i18n="option.research.matrix">矩阵研究站</option>
+        <option value="自演化研究站" data-i18n="option.research.self_evolution">自演化研究站</option>
       </select>
     </div>
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
@@ -170,7 +170,7 @@
       <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP" data-i18n="control.external_acc">外部输入增产剂</label>
       <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt" data-i18n="control.max_one_belt">1条传送带最高支持设备数量</label>
       <span id="projectdiv" style="display:none;">
-        <select id="selprojects" aria-label="方案列表"></select>
+        <select id="selprojects" aria-label="方案列表" data-i18n-aria-label="control.project_list_aria"></select>
         <button id="btnLoadProject" data-i18n="control.load_project">加载方案</button>
         <button id="btnReset5" data-i18n="control.reset_project" style="background: linear-gradient(135deg, #f97316, #ea580c);">重置方案</button>
       </span>
@@ -183,55 +183,55 @@
   <div id="MoreSetting" style="display:none;">
     <div style="display: flex;">
       <div style="margin-right: 50px;">
-        <h4>速度、产量设置：</h4>
-        <p><span class="label">采矿作业速度： </span><input id="selore" aria-label="采矿作业速度百分比" class="textbox" type="number" value="100" />% </p>
-        <p><span class="label">分馏塔每分钟产量： </span><input id="fractionatorSpeed" aria-label="分馏塔每分钟产量" class="textbox" type="number"
+        <h4 data-i18n="settings.speed.title">速度、产量设置：</h4>
+        <p><span class="label" data-i18n="settings.speed.mining_speed">采矿作业速度： </span><input id="selore" aria-label="采矿作业速度百分比" data-i18n-aria-label="settings.speed.mining_speed_aria" class="textbox" type="number" value="100" />% </p>
+        <p><span class="label" data-i18n="settings.speed.fractionator_speed">分馏塔每分钟产量： </span><input id="fractionatorSpeed" aria-label="分馏塔每分钟产量" data-i18n-aria-label="settings.speed.fractionator_speed_aria" class="textbox" type="number"
             value="18" /> </p>
-        <p><span class="label">大型采矿机：</span><input id="speed1_6" aria-label="大型采矿机速度" class="textbox" type="number" value="100" /> </p>
-        <p><span class="label">原油速度：</span><input id="oilSpeed" aria-label="原油速度" class="textbox" type="number" value="4" /> </p>
-        <p><span class="label">轨道采集-重氢：</span><input data-name="重氢" id="speed1_2" aria-label="轨道采集重氢速度" class="speed1 textbox" type="number"
+        <p><span class="label" data-i18n="settings.speed.advanced_miner">大型采矿机：</span><input id="speed1_6" aria-label="大型采矿机速度" data-i18n-aria-label="settings.speed.advanced_miner_aria" class="textbox" type="number" value="100" /> </p>
+        <p><span class="label" data-i18n="settings.speed.oil_speed">原油速度：</span><input id="oilSpeed" aria-label="原油速度" data-i18n-aria-label="settings.speed.oil_speed_aria" class="textbox" type="number" value="4" /> </p>
+        <p><span class="label" data-i18n="settings.speed.orbital_deuterium">轨道采集-重氢：</span><input data-name="重氢" id="speed1_2" aria-label="轨道采集重氢速度" data-i18n-aria-label="settings.speed.orbital_deuterium_aria" class="speed1 textbox" type="number"
             step="0.01" value="0.02" /> </p>
-        <p><span class="label">轨道采集-可燃冰：</span><input data-name="可燃冰" id="speed1_3" aria-label="轨道采集可燃冰速度" class="speed1 textbox"
+        <p><span class="label" data-i18n="settings.speed.orbital_fire_ice">轨道采集-可燃冰：</span><input data-name="可燃冰" id="speed1_3" aria-label="轨道采集可燃冰速度" data-i18n-aria-label="settings.speed.orbital_fire_ice_aria" class="speed1 textbox"
             type="number" step="0.1" value="0.5" /> </p>
-        <p><span class="label">轨道采集-氢(巨冰)：</span><input data-name="氢" id="speed1_4" aria-label="轨道采集氢巨冰速度" class="speed1 textbox"
+        <p><span class="label" data-i18n="settings.speed.orbital_hydrogen_ice">轨道采集-氢(巨冰)：</span><input data-name="氢" id="speed1_4" aria-label="轨道采集氢巨冰速度" data-i18n-aria-label="settings.speed.orbital_hydrogen_ice_aria" class="speed1 textbox"
             type="number" step="0.1" value="0.5" /> </p>
-        <p><span class="label">轨道采集-氢(气态)：</span><input data-name="氢" id="speed1_1" aria-label="轨道采集氢气态速度" class="speed1 textbox"
+        <p><span class="label" data-i18n="settings.speed.orbital_hydrogen_gas">轨道采集-氢(气态)：</span><input data-name="氢" id="speed1_1" aria-label="轨道采集氢气态速度" data-i18n-aria-label="settings.speed.orbital_hydrogen_gas_aria" class="speed1 textbox"
             type="number" step="0.1" value="1" /> </p>
-        <p><span class="label">临界光子每分钟产量： </span><input id="gzSpeed" aria-label="临界光子每分钟产量" class="textbox" type="number" value="5" /> </p>
-        <p><span class="label">小数点后保留： </span><input id="pointLength" aria-label="小数点后保留位数" class="textbox" type="number" value="1" /> 位</p>
+        <p><span class="label" data-i18n="settings.speed.critical_photon">临界光子每分钟产量： </span><input id="gzSpeed" aria-label="临界光子每分钟产量" data-i18n-aria-label="settings.speed.critical_photon_aria" class="textbox" type="number" value="5" /> </p>
+        <p><span class="label" data-i18n="settings.speed.decimal_places">小数点后保留： </span><input id="pointLength" aria-label="小数点后保留位数" data-i18n-aria-label="settings.speed.decimal_places_aria" class="textbox" type="number" value="1" /> <span data-i18n="settings.speed.decimal_places_unit">位</span></p>
       </div>
       <div style="width: 400px;">
         <div>
-          <h4>物流配置：</h4>
-          <p><span class="label">运输站集装物流：</span> <input id="speed1_5" aria-label="运输站集装物流堆叠层数" class="textbox" type="number" min="1" max="4"
-              value="1" /> 传送带堆叠层数</p>
-          <p><span class="label">计算传送带支持设备： </span>
-            <select id="csd" aria-label="计算传送带支持设备类型">
-              <option value="传送带">传送带</option>
-              <option value="高速传送带">高速传送带</option>
-              <option value="极速传送带" selected>极速传送带</option>
+          <h4 data-i18n="settings.logistics.title">物流配置：</h4>
+          <p><span class="label" data-i18n="settings.logistics.station_stack">运输站集装物流：</span> <input id="speed1_5" aria-label="运输站集装物流堆叠层数" data-i18n-aria-label="settings.logistics.station_stack_aria" class="textbox" type="number" min="1" max="4"
+              value="1" /> <span data-i18n="settings.logistics.belt_stack_layers">传送带堆叠层数</span></p>
+          <p><span class="label" data-i18n="settings.logistics.belt_capacity_calc">计算传送带支持设备： </span>
+            <select id="csd" aria-label="计算传送带支持设备类型" data-i18n-aria-label="settings.logistics.belt_capacity_calc_aria">
+              <option value="传送带" data-i18n="option.belt.mk1">传送带</option>
+              <option value="高速传送带" data-i18n="option.belt.mk2">高速传送带</option>
+              <option value="极速传送带" selected data-i18n="option.belt.mk3">极速传送带</option>
             </select>
           </p>
         </div>
         <div>
-          <h4>蓝图配置：</h4>
+          <h4 data-i18n="settings.blueprint.title">蓝图配置：</h4>
           <div style="margin-left: 1%">
             <!-- <span class="label">紧凑布局</span><input type="checkbox" id="compactLayout">（高纬度可能出现碰撞）<br/> -->
             <!-- <span class="label">临界运力传送带自升级</span><input type="checkbox" id="upgradeConveyorBelt"><br /> -->
-            <span class="label">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" aria-label="只使用三级传送带" checked><br />
-            <span class="label">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" aria-label="只使用三级分拣器" checked><br />
-            <span class="label">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" aria-label="只使用四级分拣器"><br />
+            <span class="label" data-i18n="settings.blueprint.only_belt_mk3">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" aria-label="只使用三级传送带" data-i18n-aria-label="settings.blueprint.only_belt_mk3_aria" checked><br />
+            <span class="label" data-i18n="settings.blueprint.only_sorter_mk3">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" aria-label="只使用三级分拣器" data-i18n-aria-label="settings.blueprint.only_sorter_mk3_aria" checked><br />
+            <span class="label" data-i18n="settings.blueprint.use_sorter_mk4">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" aria-label="只使用四级分拣器" data-i18n-aria-label="settings.blueprint.use_sorter_mk4_aria"><br />
             <!-- <span class="label">三级传送带运力降级</span><input type="checkbox" id="onlyConveyorBeltMk3Downgrade">（三级传送带运力锁定在1680/min，可在一定程度上解决蓝图产量低于预期的问题）<br/> -->
-            <span class="label">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" aria-label="自动插入电力感应塔" checked="checked"><br />
-            <span class="label">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" aria-label="电力感应塔间隔排数" min="1" max="2"
-              value="1" class="textbox">（建议取值1或2）<br />
-            <span class="label">传送带物品堆叠层数</span><input type="number" id="conveyorBeltStackLayer" aria-label="传送带物品堆叠层数" min="1" max="4"
+            <span class="label" data-i18n="settings.blueprint.auto_tesla">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" aria-label="自动插入电力感应塔" data-i18n-aria-label="settings.blueprint.auto_tesla_aria" checked="checked"><br />
+            <span class="label" data-i18n="settings.blueprint.tesla_interval">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" aria-label="电力感应塔间隔排数" data-i18n-aria-label="settings.blueprint.tesla_interval_aria" min="1" max="2"
+              value="1" class="textbox"><span data-i18n="settings.blueprint.tesla_interval_hint">（建议取值1或2）</span><br />
+            <span class="label" data-i18n="settings.blueprint.belt_stack">传送带物品堆叠层数</span><input type="number" id="conveyorBeltStackLayer" aria-label="传送带物品堆叠层数" data-i18n-aria-label="settings.blueprint.belt_stack_aria" min="1" max="4"
               value="4" class="textbox"><br />
-            <span class="label">研究站层数</span><input type="number" id="maxLabLayers" aria-label="研究站层数" min="1" max="15" value="15"
+            <span class="label" data-i18n="settings.blueprint.lab_layers">研究站层数</span><input type="number" id="maxLabLayers" aria-label="研究站层数" data-i18n-aria-label="settings.blueprint.lab_layers_aria" min="1" max="15" value="15"
               class="textbox"><br />
             <!-- <span class="label">电线杆间隔</span><input type="number" id="teslaTowerInterval" min="1" max="15" value="15" class="textbox"><br/> -->
-            <span class="label">开启堆叠</span><input type="checkbox" id="stackLayers" aria-label="开启堆叠">垂直4层<br />
-            <span class="label">蓝图长宽比</span><input type="number" id="x_y_ratio" aria-label="蓝图长宽比" min="1" step="0.1" value="2"
+            <span class="label" data-i18n="settings.blueprint.enable_stack">开启堆叠</span><input type="checkbox" id="stackLayers" aria-label="开启堆叠" data-i18n-aria-label="settings.blueprint.enable_stack_aria"><span data-i18n="settings.blueprint.vertical_4">垂直4层</span><br />
+            <span class="label" data-i18n="settings.blueprint.xy_ratio">蓝图长宽比</span><input type="number" id="x_y_ratio" aria-label="蓝图长宽比" data-i18n-aria-label="settings.blueprint.xy_ratio_aria" min="1" step="0.1" value="2"
               class="textbox"><br />
           </div>
         </div>
@@ -276,49 +276,49 @@
       </span>
     </div>
     <div class="list" v-if="ig_names && ig_names.length">
-      排除计算：
+      <span data-i18n="exclude.title">排除计算：</span>
       <span v-for="name in ig_names">
         <img v-bind:src="'data:image/png;base64,' + icons[name]" style="width:40px;height:40px;" v-if="icons[name]"
           v-bind:title="name" @contextmenu.prevent="removeExcluded(name)" />
         <span class="name" v-else=v-else>{{name}}</span>
       </span>
-      <button id="btnResetExclude" data-click-action="resetExclude">重置</button>
-      <br /><small>(右键可取消单项排除)</small>
+      <button id="btnResetExclude" data-click-action="resetExclude" data-i18n="action.reset">重置</button>
+      <br /><small data-i18n="hint.exclude_edit">(右键可取消单项排除)</small>
     </div>
     <div class="list">
       <table border="0" cellspacing="0" cellpadding="0">
         <tbody>
           <tr class="header">
             <td style="width:100px;">
-              操作
+              <span data-i18n="table.header.operation">操作</span>
             </td>
             <td style="width:100px;">
-              物品
-              <br /><span style="font-size:12px">(点击图标显示详情)</span>
+              <span data-i18n="table.header.item">物品</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.item_hint">(点击图标显示详情)</span>
             </td>
             <td style="width:100px;">
-              每分钟需求
-              <br /><span style="font-size:12px">(负数代表多余)</span>
+              <span data-i18n="table.header.per_min_need">每分钟需求</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.negative_hint">(负数代表多余)</span>
             </td>
             <td style="width:100px;">
-              设备数量
-              <br /><span style="font-size:12px">(点击数字修改)</span>
+              <span data-i18n="table.header.device_count">设备数量</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.device_hint">(点击数字修改)</span>
             </td>
             <td>
-              配方
-              <br /><span style="font-size:12px">(可选)</span>
+              <span data-i18n="table.header.recipe">配方</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.optional">(可选)</span>
             </td>
             <td>
-              增产剂等级
-              <br /><span style="font-size:12px">(可选)</span>
+              <span data-i18n="table.header.acc_type">增产剂等级</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.optional">(可选)</span>
             </td>
             <td>
-              增产剂效果
-              <br /><span style="font-size:12px">(可选)</span>
+              <span data-i18n="table.header.acc_value">增产剂效果</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.optional">(可选)</span>
             </td>
             <td>
-              制作于
-              <br /><span style="font-size:12px">(可选)</span>
+              <span data-i18n="table.header.machine">制作于</span>
+              <br /><span style="font-size:12px" data-i18n="table.header.optional">(可选)</span>
             </td>
           </tr>
           <tr v-for="item in items0" v-bind:class="item.rowClass">
@@ -341,11 +341,11 @@
           </tr>
           <tr v-for="(item, index_item) in items" v-bind:class="item.rowClass">
             <td class="opcell">
-              <a href="#" data-action="ig" v-bind:data-name="item.name">排除</a>
+              <a href="#" data-action="ig" v-bind:data-name="item.name" data-i18n="action.exclude">排除</a>
               <a href="#" data-action="split" v-if=" item.pf &&  item.pf.length > 1" v-bind:data-name="item.name">
-                多配方
+                <span data-i18n="action.multi_recipe">多配方</span>
               </a>
-              <a href="#" data-action="tag" v-bind:data-name="item.name">标注</a>
+              <a href="#" data-action="tag" v-bind:data-name="item.name" data-i18n="action.tag">标注</a>
             </td>
             <td class="cell-name" v-bind:data-name="item.name">
               <img v-bind:src="'data:image/png;base64,' + icons[item.name]" style="width:40px;height:40px;"
@@ -390,7 +390,7 @@
                   {{a.showName}}
                 </a>
               </div>
-              <span class="number1">需求：{{item.accTotal}}</span>
+              <span class="number1">{{item.accTotalLabel}}{{item.accTotal}}</span>
             </td>
             </td>
             <td>
@@ -410,21 +410,21 @@
             <!-- </td> -->
           </tr>
           <tr class="total">
-            <td colspan="3" align="right" style="font-size: 15px; color: #2980b9;">合计： </td>
+            <td colspan="3" align="right" style="font-size: 15px; color: #2980b9;" data-i18n="table.total">合计： </td>
             <td colspan="5">
               <div v-if="totalDisplay && totalDisplay.length" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
                 <span v-for="item in totalDisplay" style="background: #e3f2fd; padding: 4px 10px; border-radius: 6px; color: #1565c0;"> {{item.name}}*{{item.value}} </span>
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
-                <span title="包含自喷涂所需" style="color: #d97706;">总喷涂增产剂数量：{{totalAcc}}</span>
+                <span title="包含自喷涂所需" data-i18n-title="table.total_acc_title" style="color: #d97706;">{{totalAccLabel}}{{totalAcc}}</span>
                 <a href="#" id="btnExcludeAccLine" data-click-action="excludeAccLine" data-i18n="action.exclude_acc_line" style="display: inline-block; background: #ffffff; border: 2px solid #111827; padding: 4px 10px; border-radius: 6px; font-size: 14px; line-height: 1.2; color: #111827; font-weight: 700;">排除增产剂产线</a>
-                <span style="color: #0891b2;">占地格子数：{{totalSpace}}</span>
-                <span style="color: #059669;">耗能估算：{{totalEnergy}}M</span>
+                <span style="color: #0891b2;">{{totalSpaceLabel}}{{totalSpace}}</span>
+                <span style="color: #059669;">{{totalEnergyLabel}}{{totalEnergy}}M</span>
               </div>
             </td>
           </tr>
           <tr class="" v-if="items2 && items2.length">
-            <td colspan="8" align="left"><span data-i18n="table.excess_products">多余产物</span> <br />(负数代表多余、正数代表缺少，如1000则需要额外补齐，-1000则需要额外消耗) </td>
+            <td colspan="8" align="left"><span data-i18n="table.excess_products">多余产物</span> <br /><span data-i18n="table.excess_products_hint">(负数代表多余、正数代表缺少，如1000则需要额外补齐，-1000则需要额外消耗)</span> </td>
           </tr>
           <tr v-for="item in items2" v-bind:class="item.rowClass">
             <td></td>
@@ -445,7 +445,7 @@
             <td></td>
           </tr>
           <tr class="">
-            <td colspan="1" align="right" style="color: #111827; font-weight: 700; font-size: 20px;">更新说明 </td>
+            <td colspan="1" align="right" style="color: #111827; font-weight: 700; font-size: 20px;" data-i18n="section.update_notes">更新说明 </td>
             <td colspan="7">
               <!-- 更新说明开始 -->
               <div data-include="updata"></div>
@@ -453,7 +453,7 @@
             </td>
           </tr>
           <tr class="">
-            <td colspan="1" align="right" style="color: #111827; font-weight: 700; font-size: 20px;">使用说明 </td>
+            <td colspan="1" align="right" style="color: #111827; font-weight: 700; font-size: 20px;" data-i18n="section.usage_notes">使用说明 </td>
             <td colspan="7">
               <!-- 使用说明开始 -->
               <div data-include="explanation"></div>
@@ -468,7 +468,7 @@
   
   <footer role="contentinfo" style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 20px;">
     <p>
-      &copy; 2024 戴森球计划量产量化计算器 |
+      <span data-i18n="footer.copyright">&copy; 2024 戴森球计划量产量化计算器</span> |
       <a href="https://github.com" style="color: #2980b9;">GitHub</a> |
       <a id="linkPrivacyPolicy" href="/legal/privacy.html" data-i18n="footer.privacy" style="color: #2980b9;">隐私政策</a> |
       <a id="linkTermsOfService" href="/legal/terms.html" data-i18n="footer.terms" style="color: #2980b9;">服务条款</a> |
