@@ -199,7 +199,7 @@ async function runE2EAttempt(attempt) {
       const canonicalHref = await page.locator("#canonicalLink").first().getAttribute("href");
       assert.equal(
         canonicalHref,
-        "https://dsq.vercel.app/?lang=en-US",
+        "https://dsqstar.xyz/?lang=en-US",
         "e2e: canonical URL should follow switched locale."
       );
       const webAppSchema = await page.locator("#schemaWebApplication").first().textContent();

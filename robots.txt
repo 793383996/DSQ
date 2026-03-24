@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dsq.vercel.app/sitemap.xml
-Sitemap: https://dsq.vercel.app/sitemap-images.xml
+Sitemap: https://dsqstar.xyz/sitemap.xml
+Sitemap: https://dsqstar.xyz/sitemap-images.xml
+

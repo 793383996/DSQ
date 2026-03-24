@@ -37,19 +37,19 @@ function assertIndexHtml(indexHtml) {
 function assertSitemaps(sitemapXml, imageSitemapXml, robotsTxt) {
   assert(/xmlns:image=/.test(sitemapXml), "sitemap.xml missing image namespace");
   assert(/<image:image>/.test(sitemapXml), "sitemap.xml missing image:image entry");
-  assert(/https:\/\/dsq\.vercel\.app\/og-image\.png/.test(sitemapXml), "sitemap.xml missing OG image loc");
+  assert(/https:\/\/dsqstar\.xyz\/og-image\.png/.test(sitemapXml), "sitemap.xml missing OG image loc");
   assert(/legal\/privacy\.html/.test(sitemapXml), "sitemap.xml missing legal privacy URL");
   assert(/legal\/privacy\.en-US\.html/.test(sitemapXml), "sitemap.xml missing legal privacy en-US URL");
 
   assert(/<image:image>/.test(imageSitemapXml), "sitemap-images.xml missing image entries");
   assert(
-    /https:\/\/dsq\.vercel\.app\/img\/component-icon\.png/.test(imageSitemapXml),
+    /https:\/\/dsqstar\.xyz\/img\/component-icon\.png/.test(imageSitemapXml),
     "sitemap-images.xml missing component icon"
   );
 
-  assert(/Sitemap:\s*https:\/\/dsq\.vercel\.app\/sitemap\.xml/i.test(robotsTxt), "robots.txt missing sitemap.xml");
+  assert(/Sitemap:\s*https:\/\/dsqstar\.xyz\/sitemap\.xml/i.test(robotsTxt), "robots.txt missing sitemap.xml");
   assert(
-    /Sitemap:\s*https:\/\/dsq\.vercel\.app\/sitemap-images\.xml/i.test(robotsTxt),
+    /Sitemap:\s*https:\/\/dsqstar\.xyz\/sitemap-images\.xml/i.test(robotsTxt),
     "robots.txt missing sitemap-images.xml"
   );
 }

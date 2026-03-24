@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://dsq.vercel.app/</loc>
+    <loc>https://dsqstar.xyz/</loc>
     <image:image>
-      <image:loc>https://dsq.vercel.app/og-image.png</image:loc>
+      <image:loc>https://dsqstar.xyz/og-image.png</image:loc>
       <image:title>Dyson Sphere Program Production Calculator</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://dsq.vercel.app/img/component-icon.png</image:loc>
+      <image:loc>https://dsqstar.xyz/img/component-icon.png</image:loc>
       <image:title>Component Category Icon</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://dsq.vercel.app/img/factory-icon.png</image:loc>
+      <image:loc>https://dsqstar.xyz/img/factory-icon.png</image:loc>
       <image:title>Factory Category Icon</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://dsq.vercel.app/img/to.png</image:loc>
+      <image:loc>https://dsqstar.xyz/img/to.png</image:loc>
       <image:title>Production Flow Arrow</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://dsq.vercel.app/apple-touch-icon.png</image:loc>
+      <image:loc>https://dsqstar.xyz/apple-touch-icon.png</image:loc>
       <image:title>Application Icon</image:title>
     </image:image>
     <lastmod>2026-03-24</lastmod>
   </url>
 </urlset>
+

@@ -5,9 +5,9 @@
 ## 1. 已落地项
 
 1. 页面 head 新增多语言 `hreflang`：
-- `zh-CN` -> `https://dsq.vercel.app/?lang=zh-CN`
-- `en-US` -> `https://dsq.vercel.app/?lang=en-US`
-- `x-default` -> `https://dsq.vercel.app/`
+- `zh-CN` -> `https://dsqstar.xyz/?lang=zh-CN`
+- `en-US` -> `https://dsqstar.xyz/?lang=en-US`
+- `x-default` -> `https://dsqstar.xyz/`
 
 2. Canonical 与 OG URL 联动当前语言：
 - `canonicalLink`、`metaOgUrl` 会随语言切换为对应 URL。
@@ -44,3 +44,4 @@
 
 4. 新增 SEO 自动校验脚本：
 - `npm run seo:check`（校验 canonical/hreflang、JSON-LD 插槽、图片 sitemap 与双语 FAQ key）。
+

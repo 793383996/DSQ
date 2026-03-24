@@ -2,7 +2,7 @@
   const STORAGE_KEY = "dsq_locale";
   const DEFAULT_LOCALE = "zh-CN";
   const SUPPORTED_LOCALES = new Set(["zh-CN", "en-US"]);
-  const SITE_ORIGIN = "https://dsq.vercel.app";
+  const SITE_ORIGIN = "https://dsqstar.xyz";
   const localeCache = {};
   let currentLocale = DEFAULT_LOCALE;
   let activeDictionary = {};
