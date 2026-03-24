@@ -10,6 +10,70 @@ function i18nText(key, fallback, params) {
   return fallback;
 }
 
+var machineDisplayI18nKeys = {
+  矩阵研究站: "option.research.matrix",
+  自演化研究站: "option.research.self_evolution",
+  "制作台Mk.Ⅰ": "option.machine.mk1",
+  "制作台Mk.Ⅱ": "option.machine.mk2",
+  "制作台Mk.Ⅲ": "option.machine.mk3",
+  重组式制造台: "option.machine.recomposing",
+  电弧熔炉: "option.furnace.arc",
+  位面熔炉: "option.furnace.plane",
+  负熵熔炉: "option.furnace.negentropy",
+  化工厂: "option.chemical.plant",
+  量子化工厂: "option.chemical.quantum",
+  采矿机: "machine_name.miner",
+  大型采矿机: "machine_name.advanced_miner",
+  矿脉: "machine_name.ore_vein",
+  原油萃取站: "machine_name.oil_extractor",
+  抽水机: "machine_name.water_pump",
+  原油精炼机: "machine_name.oil_refinery",
+  粒子对撞机: "machine_name.particle_collider",
+  轨道采集器: "machine_name.orbital_collector",
+  "轨道采集器(巨冰)": "machine_name.orbital_collector_ice",
+  "轨道采集器(气态)": "machine_name.orbital_collector_gas",
+  射线接收塔: "machine_name.ray_receiver",
+  分馏塔: "machine_name.fractionator",
+  能量枢纽: "machine_name.energy_exchanger",
+  黑雾掉落: "machine_name.dark_fog_drop",
+};
+
+var accTypeI18nKeys = {
+  "增产剂Mk.Ⅰ": "option.acc_type.mk1",
+  "增产剂Mk.Ⅱ": "option.acc_type.mk2",
+  "增产剂Mk.Ⅲ": "option.acc_type.mk3",
+};
+
+var accValueI18nKeys = {
+  无: "option.acc_value.none",
+  加速: "option.acc_value.speedup",
+  增产: "option.acc_value.production",
+};
+
+function translateMachineDisplayName(name) {
+  var key = machineDisplayI18nKeys[name];
+  if (!key) return name;
+  return i18nText(key, name);
+}
+
+function translateAccTypeLabel(name) {
+  var key = accTypeI18nKeys[name];
+  if (!key) return name;
+  return i18nText(key, name);
+}
+
+function translateAccTypeDisplayName(name) {
+  return translateAccTypeLabel(name)
+    .replace(/^增产剂/, "")
+    .replace(/^Proliferator\s*/i, "");
+}
+
+function translateAccValueDisplayName(name) {
+  var key = accValueI18nKeys[name];
+  if (!key) return name;
+  return i18nText(key, name);
+}
+
 function refreshI18nDom() {
   if (window.DSQI18n && typeof window.DSQI18n.refresh === "function") {
     window.DSQI18n.refresh();
@@ -169,7 +233,7 @@ function f_init() {
         if (!this.total || !this.total.length) return [];
         return this.total.map(function (item) {
           return {
-            name: item.name,
+            name: translateMachineDisplayName(item.name),
             value: item.value,
             energy: item.energy ? item.energy.toFixed(2) : "0.00",
             space: item.space ? Math.round(item.space) : 0,
@@ -872,7 +936,7 @@ function update_all() {
       t: info.t.toFixed(pointLength),
       speed: info.speed.toFixed(pointLength),
       pfTitle: getPfTitle(item, info),
-      mName: single_list[i].mName,
+      mName: translateMachineDisplayName(single_list[i].mName),
     };
     items0.push(outitem);
   }
@@ -1004,15 +1068,15 @@ function update_all() {
         itemName: item.name,
         name: item.m[j].name,
         title: i18nText("tooltip.machine_speed_prefix", "设备速度:") + item.m[j].speed.toFixed(pointLength),
-        showName: item.m[j].name.replace("制作台", ""),
+        showName: translateMachineDisplayName(item.m[j].name),
       };
-      if (m.showName == "采矿机") {
+      if (m.name == "采矿机") {
         m.title += i18nText("tooltip.machine_miner_note", " 采矿机按6个矿脉计算(因所限传送带速度最高30)");
       }
-      if (m.showName == "大型采矿机") {
+      if (m.name == "大型采矿机") {
         m.title += i18nText("tooltip.machine_advanced_miner_note", " 大型采矿机按20个矿脉计算");
       }
-      if (m.showName == "矿脉") {
+      if (m.name == "矿脉") {
         m.title += i18nText("tooltip.machine_ore_note", " (速度最高30)");
       }
       outitem.m.push(m);
@@ -1027,8 +1091,8 @@ function update_all() {
         class: one == accType ? "m selected" : "m",
         itemName: item.name,
         name: one,
-        title: one,
-        showName: one.replace("增产剂", ""),
+        title: translateAccTypeLabel(one),
+        showName: translateAccTypeDisplayName(one),
       });
     });
 
@@ -1039,8 +1103,8 @@ function update_all() {
         class: one == accValue ? "m selected" : "m",
         itemName: item.name,
         name: one,
-        title: one,
-        showName: one,
+        title: translateAccValueDisplayName(one),
+        showName: translateAccValueDisplayName(one),
       });
     });
 
