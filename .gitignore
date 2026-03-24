@@ -31,6 +31,7 @@ node_modules
 
 # 构建产物
 dist/
+dist-vite/
 
 # Vite 缓存
 .vite/
