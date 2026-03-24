@@ -1,6 +1,6 @@
 # 多语言 SEO 扩展说明（E-09）
 
-更新时间：2026-03-24
+更新时间：2026-03-24（D-03 已补齐）
 
 ## 1. 已落地项
 
@@ -26,3 +26,21 @@
 1. Search Console 检查 hreflang 报告是否存在冲突。
 2. 分别抓取 `?lang=zh-CN` 与 `?lang=en-US`，确认 canonical/og:url 正确。
 3. 在 sitemap 检查中确认两条语言 URL 可成功抓取。
+
+## 4. D-03 增强项（2026-03-24）
+
+1. 新增动态 SEO 元信息联动：
+- `Scripts/i18n.js` 支持根据当前需求状态更新 `title` / `description` / `og:*` / `twitter:*`。
+- 新增 `DSQI18n.updateSeoState(...)`，由 `update_all()` 在每轮计算后同步需求摘要。
+
+2. 新增结构化数据模板：
+- `schemaWebApplication`
+- `schemaBreadcrumbList`
+- `schemaFAQPage`
+
+3. 新增图片 SEO 与图片站点地图：
+- `sitemap.xml` 增加 `xmlns:image` 与主页面 `image:image` 条目。
+- 新增 `sitemap-images.xml`，在 `robots.txt` 中登记。
+
+4. 新增 SEO 自动校验脚本：
+- `npm run seo:check`（校验 canonical/hreflang、JSON-LD 插槽、图片 sitemap 与双语 FAQ key）。

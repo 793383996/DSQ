@@ -86,6 +86,7 @@ git push origin feat/your-topic
 | 依赖审计 | `npm run security:audit` | npm 生产依赖高危漏洞审计 |
 | 监控基线 | `npm run monitor:check` | 监控 SLO 配置与告警基线校验 |
 | 业务指标基线 | `npm run metrics:check` | 事件字典、漏斗、留存配置校验 |
+| SEO 基线 | `npm run seo:check` | canonical/hreflang/结构化数据与 sitemap 基线校验 |
 | 性能预算 | `npm run perf:lhci` | Lighthouse CI 预算检查 |
 
 ## CI 与治理工作流
