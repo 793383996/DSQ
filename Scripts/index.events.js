@@ -70,6 +70,21 @@
     });
   }
 
+  function loadQuoteIncludes() {
+    const $ = root.jQuery || root.$;
+    if (typeof $ !== "function") {
+      return;
+    }
+    const includes = $("[data-include]");
+    if (!includes || !includes.length) {
+      return;
+    }
+    includes.each(function () {
+      const file = "quote/" + $(this).data("include") + ".html";
+      $(this).load(file);
+    });
+  }
+
   function handleClickAction(action) {
     if (action === "addRequirement" && typeof root.f_add === "function") {
       trackBusinessAction("add_requirement_click", { action });
@@ -119,6 +134,7 @@
   onReady(() => {
     bindInputWidthById("txtnumber");
     bindInputWidthById("selmaince");
+    loadQuoteIncludes();
     trackPageView();
 
     bindMutualExclusiveCheckbox("onlySorterMk3", "useSorterMk4");

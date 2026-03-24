@@ -105,6 +105,38 @@ function f_init() {
           update_all();
         }
       },
+
+      removeExcluded: function (name) {
+        f_remove_ig(name);
+      },
+
+      onSelectPf: function (itemName, recipeId, isSelected) {
+        if (isSelected) {
+          return;
+        }
+        selectPf(itemName, recipeId);
+      },
+
+      onSelectMachine: function (itemId, machineName, isSelected) {
+        if (isSelected) {
+          return;
+        }
+        selectM(itemId, machineName);
+      },
+
+      onSelectAccType: function (itemId, accTypeName, isSelected) {
+        if (isSelected) {
+          return;
+        }
+        selectAccType(itemId, accTypeName);
+      },
+
+      onSelectAccValue: function (itemId, accValueName, isSelected) {
+        if (isSelected) {
+          return;
+        }
+        selectAccValue(itemId, accValueName);
+      },
     },
     computed: {
       totalDisplay: function () {
@@ -922,10 +954,7 @@ function update_all() {
     for (var j = 0; j < pfds.length; j++) {
       var pf = {
         class: item.id == pfds[j].id ? "pf selected" : "pf",
-        href:
-          item.id == pfds[j].id
-            ? "javascript:void(0)"
-            : 'javascript: selectPf("' + item.name + '","' + pfds[j].id + '")',
+        recipeId: pfds[j].id,
         title: getPfTitle(pfds[j], item.id == pfds[j].id ? info : null),
       };
       outitem.pf.push(pf);
@@ -934,10 +963,6 @@ function update_all() {
       var m = {
         class: info.name == item.m[j].name ? "m selected" : "m",
         itemName: item.name,
-        href:
-          info.name == item.m[j].name
-            ? "javascript:void(0)"
-            : 'javascript: selectM("' + item.id + '","' + item.m[j].name + '")',
         name: item.m[j].name,
         title: "设备速度:" + item.m[j].speed.toFixed(pointLength),
         showName: item.m[j].name.replace("制作台", ""),
@@ -962,7 +987,6 @@ function update_all() {
       outitem.accType.push({
         class: one == accType ? "m selected" : "m",
         itemName: item.name,
-        href: one == accType ? "javascript:void(0)" : 'javascript: selectAccType("' + item.id + '","' + one + '")',
         name: one,
         title: one,
         showName: one.replace("增产剂", ""),
@@ -975,7 +999,6 @@ function update_all() {
       outitem.accValue.push({
         class: one == accValue ? "m selected" : "m",
         itemName: item.name,
-        href: one == accValue ? "javascript:void(0)" : 'javascript: selectAccValue("' + item.id + '","' + one + '")',
         name: one,
         title: one,
         showName: one,

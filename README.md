@@ -101,6 +101,7 @@ git push origin feat/your-topic
 - Vercel 构建命令：`npm run build`
 - 发布产物目录：`dist-vite`
 - 部署配置：`vercel.json`
+- CSP 状态：`Content-Security-Policy` 已启用（Enforce）
 - 发布/回滚标准流程：`localDocs/release-governance-runbook.md`
 
 ## 文档导航
