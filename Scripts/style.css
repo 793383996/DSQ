@@ -3,6 +3,36 @@
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            text-rendering: geometricPrecision;
+            -webkit-font-smoothing: subpixel-antialiased;
+            -moz-osx-font-smoothing: auto;
+        }
+
+        body,
+        div,
+        p,
+        span,
+        textarea,
+        input,
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: "Courier New", "Consolas", "Microsoft YaHei", sans-serif !important;
+            font-weight: 500 !important;
+        }
+
+        pre,
+        code,
+        pre *,
+        code * {
+            font-family: "Courier New", "Consolas", "Microsoft YaHei", monospace !important;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 50%, #dce2e8 100%);
