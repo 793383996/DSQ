@@ -79,8 +79,10 @@
 
 <body>
   <a href="#main-content" class="skip-link" data-i18n="skip.main">跳转到主要内容</a>
-  
-  <header role="banner">
+
+  <!-- IX-01: Head / SEO 区块（layout-head） -->
+  <div id="layout-head" data-layout-section="head">
+  <header id="site-header" role="banner" data-layout-block="header">
     <div style="text-align: center; margin-bottom: 10px; padding: 10px 0;">
       <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 8px;">
         <label for="langSwitcher" data-i18n="locale.label" style="font-size: 13px; color: #64748b;">语言</label>
@@ -95,13 +97,16 @@
       <p data-i18n="hero.subtitle" style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
     </div>
   </header>
-  <nav aria-label="Breadcrumb" class="seo-breadcrumb" data-nosnippet style="padding: 0 20px 8px; font-size: 13px; color: #64748b;">
+  <nav id="seo-breadcrumb" aria-label="Breadcrumb" class="seo-breadcrumb" data-layout-block="breadcrumb" data-nosnippet style="padding: 0 20px 8px; font-size: 13px; color: #64748b;">
     <a id="linkBreadcrumbHome" href="/?lang=zh-CN" data-i18n="seo.breadcrumb.home" style="color: #2980b9;">首页</a>
     <span aria-hidden="true"> / </span>
     <span aria-current="page" data-i18n="seo.breadcrumb.current">量产量化计算器</span>
   </nav>
+  </div>
 
-  <main id="main-content" role="main">
+  <main id="main-content" role="main" data-layout-section="main-shell">
+  <!-- IX-01: 控制区块（layout-control） -->
+  <section id="layout-control" data-layout-section="control">
   <!-- 顶部控制区域 -->
   <div class="control-bar" role="toolbar" aria-label="产量控制" data-i18n-aria-label="control.toolbar_aria">
     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -168,6 +173,10 @@
       </span>
     </div>
   </div>
+  </section>
+
+  <!-- IX-01: 弹层区块（layout-dialog） -->
+  <section id="layout-dialog" data-layout-section="dialog">
   <div id="Split" style="display:none;">
   </div>
   <div id="UIselector" style="display:none;">
@@ -230,6 +239,10 @@
       </div>
     </div>
   </div>
+  </section>
+
+  <!-- IX-01: 结果区块（layout-result） -->
+  <section id="layout-result" data-layout-section="result">
   <div id="result">
     <div class="list" v-if="xqs && xqs.length">
       <span v-for="(x,index) in xqs">
@@ -456,9 +469,11 @@
       </table>
     </div>
   </div>
+  </section>
   </main>
-  
-  <footer role="contentinfo" style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 20px;">
+
+  <!-- IX-01: 页脚区块（layout-footer） -->
+  <footer id="layout-footer" role="contentinfo" data-layout-section="footer" style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; margin-top: 20px;">
     <p>
       <span data-i18n="footer.copyright">&copy; 2024 戴森球计划量产量化计算器</span> |
       <a href="https://github.com" style="color: #2980b9;">GitHub</a> |
