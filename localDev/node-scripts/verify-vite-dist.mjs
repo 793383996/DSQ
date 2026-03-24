@@ -4,6 +4,9 @@ import path from "node:path";
 const DIST_ROOT = path.join(process.cwd(), "dist-vite");
 const REQUIRED_FILES = [
   "index.html",
+  "sitemap.xml",
+  "sitemap-images.xml",
+  "robots.txt",
   "Scripts/data.js",
   "Scripts/blueprint.js",
   "Scripts/blueprint.layout.js",

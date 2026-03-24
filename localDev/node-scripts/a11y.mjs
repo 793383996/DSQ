@@ -23,8 +23,9 @@ function contentType(filePath) {
 }
 
 function resolvePath(urlPath) {
-  if (urlPath === "/") return path.join(DIST_ROOT, "index.html");
-  const normalized = urlPath.split("?")[0].split("#")[0].replace(/^\/+/, "");
+  const cleanPath = (urlPath || "/").split("?")[0].split("#")[0] || "/";
+  if (cleanPath === "/") return path.join(DIST_ROOT, "index.html");
+  const normalized = cleanPath.replace(/^\/+/, "");
   return path.join(DIST_ROOT, normalized);
 }
 

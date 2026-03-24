@@ -4,7 +4,15 @@ import path from "node:path";
 const ROOT = process.cwd();
 const DIST_DIR = path.join(ROOT, "dist-vite");
 
-const STATIC_FILES = ["robots.txt", "sitemap.xml", "favicon.ico", "favicon.svg", "og-image.png", "SECURITY.md"];
+const STATIC_FILES = [
+  "robots.txt",
+  "sitemap.xml",
+  "sitemap-images.xml",
+  "favicon.ico",
+  "favicon.svg",
+  "og-image.png",
+  "SECURITY.md",
+];
 const STATIC_DIRS = ["Scripts", "img", "quote", "legal", "locales", ".well-known"];
 
 async function exists(targetPath) {

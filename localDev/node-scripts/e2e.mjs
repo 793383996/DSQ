@@ -26,8 +26,9 @@ function contentType(filePath) {
 }
 
 function resolvePath(urlPath) {
-  if (urlPath === "/") return path.join(DIST_ROOT, "index.html");
-  const normalized = urlPath.split("?")[0].split("#")[0].replace(/^\/+/, "");
+  const cleanPath = (urlPath || "/").split("?")[0].split("#")[0] || "/";
+  if (cleanPath === "/") return path.join(DIST_ROOT, "index.html");
+  const normalized = cleanPath.replace(/^\/+/, "");
   return path.join(DIST_ROOT, normalized);
 }
 
@@ -201,6 +202,13 @@ async function runE2EAttempt(attempt) {
         "https://dsq.vercel.app/?lang=en-US",
         "e2e: canonical URL should follow switched locale."
       );
+      const webAppSchema = await page.locator("#schemaWebApplication").first().textContent();
+      assert.ok(
+        (webAppSchema || "").includes('"@type":"WebApplication"'),
+        "e2e: WebApplication JSON-LD should exist after locale switch."
+      );
+      const faqSchema = await page.locator("#schemaFAQPage").first().textContent();
+      assert.ok((faqSchema || "").includes('"@type":"FAQPage"'), "e2e: FAQ JSON-LD should exist after locale switch.");
 
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForDataReady(page);
@@ -212,10 +220,13 @@ async function runE2EAttempt(attempt) {
 
     // Case 1: 新增需求 -> 触发计算 -> 展示结果
     await runStep("add-requirement", async () => {
+      const titleBefore = await page.title();
       await addRequirement(page, "齿轮");
       await page.locator("#btnGenerateBlueprint").first().waitFor({ state: "visible", timeout: 10000 });
       const xqsLength = await page.evaluate(() => (Array.isArray(window.xqs) ? window.xqs.length : 0));
       assert.ok(xqsLength > 0, "e2e: adding requirement should update demand list.");
+      const titleAfter = await page.title();
+      assert.notEqual(titleAfter, titleBefore, "e2e: dynamic SEO title should update after adding requirement.");
     });
 
     // Case 2: 修改配置项 -> 结果更新

@@ -23,13 +23,14 @@
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "monitor:check": "node ./localDev/node-scripts/monitor-baseline.mjs",
     "metrics:check": "node ./localDev/node-scripts/metrics-baseline.mjs",
+    "seo:check": "node ./localDev/node-scripts/seo-baseline.mjs",
     "perf:lhci": "node ./localDev/node-scripts/run-lhci.mjs",
     "perf:lhci:quick": "node ./localDev/node-scripts/run-lhci.mjs --quick",
     "test:a11y": "node ./localDev/node-scripts/a11y.mjs",
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
+    "ci:check": "npm run lint && npm run lint:baseline && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run seo:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"

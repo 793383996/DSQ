@@ -27,6 +27,9 @@ const KEY_URLS = [
   "/quote/explanation.html",
   "/quote/explanation.en-US.html",
   "/quote/updata.en-US.html",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/sitemap-images.xml",
   "/legal/privacy.html",
   "/legal/privacy.en-US.html",
   "/legal/terms.html",
@@ -51,6 +54,9 @@ const REQUIRED_MARKERS = [
   'id="linkCookiePolicy"',
   'id="linkSecurityPolicy"',
   'id="canonicalLink"',
+  'id="schemaWebApplication"',
+  'id="schemaBreadcrumbList"',
+  'id="schemaFAQPage"',
   'hreflang="en-US"',
 ];
 
@@ -68,8 +74,9 @@ function contentType(filePath) {
 }
 
 function resolvePath(urlPath) {
-  if (urlPath === "/") return path.join(DIST_ROOT, "index.html");
-  const normalized = urlPath.split("?")[0].split("#")[0].replace(/^\/+/, "");
+  const cleanPath = (urlPath || "/").split("?")[0].split("#")[0] || "/";
+  if (cleanPath === "/") return path.join(DIST_ROOT, "index.html");
+  const normalized = cleanPath.replace(/^\/+/, "");
   return path.join(DIST_ROOT, normalized);
 }
 
