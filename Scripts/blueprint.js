@@ -133,142 +133,60 @@ class Blueprint {
     if (conveyor.type !== buildingType.conveyor) {
       throw `newConveyor error: error conveyor - ${conveyor}`;
     }
-    let nodeNum = 0;
     const startOffset = layoutFactory.getConveyorStartOffset(this.occupiedArea);
-    let buildingX = startOffset.x;
-    let buildingY = startOffset.y;
-    const buildingZ = startOffset.z;
     layoutFactory.reserveConveyorColumn(this.occupiedArea);
+    const plan = layoutFactory.buildConveyorActionPlan(
+      direction,
+      inputData.length,
+      outputData.length,
+      needSprayCoater,
+      startOffset,
+      parameters
+    );
 
-    for (let i = 0; i < inputData.length; i++) {
-      if (direction < 0) {
-        // 输入带不需要处理input，在最后加一个节点即可
-        break;
+    for (const action of plan.actions) {
+      if (action.type === "sprayOffsetRecord") {
+        this.sprayCoaterOffsetList.push(action.offset);
+        continue;
       }
-      buildingY += 1;
-      this.buildings.push(
-        this.newConveyorNode(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          [0, 0],
-          conveyor,
-          this.buildingIndex + 2,
-          1,
-          null
-        )
-      );
-      nodeNum++;
-      this.relinkSorters(inputData[i], sorter => {
-        sorter.outputObjIdx = this.buildingIndex;
-      });
-    }
-
-    let sprayCoaterOffset = {};
-    if (layoutFactory.shouldInsertForwardSpraySupportNode(needSprayCoater, direction, nodeNum)) {
-      // 添加节点用于放置喷涂机
-      // 为避免供料口被堵，喷涂机只放在第偶数个节点上
-      this.buildings.push(
-        this.newConveyorNode(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          [0, 0],
-          conveyor,
-          this.buildingIndex + 2,
-          1,
-          null
-        )
-      );
-      sprayCoaterOffset = { x: buildingX, y: ++buildingY, z: buildingZ };
-      this.sprayCoaterOffsetList.push(
-        layoutFactory.createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ)
-      );
-      this.buildings.push(this.newConveyorNode(sprayCoaterOffset, [0, 0], conveyor, this.buildingIndex + 2, 1, null));
-    }
-
-    for (let i = 0; i < outputData.length; i++) {
-      buildingY += 1;
-      const nodeLink = layoutFactory.resolveConveyorOutputLink(direction, i, outputData.length, this.buildingIndex);
-      let nodeParameters = null;
-      if (direction > 0 && i === outputData.length - 1) {
-        nodeParameters = parameters;
+      if (action.type === "sealTail") {
+        if (this.buildings.length > 0) {
+          const tail = this.buildings[this.buildings.length - 1];
+          tail.outputObjIdx = -1;
+          tail.outputToSlot = 0;
+        }
+        continue;
       }
-      const nodeYaw = layoutFactory.getConveyorNodeYaw(direction);
-      this.buildings.push(
-        this.newConveyorNode(
-          { x: buildingX, y: buildingY, z: buildingZ },
-          nodeYaw,
-          conveyor,
-          nodeLink.outputObjIdx,
-          nodeLink.outputToSlot,
-          nodeParameters
-        )
-      );
-      nodeNum++;
-      this.relinkSorters(outputData[i], sorter => {
-        sorter.inputObjIdx = this.buildingIndex;
-        sorter.inputFromSlot = -1;
-      });
-    }
-
-    if (layoutFactory.shouldSealForwardConveyorTail(direction, outputData.length, nodeNum)) {
-      this.buildings[this.buildings.length - 1].outputObjIdx = -1;
-      this.buildings[this.buildings.length - 1].outputToSlot = 0;
-    }
-
-    if (direction < 0) {
-      if (layoutFactory.shouldInsertReverseSpraySupportNode(needSprayCoater, direction, nodeNum)) {
-        this.buildings.push(
-          this.newConveyorNode(
-            { x: buildingX, y: ++buildingY, z: buildingZ },
-            [0, 0],
-            conveyor,
-            this.buildingIndex,
-            1,
-            null
-          )
-        );
+      if (action.type === "sprayCoater") {
+        this.buildings.push(this.newSprayCoater(action.offset, action.yaw));
+        continue;
       }
-      if (needSprayCoater) {
-        sprayCoaterOffset = { x: buildingX, y: ++buildingY, z: buildingZ };
-        this.sprayCoaterOffsetList.push(
-          layoutFactory.createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ)
-        );
-        this.buildings.push(this.newConveyorNode(sprayCoaterOffset, [180, 180], conveyor, this.buildingIndex, 1, null));
-        this.buildings.push(
-          this.newConveyorNode(
-            { x: buildingX, y: ++buildingY, z: buildingZ },
-            [180, 180],
-            conveyor,
-            this.buildingIndex,
-            1,
-            null
-          )
-        );
+      if (action.type !== "node") {
+        continue;
       }
-      this.buildings.push(
-        this.newConveyorNode(
-          { x: buildingX, y: ++buildingY, z: buildingZ },
-          [180, 180],
-          conveyor,
-          this.buildingIndex,
-          1,
-          null
-        )
+
+      const outputObjIdx = layoutFactory.resolveConveyorActionOutputObjIdx(
+        action.outputMode,
+        action.outputObjIdx,
+        this.buildingIndex
       );
       this.buildings.push(
-        this.newConveyorNode(
-          { x: buildingX, y: ++buildingY, z: buildingZ },
-          [180, 180],
-          conveyor,
-          this.buildingIndex,
-          1,
-          parameters
-        )
+        this.newConveyorNode(action.offset, action.yaw, conveyor, outputObjIdx, action.outputToSlot, action.parameters)
       );
+
+      if (action.kind === "input" && Number.isInteger(action.index) && inputData[action.index]) {
+        this.relinkSorters(inputData[action.index], sorter => {
+          sorter.outputObjIdx = this.buildingIndex;
+        });
+      }
+      if (action.kind === "output" && Number.isInteger(action.index) && outputData[action.index]) {
+        this.relinkSorters(outputData[action.index], sorter => {
+          sorter.inputObjIdx = this.buildingIndex;
+          sorter.inputFromSlot = -1;
+        });
+      }
     }
-    if (needSprayCoater) {
-      const sprayYaw = layoutFactory.getConveyorNodeYaw(direction);
-      this.buildings.push(this.newSprayCoater(sprayCoaterOffset, sprayYaw));
-    }
-    layoutFactory.updateConveyorOccupiedAreaX(this.occupiedArea, buildingX);
+    layoutFactory.updateConveyorOccupiedAreaX(this.occupiedArea, plan.buildingX);
   }
 
   calculateBuildingArea(subRecipe) {

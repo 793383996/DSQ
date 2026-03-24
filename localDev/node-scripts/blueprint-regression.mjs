@@ -426,6 +426,66 @@ function testConveyorLayoutHelpers(context) {
     "conveyor-layout-helper: reverse spray record should anchor on next y."
   );
 
+  const forwardPlan = layout.buildConveyorActionPlan(1, 2, 1, true, { x: 21, y: 8, z: 0 }, { iconId: 5201 });
+  const forwardNodeActions = forwardPlan.actions.filter(action => action.type === "node");
+  assert.equal(
+    forwardNodeActions.length,
+    5,
+    "conveyor-layout-helper: forward plan should include input + support + output node actions."
+  );
+  assert.equal(
+    forwardNodeActions[0].kind,
+    "input",
+    "conveyor-layout-helper: forward first action should be input relink node."
+  );
+  assert.equal(
+    forwardNodeActions[forwardNodeActions.length - 1].parameters.iconId,
+    5201,
+    "conveyor-layout-helper: forward terminal output node should carry provided parameters."
+  );
+  assert.ok(
+    forwardPlan.actions.some(action => action.type === "sprayCoater"),
+    "conveyor-layout-helper: forward plan should include spray coater action when requested."
+  );
+
+  const reversePlan = layout.buildConveyorActionPlan(-1, 0, 2, true, { x: 30, y: 9, z: 0 }, { iconId: 8801 });
+  const reverseNodeActions = reversePlan.actions.filter(action => action.type === "node");
+  assert.equal(
+    reverseNodeActions[0].outputMode,
+    "fixed",
+    "conveyor-layout-helper: reverse first output node should use fixed output mode."
+  );
+  assert.equal(
+    reverseNodeActions[1].outputMode,
+    "current",
+    "conveyor-layout-helper: reverse non-head output node should link to current index."
+  );
+  assert.equal(
+    reverseNodeActions[reverseNodeActions.length - 1].parameters.iconId,
+    8801,
+    "conveyor-layout-helper: reverse terminal tail node should carry provided parameters."
+  );
+  assert.ok(
+    reversePlan.actions.some(action => action.type === "sprayCoater"),
+    "conveyor-layout-helper: reverse plan should include spray coater action when requested."
+  );
+
+  assert.equal(
+    layout.resolveConveyorActionOutputObjIdx("next", null, 100),
+    102,
+    "conveyor-layout-helper: output mode next should map to current index + 2."
+  );
+  assert.equal(
+    layout.resolveConveyorActionOutputObjIdx("current", null, 100),
+    100,
+    "conveyor-layout-helper: output mode current should map to current index."
+  );
+  assert.equal(
+    layout.resolveConveyorActionOutputObjIdx("fixed", -1, 100),
+    -1,
+    "conveyor-layout-helper: output mode fixed should keep explicit output index."
+  );
+
   layout.updateConveyorOccupiedAreaX(occupiedArea, 42);
   assert.equal(
     occupiedArea[occupiedArea.length - 1].x2,

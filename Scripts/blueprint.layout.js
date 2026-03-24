@@ -786,6 +786,223 @@
     occupiedArea[occupiedArea.length - 1].x2 = buildingX;
   }
 
+  function resolveConveyorActionOutputObjIdx(outputMode, outputObjIdx, currentBuildingIndex) {
+    switch (outputMode) {
+      case "next":
+        return currentBuildingIndex + 2;
+      case "current":
+        return currentBuildingIndex;
+      case "fixed":
+      default:
+        return typeof outputObjIdx === "number" ? outputObjIdx : -1;
+    }
+  }
+
+  function createConveyorNodeAction(kind, index, offset, yaw, outputMode, outputObjIdx, outputToSlot, parameters) {
+    return {
+      type: "node",
+      kind,
+      index,
+      offset,
+      yaw,
+      outputMode,
+      outputObjIdx,
+      outputToSlot,
+      parameters: parameters || null,
+    };
+  }
+
+  function buildConveyorActionPlan(direction, inputLength, outputLength, needSprayCoater, startOffset, parameters) {
+    const actions = [];
+    const buildingX = startOffset.x;
+    let buildingY = startOffset.y;
+    const buildingZ = startOffset.z;
+    let nodeNum = 0;
+    let sprayCoaterOffset = null;
+
+    if (direction > 0) {
+      for (let i = 0; i < inputLength; i++) {
+        buildingY += 1;
+        actions.push(
+          createConveyorNodeAction(
+            "input",
+            i,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            [0, 0],
+            "next",
+            null,
+            1,
+            null
+          )
+        );
+        nodeNum++;
+      }
+
+      if (shouldInsertForwardSpraySupportNode(needSprayCoater, direction, nodeNum)) {
+        actions.push(
+          createConveyorNodeAction(
+            "support",
+            null,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            [0, 0],
+            "next",
+            null,
+            1,
+            null
+          )
+        );
+        sprayCoaterOffset = { x: buildingX, y: buildingY + 1, z: buildingZ };
+        buildingY += 1;
+        actions.push({
+          type: "sprayOffsetRecord",
+          offset: createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ),
+        });
+        actions.push(
+          createConveyorNodeAction(
+            "support",
+            null,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            [0, 0],
+            "next",
+            null,
+            1,
+            null
+          )
+        );
+      }
+
+      for (let i = 0; i < outputLength; i++) {
+        buildingY += 1;
+        const isTerminal = i === outputLength - 1;
+        actions.push(
+          createConveyorNodeAction(
+            "output",
+            i,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            getConveyorNodeYaw(direction),
+            isTerminal ? "fixed" : "next",
+            isTerminal ? -1 : null,
+            isTerminal ? 0 : 1,
+            isTerminal ? parameters : null
+          )
+        );
+        nodeNum++;
+      }
+
+      if (shouldSealForwardConveyorTail(direction, outputLength, nodeNum)) {
+        actions.push({ type: "sealTail" });
+      }
+    } else {
+      for (let i = 0; i < outputLength; i++) {
+        buildingY += 1;
+        const isHead = i === 0;
+        actions.push(
+          createConveyorNodeAction(
+            "output",
+            i,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            getConveyorNodeYaw(direction),
+            isHead ? "fixed" : "current",
+            isHead ? -1 : null,
+            isHead ? 0 : 1,
+            null
+          )
+        );
+        nodeNum++;
+      }
+
+      if (shouldInsertReverseSpraySupportNode(needSprayCoater, direction, nodeNum)) {
+        buildingY += 1;
+        actions.push(
+          createConveyorNodeAction(
+            "support",
+            null,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            [0, 0],
+            "current",
+            null,
+            1,
+            null
+          )
+        );
+      }
+
+      if (needSprayCoater) {
+        buildingY += 1;
+        sprayCoaterOffset = { x: buildingX, y: buildingY, z: buildingZ };
+        actions.push({
+          type: "sprayOffsetRecord",
+          offset: createSprayOffsetRecord(direction, buildingX, buildingY, buildingZ),
+        });
+        actions.push(
+          createConveyorNodeAction(
+            "support",
+            null,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            [180, 180],
+            "current",
+            null,
+            1,
+            null
+          )
+        );
+        buildingY += 1;
+        actions.push(
+          createConveyorNodeAction(
+            "support",
+            null,
+            { x: buildingX, y: buildingY, z: buildingZ },
+            [180, 180],
+            "current",
+            null,
+            1,
+            null
+          )
+        );
+      }
+
+      buildingY += 1;
+      actions.push(
+        createConveyorNodeAction(
+          "support",
+          null,
+          { x: buildingX, y: buildingY, z: buildingZ },
+          [180, 180],
+          "current",
+          null,
+          1,
+          null
+        )
+      );
+      buildingY += 1;
+      actions.push(
+        createConveyorNodeAction(
+          "support",
+          null,
+          { x: buildingX, y: buildingY, z: buildingZ },
+          [180, 180],
+          "current",
+          null,
+          1,
+          parameters
+        )
+      );
+    }
+
+    if (needSprayCoater && sprayCoaterOffset) {
+      actions.push({
+        type: "sprayCoater",
+        offset: sprayCoaterOffset,
+        yaw: getConveyorNodeYaw(direction),
+      });
+    }
+
+    return {
+      buildingX,
+      actions,
+    };
+  }
+
   function selectSprayCoaterConveyor(
     itemSummary,
     proliferatorName,
@@ -1766,6 +1983,8 @@
     shouldSealForwardConveyorTail,
     createSprayOffsetRecord,
     updateConveyorOccupiedAreaX,
+    resolveConveyorActionOutputObjIdx,
+    buildConveyorActionPlan,
     selectSprayCoaterConveyor,
     findFirstSprayOffset,
     calculateSelfSprayStartOffset,
