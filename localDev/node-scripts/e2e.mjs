@@ -81,7 +81,7 @@ async function addRequirement(page, itemName) {
   );
 }
 
-async function readMachineName(page, itemName) {
+async function readMachineMode(page, itemName) {
   return page.evaluate(target => {
     const rows = Array.from(document.querySelectorAll("tbody tr"));
     const row = rows.find(tr => tr.querySelector(`td.cell-name[data-name="${target}"]`));
@@ -89,7 +89,10 @@ async function readMachineName(page, itemName) {
       return null;
     }
     const machineNode = row.querySelector("td:nth-child(8) a.m.selected");
-    return machineNode ? machineNode.textContent.trim() : null;
+    if (!machineNode) {
+      return null;
+    }
+    return machineNode.getAttribute("data-modein") || machineNode.textContent.trim();
   }, itemName);
 }
 
@@ -233,7 +236,7 @@ async function runE2EAttempt(attempt) {
     await runStep("change-config", async () => {
       const currentMode = await page.inputValue("#selmodein");
       const targetMode = currentMode === "重组式制造台" ? "制作台Mk.Ⅰ" : "重组式制造台";
-      const beforeMachine = await readMachineName(page, "齿轮");
+      const beforeMachine = await readMachineMode(page, "齿轮");
       await page.selectOption("#selmodein", targetMode);
       await page.waitForFunction(
         ({ itemName, modeName }) => {
@@ -243,12 +246,12 @@ async function runE2EAttempt(attempt) {
             return false;
           }
           const machineNode = row.querySelector("td:nth-child(8) a.m.selected");
-          return !!machineNode && machineNode.textContent.trim() === modeName;
+          return !!machineNode && machineNode.getAttribute("data-modein") === modeName;
         },
         { itemName: "齿轮", modeName: targetMode },
         { timeout: 10000 }
       );
-      const afterMachine = await readMachineName(page, "齿轮");
+      const afterMachine = await readMachineMode(page, "齿轮");
       assert.equal(afterMachine, targetMode, "e2e: machine type should follow changed configuration.");
       assert.notEqual(beforeMachine, afterMachine, "e2e: machine type should change after updating configuration.");
     });

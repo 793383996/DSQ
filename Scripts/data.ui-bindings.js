@@ -257,7 +257,6 @@ function f_init() {
     syncLocalizedLabels();
     projectsUpdate();
     update_all();
-    refreshI18nDom();
   });
 
   $("#speed1_6").change(function () {
@@ -1006,6 +1005,7 @@ function update_all() {
     }
     // 当生产精炼油/氢/石墨烯/重氢的生产设施为空时，显示0生产设施以跳过“存在生产设施为空的配方”检验
     var outitem = {
+      id: item.id,
       name: xh_list[i].name,
       number1: xh_list[i].value.toFixed(pointLength),
       number2: xh_list[i].value2
@@ -1031,7 +1031,8 @@ function update_all() {
       pf: [],
       accType: [],
       accValue: [],
-      accTotal: (xh_list[i].accTotal || 0).toFixed(2),
+      accTotal: xh_list[i].accTotal || 0,
+      accTotalLabel: i18nText("table.acc_need_prefix", "需求："),
     };
     if (!outitem.number2) outitem.number2full = "";
     if (xh_list[i].name == "太阳帆") {
@@ -1147,7 +1148,13 @@ function update_all() {
   app.totalSpace = space;
   app.totalAcc = totalAcc.toFixed(2);
   syncLocalizedLabels();
-  refreshI18nDom();
+  if (app && typeof app.$nextTick === "function") {
+    app.$nextTick(function () {
+      refreshI18nDom();
+    });
+  } else {
+    refreshI18nDom();
+  }
 
   if (window.DSQI18n && typeof window.DSQI18n.updateSeoState === "function") {
     var primaryRequirement = xqs && xqs.length ? xqs[0] : null;

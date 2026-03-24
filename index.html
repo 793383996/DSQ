@@ -395,8 +395,7 @@
                   {{a.showName}}
                 </a>
               </div>
-              <span class="number1">{{item.accTotalLabel}}{{item.accTotal}}</span>
-            </td>
+              <span class="number1" v-if="item.accTotal > 0">{{item.accTotalLabel}}{{item.accTotal.toFixed(2)}}</span>
             </td>
             <td>
               <div class="ms">
