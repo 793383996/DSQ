@@ -8,7 +8,7 @@
   
   <title>戴森球计划量产量化计算器 - 自动化生产规划工具</title>
   <meta name="keywords" content="戴森球计划,量产量化工具,量产量化计算器,自动化工具,生产工具,Dyson Sphere Program,生产计算器,蓝图生成" />
-  <meta name="description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。帮助玩家优化生产线布局，提高生产效率。" />
+  <meta id="metaDescription" name="description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。帮助玩家优化生产线布局，提高生产效率。" />
   <meta name="author" content="DSQ Calculator" />
   <meta name="robots" content="index, follow" />
   <link id="canonicalLink" rel="canonical" href="https://dsq.vercel.app/?lang=zh-CN" />
@@ -17,38 +17,25 @@
   <link rel="alternate" hreflang="x-default" href="https://dsq.vercel.app/" />
   
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="戴森球计划量产量化计算器" />
-  <meta property="og:description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。" />
+  <meta id="metaOgTitle" property="og:title" content="戴森球计划量产量化计算器" />
+  <meta id="metaOgDescription" property="og:description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。" />
   <meta id="metaOgUrl" property="og:url" content="https://dsq.vercel.app/?lang=zh-CN" />
-  <meta property="og:site_name" content="戴森球计划量产量化计算器" />
+  <meta id="metaOgSiteName" property="og:site_name" content="戴森球计划量产量化计算器" />
   <meta id="metaOgLocale" property="og:locale" content="zh_CN" />
   <meta property="og:image" content="https://dsq.vercel.app/og-image.png" />
+  <meta id="metaOgImageAlt" property="og:image:alt" content="戴森球计划量产量化计算器界面预览" />
   
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="戴森球计划量产量化计算器" />
-  <meta name="twitter:description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。" />
-  <meta name="twitter:image" content="https://dsq.vercel.app/og-image.png" />
+  <meta id="metaTwitterTitle" name="twitter:title" content="戴森球计划量产量化计算器" />
+  <meta id="metaTwitterDescription" name="twitter:description" content="《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。" />
+  <meta id="metaTwitterImage" name="twitter:image" content="https://dsq.vercel.app/og-image.png" />
+  <meta id="metaTwitterImageAlt" name="twitter:image:alt" content="戴森球计划量产量化计算器界面预览" />
+  <meta id="metaGoogleSiteVerification" name="google-site-verification" content="" />
+  <meta id="metaBingSiteVerification" name="msvalidate.01" content="" />
   
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "戴森球计划量产量化计算器",
-    "description": "《戴森球计划》自动化量产计算器，支持全自动计算量产产品的具体产能需求、蓝图生成、配方查询等功能。",
-    "url": "https://dsq.vercel.app/",
-    "applicationCategory": "GameApplication",
-    "operatingSystem": "Web Browser",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "CNY"
-    },
-    "author": {
-      "@type": "Organization",
-      "name": "DSQ Calculator"
-    }
-  }
-  </script>
+  <script id="schemaWebApplication" type="application/ld+json"></script>
+  <script id="schemaBreadcrumbList" type="application/ld+json"></script>
+  <script id="schemaFAQPage" type="application/ld+json"></script>
   
   <style>
     input[type=number]::-webkit-inner-spin-button,
@@ -108,6 +95,11 @@
       <p data-i18n="hero.subtitle" style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">全自动计算量产产品的具体产能需求</p>
     </div>
   </header>
+  <nav aria-label="Breadcrumb" class="seo-breadcrumb" data-nosnippet style="padding: 0 20px 8px; font-size: 13px; color: #64748b;">
+    <a id="linkBreadcrumbHome" href="/?lang=zh-CN" data-i18n="seo.breadcrumb.home" style="color: #2980b9;">首页</a>
+    <span aria-hidden="true"> / </span>
+    <span aria-current="page" data-i18n="seo.breadcrumb.current">量产量化计算器</span>
+  </nav>
 
   <main id="main-content" role="main">
   <!-- 顶部控制区域 -->
@@ -241,7 +233,7 @@
   <div id="result">
     <div class="list" v-if="xqs && xqs.length">
       <span v-for="(x,index) in xqs">
-        <img v-bind:src="'data:image/png;base64,' + icons[x.item.name]" style="width:40px;height:40px;"
+        <img v-bind:src="'data:image/png;base64,' + icons[x.item.name]" v-bind:alt="x.item.name" style="width:40px;height:40px;"
           v-if="icons[x.item.name]" v-bind:title="x.item.name"
           @contextmenu.prevent="removeItem(index)" />
         <span class="name" v-else=v-else>{{x.item.name}}</span>
@@ -278,7 +270,7 @@
     <div class="list" v-if="ig_names && ig_names.length">
       <span data-i18n="exclude.title">排除计算：</span>
       <span v-for="name in ig_names">
-        <img v-bind:src="'data:image/png;base64,' + icons[name]" style="width:40px;height:40px;" v-if="icons[name]"
+        <img v-bind:src="'data:image/png;base64,' + icons[name]" v-bind:alt="name" style="width:40px;height:40px;" v-if="icons[name]"
           v-bind:title="name" @contextmenu.prevent="removeExcluded(name)" />
         <span class="name" v-else=v-else>{{name}}</span>
       </span>
@@ -325,7 +317,7 @@
             <td></td>
             <td class="cell-name" v-bind:data-name="item.name">
               <span class="name">
-                <img v-bind:src="'data:image/png;base64,' + icons[item.name]" style="width:40px;height:40px;"
+                <img v-bind:src="'data:image/png;base64,' + icons[item.name]" v-bind:alt="item.name" style="width:40px;height:40px;"
                   v-if="icons[item.name]" v-bind:title="item.name" />
                 <span class="name" v-else=v-else>{{item.name}}</span>
               </span>
@@ -348,7 +340,7 @@
               <a href="#" data-action="tag" v-bind:data-name="item.name" data-i18n="action.tag">标注</a>
             </td>
             <td class="cell-name" v-bind:data-name="item.name">
-              <img v-bind:src="'data:image/png;base64,' + icons[item.name]" style="width:40px;height:40px;"
+              <img v-bind:src="'data:image/png;base64,' + icons[item.name]" v-bind:alt="item.name" style="width:40px;height:40px;"
                 v-if="icons[item.name]" v-bind:title="item.name" />
               <span class="name" v-else=v-else>{{item.name}}</span>
             </td>
@@ -377,7 +369,7 @@
                 <a v-bind:data-modein="a.name" v-bind:data-name="a.itemName" v-for="a in item.accType"
                   v-bind:title="a.title" v-bind:class="a.class" href="#"
                   @click.prevent="onSelectAccType(item.id, a.name, a.class === 'm selected')">
-                  <img :src="'data:image/png;base64,' + icons[a.name]" />
+                  <img :src="'data:image/png;base64,' + icons[a.name]" :alt="a.name" />
                   {{a.showName}}
                 </a>
               </div>
@@ -397,7 +389,7 @@
               <div class="ms">
                 <a v-bind:data-modein="m.name" v-bind:data-name="m.itemName" v-for="m in item.m" v-bind:title="m.title"
                   v-bind:class="m.class" href="#" @click.prevent="onSelectMachine(item.id, m.name, m.class === 'm selected')">
-                  <img :src="'data:image/png;base64,' + icons[m.name]" v-if="icons[m.name]" />
+                  <img :src="'data:image/png;base64,' + icons[m.name]" :alt="m.name" v-if="icons[m.name]" />
                   {{m.showName}}
                 </a>
               </div>
@@ -430,7 +422,7 @@
             <td></td>
             <td>
               <span class="name">
-                <img v-bind:src="'data:image/png;base64,' + icons[item.name]" style="width:40px;height:40px;"
+                <img v-bind:src="'data:image/png;base64,' + icons[item.name]" v-bind:alt="item.name" style="width:40px;height:40px;"
                   v-if="icons[item.name]" v-bind:title="item.name" />
                 <span class="name" v-else=v-else>{{item.name}}</span>
               </span>

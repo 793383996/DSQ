@@ -1084,6 +1084,20 @@ function update_all() {
   app.totalAcc = totalAcc.toFixed(2);
   syncLocalizedLabels();
   refreshI18nDom();
+
+  if (window.DSQI18n && typeof window.DSQI18n.updateSeoState === "function") {
+    var primaryRequirement = xqs && xqs.length ? xqs[0] : null;
+    var primaryItemName = primaryRequirement && primaryRequirement.item ? primaryRequirement.item.name : "";
+    var primaryRatePerMinute = primaryRequirement ? Number(primaryRequirement.number) : NaN;
+    window.DSQI18n.updateSeoState({
+      requirementCount: xqs.length,
+      primaryItemName: primaryItemName,
+      primaryRatePerMinute: Number.isFinite(primaryRatePerMinute) ? primaryRatePerMinute : null,
+      totalLineCount: items.length,
+      totalEnergy: Number(energy) || 0,
+      totalSpace: Number(space) || 0,
+    });
+  }
 }
 function selectM(id, m) {
   settings[id] = settings[id] || {};
@@ -1344,8 +1358,10 @@ function f_initIcons() {
     .html('<div id="selector" class="selector" style="width: ' + w + 'px; height: auto;"><div id="tabs"></div></div>')
     .hide();
 
-  var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png'/></div>").appendTo("#tabs");
-  var jimg2 = $("<div class='tab'><img src='./img/factory-icon.png'/></div>").appendTo("#tabs");
+  var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png' alt='components'/></div>").appendTo(
+    "#tabs"
+  );
+  var jimg2 = $("<div class='tab'><img src='./img/factory-icon.png' alt='factories'/></div>").appendTo("#tabs");
 
   jimg1.click(function () {
     jicons2.removeClass("icons-selected");
@@ -1395,7 +1411,7 @@ function f_initIcons() {
           .find(">.iconrow:eq(" + (parseInt(x[1]) - 1) + ")")
           .find(">.icon:eq(" + (parseInt(x[2]) - 1) + ")")
           .html("")
-          .append("<img src='data:image/png;base64," + icon.value + "' />")
+          .append("<img src='data:image/png;base64," + icon.value + "' alt='" + x[3] + "' loading='lazy' />")
           .attr("data-name", x[3])
           .attr("title", x[3]);
       }

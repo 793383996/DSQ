@@ -49,7 +49,15 @@ function getIconImg(name) {
   if (name == "轨道采集器(巨冰)") name = "轨道采集器";
 
   if (icons[name]) {
-    title.push("<img class='sicon' src='data:image/png;base64," + icons[name] + "' title='" + name + "' />");
+    title.push(
+      "<img class='sicon' src='data:image/png;base64," +
+        icons[name] +
+        "' title='" +
+        name +
+        "' alt='" +
+        name +
+        "' loading='lazy' />"
+    );
   } else {
     title.push(name);
   }
@@ -107,7 +115,7 @@ function getPfTitle(item, info) {
   }
 
   if (item.q.length) {
-    title.push('<img class="to" src="./img/to.png" />');
+    title.push('<img class="to" src="./img/to.png" alt="to" loading="lazy" />');
   }
   for (var j = 0; j < item.s.length; j++) {
     title.push(getIconShow(item.s[j].name, item.s[j].n || 1));
