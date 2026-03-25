@@ -47,6 +47,269 @@
             padding: 15px !important;
         }
 
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* ========== 内联样式抽离（index.html） ========== */
+        .layout-head-intro {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 10px 0;
+        }
+
+        .layout-locale-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .layout-locale-label {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .layout-locale-select {
+            padding: 2px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+        }
+
+        .hero-title-gradient {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #2980b9, #3498db, #1abc9c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            margin: 8px 0 0 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .seo-breadcrumb-layout {
+            padding: 0 20px 8px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .link-brand-blue {
+            color: #2980b9;
+        }
+
+        .control-row-main {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .control-field-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-label-muted {
+            color: #4a5568;
+        }
+
+        .input-min-70 {
+            min-width: 70px;
+        }
+
+        .input-number-plain {
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+
+        .btn-add-requirement {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #DDEFFD, #C3E2FB);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .icon-20 {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-gradient-orange {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+        }
+
+        .btn-gradient-orange:hover {
+            background: linear-gradient(135deg, #ea580c, #c2410c);
+        }
+
+        .control-row-options {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .margin-top-12 {
+            margin-top: 12px;
+        }
+
+        .project-panel-hidden {
+            display: none;
+        }
+
+        .settings-layout-row {
+            display: flex;
+        }
+
+        .settings-col-gap {
+            margin-right: 50px;
+        }
+
+        .settings-col-width {
+            width: 400px;
+        }
+
+        .settings-blueprint-inner {
+            margin-left: 1%;
+        }
+
+        .icon-40 {
+            width: 40px;
+            height: 40px;
+        }
+
+        .result-actions-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-gradient-red {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .btn-gradient-red:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+        }
+
+        .btn-gradient-green {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .btn-gradient-green:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .btn-gradient-purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .btn-gradient-purple:hover {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        }
+
+        .table-col-100 {
+            width: 100px;
+        }
+
+        .table-header-note {
+            font-size: 12px;
+        }
+
+        .header td .table-header-note {
+            font-size: 12px;
+            opacity: 1;
+            font-weight: normal;
+        }
+
+        .number2-hidden {
+            display: none;
+        }
+
+        .table-total-label {
+            font-size: 15px;
+            color: #2980b9;
+        }
+
+        .total-display-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .total-display-chip {
+            background: #e3f2fd;
+            padding: 4px 10px;
+            border-radius: 6px;
+            color: #1565c0;
+        }
+
+        .total-stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .total-acc-color {
+            color: #d97706;
+        }
+
+        .btn-exclude-acc-line {
+            display: inline-block;
+            background: #ffffff;
+            border: 2px solid #111827;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.2;
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .btn-exclude-acc-line:hover {
+            text-decoration: none;
+            color: #111827;
+            background: #f8fafc;
+        }
+
+        .total-space-color {
+            color: #0891b2;
+        }
+
+        .total-energy-color {
+            color: #059669;
+        }
+
+        .section-title-cell {
+            color: #111827;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .layout-footer-main {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 12px;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 20px;
+        }
+
         /* ========== 可访问性样式 ========== */
         .skip-link {
             position: absolute;
@@ -792,23 +1055,23 @@
         }
 
         /* ========== 物品图标样式 ========== */
-        .list img[style*="width:40px"] {
+        .list .icon-40 {
             border-radius: 8px;
             transition: transform 0.2s ease;
             cursor: pointer;
         }
 
-        .list img[style*="width:40px"]:hover {
+        .list .icon-40:hover {
             transform: scale(1.1);
         }
 
-        td img[style*="width:40px"] {
+        td .icon-40 {
             border-radius: 6px;
             cursor: pointer;
             transition: transform 0.2s ease;
         }
 
-        td img[style*="width:40px"]:hover {
+        td .icon-40:hover {
             transform: scale(1.15);
         }
 
