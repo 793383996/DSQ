@@ -15,6 +15,22 @@ class BlueprintFacade {
    * @returns {Promise<string>} Base64 Blueprint String
    */
   static generateAsync(title, iconId, recipe, config) {
+    const resolveWorkerMessage = payload => {
+      if (typeof payload === "string") {
+        return payload;
+      }
+      if (!payload || typeof payload !== "object") {
+        return "";
+      }
+      const key = typeof payload.key === "string" ? payload.key : "";
+      const fallback = typeof payload.fallback === "string" ? payload.fallback : "";
+      const params = payload.params && typeof payload.params === "object" ? payload.params : null;
+      if (typeof window !== "undefined" && window.DSQI18n && typeof window.DSQI18n.t === "function" && key) {
+        return window.DSQI18n.t(key, params, fallback);
+      }
+      return fallback || key;
+    };
+
     // 纵深防崩：CAS (Compare-And-Swap) 思想拦截
     if (this._isGenerating) {
       return Promise.reject(new Error("ERR_ALREADY_RUNNING"));
@@ -102,12 +118,15 @@ class BlueprintFacade {
             break;
           case "ERROR":
             cleanup();
-            reject(new Error(payload));
+            reject(new Error(resolveWorkerMessage(payload) || "unknown_error"));
             break;
           case "WARNING":
             // 处理 Worker 内部向上冒泡的警告
             if (typeof window !== "undefined" && window.cocoMessage) {
-              cocoMessage.warning(payload, 5000);
+              const warningText = resolveWorkerMessage(payload);
+              if (warningText) {
+                cocoMessage.warning(warningText, 5000);
+              }
             }
             break;
         }

@@ -65,10 +65,16 @@ self.onmessage = function (e) {
     });
   } catch (error) {
     // 纵深防崩：任何计算异常必须被包裹并冒泡，严禁静默死亡
+    const errorPayload =
+      error && typeof error === "object" && error.dsqPayload
+        ? error.dsqPayload
+        : error instanceof Error
+          ? error.message
+          : error.toString();
     self.postMessage({
       taskId: taskId,
       type: "ERROR",
-      payload: error instanceof Error ? error.message : error.toString(),
+      payload: errorPayload,
     });
   }
 };

@@ -1,6 +1,13 @@
 // Scripts/blueprint.layout.js
 // 从 blueprint.js 抽离的布局计算逻辑。
 (function (root) {
+  function i18nLayoutText(key, fallback, params) {
+    if (root.DSQI18n && typeof root.DSQI18n.t === "function") {
+      return root.DSQI18n.t(key, params, fallback);
+    }
+    return fallback;
+  }
+
   function calculateBuildingArea(buildingCategory, ioCount, compactLayout, productionCategory) {
     switch (buildingCategory) {
       case productionCategory.smelter:
@@ -545,7 +552,9 @@
         distance = 6;
         break;
       default:
-        if (cocoMessageRef && typeof cocoMessageRef.error === "function") cocoMessageRef.error("未知的建筑类型", 4000);
+        if (cocoMessageRef && typeof cocoMessageRef.error === "function") {
+          cocoMessageRef.error(i18nLayoutText("error.blueprint_unknown_building_category", "未知的建筑类型"), 4000);
+        }
         throw `unknown building category: ${category}`;
     }
     return {
@@ -1337,13 +1346,13 @@
     }
     if (errorCode === "route_failed") {
       return {
-        message: "喷涂剂排线错误",
+        message: i18nLayoutText("error.blueprint_spray_route_failed", "喷涂剂排线错误"),
         duration: 4000,
         throwReason: "generate sprayCoater error",
       };
     }
     return {
-      message: "喷涂剂排线错误",
+      message: i18nLayoutText("error.blueprint_spray_route_failed", "喷涂剂排线错误"),
       duration: 4000,
       throwReason: "generate sprayCoater error",
     };

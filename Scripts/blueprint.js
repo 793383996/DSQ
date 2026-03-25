@@ -3,6 +3,47 @@ const { itemMap, productionCategory, buildingType, buildingMap, recipeMap } = _b
 const modelFactory = _bpGlobal.DSQBlueprintModel;
 const layoutFactory = _bpGlobal.DSQBlueprintLayout;
 
+function buildBlueprintMessagePayload(key, fallback, params = null) {
+  return {
+    key,
+    fallback,
+    params: params && typeof params === "object" ? params : null,
+  };
+}
+
+function resolveBlueprintMessage(payload) {
+  if (typeof payload === "string") {
+    return payload;
+  }
+  if (!payload || typeof payload !== "object") {
+    return "";
+  }
+
+  const key = typeof payload.key === "string" ? payload.key : "";
+  const fallback = typeof payload.fallback === "string" ? payload.fallback : "";
+  const params = payload.params && typeof payload.params === "object" ? payload.params : null;
+
+  if (_bpGlobal.DSQI18n && typeof _bpGlobal.DSQI18n.t === "function" && key) {
+    return _bpGlobal.DSQI18n.t(key, params, fallback);
+  }
+  return fallback || key;
+}
+
+function emitBlueprintWarning(payload, duration = 5000) {
+  const warningText = resolveBlueprintMessage(payload);
+  if (typeof window !== "undefined" && window.cocoMessage) {
+    window.cocoMessage.warning(warningText, duration);
+    return;
+  }
+  if (typeof postMessage === "function") {
+    postMessage({ type: "WARNING", payload });
+    return;
+  }
+  if (warningText) {
+    console.warn(warningText);
+  }
+}
+
 if (!_bpGlobal.DSQBlueprintConstants) {
   throw new Error("Missing DSQBlueprintConstants. Load Scripts/blueprint.constants.js before blueprint.js.");
 }
@@ -43,6 +84,7 @@ class Blueprint {
   }
 
   mapRecipeID() {
+    let hasStartupBootstrapWarning = false;
     for (let subRecipe of this.recipe.subRecipes) {
       if (!subRecipe.input) {
         // 原料
@@ -68,25 +110,25 @@ class Blueprint {
         }
       }
       if (!recipeMap[recipeStr] || recipeMap[recipeStr] === -1) {
-        const warnMsg = `包含不支持的配方: ${recipeStr.replace("=", "->")}，<br/>请排除对应物品（目前只支持通过(位面)熔炉、制造台、精炼厂、对撞机、（量子）化工厂、研究站六类生产设施进行制造的物品）`;
-        // 纵深防崩：UI 组件跨线程不可达。通过全局作用域探测降级至事件总线。
-        if (typeof window !== "undefined" && window.cocoMessage) {
-          cocoMessage.warning(warnMsg, 5000);
-        } else if (typeof postMessage === "function") {
-          postMessage({ type: "WARNING", payload: warnMsg });
-        } else {
-          console.warn(warnMsg);
-        }
+        emitBlueprintWarning(
+          buildBlueprintMessagePayload(
+            "message.blueprint_unsupported_recipe",
+            "包含不支持的配方: {recipe}，<br/>请排除对应物品（目前只支持通过(位面)熔炉、制造台、精炼厂、对撞机、（量子）化工厂、研究站六类生产设施进行制造的物品）",
+            { recipe: recipeStr.replace("=", "->") }
+          ),
+          5000
+        );
         throw `unknown recipe - ${recipeStr} ${subRecipe}`;
       }
-      if ([58, 121].includes(recipeMap[recipeStr])) {
-        const warnMsg2 = `X射线裂解(制氢)与重整精炼(制精炼油)可能需手动提供初始启动的精炼油/氢`;
-        if (typeof window !== "undefined" && window.cocoMessage) {
-          cocoMessage.warning(warnMsg2, 5000);
-        } else if (typeof postMessage === "function") {
-          postMessage({ type: "WARNING", payload: warnMsg2 });
-        }
-        //throw `unknown recipe - ${recipeStr} ${subRecipe}`;
+      if (!hasStartupBootstrapWarning && [58, 121].includes(recipeMap[recipeStr])) {
+        emitBlueprintWarning(
+          buildBlueprintMessagePayload(
+            "message.blueprint_xray_reforming_bootstrap_warning",
+            "X射线裂解(制氢)与重整精炼(制精炼油)可能需手动提供初始启动的精炼油/氢"
+          ),
+          5000
+        );
+        hasStartupBootstrapWarning = true;
       }
       subRecipe.recipeID = recipeMap[recipeStr];
     }
@@ -854,8 +896,16 @@ class Blueprint {
   assertSprayExecutionPlanValid(sprayExecutionPlan) {
     const sprayMainLineError = layoutFactory.resolveSprayCoaterMainLineError(sprayExecutionPlan.mainLinePlan.error);
     if (sprayMainLineError) {
-      cocoMessage.error(sprayMainLineError.message, sprayMainLineError.duration);
-      throw sprayMainLineError.throwReason;
+      if (typeof window !== "undefined" && window.cocoMessage) {
+        window.cocoMessage.error(sprayMainLineError.message, sprayMainLineError.duration);
+      }
+      const error = new Error(
+        sprayMainLineError.throwReason || sprayMainLineError.message || "generate sprayCoater error"
+      );
+      if (sprayMainLineError.payload) {
+        error.dsqPayload = sprayMainLineError.payload;
+      }
+      throw error;
     }
   }
 

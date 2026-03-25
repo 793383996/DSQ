@@ -234,8 +234,11 @@ function getRecipe() {
       break;
     }
     if (!success) {
-      alert(`item map error: ${building.name}`);
-      return;
+      const msg = i18nBlueprintText("error.blueprint_item_map_failed", "蓝图映射失败：{name}", {
+        name: building.name,
+      });
+      cocoMessage.error(msg, 4000);
+      throw new Error(msg);
     }
 
     const recipeHtml = nodeList[4].getElementsByTagName("div")[0].getElementsByClassName("pf selected")[0];
@@ -255,19 +258,21 @@ function getRecipe() {
         }
         let cnTitle = node.getAttribute("title");
         let title = "";
+        let mapped = false;
         for (let item of itemNameList) {
           if (item[0] !== cnTitle) {
             continue;
           }
           title = item[1];
-          success = true;
+          mapped = true;
           break;
         }
-        if (!success) {
-          // alert(`item map error: ${cnTitle}`)
-          let msg = `item map error: ${cnTitle}`;
-          cocoMessage.error(msg);
-          throw msg;
+        if (!mapped) {
+          const msg = i18nBlueprintText("error.blueprint_item_map_failed", "蓝图映射失败：{name}", {
+            name: cnTitle,
+          });
+          cocoMessage.error(msg, 4000);
+          throw new Error(msg);
         }
         if (isInput) {
           input.push({ name: title });
@@ -408,6 +413,7 @@ function getRecipe() {
 }
 
 let _loadingOverlay = null;
+let _isBlueprintGenerating = false;
 
 function showLoadingDialog() {
   function i18nBlueprintText(key, fallback, params) {
@@ -472,21 +478,49 @@ function generateBlueprint() {
     tracker.trackBusinessEvent(eventName, attributes, "blueprint_funnel");
   }
 
-  if (!location.href.startsWith("https")) {
-    trackBlueprintBusinessEvent("blueprint_generate_blocked_insecure_origin", {
+  if (_isBlueprintGenerating) {
+    trackBlueprintBusinessEvent("blueprint_generate_blocked_already_running", {
       protocol: location.protocol,
     });
+    return;
+  }
+
+  // 生成前置校验：先判断当前环境是否具备剪贴板写入能力，避免生成完成后才提示失败
+  const hasSecureContext = typeof window !== "undefined" && window.isSecureContext === true;
+  const hasClipboardWrite =
+    typeof navigator !== "undefined" && !!navigator.clipboard && typeof navigator.clipboard.writeText === "function";
+  if (!hasSecureContext || !hasClipboardWrite) {
+    trackBlueprintBusinessEvent("blueprint_generate_blocked_clipboard_unavailable", {
+      protocol: location.protocol,
+      isSecureContext: hasSecureContext,
+      hasClipboardWrite,
+    });
     cocoMessage.warning(
-      i18nBlueprintText("message.require_https_for_clipboard", "请使用 https 协议访问以启用复制到剪切板功能")
+      i18nBlueprintText(
+        "message.require_https_for_clipboard",
+        "当前环境不支持复制到剪贴板，请使用安全上下文（HTTPS 或 localhost）访问"
+      )
     );
     return;
   }
-  const recipe = getRecipe();
+  _isBlueprintGenerating = true;
+  let recipe = null;
+  try {
+    recipe = getRecipe();
+  } catch (err) {
+    _isBlueprintGenerating = false;
+    const normalizedError = err && err.message ? err.message : "recipe_parse_failed";
+    trackBlueprintBusinessEvent("blueprint_generate_failed_recipe_parse", {
+      error: normalizedError,
+    });
+    return;
+  }
   const outputRecipe = {
     proliferator: recipe.proliferator,
     subRecipes: recipe.recipeList,
   };
   if (!outputRecipe.subRecipes) {
+    _isBlueprintGenerating = false;
     return;
   }
   let config = {
@@ -572,5 +606,6 @@ function generateBlueprint() {
     .finally(() => {
       // 零资源残留保障：哪怕 Promise 被 Reject，UI 锁也必须强行恢复
       hideLoadingDialog();
+      _isBlueprintGenerating = false;
     });
 }

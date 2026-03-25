@@ -294,7 +294,7 @@
       const p = pos * Int32Array.BYTES_PER_ELEMENT;
       if (p >= v.byteLength) {
         if (defaultValue === undefined) {
-          throw new Error("参数解析错误：数据段太短");
+          throw new Error("Parameter parsing error: data segment is too short.");
         } else {
           return defaultValue;
         }
