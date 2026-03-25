@@ -209,7 +209,7 @@ function f_init() {
       speedChange: function (item) {
         settings_time[item.machineName] = parseFloat(item.speed);
         saveSettingTime();
-        update_all();
+        scheduleUpdateAll("machine-speed-change");
       },
 
       onClickNumber: function (index) {
@@ -246,7 +246,7 @@ function f_init() {
             this.xps_editor_number > 0
           ) {
             this.xqs[this.xps_editor_index].number = this.xps_editor_number;
-            update_all();
+            scheduleUpdateAll("requirement-number-edit");
           }
           this.xps_editor_index = -1;
         }
@@ -285,7 +285,7 @@ function f_init() {
       removeItem: function (index) {
         if (this.xqs && this.xqs[index]) {
           this.xqs.splice(index, 1);
-          update_all();
+          scheduleUpdateAll("requirement-remove");
         }
       },
 
@@ -350,7 +350,7 @@ function f_init() {
   window.addEventListener("dsq:locale-changed", function () {
     syncLocalizedLabels();
     projectsUpdate();
-    update_all();
+    scheduleUpdateAll("locale-changed");
   });
 
   $("#speed1_6").change(function () {
@@ -364,7 +364,7 @@ function f_init() {
       }
     });
     doSpeed1();
-    update_all();
+    scheduleUpdateAll("ore-speed-multiplier-change");
   });
   $("#selore").change(function () {
     $(data).each(function () {
@@ -386,7 +386,7 @@ function f_init() {
       }
     });
     doSpeed1();
-    update_all();
+    scheduleUpdateAll("ore-base-speed-change");
   });
   $("#btnSetting").click(function (event) {
     if (event && typeof event.preventDefault === "function") {
@@ -407,14 +407,14 @@ function f_init() {
     }
   });
   $("#showMaxOneBelt").change(function () {
-    update_all();
+    scheduleUpdateAll("toggle-show-max-one-belt");
   });
   $("#pointLength").change(function () {
     pointLength = parseInt($(this).val());
-    update_all();
+    scheduleUpdateAll("decimal-point-length-change");
   });
   $("#isAddSelfAccP").change(function () {
-    update_all();
+    scheduleUpdateAll("toggle-external-acc-input");
   });
   $("#fractionatorSpeed").change(function () {
     $(data).each(function () {
@@ -426,7 +426,7 @@ function f_init() {
         }
       }
     });
-    update_all();
+    scheduleUpdateAll("fractionator-speed-change");
   });
   $("#oilSpeed").change(function () {
     $(data).each(function () {
@@ -438,7 +438,7 @@ function f_init() {
         }
       }
     });
-    update_all();
+    scheduleUpdateAll("oil-speed-change");
   });
   $("#gzSpeed").change(function () {
     manualGzSpeed = true;
@@ -507,7 +507,7 @@ function f_init() {
 
   $(".speed1").change(function () {
     doSpeed1();
-    update_all();
+    scheduleUpdateAll("orbital-collector-speed-change");
   });
 
   $("#btnReset1").click(function () {
@@ -536,19 +536,19 @@ function f_init() {
   $("#btnReset2").click(function () {
     settings = {};
     saveSetting();
-    update_all();
+    scheduleUpdateAll("reset-machine-settings");
   });
 
   $("#btnReset3").click(function () {
     settings_time = {};
     saveSettingTime();
-    update_all();
+    scheduleUpdateAll("reset-speed-settings");
   });
 
   $("#btnReset4").click(function () {
     settings_pf = {};
     saveSettingPf();
-    update_all();
+    scheduleUpdateAll("reset-recipe-settings");
   });
   $("#btnReset5").click(function () {
     projects = [];
@@ -564,7 +564,7 @@ function f_init() {
         singleMake = projects[i].singleMake || [];
         ig_names = projects[i].ig_names || [];
         settings = projects[i].settings || {};
-        update_all();
+        scheduleUpdateAll("load-project");
         return;
       }
     }
@@ -580,7 +580,7 @@ function f_init() {
     });
 
     saveSetting();
-    update_all();
+    scheduleUpdateAll("global-assembler-change");
   });
   $("#furnace").change(function () {
     var value = $("#furnace").val();
@@ -593,7 +593,7 @@ function f_init() {
     });
 
     saveSetting();
-    update_all();
+    scheduleUpdateAll("global-furnace-change");
   });
   $("#chemical").change(function () {
     var value = $("#chemical").val();
@@ -606,7 +606,7 @@ function f_init() {
     });
 
     saveSetting();
-    update_all();
+    scheduleUpdateAll("global-chemical-change");
   });
   $("#research").change(function () {
     var value = $("#research").val();
@@ -619,7 +619,7 @@ function f_init() {
     });
 
     saveSetting();
-    update_all();
+    scheduleUpdateAll("global-research-change");
   });
   $("#accType").change(function () {
     defaultAccType = $("#accType").val();
@@ -633,7 +633,7 @@ function f_init() {
       settingsLocal[this.id].accType = defaultAccType;
     });
     saveSetting();
-    update_all();
+    scheduleUpdateAll("global-acc-type-change");
   });
   $("#accValue").change(function () {
     defaultAccValue = $("#accValue").val();
@@ -646,15 +646,17 @@ function f_init() {
       settingsLocal[this.id].accValue = defaultAccValue;
     });
     saveSetting();
-    update_all();
+    scheduleUpdateAll("global-acc-value-change");
   });
   $("#isMerge").change(function () {
-    update_all();
+    scheduleUpdateAll("toggle-merge");
   });
   $("#hideSource").change(function () {
-    update_all();
+    scheduleUpdateAll("toggle-hide-source");
   });
-  $("#selfAcc").change(update_all);
+  $("#selfAcc").change(function () {
+    scheduleUpdateAll("toggle-self-acc");
+  });
   $(document).click(function (e) {
     var jname = null;
     if ($(e.target).is(".cell-name")) {
@@ -1272,28 +1274,28 @@ function selectM(id, m) {
   settings[id] = settings[id] || {};
   settings[id].m = m;
   saveSetting();
-  update_all();
+  scheduleUpdateAll("row-machine-change");
 }
 function selectAccType(id, accType) {
   settings[id] = settings[id] || {};
   settings[id].accType = accType;
   saveSetting();
-  update_all();
+  scheduleUpdateAll("row-acc-type-change");
 }
 function selectAccValue(id, accValue) {
   settings[id] = settings[id] || {};
   settings[id].accValue = accValue;
   saveSetting();
-  update_all();
+  scheduleUpdateAll("row-acc-value-change");
 }
 function selectPf(name, value) {
   let old_settings_pf = $.extend(true, {}, settings_pf);
   try {
     settings_pf[name] = parseInt(value);
-    update_all();
+    scheduleUpdateAll("row-recipe-change");
   } catch (e) {
     settings_pf = old_settings_pf;
-    update_all();
+    scheduleUpdateAll("row-recipe-change-rollback");
     if (e.name == "RangeError") {
       cocoMessage.warning(
         i18nText(
@@ -1319,13 +1321,13 @@ function f_ig(obj) {
   var name = $(obj).attr("data-name");
   ig_names.push(name);
 
-  update_all();
+  scheduleUpdateAll("exclude-item");
 }
 function f_ig_acc() {
   ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"].forEach(function (one) {
     if (ig_names.indexOf(one) < 0) ig_names.push(one);
   });
-  update_all();
+  scheduleUpdateAll("exclude-all-acc");
 }
 function f_reset() {
   xqs = [];
@@ -1333,18 +1335,18 @@ function f_reset() {
   app.xps_editor_index = -1;
   app.items_editor_index = -1;
 
-  update_all();
+  scheduleUpdateAll("reset-requirements");
 }
 function f_reset_ig() {
   ig_names = [];
 
-  update_all();
+  scheduleUpdateAll("reset-excluded-items");
 }
 function f_remove_ig(name) {
   ig_names = ig_names.filter(function (one) {
     return one != name;
   });
-  update_all();
+  scheduleUpdateAll("remove-excluded-item");
 }
 function projectsUpdate() {
   $("#selprojects").html("");
@@ -1490,7 +1492,7 @@ function f_split(obj) {
         id: selected.id,
         number: parseFloat($("#Split").find(":text").val()),
       });
-      update_all();
+      scheduleUpdateAll("split-recipe-confirm");
       if (panelController && typeof panelController.close === "function") {
         panelController.close("split");
       } else {

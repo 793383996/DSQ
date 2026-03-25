@@ -184,6 +184,10 @@ function addItem(item, number) {
     number: number,
   });
 
+  if (typeof scheduleUpdateAll === "function") {
+    scheduleUpdateAll("add-requirement");
+    return;
+  }
   update_all();
 }
 // function removeItem(itemId) {
