@@ -1414,6 +1414,10 @@ function f_add() {
     alert(i18nText("alert.data_not_ready", "游戏资源尚未加载完毕"));
     return;
   }
+  if (!ensureUISelectorInitialized()) {
+    alert(i18nText("alert.data_load_failed", "游戏资源加载失败，图标将无法显示正常，请刷新再试"));
+    return;
+  }
   var panelController = getPanelController();
   if (panelController && typeof panelController.toggle === "function") {
     panelController.toggle("uiSelector", {
@@ -1429,6 +1433,9 @@ function f_add() {
   }
 }
 function openUISelector(triggerElement) {
+  if (!ensureUISelectorInitialized()) {
+    return;
+  }
   var panelController = getPanelController();
   if (panelController && typeof panelController.open === "function") {
     panelController.open("uiSelector", {
@@ -1514,36 +1521,56 @@ var icons_define = {
   可燃冰: [-1, 2, 7, "可燃冰"],
 };
 var icons = {};
-function f_initIcons() {
+var areIconsMapped = false;
+var isUISelectorInitialized = false;
+
+function mapIconToStore(icon, reg) {
+  if (!icon) return;
+  if (reg.test(icon.name)) {
+    var x = icon.name.match(reg);
+    icons[x[3]] = icon.value;
+    return;
+  }
+  icons[icon.name] = icon.value;
+}
+
+function ensureIconMapInitialized() {
+  if (areIconsMapped) return true;
+  if (!window.game_data || !game_data.icons1 || !game_data.icons2) return false;
+
   var reg = /^(\d)-(\d{1,2})-(.*)+/;
   for (var i = 0; i < game_data.icons1.length; i++) {
-    var icon = game_data.icons1[i];
-    if (reg.test(icon.name)) {
-      var x = icon.name.match(reg);
-      icons[x[3]] = icon.value;
-    } else {
-      icons[icon.name] = icon.value;
-    }
+    mapIconToStore(game_data.icons1[i], reg);
   }
-  for (var i = 0; i < game_data.icons2.length; i++) {
-    var icon = game_data.icons2[i];
-    if (reg.test(icon.name)) {
-      var x = icon.name.match(reg);
-      icons[x[3]] = icon.value;
-    } else {
-      icons[icon.name] = icon.value;
-    }
+  for (var j = 0; j < game_data.icons2.length; j++) {
+    mapIconToStore(game_data.icons2[j], reg);
   }
-  app.icons = Object.freeze(icons);
+
+  areIconsMapped = true;
+  Object.freeze(icons);
+  if (app) {
+    app.icons = icons;
+  }
+  return true;
+}
+
+function ensureUISelectorInitialized() {
+  if (isUISelectorInitialized) return true;
+  if (!ensureIconMapInitialized()) return false;
+
   var w = 900;
-  $("#UIselector").html(
-    '<div id="selector" class="selector" style="width: ' + w + 'px; height: auto;"><div id="tabs"></div></div>'
-  );
+  $("#UIselector").html('<div id="selector" class="selector"><div id="tabs"></div></div>');
+  $("#selector").css({ width: w + "px", height: "auto" });
 
   var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png' alt='components'/></div>").appendTo(
     "#tabs"
   );
   var jimg2 = $("<div class='tab'><img src='./img/factory-icon.png' alt='factories'/></div>").appendTo("#tabs");
+
+  var jicons = $('<div class="icons icons-selected"></div>').appendTo("#selector");
+  addIcons(jicons, game_data.icons1);
+  var jicons2 = $('<div class="icons"></div>').appendTo("#selector");
+  addIcons(jicons2, game_data.icons2);
 
   jimg1.click(function () {
     jicons2.removeClass("icons-selected");
@@ -1558,45 +1585,51 @@ function f_initIcons() {
     jimg2.addClass("selected");
   });
 
-  var jicons = $('<div class="icons icons-selected"></div>').appendTo("#selector");
-  addIcons(jicons, game_data.icons1);
-  var jicons2 = $('<div class="icons"></div>').appendTo("#selector");
-  addIcons(jicons2, game_data.icons2);
+  isUISelectorInitialized = true;
+  return true;
+}
 
-  function addIcons(jicons, icons) {
-    jicons.width(w - 80).css("height", "auto"); // 自适应高度，避免写入固定高度
+function addIcons(jicons, iconList) {
+  var w = 900;
+  jicons.width(w - 80).css("height", "auto");
 
-    for (var i = 0; i < 9; i++) {
-      var jrow = $("<div class='iconrow'></div>").appendTo(jicons);
-      for (var j = 0; j < 14; j++) {
-        var jicon = $("<div class='icon'><div class='s'></div></div>").appendTo(jrow);
-        jicon.click(function () {
-          var name = $(this).attr("data-name");
-          if (!name) return;
-          f_add3(name);
-          closeUISelector();
-        });
-      }
-    }
-
-    for (var i = 0; i < icons.length; i++) {
-      var icon = icons[i];
-      var reg = /^(\d)-(\d{1,2})-(.*)+/;
-      var x = null;
-      if (reg.test(icon.name)) {
-        x = icon.name.match(reg);
-      } else if (icons_define[icon.name]) {
-        x = icons_define[icon.name];
-      }
-      if (x) {
-        jicons
-          .find(">.iconrow:eq(" + (parseInt(x[1]) - 1) + ")")
-          .find(">.icon:eq(" + (parseInt(x[2]) - 1) + ")")
-          .html("")
-          .append("<img src='data:image/png;base64," + icon.value + "' alt='" + x[3] + "' loading='lazy' />")
-          .attr("data-name", x[3])
-          .attr("title", x[3]);
-      }
+  for (var i = 0; i < 9; i++) {
+    var jrow = $("<div class='iconrow'></div>").appendTo(jicons);
+    for (var j = 0; j < 14; j++) {
+      var jicon = $("<div class='icon'><div class='s'></div></div>").appendTo(jrow);
+      jicon.click(function () {
+        var name = $(this).attr("data-name");
+        if (!name) return;
+        f_add3(name);
+        closeUISelector();
+      });
     }
   }
+
+  for (var index = 0; index < iconList.length; index++) {
+    var icon = iconList[index];
+    var reg = /^(\d)-(\d{1,2})-(.*)+/;
+    var x = null;
+    if (reg.test(icon.name)) {
+      x = icon.name.match(reg);
+    } else if (icons_define[icon.name]) {
+      x = icons_define[icon.name];
+    }
+    if (!x) continue;
+
+    jicons
+      .find(">.iconrow:eq(" + (parseInt(x[1]) - 1) + ")")
+      .find(">.icon:eq(" + (parseInt(x[2]) - 1) + ")")
+      .html("")
+      .append("<img src='data:image/png;base64," + icon.value + "' alt='" + x[3] + "' loading='lazy' />")
+      .attr("data-name", x[3])
+      .attr("title", x[3]);
+  }
+}
+
+function f_initIcons(options) {
+  var opts = options || {};
+  if (!ensureIconMapInitialized()) return false;
+  if (opts.mapOnly) return true;
+  return ensureUISelectorInitialized();
 }
