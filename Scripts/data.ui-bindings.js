@@ -88,6 +88,55 @@ function syncLocalizedLabels() {
   app.totalEnergyLabel = i18nText("table.total_energy_prefix", "耗能估算：");
 }
 
+var updateAllDispatch = {
+  pending: false,
+  handle: null,
+  reason: "",
+};
+
+function requestNextFrame(callback) {
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    return window.requestAnimationFrame(callback);
+  }
+  return setTimeout(callback, 0);
+}
+
+function cancelNextFrame(handle) {
+  if (handle === null || handle === undefined) return;
+  if (typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") {
+    window.cancelAnimationFrame(handle);
+    return;
+  }
+  clearTimeout(handle);
+}
+
+function scheduleUpdateAll(reason) {
+  if (typeof reason === "string" && reason) {
+    updateAllDispatch.reason = reason;
+  }
+  if (updateAllDispatch.pending) {
+    return;
+  }
+  updateAllDispatch.pending = true;
+  updateAllDispatch.handle = requestNextFrame(function () {
+    updateAllDispatch.pending = false;
+    updateAllDispatch.handle = null;
+    update_all();
+  });
+}
+
+function flushScheduledUpdateAll(reason) {
+  if (typeof reason === "string" && reason) {
+    updateAllDispatch.reason = reason;
+  }
+  if (updateAllDispatch.pending) {
+    cancelNextFrame(updateAllDispatch.handle);
+    updateAllDispatch.pending = false;
+    updateAllDispatch.handle = null;
+  }
+  update_all();
+}
+
 function getPanelController() {
   if (window.DSQPanelController && typeof window.DSQPanelController.register === "function") {
     return window.DSQPanelController;
