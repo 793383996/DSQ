@@ -81,6 +81,23 @@ async function addRequirement(page, itemName) {
   );
 }
 
+async function waitForPanelState(page, panelId, expectedOpen) {
+  await page.waitForFunction(
+    ({ id, open }) => {
+      const panel = document.getElementById(id);
+      if (!panel) return false;
+      const hasOpenClass = panel.classList.contains("is-open");
+      const ariaHidden = panel.getAttribute("aria-hidden");
+      if (open) {
+        return panel.hidden === false && hasOpenClass && ariaHidden === "false";
+      }
+      return panel.hidden === true && !hasOpenClass && ariaHidden !== "false";
+    },
+    { id: panelId, open: expectedOpen },
+    { timeout: 10000 }
+  );
+}
+
 async function readMachineMode(page, itemName) {
   return page.evaluate(target => {
     const rows = Array.from(document.querySelectorAll("tbody tr"));
@@ -232,7 +249,42 @@ async function runE2EAttempt(attempt) {
       assert.notEqual(titleAfter, titleBefore, "e2e: dynamic SEO title should update after adding requirement.");
     });
 
-    // Case 2: 修改配置项 -> 结果更新
+    // Case 2: UIselector 键盘路径（打开/Tab/Esc/焦点回退）
+    await runStep("ui-selector-keyboard-flow", async () => {
+      await page.locator("#btnAddRequirement").first().focus();
+      await page.keyboard.press("Enter");
+      await waitForPanelState(page, "UIselector", true);
+      await page.keyboard.press("Tab");
+      const focusInsideSelector = await page.evaluate(() => {
+        const panel = document.getElementById("UIselector");
+        return !!panel && panel.contains(document.activeElement);
+      });
+      assert.ok(focusInsideSelector, "e2e: Tab should keep focus inside UIselector dialog.");
+      await page.keyboard.press("Escape");
+      await waitForPanelState(page, "UIselector", false);
+      const focusedId = await page.evaluate(() => (document.activeElement ? document.activeElement.id : ""));
+      assert.equal(focusedId, "btnAddRequirement", "e2e: focus should return to add button after closing UIselector.");
+    });
+
+    // Case 3: 参数设置开合状态（视觉 + ARIA）
+    await runStep("settings-panel-toggle", async () => {
+      const settingButton = page.locator("#btnSetting").first();
+      await settingButton.click();
+      await waitForPanelState(page, "MoreSetting", true);
+      const expandedWhenOpen = await settingButton.getAttribute("aria-expanded");
+      assert.equal(expandedWhenOpen, "true", "e2e: settings button aria-expanded should be true when panel is open.");
+
+      await settingButton.click();
+      await waitForPanelState(page, "MoreSetting", false);
+      const expandedWhenClosed = await settingButton.getAttribute("aria-expanded");
+      assert.equal(
+        expandedWhenClosed,
+        "false",
+        "e2e: settings button aria-expanded should be false when panel is closed."
+      );
+    });
+
+    // Case 4: 修改配置项 -> 结果更新
     await runStep("change-config", async () => {
       const currentMode = await page.inputValue("#selmodein");
       const targetMode = currentMode === "重组式制造台" ? "制作台Mk.Ⅰ" : "重组式制造台";
@@ -256,7 +308,7 @@ async function runE2EAttempt(attempt) {
       assert.notEqual(beforeMachine, afterMachine, "e2e: machine type should change after updating configuration.");
     });
 
-    // Case 3: 蓝图生成 -> 返回文本/复制链路
+    // Case 5: 蓝图生成 -> 返回文本/复制链路
     await runStep("generate-blueprint", async () => {
       await page.locator("#btnGenerateBlueprint").first().click();
       await page.waitForFunction(

@@ -88,6 +88,50 @@ function syncLocalizedLabels() {
   app.totalEnergyLabel = i18nText("table.total_energy_prefix", "耗能估算：");
 }
 
+function getPanelController() {
+  if (window.DSQPanelController && typeof window.DSQPanelController.register === "function") {
+    return window.DSQPanelController;
+  }
+  return null;
+}
+
+function initPanelController() {
+  var panelController = getPanelController();
+  if (!panelController) return;
+  panelController.register("uiSelector", {
+    element: "#UIselector",
+    triggerSelector: "#btnAddRequirement",
+    openClass: "is-open",
+    animated: true,
+    closeOnOutsideClick: true,
+    closeOnEscape: true,
+    trapFocus: true,
+    restoreFocus: true,
+    isDialog: true,
+  });
+  panelController.register("split", {
+    element: "#Split",
+    openClass: "is-open",
+    animated: true,
+    closeOnOutsideClick: true,
+    closeOnEscape: true,
+    trapFocus: true,
+    restoreFocus: true,
+    isDialog: true,
+  });
+  panelController.register("moreSetting", {
+    element: "#MoreSetting",
+    triggerSelector: "#btnSetting",
+    openClass: "is-open",
+    animated: true,
+    closeOnOutsideClick: false,
+    closeOnEscape: false,
+    trapFocus: false,
+    restoreFocus: false,
+    isDialog: false,
+  });
+}
+
 // 这里加入了一些用法和一些变量，用于处理“设备数量”处的输入框
 function f_init() {
   app = new Vue({
@@ -245,6 +289,7 @@ function f_init() {
   f_initData();
   f_fillData();
   syncLocalizedLabels();
+  initPanelController();
   doSpeed1();
   update_all();
   loadSetting();
@@ -294,18 +339,22 @@ function f_init() {
     doSpeed1();
     update_all();
   });
-  $("#btnSetting").click(function () {
+  $("#btnSetting").click(function (event) {
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    var panelController = getPanelController();
+    if (panelController && typeof panelController.toggle === "function") {
+      panelController.toggle("moreSetting", { triggerElement: this });
+      return;
+    }
     var $moreSetting = $("#MoreSetting");
-    if ($moreSetting.hasClass("show")) {
-      $moreSetting.removeClass("show");
-      setTimeout(function () {
-        $moreSetting.hide();
-      }, 300);
+    if ($moreSetting.prop("hidden")) {
+      $moreSetting.prop("hidden", false).attr("aria-hidden", "false").addClass("is-open");
+      $("#btnSetting").attr("aria-expanded", "true");
     } else {
-      $moreSetting.show();
-      setTimeout(function () {
-        $moreSetting.addClass("show");
-      }, 10);
+      $moreSetting.removeClass("is-open").attr("aria-hidden", "true").prop("hidden", true);
+      $("#btnSetting").attr("aria-expanded", "false");
     }
   });
   $("#showMaxOneBelt").change(function () {
@@ -1314,6 +1363,13 @@ function f_add() {
     alert(i18nText("alert.data_not_ready", "游戏资源尚未加载完毕"));
     return;
   }
+  var panelController = getPanelController();
+  if (panelController && typeof panelController.toggle === "function") {
+    panelController.toggle("uiSelector", {
+      triggerElement: document.getElementById("btnAddRequirement"),
+    });
+    return;
+  }
   var $uiSelector = $("#UIselector");
   if ($uiSelector.is(":visible")) {
     closeUISelector();
@@ -1321,23 +1377,25 @@ function f_add() {
     openUISelector();
   }
 }
-function openUISelector() {
+function openUISelector(triggerElement) {
+  var panelController = getPanelController();
+  if (panelController && typeof panelController.open === "function") {
+    panelController.open("uiSelector", {
+      triggerElement: triggerElement || document.getElementById("btnAddRequirement"),
+    });
+    return;
+  }
   var $uiSelector = $("#UIselector");
-  $uiSelector.show();
-  setTimeout(function () {
-    $uiSelector.addClass("show");
-  }, 10);
+  $uiSelector.prop("hidden", false).attr("aria-hidden", "false").show().addClass("is-open");
 }
 function closeUISelector() {
-  var $uiSelector = $("#UIselector");
-  $uiSelector.removeClass("show");
-  if ($uiSelector.is(":visible")) {
-    setTimeout(function () {
-      $uiSelector.hide();
-    }, 250);
-  } else {
-    $uiSelector.hide();
+  var panelController = getPanelController();
+  if (panelController && typeof panelController.close === "function") {
+    panelController.close("uiSelector");
+    return;
   }
+  var $uiSelector = $("#UIselector");
+  $uiSelector.removeClass("is-open show").attr("aria-hidden", "true").prop("hidden", true).hide();
 }
 function actions(that) {
   // console.log(that.value)
@@ -1348,6 +1406,7 @@ function actions(that) {
   }
 }
 function f_split(obj) {
+  var panelController = getPanelController();
   var name = $(obj).attr("data-name");
 
   $("#Split").html(`<p>${i18nText("split.select_recipe", "选择配方：")}</p>`);
@@ -1383,12 +1442,21 @@ function f_split(obj) {
         number: parseFloat($("#Split").find(":text").val()),
       });
       update_all();
-      $("#Split").hide();
+      if (panelController && typeof panelController.close === "function") {
+        panelController.close("split");
+      } else {
+        $("#Split").removeClass("is-open").attr("aria-hidden", "true").prop("hidden", true).hide();
+      }
     });
 
-  setTimeout(function () {
-    $("#Split").show();
-  }, 50);
+  if (panelController && typeof panelController.open === "function") {
+    panelController.open("split", {
+      triggerElement: obj,
+      initialFocusSelector: ".split-number",
+    });
+  } else {
+    $("#Split").prop("hidden", false).attr("aria-hidden", "false").show().addClass("is-open");
+  }
 }
 var icons_define = {
   氢: [-1, 3, 7, "氢"],
@@ -1416,18 +1484,10 @@ function f_initIcons() {
     }
   }
   app.icons = Object.freeze(icons);
-  $(document).click(function (e) {
-    if (!$(e.target).closest("#UIselector").length) {
-      closeUISelector();
-    }
-    if (!$(e.target).closest("#Split").length) {
-      $("#Split").hide();
-    }
-  });
   var w = 900;
-  $("#UIselector")
-    .html('<div id="selector" class="selector" style="width: ' + w + 'px; height: auto;"><div id="tabs"></div></div>')
-    .hide();
+  $("#UIselector").html(
+    '<div id="selector" class="selector" style="width: ' + w + 'px; height: auto;"><div id="tabs"></div></div>'
+  );
 
   var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png' alt='components'/></div>").appendTo(
     "#tabs"

@@ -59,6 +59,7 @@
   <script src="./Scripts/data.recipe.js"></script>
   <script src="./Scripts/data.recipe-ui.js"></script>
   <script src="./Scripts/data.blueprint.js"></script>
+  <script src="./Scripts/ui.panel-controller.js"></script>
   <script src="./Scripts/data.ui-bindings.js"></script>
   <script src="./Scripts/data.bootstrap.js"></script>
   <script src="./Scripts/pako.js"></script>
@@ -118,11 +119,11 @@
         <span data-i18n="control.device_count" style="color: #4a5568;">或生产设备数：</span>
         <input type="number" id="selmaince" aria-label="生产设备数" data-i18n-aria-label="control.device_count_aria" min="1" max="1000" style="min-width: 70px; appearance: textfield; -moz-appearance: textfield;" />
       </div>
-      <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加" data-i18n-title="action.add_requirement_title">
+      <a href="#" id="btnAddRequirement" data-click-action="addRequirement" style="display: flex; align-items: center; padding: 6px 12px; background: linear-gradient(135deg, #DDEFFD, #C3E2FB); border-radius: 8px; transition: all 0.3s ease;" title="添加" data-i18n-title="action.add_requirement_title" aria-haspopup="dialog" aria-controls="UIselector" aria-expanded="false">
         <img alt="添加需求" data-i18n-alt="action.add_requirement_alt" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" style="width: 20px; height: 20px;" />
       </a>
       <div class="custom-dropdown">
-        <button id="btnSetting" data-i18n="control.settings">参数设置</button>
+        <button id="btnSetting" data-i18n="control.settings" aria-controls="MoreSetting" aria-expanded="false">参数设置</button>
         <button id="btnReset1" data-i18n="control.fix_blank" style="background: linear-gradient(135deg, #f97316, #ea580c);">修复计算空白</button>
       </div>
     </div>
@@ -177,11 +178,11 @@
 
   <!-- IX-01: 弹层区块（layout-dialog） -->
   <section id="layout-dialog" data-layout-section="dialog">
-  <div id="Split" style="display:none;">
+  <div id="Split" hidden role="dialog" aria-modal="true" aria-hidden="true" tabindex="-1" aria-label="选择配方" data-i18n-aria-label="dialog.split_aria">
   </div>
-  <div id="UIselector" style="display:none;">
+  <div id="UIselector" hidden role="dialog" aria-modal="true" aria-hidden="true" tabindex="-1" aria-label="选择物品" data-i18n-aria-label="dialog.ui_selector_aria">
   </div>
-  <div id="MoreSetting" style="display:none;">
+  <div id="MoreSetting" hidden aria-hidden="true" role="region" aria-label="参数设置面板" data-i18n-aria-label="dialog.more_setting_aria">
     <div style="display: flex;">
       <div style="margin-right: 50px;">
         <h4 data-i18n="settings.speed.title">速度、产量设置：</h4>
@@ -347,7 +348,7 @@
           <tr v-for="(item, index_item) in items" v-bind:class="item.rowClass">
             <td class="opcell">
               <a href="#" data-action="ig" v-bind:data-name="item.name" data-i18n="action.exclude">排除</a>
-              <a href="#" data-action="split" v-if=" item.pf &&  item.pf.length > 1" v-bind:data-name="item.name">
+              <a href="#" data-action="split" v-if=" item.pf &&  item.pf.length > 1" v-bind:data-name="item.name" aria-haspopup="dialog" aria-controls="Split">
                 <span data-i18n="action.multi_recipe">多配方</span>
               </a>
               <a href="#" data-action="tag" v-bind:data-name="item.name" data-i18n="action.tag">标注</a>

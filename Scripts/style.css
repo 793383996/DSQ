@@ -3,6 +3,10 @@
             box-sizing: border-box;
         }
 
+        [hidden] {
+            display: none !important;
+        }
+
         html,
         body {
             text-rendering: geometricPrecision;
@@ -469,7 +473,6 @@
 
         /* ========== 设置面板样式 ========== */
         #MoreSetting {
-            display: none;
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 0, 0, 0.08);
@@ -479,13 +482,14 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
             opacity: 0;
             transform: translateY(-10px);
+            pointer-events: none;
             transition: all 0.3s ease;
         }
 
-        #MoreSetting.show {
-            display: block;
+        #MoreSetting.is-open {
             opacity: 1;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         #MoreSetting h4 {
@@ -633,7 +637,6 @@
 
         /* ========== 弹出层样式 ========== */
         #UIselector {
-            display: none;
             position: absolute;
             left: 50px;
             top: 50px;
@@ -641,13 +644,16 @@
             border-radius: 12px;
             opacity: 0;
             transform: scale(0.9);
+            visibility: hidden;
+            pointer-events: none;
             transition: all 0.25s ease;
         }
 
-        #UIselector.show {
-            display: block;
+        #UIselector.is-open {
             opacity: 1;
             transform: scale(1);
+            visibility: visible;
+            pointer-events: auto;
         }
 
         #Split {
@@ -661,6 +667,18 @@
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
             border: 1px solid #e5e7eb;
+            opacity: 0;
+            transform: translateY(-8px);
+            pointer-events: none;
+            visibility: hidden;
+            transition: all 0.25s ease;
+        }
+
+        #Split.is-open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            visibility: visible;
         }
 
         .split-pf {
