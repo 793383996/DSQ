@@ -196,6 +196,7 @@
   "error.recipe_invalid_negative_output": "配方错误！可能是因为该配方净输出为负。",
   "error.unknown_proliferator_type": "未知的增产剂类型",
   "error.blueprint_item_map_failed": "蓝图映射失败：{name}",
+  "error.blueprint_runtime_load_failed": "蓝图运行时加载失败，请刷新页面后重试。",
   "error.blueprint_unknown_building_category": "未知的建筑类型",
   "error.blueprint_spray_route_failed": "喷涂剂排线错误",
   "error.blueprint_generate_failed": "蓝图生成失败: {error}",

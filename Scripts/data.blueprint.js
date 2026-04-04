@@ -1,3 +1,75 @@
+function getBlueprintItemMapSafe() {
+  if (typeof window !== "undefined") {
+    const constants = window.DSQBlueprintConstants;
+    if (constants && constants.itemMap && typeof constants.itemMap === "object") {
+      return constants.itemMap;
+    }
+  }
+  if (typeof itemMap !== "undefined" && itemMap && typeof itemMap === "object") {
+    return itemMap;
+  }
+  return null;
+}
+
+function buildBlueprintRemarkMap() {
+  const rawMap = getBlueprintItemMapSafe();
+  if (!rawMap) {
+    return null;
+  }
+  const remarkMap = {};
+  Object.keys(rawMap).forEach(key => {
+    const entry = rawMap[key];
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+    const remark = entry.remark || key;
+    remarkMap[remark] = entry;
+  });
+  return remarkMap;
+}
+
+function resolveBlueprintIconsByNames(itemNames) {
+  if (!Array.isArray(itemNames) || itemNames.length === 0) {
+    return [];
+  }
+  const remarkMap = buildBlueprintRemarkMap();
+  if (!remarkMap) {
+    return [];
+  }
+  const iconIds = [];
+  itemNames.forEach(name => {
+    const entry = remarkMap[name];
+    if (!entry) {
+      return;
+    }
+    const iconId = Number(entry.iconId);
+    if (Number.isFinite(iconId)) {
+      iconIds.push(iconId);
+    }
+  });
+  return iconIds;
+}
+
+function getBlueprintFacadeSafe() {
+  if (typeof window !== "undefined" && typeof window.BlueprintFacade === "function") {
+    return window.BlueprintFacade;
+  }
+  if (typeof BlueprintFacade === "function") {
+    return BlueprintFacade;
+  }
+  return null;
+}
+
+function hasBlueprintConstructor() {
+  if (typeof window !== "undefined" && typeof window.Blueprint === "function") {
+    return true;
+  }
+  if (typeof Blueprint === "function") {
+    return true;
+  }
+  return false;
+}
+
 function getRecipe() {
   function i18nBlueprintText(key, fallback, params) {
     if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
@@ -190,6 +262,7 @@ function getRecipe() {
   let blueprintTitle = "";
   let blueprintDesc = "";
   let blueprintIconIdx = [];
+  let blueprintOutputNames = [];
   for (let tr of document.getElementsByTagName("tbody")[0].childNodes) {
     if (tr.className === "header") {
       continue;
@@ -347,17 +420,9 @@ function getRecipe() {
         blueprintDesc += outputItemName + "-" + outputRate + "min\n";
         outputItemNameList.push(outputItemName);
       }
+      blueprintOutputNames = outputItemNameList.slice();
 
-      let mapItemMap = {};
-      Object.keys(itemMap).map((v, _) => {
-        mapItemMap[itemMap[v].remark] = itemMap[v];
-      });
-      for (const name of outputItemNameList) {
-        let item = mapItemMap[name];
-        if (item !== undefined) {
-          blueprintIconIdx = [...blueprintIconIdx, item.iconId];
-        }
-      }
+      blueprintIconIdx = resolveBlueprintIconsByNames(outputItemNameList);
     }
 
     const recipe = {
@@ -407,6 +472,7 @@ function getRecipe() {
     recipeList: recipeList,
     proliferator: proliferator,
     blueprintIcon: blueprintIconIdx,
+    blueprintOutputNames: blueprintOutputNames,
     blueprintTitle: blueprintTitle,
     blueprintDesc: blueprintDesc,
   };
@@ -414,6 +480,93 @@ function getRecipe() {
 
 let _loadingOverlay = null;
 let _isBlueprintGenerating = false;
+let _blueprintRuntimeLoadPromise = null;
+
+const BLUEPRINT_RUNTIME_SCRIPTS = [
+  "./Scripts/pako.js",
+  "./Scripts/blueprint.constants.js",
+  "./Scripts/blueprint.serializer.js",
+  "./Scripts/blueprint.model.js",
+  "./Scripts/blueprint.layout.js",
+  "./Scripts/blueprint.js",
+  "./Scripts/blueprint.facade.js",
+];
+
+function resolveAbsoluteScriptUrl(src) {
+  if (typeof window === "undefined") {
+    return src;
+  }
+  try {
+    return new URL(src, window.location.href).href;
+  } catch (_error) {
+    return src;
+  }
+}
+
+function isScriptTagLoadedBySrc(src) {
+  if (typeof document === "undefined") return false;
+  const target = resolveAbsoluteScriptUrl(src);
+  const scripts = document.getElementsByTagName("script");
+  for (let i = 0; i < scripts.length; i++) {
+    const script = scripts[i];
+    if (!script.src) continue;
+    if (resolveAbsoluteScriptUrl(script.src) !== target) continue;
+    return true;
+  }
+  return false;
+}
+
+function loadBlueprintScriptOnce(src) {
+  if (isScriptTagLoadedBySrc(src)) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    if (typeof document === "undefined") {
+      reject(new Error(`load_script_failed:${src}`));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = false;
+    script.defer = false;
+    script.setAttribute("data-blueprint-runtime", "true");
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`load_script_failed:${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+function validateBlueprintRuntime() {
+  const hasFacade = !!getBlueprintFacadeSafe();
+  const hasBlueprintCore = hasBlueprintConstructor();
+  const hasPako = typeof window !== "undefined" && typeof window.pako !== "undefined";
+  return hasFacade && hasBlueprintCore && hasPako;
+}
+
+function ensureBlueprintRuntimeLoaded() {
+  if (validateBlueprintRuntime()) {
+    return Promise.resolve();
+  }
+  if (_blueprintRuntimeLoadPromise) {
+    return _blueprintRuntimeLoadPromise;
+  }
+
+  _blueprintRuntimeLoadPromise = (async () => {
+    for (const src of BLUEPRINT_RUNTIME_SCRIPTS) {
+      await loadBlueprintScriptOnce(src);
+    }
+    if (!validateBlueprintRuntime()) {
+      const error = new Error("BLUEPRINT_RUNTIME_NOT_READY");
+      error.code = "ERR_BLUEPRINT_RUNTIME_NOT_READY";
+      throw error;
+    }
+  })().catch(error => {
+    _blueprintRuntimeLoadPromise = null;
+    throw error;
+  });
+
+  return _blueprintRuntimeLoadPromise;
+}
 
 function showLoadingDialog() {
   function i18nBlueprintText(key, fallback, params) {
@@ -567,12 +720,24 @@ function generateBlueprint() {
     return normalizedDuration;
   }
 
-  BlueprintFacade.generateAsync(
-    recipe.blueprintTitle,
-    recipe.blueprintIcon.concat(Array(5).fill(0)).slice(0, 5),
-    outputRecipe,
-    config
-  )
+  ensureBlueprintRuntimeLoaded()
+    .then(() => {
+      if ((!recipe.blueprintIcon || recipe.blueprintIcon.length === 0) && Array.isArray(recipe.blueprintOutputNames)) {
+        recipe.blueprintIcon = resolveBlueprintIconsByNames(recipe.blueprintOutputNames);
+      }
+      const blueprintFacade = getBlueprintFacadeSafe();
+      if (!blueprintFacade || typeof blueprintFacade.generateAsync !== "function") {
+        const runtimeError = new Error("ERR_BLUEPRINT_RUNTIME_NOT_READY");
+        runtimeError.code = "ERR_BLUEPRINT_RUNTIME_NOT_READY";
+        throw runtimeError;
+      }
+      return blueprintFacade.generateAsync(
+        recipe.blueprintTitle,
+        recipe.blueprintIcon.concat(Array(5).fill(0)).slice(0, 5),
+        outputRecipe,
+        config
+      );
+    })
     .then(async bpStr => {
       await navigator.clipboard.writeText(bpStr);
       cocoMessage.success(i18nBlueprintText("message.blueprint_copied", "已复制到粘贴板"), 1000);
@@ -594,6 +759,18 @@ function generateBlueprint() {
       // 兼容降级：静默吞掉连点拦截的 Error，避免在 UI 弹出报错气泡扰乱用户
       if (err.message === "ERR_ALREADY_RUNNING") {
         console.warn("[拦截] 蓝图生成任务正在进行中，已忽略重复点击");
+        return;
+      }
+      if (
+        err.code === "ERR_BLUEPRINT_RUNTIME_NOT_READY" ||
+        (typeof normalizedError === "string" && normalizedError.indexOf("load_script_failed:") === 0)
+      ) {
+        if (typeof window !== "undefined" && window.cocoMessage) {
+          cocoMessage.error(
+            i18nBlueprintText("error.blueprint_runtime_load_failed", "蓝图运行时加载失败，请刷新页面后重试。"),
+            5000
+          );
+        }
         return;
       }
       if (typeof window !== "undefined" && window.cocoMessage) {

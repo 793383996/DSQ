@@ -1,86 +1,88 @@
-# index 拆分结构清单（刷新版）
+# index 拆分结构清单（收口版）
 
-日期：2026-03-25  
-适用文件：`index.html`、`Scripts/style.css`、`Scripts/data.ui-bindings.js`
+日期：2026-04-04  
+适用文件：`index.html`、`Scripts/data.ui-bindings.js`、`Scripts/index.events.js`、`Scripts/data.bootstrap.js`
 
-## 1. 刷新结论（当前阶段）
+## 1. 本轮结论
 
-1. `IX-01 ~ IX-06` 已完成，`index` 分区、弹层控制器、键盘可访问性、开合状态机与 E2E 回归已落地。  
-2. `IX-05`（内联样式收敛）已完成：`index.html` 内联 `style=` 已清零，样式集中到 `Scripts/style.css`。  
-3. 当前“可维护性主瓶颈”已从弹层交互转移到：
-- 首屏仍有同步脚本加载链（`index.html` 中 `<script src>` 26 个）
-- 交互层仍有较强 jQuery 绑定耦合（`Scripts/data.ui-bindings.js` 中 `$(...)` 105 次）
-- 蓝图链路尚未分级加载（未点击生成时仍会提前加载相关脚本）
+1. `IX-01 ~ IX-14` 已完成，`index` 结构治理与 jQuery 运行时迁移目标闭环。
+2. 页面入口已从“jQuery 主链路”切换为“原生 DOM + Vue2 + DSQDom 轻量兼容层”。
+3. 当前瓶颈从“是否完成拆分”转为“单文件职责仍重（尤其 `data.ui-bindings.js`）”。
 
-## 2. 当前状态快照（以代码实测为准）
+---
+
+## 2. 当前结构快照（2026-04-04 实测）
 
 | 指标 | 当前值 | 说明 |
 | ---- | ---- | ---- |
-| `index.html` 行数 | 472 | 结构分区已清晰，但仍是单入口大文件 |
-| `<script src>` 数量 | 26 | 仍为同步加载链，首屏阻塞风险仍在 |
-| `style=` 内联样式 | 0 | 已完成样式抽离 |
-| `data-layout-section` 锚点 | 6 处 | `head/main-shell/control/dialog/result/footer` 均在位 |
-| `data.ui-bindings.js` 行数 | 1533 | 已加入调度层与 UIselector 懒初始化逻辑 |
-| `update_all()` 显式调用 | 8 次 | 仅保留初始化/需立即重算路径 |
-| `scheduleUpdateAll()` 调用 | 37 次 | 高频交互已统一走调度入口 |
-| `$(...)` 使用次数 | 105 次 | Vue 组件化前的主要耦合点 |
+| `index.html` 行数 | 472 | 单入口体量可控 |
+| `<script src>` 数量 | 17 | 已移除 3 个 jQuery 相关脚本 |
+| `data-layout-section` 锚点 | 6 处 | `head/main-shell/control/dialog/result/footer` 在位 |
+| `style=` 内联样式 | 0 | 维持清零 |
+| `data.ui-bindings.js` 行数 | 1681 | 仍需进一步拆分 |
+| `scheduleUpdateAll()` 调用 | 高频入口 | 统一重算调度已生效 |
+| 一方脚本 jQuery 关键词 | 0 | 由 `jquery:check` 持续守护 |
 
-## 3. 已完成项归档（IX-01 ~ IX-08A）
+---
 
-| 编号 | 状态 | 落地摘要 | 主要文件 |
-| ---- | ---- | ---- | ---- |
-| IX-01 | 已完成 | 建立 `layout-head/control/dialog/result/footer` 稳定锚点 | `index.html` |
-| IX-02A/IX-02B | 已完成 | 三面板统一接入 `DSQPanelController`，旧入口保留并转发 | `Scripts/ui.panel-controller.js`、`Scripts/data.ui-bindings.js` |
-| IX-03A/IX-03B | 已完成 | `UIselector/Split` 对话框语义 + 焦点陷阱 + `Esc` + 回焦 | `index.html`、`Scripts/ui.panel-controller.js` |
-| IX-04A/IX-04B | 已完成 | `MoreSetting` 状态驱动开合，`aria` 与视觉状态同步 | `Scripts/data.ui-bindings.js`、`Scripts/style.css` |
-| IX-05 | 已完成 | `index.html` 内联样式抽离到 `Scripts/style.css`（含注释内旧样式清理） | `index.html`、`Scripts/style.css` |
-| IX-06 | 已完成 | 新增弹层键盘路径与面板开合联动 E2E 回归用例 | `localDev/node-scripts/e2e.mjs` |
-| IX-07A | 已完成 | 新增 `scheduleUpdateAll/flushScheduledUpdateAll`，建立统一调度入口并保留 `update_all` 兼容行为 | `Scripts/data.ui-bindings.js` |
-| IX-07B | 已完成 | 高频 `.change/.click` 与行内配置切换改走调度入口，减少重复重算 | `Scripts/data.ui-bindings.js`、`Scripts/data.recipe-ui.js` |
-| IX-08A | 已完成 | `UIselector` 改为首开懒初始化；图标映射提前加载，弹层 DOM 延后构建 | `Scripts/data.ui-bindings.js`、`Scripts/data.bootstrap.js` |
+## 3. 已完成任务归档
 
-## 4. 下一阶段任务（执行建议）
+| 编号 | 状态 | 落地摘要 |
+| ---- | ---- | ---- |
+| IX-01 | 已完成 | `index` 分区锚点建立并稳定使用 |
+| IX-02 | 已完成 | `UIselector/Split/MoreSetting` 统一接入 panel controller |
+| IX-03 | 已完成 | 对话框语义、焦点陷阱、Esc、回焦闭环 |
+| IX-04 | 已完成 | `MoreSetting` 状态驱动开合与 `aria` 同步 |
+| IX-05 | 已完成 | 内联样式清零 |
+| IX-06 | 已完成 | 弹层键盘路径 E2E 覆盖 |
+| IX-07 | 已完成 | `update_all` 调度收敛到统一入口 |
+| IX-08 | 已完成 | `UIselector` 懒初始化与蓝图链路按需加载 |
+| IX-09 | 已完成 | 样式分层文件固化（`base/a11y/layout/components`） |
+| IX-10R | 已完成 | a11y 对比度阻塞修复 |
+| IX-10F | 已完成 | 格式门禁恢复 |
+| IX-11A | 已完成 | `$.ajax -> fetch`（`data.bootstrap.js`） |
+| IX-11B | 已完成 | `$.cookie` 下线，改 `localStorage + legacy 迁移` |
+| IX-11C | 已完成 | `$(...).load -> fetch + innerHTML` |
+| IX-12~IX-14 | 已完成 | 控制区/结果区核心交互迁移并维持行为一致 |
 
-## 4.1 优先级与顺序
+---
 
-| 优先级 | 编号 | 任务 | 目标 |
-| ---- | ---- | ---- | ---- |
-| P0 | IX-08B | 蓝图链路脚本分级加载 | 将非首屏必需逻辑延后到首次生成蓝图 |
-| P1 | IX-09 | 样式分层拆分 | 将 `style.css` 拆成 `base/layout/component/a11y` 分层文件 |
-| P2 | IX-10 | Vue 组件化试点 | 先组件化 `layout-control` 与 `layout-result` 的低耦合片段 |
+## 4. 现行初始化与调用链（index 视角）
 
-## 4.2 任务拆分（可直接开工）
+1. 加载阶段：`index.html` 顺序加载监控、i18n、`dom.legacy`、数据与 UI 逻辑脚本。
+2. 启动阶段：`data.bootstrap.js` 触发数据加载与 `f_init()`；`index.events.js` 负责说明区块加载和全局行为绑定。
+3. 交互阶段：控制区变更 -> `scheduleUpdateAll()` -> `update_all()` -> Vue 结果区刷新。
+4. 输出阶段：结果区动作触发蓝图生成/复制链路，保持既有业务语义。
 
-| 阶段 | 编号 | 关键动作 | 预计改动文件 | 验收标准 |
-| ---- | ---- | ---- | ---- | ---- |
-| A | IX-08B | 蓝图相关非关键脚本改为“首点生成时加载并缓存” | `index.html`、`Scripts/data.blueprint.js`、`Scripts/blueprint.facade.js` | 不点击“生成蓝图”时不加载蓝图重链路 |
-| B | IX-09 | 样式按模块拆分并建立引入顺序约定 | `Scripts/style.css`、`Scripts/styles/*`（新增） | 视觉无回归，样式文件职责明确 |
-| C | IX-10 | 以桥接方式引入 Vue 组件（不改关键业务 ID） | `src/components/*`（或 `Scripts/vue-bridge/*`） | 组件化部分可独立迭代且不破坏旧链路 |
+---
 
-## 4.3 风险与规避
+## 5. 下一阶段任务（建议）
 
-1. 风险：调度收敛后出现“更新滞后”体感。  
-规避：调度仅合并同帧重复触发，关键提交动作仍可走立即刷新。
+### IX-15（P0）交互文件解耦
 
-2. 风险：脚本分级加载导致依赖时序错误。  
-规避：建立显式加载器与“已加载缓存标记”，首个调用前强校验依赖。
+1. `data.ui-bindings.js` 按职责拆分为控制区、结果区、弹层适配三个模块。
+2. 拆分过程中保持现有 DOM ID 与全局函数对外契约不变。
 
-3. 风险：样式拆分造成覆盖顺序变化。  
-规避：先按现有顺序拆分，不改变选择器优先级；拆分后补一次视觉回归。
+### IX-16（P0）初始化契约文档化
 
-4. 风险：Vue 试点与 jQuery 事件并存冲突。  
-规避：组件仅接管明确子树，跨边界通过桥接 API 交互，不双向抢 DOM。
+1. 明确依赖 `game_data` 的函数清单和 ready 条件。
+2. 形成可执行的初始化顺序检查脚本（防时序回归）。
 
-## 5. 下一步建议（本周可执行）
+### IX-17（P1）结果区行为测试补强
 
-1. 先做 `IX-08B`：蓝图链路脚本分级加载（单独一个 commit）。  
-2. 再做 `IX-09`：样式分层拆分（第二个 commit）。  
-3. 然后做 `IX-10`：组件化试点（第三个 commit）。  
-4. 每步完成后都补一次 E2E/集成回归并刷新本清单状态。
+1. 新增更多“配置切换 -> 行内 machine 变化”断言。
+2. 增加异常路径测试（加载失败、蓝图失败、tooltip 清理）。
 
-## 6. 本轮完成定义（DoD）
+### IX-18（P1）模块化构建预备
 
-1. `update_all` 不再被大量散点直接调用，形成统一调度入口。  
-2. 首屏路径不再加载非必要重链路（至少完成 `UIselector` 或蓝图其一的懒加载）。  
-3. 关键路径回归通过：新增需求、参数切换、语言切换、生成蓝图。  
-4. 文档与代码状态一致，后续任务可按编号继续推进。
+1. 在保持 Vue2 前提下，定义可打包边界和全局变量收敛顺序。
+2. 为后续 Vite 深度接管做最小侵入准备。
+
+---
+
+## 6. 本轮 DoD（已满足）
+
+1. `ci:check` 全绿。
+2. `index.html` 无 jQuery 相关脚本。
+3. 一方脚本 jQuery 运行时依赖清零。
+4. 初始化与核心交互链路经 `e2e/integration/a11y` 验证通过。

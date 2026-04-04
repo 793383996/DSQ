@@ -8,28 +8,24 @@
   }
 
   function adjustInputWidth(input) {
-    const value = Number.parseFloat(input.value);
+    var value = Number.parseFloat(input.value);
     input.style.width = Number.isFinite(value) && value >= 999 ? "150px" : "70px";
   }
 
   function bindInputWidthById(id) {
-    const input = document.getElementById(id);
-    if (!input) {
-      return;
-    }
+    var input = document.getElementById(id);
+    if (!input) return;
     adjustInputWidth(input);
-    input.addEventListener("input", () => {
+    input.addEventListener("input", function () {
       adjustInputWidth(input);
     });
   }
 
   function bindMutualExclusiveCheckbox(primaryId, secondaryId) {
-    const primary = document.getElementById(primaryId);
-    const secondary = document.getElementById(secondaryId);
-    if (!primary || !secondary) {
-      return;
-    }
-    primary.addEventListener("change", () => {
+    var primary = document.getElementById(primaryId);
+    var secondary = document.getElementById(secondaryId);
+    if (!primary || !secondary) return;
+    primary.addEventListener("change", function () {
       if (primary.checked) {
         secondary.checked = false;
       }
@@ -37,10 +33,8 @@
   }
 
   function handleOpActionLink(link) {
-    const action = link.getAttribute("data-action");
-    if (!action) {
-      return;
-    }
+    var action = link.getAttribute("data-action");
+    if (!action) return;
     if (action === "ig" && typeof root.f_ig === "function") {
       root.f_ig(link);
       return;
@@ -54,94 +48,103 @@
     }
   }
 
-  function trackBusinessAction(eventName, attributes = {}) {
-    const tracker = root.PerformanceTracker;
-    if (!tracker || typeof tracker.trackBusinessEvent !== "function") {
-      return;
-    }
-    tracker.trackBusinessEvent(eventName, attributes, "ui_funnel");
+  function trackBusinessAction(eventName, attributes) {
+    var tracker = root.PerformanceTracker;
+    if (!tracker || typeof tracker.trackBusinessEvent !== "function") return;
+    tracker.trackBusinessEvent(eventName, attributes || {}, "ui_funnel");
   }
 
   function trackPageView() {
-    const locale = root.DSQI18n && typeof root.DSQI18n.getLocale === "function" ? root.DSQI18n.getLocale() : "unknown";
+    var locale = root.DSQI18n && typeof root.DSQI18n.getLocale === "function" ? root.DSQI18n.getLocale() : "unknown";
     trackBusinessAction("page_view", {
       path: location.pathname,
-      locale,
+      locale: locale,
     });
   }
 
   function resolveQuoteIncludePath(name) {
-    const locale = root.DSQI18n && typeof root.DSQI18n.getLocale === "function" ? root.DSQI18n.getLocale() : "zh-CN";
-    const localized = `quote/${name}.${locale}.html`;
-    const fallback = `quote/${name}.html`;
+    var locale = root.DSQI18n && typeof root.DSQI18n.getLocale === "function" ? root.DSQI18n.getLocale() : "zh-CN";
+    var localized = "quote/" + name + "." + locale + ".html";
+    var fallback = "quote/" + name + ".html";
     if (locale === "zh-CN") {
-      return fallback;
+      return { primary: fallback, fallback: null };
     }
-    return { localized, fallback };
+    return { primary: localized, fallback: fallback };
   }
 
-  function loadQuoteIncludes() {
-    const $ = root.jQuery || root.$;
-    if (typeof $ !== "function") {
-      return;
+  async function fetchHtml(pathname) {
+    var response = await fetch(pathname, { cache: "no-cache" });
+    if (!response.ok) {
+      throw new Error("include load failed: " + response.status + " " + pathname);
     }
-    const includes = $("[data-include]");
-    if (!includes || !includes.length) {
+    return response.text();
+  }
+
+  async function loadIncludeNode(node) {
+    var includeName = node.getAttribute("data-include");
+    if (!includeName) return;
+    var pathInfo = resolveQuoteIncludePath(includeName);
+    try {
+      node.innerHTML = await fetchHtml(pathInfo.primary);
       return;
-    }
-    includes.each(function () {
-      const includeName = $(this).data("include");
-      const pathInfo = resolveQuoteIncludePath(includeName);
-      if (typeof pathInfo === "string") {
-        $(this).load(pathInfo);
+    } catch (error) {
+      if (!pathInfo.fallback) {
+        console.warn("index.events: include load failed.", includeName, error);
+        node.innerHTML = "";
         return;
       }
-      $(this).load(pathInfo.localized, (responseText, status) => {
-        if (status !== "error") {
-          return;
-        }
-        $(this).load(pathInfo.fallback);
-      });
-    });
+    }
+
+    try {
+      node.innerHTML = await fetchHtml(pathInfo.fallback);
+    } catch (error) {
+      console.warn("index.events: include fallback load failed.", includeName, error);
+      node.innerHTML = "";
+    }
+  }
+
+  async function loadQuoteIncludes() {
+    var includes = Array.from(document.querySelectorAll("[data-include]"));
+    for (var i = 0; i < includes.length; i++) {
+      await loadIncludeNode(includes[i]);
+    }
   }
 
   function handleClickAction(action) {
     if (action === "addRequirement" && typeof root.f_add === "function") {
-      trackBusinessAction("add_requirement_click", { action });
+      trackBusinessAction("add_requirement_click", { action: action });
       root.f_add();
       return;
     }
     if (action === "resetRequirement" && typeof root.f_reset === "function") {
-      trackBusinessAction("reset_requirement_click", { action });
+      trackBusinessAction("reset_requirement_click", { action: action });
       root.f_reset();
       return;
     }
     if (action === "saveProject" && typeof root.f_save === "function") {
-      trackBusinessAction("save_project_click", { action });
+      trackBusinessAction("save_project_click", { action: action });
       root.f_save();
       return;
     }
     if (action === "generateBlueprint" && typeof root.generateBlueprint === "function") {
-      trackBusinessAction("generate_blueprint_click", { action });
+      trackBusinessAction("generate_blueprint_click", { action: action });
       root.generateBlueprint();
       return;
     }
     if (action === "resetExclude" && typeof root.f_reset_ig === "function") {
-      trackBusinessAction("reset_exclude_click", { action });
+      trackBusinessAction("reset_exclude_click", { action: action });
       root.f_reset_ig();
       return;
     }
     if (action === "excludeAccLine" && typeof root.f_ig_acc === "function") {
-      trackBusinessAction("exclude_acc_line_click", { action });
+      trackBusinessAction("exclude_acc_line_click", { action: action });
       root.f_ig_acc();
     }
   }
 
   function handleVersionSelectChange(selectNode) {
-    const url = selectNode.value;
-    if (!url) {
-      return;
-    }
+    var url = selectNode.value;
+    if (!url) return;
     if (typeof root.actions === "function") {
       root.actions(selectNode);
       return;
@@ -151,7 +154,7 @@
     }
   }
 
-  onReady(() => {
+  onReady(function () {
     bindInputWidthById("txtnumber");
     bindInputWidthById("selmaince");
     loadQuoteIncludes();
@@ -160,13 +163,11 @@
     bindMutualExclusiveCheckbox("onlySorterMk3", "useSorterMk4");
     bindMutualExclusiveCheckbox("useSorterMk4", "onlySorterMk3");
 
-    document.addEventListener("click", event => {
-      const link = event.target.closest("a[data-action]");
+    document.addEventListener("click", function (event) {
+      var link = event.target.closest("a[data-action]");
       if (!link) {
-        const actionNode = event.target.closest("[data-click-action]");
-        if (!actionNode) {
-          return;
-        }
+        var actionNode = event.target.closest("[data-click-action]");
+        if (!actionNode) return;
         event.preventDefault();
         handleClickAction(actionNode.getAttribute("data-click-action"));
         return;
@@ -175,15 +176,13 @@
       handleOpActionLink(link);
     });
 
-    document.addEventListener("change", event => {
-      const versionSelect = event.target.closest("select[data-version-select]");
-      if (!versionSelect) {
-        return;
-      }
+    document.addEventListener("change", function (event) {
+      var versionSelect = event.target.closest("select[data-version-select]");
+      if (!versionSelect) return;
       handleVersionSelectChange(versionSelect);
     });
 
-    root.addEventListener("dsq:locale-changed", () => {
+    root.addEventListener("dsq:locale-changed", function () {
       loadQuoteIncludes();
     });
   });

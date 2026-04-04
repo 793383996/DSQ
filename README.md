@@ -107,7 +107,9 @@ git push origin feat/your-topic
 
 ## 文档导航
 
-- 工程化总计划：`localDocs/网站工程化完善实施计划（按优先级执行）.md`
+- 现行执行计划：`localDocs/网站完善实施计划.md`
+- 架构差距分析：`localDocs/当前项目架构与成熟网站差距分析.md`
+- 文档状态清单：`localDocs/文档状态清单.md`
 - 监控与告警 Runbook：`localDocs/monitoring-slo-runbook.md`
 - 性能预算说明：`localDocs/lighthouse-ci-budget.md`
 - 业务指标字典：`localDocs/business-metrics-dictionary.md`

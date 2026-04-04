@@ -196,6 +196,7 @@
   "error.recipe_invalid_negative_output": "Recipe error: net output may be negative.",
   "error.unknown_proliferator_type": "Unknown proliferator type.",
   "error.blueprint_item_map_failed": "Blueprint mapping failed: {name}",
+  "error.blueprint_runtime_load_failed": "Blueprint runtime failed to load. Please refresh and try again.",
   "error.blueprint_unknown_building_category": "Unknown building category.",
   "error.blueprint_spray_route_failed": "Sprayer routing failed.",
   "error.blueprint_generate_failed": "Blueprint generation failed: {error}",

@@ -1,5 +1,9 @@
 # Index核心流程详细文档
 
+> 文档状态（2026-04-04）：历史归档，不再与当前代码同步维护。  
+> 说明：文中大量行号、文件关系与架构描述基于 2026-03 的单体脚本阶段。  
+> 当前请优先参考：localDocs/网站完善实施计划.md、localDocs/当前项目架构与成熟网站差距分析.md、localDocs/index拆分结构清单.md。
+
 ## 目录
 
 1. [项目概述](#1-项目概述)
@@ -1862,3 +1866,4 @@ flowchart TD
 | `Blueprint.generateBuildings()` | blueprint.js | 生成建筑 |
 | `Blueprint.generateConveyorBelts()` | blueprint.js | 生成传送带 |
 | `Blueprint.toStr()` | blueprint.js | 编码输出 |
+

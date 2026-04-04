@@ -2,6 +2,11 @@
 // 从 data.js 抽离的 UI 初始化、事件绑定与页面交互逻辑。
 
 var app = null;
+var dom = window.DSQDom;
+
+if (typeof dom !== "function") {
+  throw new Error("DSQDom runtime is required before data.ui-bindings.js");
+}
 
 function i18nText(key, fallback, params) {
   if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
@@ -135,6 +140,62 @@ function flushScheduledUpdateAll(reason) {
     updateAllDispatch.handle = null;
   }
   update_all();
+}
+
+var activeInfoTooltip = null;
+var activeInfoTooltipTimer = null;
+
+function removeInfoTooltip() {
+  if (activeInfoTooltipTimer) {
+    clearTimeout(activeInfoTooltipTimer);
+    activeInfoTooltipTimer = null;
+  }
+  if (activeInfoTooltip && activeInfoTooltip.parentNode) {
+    activeInfoTooltip.parentNode.removeChild(activeInfoTooltip);
+  }
+  activeInfoTooltip = null;
+}
+
+function showInfoTooltip(target, messageHtml) {
+  removeInfoTooltip();
+  if (!target || !messageHtml) return;
+
+  var tooltip = document.createElement("div");
+  tooltip.className = "dsq-inline-tooltip";
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.innerHTML = messageHtml;
+  tooltip.style.position = "absolute";
+  tooltip.style.zIndex = "10176523";
+  tooltip.style.maxWidth = "420px";
+  tooltip.style.padding = "8px 10px";
+  tooltip.style.borderRadius = "8px";
+  tooltip.style.background = "#4A5C72";
+  tooltip.style.color = "#FFFFFF";
+  tooltip.style.boxShadow = "0 4px 16px rgba(0,0,0,0.25)";
+  tooltip.style.fontSize = "12px";
+  tooltip.style.lineHeight = "1.4";
+  tooltip.style.cursor = "pointer";
+
+  document.body.appendChild(tooltip);
+  var rect = target.getBoundingClientRect();
+  var x = rect.left + window.scrollX - 10;
+  var y = rect.bottom + window.scrollY + 8;
+  tooltip.style.left = Math.max(8, x) + "px";
+  tooltip.style.top = Math.max(8, y) + "px";
+
+  tooltip.addEventListener("click", removeInfoTooltip);
+  tooltip.addEventListener("mouseenter", function () {
+    if (activeInfoTooltipTimer) {
+      clearTimeout(activeInfoTooltipTimer);
+      activeInfoTooltipTimer = null;
+    }
+  });
+  tooltip.addEventListener("mouseleave", function () {
+    activeInfoTooltipTimer = setTimeout(removeInfoTooltip, 1500);
+  });
+
+  activeInfoTooltip = tooltip;
+  activeInfoTooltipTimer = setTimeout(removeInfoTooltip, 2000);
 }
 
 function getPanelController() {
@@ -353,12 +414,13 @@ function f_init() {
     scheduleUpdateAll("locale-changed");
   });
 
-  $("#speed1_6").change(function () {
-    $(data).each(function () {
+  dom("#speed1_6").change(function () {
+    dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "大型采矿机") {
-            this.m[i].speed = 1 * 20 * 0.01 * parseFloat($("#selore").val()) * 0.01 * parseFloat($("#speed1_6").val());
+            this.m[i].speed =
+              1 * 20 * 0.01 * parseFloat(dom("#selore").val()) * 0.01 * parseFloat(dom("#speed1_6").val());
           }
         }
       }
@@ -366,21 +428,22 @@ function f_init() {
     doSpeed1();
     scheduleUpdateAll("ore-speed-multiplier-change");
   });
-  $("#selore").change(function () {
-    $(data).each(function () {
+  dom("#selore").change(function () {
+    dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "矿脉") {
-            this.m[i].speed = Math.min(0.5 * 1 * 0.01 * parseFloat($("#selore").val()), 30);
+            this.m[i].speed = Math.min(0.5 * 1 * 0.01 * parseFloat(dom("#selore").val()), 30);
           }
           if (this.m[i].name == "采矿机") {
-            this.m[i].speed = Math.min(0.5 * 6 * 0.01 * parseFloat($("#selore").val()), 30);
+            this.m[i].speed = Math.min(0.5 * 6 * 0.01 * parseFloat(dom("#selore").val()), 30);
           }
           if (this.m[i].name == "大型采矿机") {
-            this.m[i].speed = 1 * 20 * 0.01 * parseFloat($("#selore").val()) * 0.01 * parseFloat($("#speed1_6").val());
+            this.m[i].speed =
+              1 * 20 * 0.01 * parseFloat(dom("#selore").val()) * 0.01 * parseFloat(dom("#speed1_6").val());
           }
           if (this.m[i].name == "抽水机") {
-            this.m[i].speed = Math.min((50 * 0.01 * parseFloat($("#selore").val())) / 60, 30);
+            this.m[i].speed = Math.min((50 * 0.01 * parseFloat(dom("#selore").val())) / 60, 30);
           }
         }
       }
@@ -388,7 +451,7 @@ function f_init() {
     doSpeed1();
     scheduleUpdateAll("ore-base-speed-change");
   });
-  $("#btnSetting").click(function (event) {
+  dom("#btnSetting").click(function (event) {
     if (event && typeof event.preventDefault === "function") {
       event.preventDefault();
     }
@@ -397,50 +460,50 @@ function f_init() {
       panelController.toggle("moreSetting", { triggerElement: this });
       return;
     }
-    var $moreSetting = $("#MoreSetting");
+    var $moreSetting = dom("#MoreSetting");
     if ($moreSetting.prop("hidden")) {
       $moreSetting.prop("hidden", false).attr("aria-hidden", "false").addClass("is-open");
-      $("#btnSetting").attr("aria-expanded", "true");
+      dom("#btnSetting").attr("aria-expanded", "true");
     } else {
       $moreSetting.removeClass("is-open").attr("aria-hidden", "true").prop("hidden", true);
-      $("#btnSetting").attr("aria-expanded", "false");
+      dom("#btnSetting").attr("aria-expanded", "false");
     }
   });
-  $("#showMaxOneBelt").change(function () {
+  dom("#showMaxOneBelt").change(function () {
     scheduleUpdateAll("toggle-show-max-one-belt");
   });
-  $("#pointLength").change(function () {
-    pointLength = parseInt($(this).val());
+  dom("#pointLength").change(function () {
+    pointLength = parseInt(dom(this).val());
     scheduleUpdateAll("decimal-point-length-change");
   });
-  $("#isAddSelfAccP").change(function () {
+  dom("#isAddSelfAccP").change(function () {
     scheduleUpdateAll("toggle-external-acc-input");
   });
-  $("#fractionatorSpeed").change(function () {
-    $(data).each(function () {
+  dom("#fractionatorSpeed").change(function () {
+    dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "分馏塔") {
-            this.m[i].speed = parseFloat($("#fractionatorSpeed").val()) / (0.01 * 60);
+            this.m[i].speed = parseFloat(dom("#fractionatorSpeed").val()) / (0.01 * 60);
           }
         }
       }
     });
     scheduleUpdateAll("fractionator-speed-change");
   });
-  $("#oilSpeed").change(function () {
-    $(data).each(function () {
+  dom("#oilSpeed").change(function () {
+    dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "原油萃取站") {
-            this.m[i].speed = parseFloat($("#oilSpeed").val());
+            this.m[i].speed = parseFloat(dom("#oilSpeed").val());
           }
         }
       }
     });
     scheduleUpdateAll("oil-speed-change");
   });
-  $("#gzSpeed").change(function () {
+  dom("#gzSpeed").change(function () {
     manualGzSpeed = true;
     update_all();
     manualGzSpeed = false;
@@ -462,11 +525,11 @@ function f_init() {
 氢气=132-87.9=44.1*/
 
   function doSpeed1() {
-    var speed1_1 = parseFloat($("#speed1_1").val());
-    var speed1_2 = parseFloat($("#speed1_2").val());
-    var speed1_3 = parseFloat($("#speed1_3").val());
-    var speed1_4 = parseFloat($("#speed1_4").val());
-    var ore = parseFloat($("#selore").val());
+    var speed1_1 = parseFloat(dom("#speed1_1").val());
+    var speed1_2 = parseFloat(dom("#speed1_2").val());
+    var speed1_3 = parseFloat(dom("#speed1_3").val());
+    var speed1_4 = parseFloat(dom("#speed1_4").val());
+    var ore = parseFloat(dom("#selore").val());
 
     function getSum(value1, value2, p1, p2) {
       var sum = 0;
@@ -477,7 +540,7 @@ function f_init() {
 
       return sum;
     }
-    $(data).each(function () {
+    dom(data).each(function () {
       if (this.s && (this.s[0].name == "氢" || this.s[0].name == "重氢" || this.s[0].name == "可燃冰")) {
         if (this.m) {
           for (var i = 0; i < this.m.length; i++) {
@@ -505,12 +568,12 @@ function f_init() {
     });
   }
 
-  $(".speed1").change(function () {
+  dom(".speed1").change(function () {
     doSpeed1();
     scheduleUpdateAll("orbital-collector-speed-change");
   });
 
-  $("#btnReset1").click(function () {
+  dom("#btnReset1").click(function () {
     if (confirm(i18nText("dialog.confirm_reset_all", "该操作将清除配方并刷新页面！"))) {
       //重置设备
       settings = {};
@@ -533,30 +596,30 @@ function f_init() {
     return false;
   });
 
-  $("#btnReset2").click(function () {
+  dom("#btnReset2").click(function () {
     settings = {};
     saveSetting();
     scheduleUpdateAll("reset-machine-settings");
   });
 
-  $("#btnReset3").click(function () {
+  dom("#btnReset3").click(function () {
     settings_time = {};
     saveSettingTime();
     scheduleUpdateAll("reset-speed-settings");
   });
 
-  $("#btnReset4").click(function () {
+  dom("#btnReset4").click(function () {
     settings_pf = {};
     saveSettingPf();
     scheduleUpdateAll("reset-recipe-settings");
   });
-  $("#btnReset5").click(function () {
+  dom("#btnReset5").click(function () {
     projects = [];
     saveSettingProjects();
     projectsUpdate();
   });
-  $("#btnLoadProject").click(function () {
-    var value = $("#selprojects").val();
+  dom("#btnLoadProject").click(function () {
+    var value = dom("#selprojects").val();
     if (!value) return;
     for (var i = 0; i < projects.length; i++) {
       if (projects[i].name == value) {
@@ -569,9 +632,9 @@ function f_init() {
       }
     }
   });
-  $("#selmodein").change(function () {
-    var value = $("#selmodein").val();
-    $(data).each(function () {
+  dom("#selmodein").change(function () {
+    var value = dom("#selmodein").val();
+    dom(data).each(function () {
       if (this.mName == "制作台") {
         // TODO: 下面的初始化代码还能优化一下
         settingsLocal[this.id] = settingsLocal[this.id] || {};
@@ -582,9 +645,9 @@ function f_init() {
     saveSetting();
     scheduleUpdateAll("global-assembler-change");
   });
-  $("#furnace").change(function () {
-    var value = $("#furnace").val();
-    $(data).each(function () {
+  dom("#furnace").change(function () {
+    var value = dom("#furnace").val();
+    dom(data).each(function () {
       if (this.mName == "冶炼设备") {
         // TODO: 下面的初始化代码还能优化一下
         settingsLocal[this.id] = settingsLocal[this.id] || {};
@@ -595,9 +658,9 @@ function f_init() {
     saveSetting();
     scheduleUpdateAll("global-furnace-change");
   });
-  $("#chemical").change(function () {
-    var value = $("#chemical").val();
-    $(data).each(function () {
+  dom("#chemical").change(function () {
+    var value = dom("#chemical").val();
+    dom(data).each(function () {
       if (this.mName == "化工设备") {
         // TODO: 下面的初始化代码还能优化一下
         settingsLocal[this.id] = settingsLocal[this.id] || {};
@@ -608,9 +671,9 @@ function f_init() {
     saveSetting();
     scheduleUpdateAll("global-chemical-change");
   });
-  $("#research").change(function () {
-    var value = $("#research").val();
-    $(data).each(function () {
+  dom("#research").change(function () {
+    var value = dom("#research").val();
+    dom(data).each(function () {
       if (this.mName == "研究站") {
         // TODO: 下面的初始化代码还能优化一下
         settingsLocal[this.id] = settingsLocal[this.id] || {};
@@ -621,13 +684,13 @@ function f_init() {
     saveSetting();
     scheduleUpdateAll("global-research-change");
   });
-  $("#accType").change(function () {
-    defaultAccType = $("#accType").val();
+  dom("#accType").change(function () {
+    defaultAccType = dom("#accType").val();
     // 不知道为啥要写这个for
     for (var i in settings) {
       delete settings[i].accType;
     }
-    $(data).each(function () {
+    dom(data).each(function () {
       // TODO: 下面的初始化代码还能优化一下
       settingsLocal[this.id] = settingsLocal[this.id] || {};
       settingsLocal[this.id].accType = defaultAccType;
@@ -635,12 +698,12 @@ function f_init() {
     saveSetting();
     scheduleUpdateAll("global-acc-type-change");
   });
-  $("#accValue").change(function () {
-    defaultAccValue = $("#accValue").val();
+  dom("#accValue").change(function () {
+    defaultAccValue = dom("#accValue").val();
     for (var i in settings) {
       delete settings[i].accValue;
     }
-    $(data).each(function () {
+    dom(data).each(function () {
       // TODO: 下面的初始化代码还能优化一下
       settingsLocal[this.id] = settingsLocal[this.id] || {};
       settingsLocal[this.id].accValue = defaultAccValue;
@@ -648,29 +711,20 @@ function f_init() {
     saveSetting();
     scheduleUpdateAll("global-acc-value-change");
   });
-  $("#isMerge").change(function () {
+  dom("#isMerge").change(function () {
     scheduleUpdateAll("toggle-merge");
   });
-  $("#hideSource").change(function () {
+  dom("#hideSource").change(function () {
     scheduleUpdateAll("toggle-hide-source");
   });
-  $("#selfAcc").change(function () {
+  dom("#selfAcc").change(function () {
     scheduleUpdateAll("toggle-self-acc");
   });
-  $(document).click(function (e) {
-    var jname = null;
-    if ($(e.target).is(".cell-name")) {
-      jname = $(e.target);
-    }
-    if ($(e.target).parent().is(".cell-name")) {
-      jname = $(e.target).parent();
-    }
-    if ($(e.target).parent().parent().is(".cell-name")) {
-      jname = $(e.target).parent().parent();
-    }
-    if (jname) {
+  dom(document).click(function (e) {
+    var cellNameNode = e.target.closest(".cell-name");
+    if (cellNameNode) {
       var msgs = [];
-      var name = jname.attr("data-name");
+      var name = cellNameNode.getAttribute("data-name");
       msgs.push("<p>" + name + "</p>");
       msgs.push("<p>" + i18nText("tooltip.produced_by", "生产于：") + "</p>");
       var pfs = getPfs(name);
@@ -688,15 +742,7 @@ function f_init() {
         }
       }
 
-      jname.tips({
-        side: 3, //1,2,3,4 分别代表 上右下左
-        msg: msgs.join(""),
-        color: "#FFF", //文字颜色，默认为白色
-        bg: "#4A5C72", //背景色，默认为红色
-        time: 2,
-        x: 0,
-        y: 0,
-      });
+      showInfoTooltip(cellNameNode, msgs.join(""));
     }
   });
 }
@@ -747,7 +793,7 @@ var ig_names = []; //排除的物品
 //加载需求
 function loadNumber(itemName, n) {
   try {
-    if ($.inArray(itemName, ig_names) != -1) {
+    if (dom.inArray(itemName, ig_names) != -1) {
       return;
     }
     if ((itemName == "增产剂Mk.Ⅰ" || itemName == "增产剂Mk.Ⅱ" || itemName == "增产剂Mk.Ⅲ") && n < 0.1) {
@@ -768,7 +814,7 @@ function loadNumber(itemName, n) {
     var accTotal = 0;
     for (var i = 0; item.q && i < item.q.length; i++) {
       var q = item.q[i];
-      if ($.inArray(q.name, ig_names) != -1) {
+      if (dom.inArray(q.name, ig_names) != -1) {
         continue;
       }
       if (q.n === 0) continue;
@@ -783,7 +829,7 @@ function loadNumber(itemName, n) {
         else if (accType == "增产剂Mk.Ⅱ") ((v = 1.2), (tm = 24));
         else if (accType == "增产剂Mk.Ⅲ") ((v = 1.25), (tm = 60));
         // 自喷涂
-        if ($("#selfAcc")[0].checked) tm = tm * v - 1;
+        if (dom("#selfAcc")[0].checked) tm = tm * v - 1;
         if (accValue == "增产" && item.noExtra) accValue = "无";
         if (item.q.length == 0 || item.noExtra === null) accValue = "无";
 
@@ -798,13 +844,13 @@ function loadNumber(itemName, n) {
 
         if (accValue == "加速") {
           accTotal += r / tm;
-          if (!$("#isAddSelfAccP").get(0).checked) {
+          if (!dom("#isAddSelfAccP").get(0).checked) {
             loadNumber(accType, r / tm);
           }
         } else if (accValue == "增产") {
           r /= v;
           accTotal += r / tm;
-          if (!$("#isAddSelfAccP").get(0).checked) {
+          if (!dom("#isAddSelfAccP").get(0).checked) {
             loadNumber(accType, r / tm);
           }
         }
@@ -856,7 +902,7 @@ function mergeMul() {
     if (!xh.value) continue;
     var itemName = xh.name;
     var item = find(itemName);
-    if ($.inArray(item.id, ids) != -1) continue;
+    if (dom.inArray(item.id, ids) != -1) continue;
     var xhs = getXhs(item.id);
 
     if (xhs.length > 1) {
@@ -913,7 +959,7 @@ function checkResult() {
 //每分钟需求: 引力透镜=0.1*接收塔=0.1*光子需求量/光子产量, 光子产量: 12(透镜×200%)/15(增产Ⅰ×250%)/18(增产Ⅱ×300%)/24(增产Ⅲ×400%)
 function fixGzSpeed() {
   let fixedGzSpeed;
-  $(data).each(function () {
+  dom(data).each(function () {
     if (this.s && this.s[0].name == "临界光子") {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
@@ -921,7 +967,7 @@ function fixGzSpeed() {
             for (var j = 0; j < this.q.length; j++) {
               if (this.q[j].name == "引力透镜") {
                 if (manualGzSpeed) {
-                  fixedGzSpeed = parseFloat($("#gzSpeed").val());
+                  fixedGzSpeed = parseFloat(dom("#gzSpeed").val());
                 } else {
                   item = find("临界光子", true);
                   accType = (settings[item.id] || {}).accType || defaultAccType;
@@ -1094,7 +1140,7 @@ function update_all() {
 
     var item = find(xh_list[i].name);
     var info = getValue(xh_list[i].name);
-    if ($("#hideSource").get(0).checked) {
+    if (dom("#hideSource").get(0).checked) {
       if (!item.q || !item.q.length) {
         continue;
       }
@@ -1289,7 +1335,7 @@ function selectAccValue(id, accValue) {
   scheduleUpdateAll("row-acc-value-change");
 }
 function selectPf(name, value) {
-  let old_settings_pf = $.extend(true, {}, settings_pf);
+  let old_settings_pf = dom.extend(true, {}, settings_pf);
   try {
     settings_pf[name] = parseInt(value);
     scheduleUpdateAll("row-recipe-change");
@@ -1310,7 +1356,7 @@ function selectPf(name, value) {
   saveSettingPf();
 }
 function f_tag(obj) {
-  var jrow = $(obj).parents("tr:first");
+  var jrow = dom(obj).parents("tr:first");
   if (jrow.hasClass("row-tag")) {
     jrow.removeClass("row-tag");
   } else {
@@ -1318,7 +1364,7 @@ function f_tag(obj) {
   }
 }
 function f_ig(obj) {
-  var name = $(obj).attr("data-name");
+  var name = dom(obj).attr("data-name");
   ig_names.push(name);
 
   scheduleUpdateAll("exclude-item");
@@ -1349,14 +1395,14 @@ function f_remove_ig(name) {
   scheduleUpdateAll("remove-excluded-item");
 }
 function projectsUpdate() {
-  $("#selprojects").html("");
-  $(projects).each(function () {
-    $("#selprojects").append("<option value='" + this.name + "'>" + this.name + "</option>");
+  dom("#selprojects").html("");
+  dom(projects).each(function () {
+    dom("#selprojects").append("<option value='" + this.name + "'>" + this.name + "</option>");
   });
   if (projects.length) {
-    $("#projectdiv").show();
+    dom("#projectdiv").show();
   } else {
-    $("#projectdiv").hide();
+    dom("#projectdiv").hide();
   }
 }
 function f_save() {
@@ -1425,7 +1471,7 @@ function f_add() {
     });
     return;
   }
-  var $uiSelector = $("#UIselector");
+  var $uiSelector = dom("#UIselector");
   if ($uiSelector.is(":visible")) {
     closeUISelector();
   } else {
@@ -1443,7 +1489,7 @@ function openUISelector(triggerElement) {
     });
     return;
   }
-  var $uiSelector = $("#UIselector");
+  var $uiSelector = dom("#UIselector");
   $uiSelector.prop("hidden", false).attr("aria-hidden", "false").show().addClass("is-open");
 }
 function closeUISelector() {
@@ -1452,7 +1498,7 @@ function closeUISelector() {
     panelController.close("uiSelector");
     return;
   }
-  var $uiSelector = $("#UIselector");
+  var $uiSelector = dom("#UIselector");
   $uiSelector.removeClass("is-open show").attr("aria-hidden", "true").prop("hidden", true).hide();
 }
 function actions(that) {
@@ -1465,9 +1511,9 @@ function actions(that) {
 }
 function f_split(obj) {
   var panelController = getPanelController();
-  var name = $(obj).attr("data-name");
+  var name = dom(obj).attr("data-name");
 
-  $("#Split").html(`<p>${i18nText("split.select_recipe", "选择配方：")}</p>`);
+  dom("#Split").html(`<p>${i18nText("split.select_recipe", "选择配方：")}</p>`);
   var pfs = getPfs(name);
   if (pfs.length == 1) {
     alert(i18nText("alert.no_multiple_recipe", "不存在多配方"));
@@ -1476,19 +1522,19 @@ function f_split(obj) {
   var selected = null;
   for (var i = 0; i < pfs.length; i++) {
     (function (i) {
-      var jlink = $("<div class='split-pf'></div>");
+      var jlink = dom("<div class='split-pf'></div>");
       jlink.html(getPfTitle(pfs[i]));
-      jlink.appendTo($("#Split")).click(function () {
+      jlink.appendTo(dom("#Split")).click(function () {
         selected = pfs[i];
-        $("#Split .split-pf").removeClass("split-pf-selected");
+        dom("#Split .split-pf").removeClass("split-pf-selected");
         jlink.addClass("split-pf-selected");
       });
     })(i);
   }
-  $("#Split").append(`<p>${i18nText("split.device_count", "设备数量：")}</p>`);
-  $("#Split").append("<div><input type='text' value='1' class='split-number' /></div>");
-  $("#Split").append(`<div><button>${i18nText("action.confirm", "确定")}</button> </div>`);
-  $("#Split")
+  dom("#Split").append(`<p>${i18nText("split.device_count", "设备数量：")}</p>`);
+  dom("#Split").append("<div><input type='text' value='1' class='split-number' /></div>");
+  dom("#Split").append(`<div><button>${i18nText("action.confirm", "确定")}</button> </div>`);
+  dom("#Split")
     .find("button")
     .click(function () {
       if (!selected) {
@@ -1497,13 +1543,13 @@ function f_split(obj) {
       }
       singleMake.push({
         id: selected.id,
-        number: parseFloat($("#Split").find(":text").val()),
+        number: parseFloat(dom("#Split").find(":text").val()),
       });
       scheduleUpdateAll("split-recipe-confirm");
       if (panelController && typeof panelController.close === "function") {
         panelController.close("split");
       } else {
-        $("#Split").removeClass("is-open").attr("aria-hidden", "true").prop("hidden", true).hide();
+        dom("#Split").removeClass("is-open").attr("aria-hidden", "true").prop("hidden", true).hide();
       }
     });
 
@@ -1513,7 +1559,7 @@ function f_split(obj) {
       initialFocusSelector: ".split-number",
     });
   } else {
-    $("#Split").prop("hidden", false).attr("aria-hidden", "false").show().addClass("is-open");
+    dom("#Split").prop("hidden", false).attr("aria-hidden", "false").show().addClass("is-open");
   }
 }
 var icons_define = {
@@ -1559,17 +1605,17 @@ function ensureUISelectorInitialized() {
   if (!ensureIconMapInitialized()) return false;
 
   var w = 900;
-  $("#UIselector").html('<div id="selector" class="selector"><div id="tabs"></div></div>');
-  $("#selector").css({ width: w + "px", height: "auto" });
+  dom("#UIselector").html('<div id="selector" class="selector"><div id="tabs"></div></div>');
+  dom("#selector").css({ width: w + "px", height: "auto" });
 
-  var jimg1 = $("<div class='tab selected'><img src='./img/component-icon.png' alt='components'/></div>").appendTo(
+  var jimg1 = dom("<div class='tab selected'><img src='./img/component-icon.png' alt='components'/></div>").appendTo(
     "#tabs"
   );
-  var jimg2 = $("<div class='tab'><img src='./img/factory-icon.png' alt='factories'/></div>").appendTo("#tabs");
+  var jimg2 = dom("<div class='tab'><img src='./img/factory-icon.png' alt='factories'/></div>").appendTo("#tabs");
 
-  var jicons = $('<div class="icons icons-selected"></div>').appendTo("#selector");
+  var jicons = dom('<div class="icons icons-selected"></div>').appendTo("#selector");
   addIcons(jicons, game_data.icons1);
-  var jicons2 = $('<div class="icons"></div>').appendTo("#selector");
+  var jicons2 = dom('<div class="icons"></div>').appendTo("#selector");
   addIcons(jicons2, game_data.icons2);
 
   jimg1.click(function () {
@@ -1594,11 +1640,11 @@ function addIcons(jicons, iconList) {
   jicons.width(w - 80).css("height", "auto");
 
   for (var i = 0; i < 9; i++) {
-    var jrow = $("<div class='iconrow'></div>").appendTo(jicons);
+    var jrow = dom("<div class='iconrow'></div>").appendTo(jicons);
     for (var j = 0; j < 14; j++) {
-      var jicon = $("<div class='icon'><div class='s'></div></div>").appendTo(jrow);
+      var jicon = dom("<div class='icon'><div class='s'></div></div>").appendTo(jrow);
       jicon.click(function () {
-        var name = $(this).attr("data-name");
+        var name = dom(this).attr("data-name");
         if (!name) return;
         f_add3(name);
         closeUISelector();

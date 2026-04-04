@@ -1,12 +1,36 @@
 // Scripts/data.recipe-ui.js
 // 从 data.js 拆分的配方展示与需求添加辅助函数。
 
+function listContains(array, value) {
+  return Array.isArray(array) && array.indexOf(value) !== -1;
+}
+
+function forEachLegacy(collection, callback) {
+  if (!collection || typeof callback !== "function") return;
+  for (var i = 0; i < collection.length; i++) {
+    callback.call(collection[i], i, collection[i]);
+  }
+}
+
+function byId(id) {
+  return document.getElementById(id);
+}
+
+function readInputValue(id) {
+  var element = byId(id);
+  return element ? element.value : "";
+}
+
+function isChecked(id) {
+  var element = byId(id);
+  return !!(element && element.checked);
+}
+
 function getGroup() {
   var groups = [];
-  $(data).each(function (i, item) {
+  forEachLegacy(data, function (_, item) {
     if (!item.group) return;
-
-    if ($.inArray(item.group, groups) == -1) {
+    if (!listContains(groups, item.group)) {
       groups.push(item.group);
     }
   });
@@ -15,25 +39,30 @@ function getGroup() {
 
 function f_fillData() {
   var names = [];
+  var select = byId("seldata");
+  if (!select) return;
 
-  $(getGroup()).each(function (i, group) {
-    var jgroup = $("<optgroup label='" + group + "'></optgroup>");
-    $(data).each(function (i, item) {
-      var name = item.name;
-      if (item.group == group) {
-        for (var j = 0; j < item.s.length; j++) {
-          if ($.inArray(item.s[j].name, names) == -1) {
-            names.push(item.s[j].name);
-            jgroup.append("<option value='" + item.s[j].name + "'>" + item.s[j].name + "</option>");
-          }
-        }
+  var groups = getGroup();
+  forEachLegacy(groups, function (_, group) {
+    var optGroup = document.createElement("optgroup");
+    optGroup.label = group;
+
+    forEachLegacy(data, function (_, item) {
+      if (item.group !== group) return;
+      for (var j = 0; j < item.s.length; j++) {
+        var productName = item.s[j].name;
+        if (listContains(names, productName)) continue;
+        names.push(productName);
+
+        var option = document.createElement("option");
+        option.value = productName;
+        option.textContent = productName;
+        optGroup.appendChild(option);
       }
     });
-    $("#seldata").append(jgroup);
+
+    select.appendChild(optGroup);
   });
-  //for (var i = 110; i < 1000; i = i + 10) {
-  //    $("#selore").append("<option value='" + i / 100 + "'>" + i + "%</option>");
-  //}
 }
 //找到这个物品的配方 - 使用索引查找 O(n) → O(k)
 
@@ -75,17 +104,18 @@ function getIconShow(name, number) {
 
 function getPfTitle(item, info) {
   var title = [];
-  var speed1_5 = parseFloat($("#speed1_5").val());
+  var speed1_5 = parseFloat(readInputValue("speed1_5"));
   var calcCore = window.DSQCalcCore;
-  function calculateBaseNumber(t, item_array, item_index, info, csdsize, speed1_5) {
-    return (csdsize / ((60 / (t || 1)) * info.speed * (item_array[item_index].n || 1))) * speed1_5;
+
+  function calculateBaseNumber(t, itemArray, itemIndex, infoNode, beltSpeed, stackLayer) {
+    return (beltSpeed / ((60 / (t || 1)) * infoNode.speed * (itemArray[itemIndex].n || 1))) * stackLayer;
   }
 
   for (var j = 0; j < item.q.length; j++) {
     title.push(getIconShow(item.q[j].name, item.q[j].n || 1));
 
-    if (info && $("#showMaxOneBelt").get(0).checked) {
-      var csd = $("#csd").val();
+    if (info && isChecked("showMaxOneBelt")) {
+      var csd = readInputValue("csd");
       var csdsize = calcCore ? calcCore.getBeltSpeed(csd) : 1800;
       if (!calcCore && csd == "传送带") {
         csdsize = 360;
@@ -106,10 +136,7 @@ function getPfTitle(item, info) {
         : info.accValue === "增产"
           ? calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5)
           : calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
-      // console.log(1+' '+speed1_5);
-      // title.push("<sub class='maxOneBeltIn'>" + number.toFixed(pointLength));//输出为小数 跟随主设置
-      title.push("<sub class='maxOneBeltIn'>" + number.toFixed(1)); //输出为小数 保留 0.1
-      // title.push("<sub class='maxOneBeltIn'>" + Math.floor(number));//输出为整数
+      title.push("<sub class='maxOneBeltIn'>" + number.toFixed(1));
       title.push("</sub>");
     }
   }
@@ -117,33 +144,30 @@ function getPfTitle(item, info) {
   if (item.q.length) {
     title.push('<img class="to" src="./img/to.png" alt="to" loading="lazy" />');
   }
-  for (var j = 0; j < item.s.length; j++) {
-    title.push(getIconShow(item.s[j].name, item.s[j].n || 1));
+  for (var k = 0; k < item.s.length; k++) {
+    title.push(getIconShow(item.s[k].name, item.s[k].n || 1));
 
-    if (info && $("#showMaxOneBelt").get(0).checked) {
-      var csd = $("#csd").val();
-      var csdsize = calcCore ? calcCore.getBeltSpeed(csd) : 1800;
-      if (!calcCore && csd == "传送带") {
-        csdsize = 360;
-      } else if (!calcCore && csd == "高速传送带") {
-        csdsize = 720;
+    if (info && isChecked("showMaxOneBelt")) {
+      var beltType = readInputValue("csd");
+      var beltSpeed = calcCore ? calcCore.getBeltSpeed(beltType) : 1800;
+      if (!calcCore && beltType == "传送带") {
+        beltSpeed = 360;
+      } else if (!calcCore && beltType == "高速传送带") {
+        beltSpeed = 720;
       }
-      var number = calcCore
+      var outputNumber = calcCore
         ? calcCore.calculateMaxMachinesPerBelt({
             recipeTime: item.t,
             machineSpeed: info.speed,
-            itemCount: item.s[j].n || 1,
-            beltSpeed: csdsize,
+            itemCount: item.s[k].n || 1,
+            beltSpeed: beltSpeed,
             stackLayer: speed1_5,
             accType: info.accType,
             accValue: info.accValue,
             direction: "output",
           })
-        : calculateBaseNumber(item.t, item.s, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
-      // console.log(2+' '+speed1_5);
-      // title.push("<sub class='maxOneBeltOut'>" + number.toFixed(pointLength));//输出为小数 跟随主设置
-      title.push("<sub class='maxOneBeltOut'>" + number.toFixed(1)); //输出为小数 保留 0.1
-      // title.push("<sub class='maxOneBeltOut'>" + Math.floor(number));//输出为整数
+        : calculateBaseNumber(item.t, item.s, k, info, beltSpeed, speed1_5) / getAccSpeed(info.accType, info.accValue);
+      title.push("<sub class='maxOneBeltOut'>" + outputNumber.toFixed(1));
       title.push("</sub>");
     }
   }
@@ -157,8 +181,8 @@ function getPfTitle(item, info) {
 
 function f_add3(name) {
   currentItem = find(name);
-  var number = parseInt($("#txtnumber").val());
-  var v = $("#selmaince").val();
+  var number = parseInt(readInputValue("txtnumber"));
+  var v = readInputValue("selmaince");
   if (v) {
     // 设备数量支持增产剂计算
     var accType = (settings[currentItem.id] || {}).accType || defaultAccType;
@@ -190,7 +214,3 @@ function addItem(item, number) {
   }
   update_all();
 }
-// function removeItem(itemId) {
-//     xqs = xqs.filter(function (one) { return one.item.id != itemId; });
-//     update_all();
-// }

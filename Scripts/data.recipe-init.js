@@ -45,12 +45,19 @@ var defaultAccValue = "无";
 var recipeIndexByProduct = {}; // 产物名 → [配方索引数组]
 var recipeIndexByMaterial = {}; // 原料名 → [配方索引数组]
 
+function forEachLegacy(collection, callback) {
+  if (!collection || typeof callback !== "function") return;
+  for (var i = 0; i < collection.length; i++) {
+    callback.call(collection[i], i, collection[i]);
+  }
+}
+
 function f_initData() {
   // 清空索引，准备重建
   recipeIndexByProduct = {};
   recipeIndexByMaterial = {};
 
-  $(data).each(function (i, item) {
+  forEachLegacy(data, function (i, item) {
     item.id = i; //配方的id，用index设置，data改变时应该重置配方
 
     // 构建产物索引

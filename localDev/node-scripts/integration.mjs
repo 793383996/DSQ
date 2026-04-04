@@ -18,6 +18,7 @@ const KEY_URLS = [
   "/Scripts/data.ui-bindings.js",
   "/Scripts/data.bootstrap.js",
   "/Scripts/i18n.js",
+  "/Scripts/dom.legacy.js",
   "/Scripts/blueprint.constants.js",
   "/Scripts/blueprint.serializer.js",
   "/Scripts/blueprint.model.js",

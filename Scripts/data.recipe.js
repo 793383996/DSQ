@@ -8,6 +8,31 @@ function i18nRecipeText(key, fallback, params) {
   return fallback;
 }
 
+function deepCloneRecipeValue(value) {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(deepCloneRecipeValue);
+  }
+  var output = {};
+  var keys = Object.keys(value);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    output[key] = deepCloneRecipeValue(value[key]);
+  }
+  return output;
+}
+
+function assignRecipeTarget(target, source) {
+  if (!target || !source) return target;
+  var keys = Object.keys(source);
+  for (var i = 0; i < keys.length; i++) {
+    target[keys[i]] = source[keys[i]];
+  }
+  return target;
+}
+
 function getMachine(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
   if (!item) return null;
@@ -94,7 +119,7 @@ function getPfs(name) {
   var pfs = [];
   var indices = recipeIndexByProduct[name] || [];
   for (var i = 0; i < indices.length; i++) {
-    var pf = $.extend(true, {}, data[indices[i]]);
+    var pf = deepCloneRecipeValue(data[indices[i]]);
     pfs.push(pf);
   }
   return pfs;
@@ -105,7 +130,7 @@ function getPfsByQ(name) {
   var pfs = [];
   var indices = recipeIndexByMaterial[name] || [];
   for (var i = 0; i < indices.length; i++) {
-    var pf = $.extend(true, {}, data[indices[i]]);
+    var pf = deepCloneRecipeValue(data[indices[i]]);
     pfs.push(pf);
   }
   return pfs;
@@ -120,7 +145,7 @@ function getAccSpeed(type, value) {
 
 function find(name, normalize_recipe) {
   function get(item) {
-    var o = $.extend(true, {}, item);
+    var o = deepCloneRecipeValue(item);
     if (normalize_recipe) {
       // set undefined values to 1
       for (var i = 0; i < o.s.length; i++) {
@@ -160,7 +185,7 @@ function find(name, normalize_recipe) {
 
     for (var j = 0; j < o.s.length; j++) {
       if (o.s[j].name == name) {
-        $.extend(o, o.s[j]);
+        assignRecipeTarget(o, o.s[j]);
         return o;
       }
     }

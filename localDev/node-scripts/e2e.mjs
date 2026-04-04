@@ -245,6 +245,11 @@ async function runE2EAttempt(attempt) {
       await page.locator("#btnGenerateBlueprint").first().waitFor({ state: "visible", timeout: 10000 });
       const xqsLength = await page.evaluate(() => (Array.isArray(window.xqs) ? window.xqs.length : 0));
       assert.ok(xqsLength > 0, "e2e: adding requirement should update demand list.");
+      await page.waitForFunction(
+        expectedTitle => typeof document !== "undefined" && document.title !== expectedTitle,
+        titleBefore,
+        { timeout: 20000 }
+      );
       const titleAfter = await page.title();
       assert.notEqual(titleAfter, titleBefore, "e2e: dynamic SEO title should update after adding requirement.");
     });
