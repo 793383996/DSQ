@@ -1,4 +1,7 @@
 (function (root) {
+  var includeBatchId = 0;
+  var includeAbortController = null;
+
   function onReady(callback) {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", callback, { once: true });
@@ -72,41 +75,77 @@
     return { primary: localized, fallback: fallback };
   }
 
-  async function fetchHtml(pathname) {
-    var response = await fetch(pathname);
+  function isAbortError(error) {
+    return !!error && error.name === "AbortError";
+  }
+
+  async function fetchHtml(pathname, signal) {
+    var response = await fetch(pathname, { signal: signal });
     if (!response.ok) {
       throw new Error("include load failed: " + response.status + " " + pathname);
     }
     return response.text();
   }
 
-  async function loadIncludeNode(node) {
+  async function loadIncludeNode(node, signal) {
     var includeName = node.getAttribute("data-include");
-    if (!includeName) return;
+    if (!includeName) return { node: node, html: "" };
     var pathInfo = resolveQuoteIncludePath(includeName);
     try {
-      node.innerHTML = await fetchHtml(pathInfo.primary);
-      return;
+      return {
+        node: node,
+        html: await fetchHtml(pathInfo.primary, signal),
+      };
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       if (!pathInfo.fallback) {
         console.warn("index.events: include load failed.", includeName, error);
-        node.innerHTML = "";
-        return;
+        return { node: node, html: "" };
       }
     }
 
     try {
-      node.innerHTML = await fetchHtml(pathInfo.fallback);
+      return {
+        node: node,
+        html: await fetchHtml(pathInfo.fallback, signal),
+      };
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       console.warn("index.events: include fallback load failed.", includeName, error);
-      node.innerHTML = "";
+      return { node: node, html: "" };
     }
   }
 
   async function loadQuoteIncludes() {
+    includeBatchId += 1;
+    var batchId = includeBatchId;
+    if (includeAbortController) {
+      includeAbortController.abort();
+    }
+    includeAbortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var signal = includeAbortController ? includeAbortController.signal : undefined;
     var includes = Array.from(document.querySelectorAll("[data-include]"));
-    for (var i = 0; i < includes.length; i++) {
-      await loadIncludeNode(includes[i]);
+    try {
+      var results = await Promise.all(
+        includes.map(function (node) {
+          return loadIncludeNode(node, signal);
+        })
+      );
+      if (batchId !== includeBatchId) {
+        return;
+      }
+      for (var i = 0; i < results.length; i++) {
+        results[i].node.innerHTML = results[i].html;
+      }
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      console.warn("index.events: include batch load failed.", error);
     }
   }
 

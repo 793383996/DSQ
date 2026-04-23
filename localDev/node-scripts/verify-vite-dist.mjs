@@ -45,6 +45,12 @@ async function main() {
   if (!/assets\/[^"' ]+-[a-z0-9]{8,}\.css/i.test(html)) {
     throw new Error("verify:vite-dist failed: index.html does not reference hashed CSS asset.");
   }
+  if (!/assets\/[^"' ]+-[a-z0-9]{8,}\.js/i.test(html)) {
+    throw new Error("verify:vite-dist failed: index.html does not reference hashed JS asset.");
+  }
+  if (/src="\.?\/?Scripts\/[^"]+\.js"/i.test(html) || /href="\.?\/?Scripts\/style\.css"/i.test(html)) {
+    throw new Error("verify:vite-dist failed: dist index.html still references legacy Scripts assets directly.");
+  }
 
   console.log(`verify:vite-dist passed. hashed assets: ${hashedAssetCount}`);
 }

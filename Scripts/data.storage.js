@@ -1,6 +1,7 @@
 var migratedLegacyCookieKeys = {};
 var storageServices = window.DSQServices || null;
 var storageAdapter = storageServices && storageServices.storage ? storageServices.storage : null;
+var globalSettingsService = storageServices && storageServices.globalSettings ? storageServices.globalSettings : null;
 
 function readCookieValue(key) {
   if (!key || typeof document === "undefined") return null;
@@ -81,6 +82,13 @@ function loadStoredObject(key, fallbackValue) {
   return parsed && typeof parsed === "object" ? parsed : fallbackValue;
 }
 
+function normalizeGlobalSettingsForStorage(source) {
+  if (globalSettingsService && typeof globalSettingsService.createSnapshot === "function") {
+    return globalSettingsService.createSnapshot(source);
+  }
+  return source && typeof source === "object" ? source : {};
+}
+
 window.saveData = function (key, value) {
   setLocalStorageItem(key, value);
 };
@@ -113,6 +121,18 @@ window.loadSetting = function () {
   if (sorterNode) {
     sorterNode.checked = true;
   }
+};
+
+window.saveGlobalSettings = function () {
+  saveData(
+    "global_settings" + window.version,
+    JSON.stringify(normalizeGlobalSettingsForStorage(window.global_settings))
+  );
+};
+
+window.loadGlobalSettings = function () {
+  var parsed = loadStoredObject("global_settings" + window.version, {});
+  window.global_settings = normalizeGlobalSettingsForStorage(parsed);
 };
 
 window.saveSettingTime = function () {

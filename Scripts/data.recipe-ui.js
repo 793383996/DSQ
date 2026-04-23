@@ -21,6 +21,37 @@ function readInputValue(id) {
   return element ? element.value : "";
 }
 
+function readRecipeUiNumber(target, options) {
+  var services = window.DSQServices || {};
+  var numeric = services.numeric || null;
+  if (numeric && typeof numeric.readInput === "function") {
+    return numeric.readInput(target, options || {});
+  }
+  var element = typeof target === "string" ? byId(target) : target;
+  var rawValue = element && element.value !== undefined ? element.value : target;
+  var value = Number(rawValue);
+  var fallback =
+    options && Number.isFinite(options.fallbackValue)
+      ? options.fallbackValue
+      : options && Number.isFinite(options.previousValue)
+        ? options.previousValue
+        : 0;
+  if (!Number.isFinite(value) || (options && options.requirePositive && value <= 0)) {
+    if (element && element.value !== undefined) {
+      element.value = String(fallback);
+    }
+    return fallback;
+  }
+  return value;
+}
+
+function recipeUiText(key, fallback) {
+  if (window.DSQI18n && typeof window.DSQI18n.t === "function") {
+    return window.DSQI18n.t(key, null, fallback);
+  }
+  return fallback;
+}
+
 function isChecked(id) {
   var element = byId(id);
   return !!(element && element.checked);
@@ -104,7 +135,14 @@ function getIconShow(name, number) {
 
 function getPfTitle(item, info) {
   var title = [];
-  var speed1_5 = parseFloat(readInputValue("speed1_5"));
+  var speed1_5 = readRecipeUiNumber("speed1_5", {
+    fieldLabel: recipeUiText("settings.logistics.station_stack", "运输站集装物流"),
+    fallbackValue: 1,
+    min: 1,
+    max: 4,
+    integer: true,
+    clamp: true,
+  });
   var calcCore = window.DSQCalcCore;
 
   function calculateBaseNumber(t, itemArray, itemIndex, infoNode, beltSpeed, stackLayer) {
@@ -181,19 +219,33 @@ function getPfTitle(item, info) {
 
 function f_add3(name) {
   currentItem = find(name);
-  var number = parseInt(readInputValue("txtnumber"));
+  var number = readRecipeUiNumber("txtnumber", {
+    fieldLabel: recipeUiText("control.rate_per_min", "每分钟产量"),
+    fallbackValue: 60,
+    requirePositive: true,
+    min: 0.000001,
+    maxFractionDigits: 6,
+  });
   var v = readInputValue("selmaince");
   if (v) {
     // 设备数量支持增产剂计算
-    var accType = (settings[currentItem.id] || {}).accType || defaultAccType;
-    var accValue = (settings[currentItem.id] || {}).accValue || defaultAccValue;
+    var accType = typeof getAccType === "function" ? getAccType(currentItem) || defaultAccType : defaultAccType;
+    var accValue = typeof getAccValue === "function" ? getAccValue(currentItem) || defaultAccValue : defaultAccValue;
     if (accValue == "增产" && currentItem.noExtra) accValue = "无";
     if (currentItem.q.length == 0) accValue = "无";
 
     var info = getValue(currentItem);
+    var machineCount = readRecipeUiNumber("selmaince", {
+      fieldLabel: recipeUiText("control.device_count", "生产设备数"),
+      fallbackValue: 1,
+      min: 1,
+      max: 1000,
+      integer: true,
+      clamp: true,
+    });
     for (var i = 0; i < currentItem.s.length; i++) {
       if (currentItem.s[i].name == name) {
-        number = ((parseInt(v) * 60) / (currentItem.t || 1)) * info.speed * (currentItem.s[i].n || 1);
+        number = ((machineCount * 60) / (currentItem.t || 1)) * info.speed * (currentItem.s[i].n || 1);
       }
       number *= getAccSpeed(accType, accValue);
     }

@@ -1,4 +1,3 @@
-// Scripts/blueprint.worker.js
 /**
  * @fileoverview Blueprint Generation Worker Endpoint
  * 隔离主线程的高密度 CPU 计算与内存分配，防范 UI 窒息崩溃。
@@ -15,20 +14,50 @@ self.importScripts(
 );
 
 self.onmessage = function (e) {
-  const { taskId, title, iconId, recipe, config } = e.data;
+  const { taskId, title, iconId, recipe, config, timeoutMs } = e.data;
+  const startedAt = Date.now();
+  const absoluteTimeout = Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : 60000;
+
+  function emitProgress(stage) {
+    self.postMessage({
+      taskId: taskId,
+      type: "PROGRESS",
+      payload: { stage: stage },
+    });
+  }
+
+  function assertNotTimedOut() {
+    if (Date.now() - startedAt <= absoluteTimeout) {
+      return;
+    }
+    const timeoutError = new Error("ERR_BLUEPRINT_TIMEOUT");
+    timeoutError.code = "ERR_BLUEPRINT_TIMEOUT";
+    throw timeoutError;
+  }
 
   try {
-    // 1. 初始化无状态计算图谱
+    emitProgress("init");
     const bp = new Blueprint(title, iconId, recipe, config);
     bp.init();
+    assertNotTimedOut();
 
-    // 2. 依次生成高密度数据结构
+    emitProgress("buildings");
     bp.generateBuildings();
-    bp.generateConveyorBelts();
-    bp.generateConveyorBeltsForSprayCoater();
-    bp.cloneToStackLayers();
+    assertNotTimedOut();
 
-    // 3. 处理蓝图元数据
+    emitProgress("belts");
+    bp.generateConveyorBelts();
+    assertNotTimedOut();
+
+    emitProgress("spray");
+    bp.generateConveyorBeltsForSprayCoater();
+    assertNotTimedOut();
+
+    emitProgress("stack");
+    bp.cloneToStackLayers();
+    assertNotTimedOut();
+
+    // 处理蓝图元数据
     bp.blueprintTemplate.buildings = bp.buildings;
     if (config.blueprintDesc) {
       bp.blueprintTemplate.header.desc = config.blueprintDesc;
@@ -54,10 +83,10 @@ self.onmessage = function (e) {
         break;
     }
 
-    // 4. 执行重度序列化与压缩 (耗时峰值)
+    emitProgress("serialize");
     const bpStr = bp.toStr();
+    assertNotTimedOut();
 
-    // 5. 将结果以不可变拷贝 (Immutable Copy) 传递回主线程
     self.postMessage({
       taskId: taskId,
       type: "SUCCESS",
@@ -66,11 +95,13 @@ self.onmessage = function (e) {
   } catch (error) {
     // 纵深防崩：任何计算异常必须被包裹并冒泡，严禁静默死亡
     const errorPayload =
-      error && typeof error === "object" && error.dsqPayload
-        ? error.dsqPayload
-        : error instanceof Error
-          ? error.message
-          : error.toString();
+      error && error.code === "ERR_BLUEPRINT_TIMEOUT"
+        ? { code: "ERR_BLUEPRINT_TIMEOUT" }
+        : error && typeof error === "object" && error.dsqPayload
+          ? error.dsqPayload
+          : error instanceof Error
+            ? error.message
+            : error.toString();
     self.postMessage({
       taskId: taskId,
       type: "ERROR",

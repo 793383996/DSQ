@@ -33,13 +33,45 @@ function assignRecipeTarget(target, source) {
   return target;
 }
 
+function getGlobalSettingsSnapshot() {
+  return global_settings && typeof global_settings === "object" ? global_settings : {};
+}
+
+function getGlobalMachineDefault(item) {
+  if (!item || !item.mName) return null;
+  var defaults = getGlobalSettingsSnapshot();
+  if (item.mName == "制作台") {
+    return defaults.selmodein || null;
+  }
+  if (item.mName == "冶炼设备") {
+    return defaults.furnace || null;
+  }
+  if (item.mName == "化工设备") {
+    return defaults.chemical || null;
+  }
+  if (item.mName == "研究站") {
+    return defaults.research || null;
+  }
+  return null;
+}
+
+function getGlobalAccTypeDefault() {
+  var defaults = getGlobalSettingsSnapshot();
+  return defaults.accType || defaultAccType || null;
+}
+
+function getGlobalAccValueDefault() {
+  var defaults = getGlobalSettingsSnapshot();
+  return defaults.accValue || defaultAccValue || null;
+}
+
 function getMachine(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
   if (!item) return null;
   var machine = (settings[item.id] || {}).m || null;
   if (machine != null) return machine;
 
-  machine = (settingsLocal[item.id] || {}).m || null;
+  machine = getGlobalMachineDefault(item);
   if (machine != null) return machine;
 
   return item.m[0].name;
@@ -52,7 +84,7 @@ function getAccType(arg) {
   var accType = (settings[item.id] || {}).accType || null;
   if (accType != null) return accType;
 
-  accType = (settingsLocal[item.id] || {}).accType || null;
+  accType = getGlobalAccTypeDefault();
   if (accType != null) return accType;
 
   return null;
@@ -65,7 +97,7 @@ function getAccValue(arg) {
   var accValue = (settings[item.id] || {}).accValue || null;
   if (accValue != null) return accValue;
 
-  accValue = (settingsLocal[item.id] || {}).accValue || null;
+  accValue = getGlobalAccValueDefault();
   if (accValue != null) return accValue;
 
   return null;

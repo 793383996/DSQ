@@ -202,6 +202,8 @@ async function runE2EAttempt(attempt) {
       await waitForDataReady(page);
     });
 
+    let persistedMachineMode = "";
+
     // Case 0: 语言切换 -> 刷新保持
     await runStep("locale-persistence", async () => {
       await page.selectOption("#langSwitcher", "en-US");
@@ -236,6 +238,30 @@ async function runE2EAttempt(attempt) {
       assert.equal(locale, "en-US", "e2e: locale should persist after reload.");
       const settingText = await page.locator("#btnSetting").first().textContent();
       assert.equal((settingText || "").trim(), "Settings", "e2e: translated text should be restored after reload.");
+    });
+
+    // Case 0.1: 语言快速切换 -> 最后一次请求获胜
+    await runStep("locale-race-last-write-wins", async () => {
+      await page.evaluate(() => {
+        window.DSQI18n.setLocale("zh-CN", { persist: true, syncQuery: true }).catch(() => {});
+        window.DSQI18n.setLocale("en-US", { persist: true, syncQuery: true }).catch(() => {});
+      });
+      await page.waitForFunction(
+        () => {
+          const settingButton = document.querySelector("#btnSetting");
+          return (
+            window.DSQI18n &&
+            window.DSQI18n.getLocale() === "en-US" &&
+            new URL(window.location.href).searchParams.get("lang") === "en-US" &&
+            settingButton &&
+            settingButton.textContent.trim() === "Settings"
+          );
+        },
+        null,
+        { timeout: 10000 }
+      );
+      const schema = await page.locator("#schemaWebApplication").first().textContent();
+      assert.ok((schema || "").includes('"inLanguage":"en-US"'), "e2e: JSON-LD should match the final locale.");
     });
 
     // Case 1: 新增需求 -> 触发计算 -> 展示结果
@@ -311,10 +337,60 @@ async function runE2EAttempt(attempt) {
       const afterMachine = await readMachineMode(page, "齿轮");
       assert.equal(afterMachine, targetMode, "e2e: machine type should follow changed configuration.");
       assert.notEqual(beforeMachine, afterMachine, "e2e: machine type should change after updating configuration.");
+      persistedMachineMode = targetMode;
     });
 
-    // Case 5: 蓝图生成 -> 返回文本/复制链路
+    // Case 4.1: 全局设置刷新后仍恢复，并按回退顺序影响计算
+    await runStep("global-settings-persistence", async () => {
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForDataReady(page);
+      const selectedMode = await page.inputValue("#selmodein");
+      assert.equal(selectedMode, persistedMachineMode, "e2e: global machine mode should persist after reload.");
+
+      await addRequirement(page, "齿轮");
+      await page.waitForFunction(
+        ({ itemName, modeName }) => {
+          const rows = Array.from(document.querySelectorAll("tbody tr"));
+          const row = rows.find(tr => tr.querySelector(`td.cell-name[data-name="${itemName}"]`));
+          if (!row) {
+            return false;
+          }
+          const machineNode = row.querySelector("td:nth-child(8) a.m.selected");
+          return !!machineNode && machineNode.getAttribute("data-modein") === modeName;
+        },
+        { itemName: "齿轮", modeName: persistedMachineMode },
+        { timeout: 10000 }
+      );
+    });
+
+    // Case 4.2: 方案名安全渲染，恶意名称只能是 option 文本
+    await runStep("project-name-safe-render", async () => {
+      await page.evaluate(() => {
+        window.prompt = () => "<img src=x onerror=window.__projectNameInjected=1>";
+        window.confirm = () => true;
+        window.__projectNameInjected = 0;
+        window.f_save();
+      });
+      const optionText = await page.locator("#selprojects option").last().textContent();
+      assert.equal(
+        optionText,
+        "<img src=x onerror=window.__projectNameInjected=1>",
+        "e2e: project name should be rendered as text."
+      );
+      const injected = await page.evaluate(() => window.__projectNameInjected);
+      assert.equal(injected, 0, "e2e: project name should not execute injected markup.");
+      const nestedImgCount = await page.locator("#selprojects img").count();
+      assert.equal(nestedImgCount, 0, "e2e: project option should not contain injected nodes.");
+    });
+
+    // Case 5: 蓝图生成 -> 返回文本/复制链路，且不依赖结果表格 DOM 反向解析
     await runStep("generate-blueprint", async () => {
+      await page.evaluate(() => {
+        const tbody = document.querySelector("tbody");
+        if (tbody) {
+          tbody.innerHTML = "<tr><td>table intentionally changed by e2e</td></tr>";
+        }
+      });
       await page.locator("#btnGenerateBlueprint").first().click();
       await page.waitForFunction(
         () => typeof window.__copiedBlueprint === "string" && window.__copiedBlueprint.length > 64,

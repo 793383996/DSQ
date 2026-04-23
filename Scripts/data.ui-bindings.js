@@ -18,6 +18,17 @@ function i18nText(key, fallback, params) {
 var dsqServices = window.DSQServices || {};
 var storageService = dsqServices.storage || null;
 var projectService = dsqServices.project || null;
+var numericService = dsqServices.numeric || null;
+var globalSettingsService = dsqServices.globalSettings || null;
+var notifyService = dsqServices.notify || null;
+
+var GLOBAL_SETTING_CONTROL_IDS = ["selmodein", "furnace", "chemical", "research", "accType", "accValue"];
+var GLOBAL_SETTINGS_BY_MACHINE_NAME = {
+  制作台: "selmodein",
+  冶炼设备: "furnace",
+  化工设备: "chemical",
+  研究站: "research",
+};
 
 function deepCloneValue(value) {
   if (dsqServices && typeof dsqServices.deepClone === "function") {
@@ -58,9 +69,192 @@ function hydrateProjectForRuntime(project) {
   return createProjectSnapshotForStorage(project || {});
 }
 
+function warnUser(message, duration) {
+  if (!message) return;
+  if (notifyService && typeof notifyService.warning === "function") {
+    notifyService.warning(message, duration || 3000);
+    return;
+  }
+  if (window.cocoMessage && typeof window.cocoMessage.warning === "function") {
+    cocoMessage.warning(message, duration || 3000);
+  }
+}
+
+function readNumeric(target, options) {
+  var readOptions = options && typeof options === "object" ? options : {};
+  if (numericService && typeof numericService.readInput === "function") {
+    return numericService.readInput(target, readOptions);
+  }
+  var element = typeof target === "string" ? document.getElementById(target) : target;
+  var rawValue = element && element.value !== undefined ? element.value : target;
+  var value = Number(rawValue);
+  var fallback = Number.isFinite(readOptions.previousValue)
+    ? readOptions.previousValue
+    : Number.isFinite(readOptions.fallbackValue)
+      ? readOptions.fallbackValue
+      : 0;
+  if (!Number.isFinite(value) || (readOptions.requirePositive && value <= 0)) {
+    if (element && element.value !== undefined) {
+      element.value = String(fallback);
+    }
+    return fallback;
+  }
+  if (Number.isFinite(readOptions.min) && value < readOptions.min) value = readOptions.min;
+  if (Number.isFinite(readOptions.max) && value > readOptions.max) value = readOptions.max;
+  if (readOptions.integer) value = Math.round(value);
+  if (element && element.value !== undefined) {
+    element.value = String(value);
+  }
+  return value;
+}
+
+function rememberNumeric(target, options) {
+  var readOptions = options && typeof options === "object" ? options : {};
+  readOptions.warn = false;
+  return readNumeric(target, readOptions);
+}
+
+function getNumericFieldLabel(key, fallback) {
+  return i18nText(key, fallback);
+}
+
+function normalizeProjectName(name) {
+  if (projectService && typeof projectService.normalizeName === "function") {
+    return projectService.normalizeName(name, { maxLength: 80 });
+  }
+  var value = typeof name === "string" ? name.replace(/\s+/g, " ").trim() : "";
+  if (!value) {
+    return { valid: false, value: "", message: i18nText("message.project_name_required", "方案名不能为空") };
+  }
+  if (value.length > 80) {
+    return {
+      valid: false,
+      value: value.slice(0, 80),
+      message: i18nText("message.project_name_too_long", "方案名不能超过 {max} 个字符", { max: 80 }),
+    };
+  }
+  return { valid: true, value: value, message: "" };
+}
+
+function createGlobalSettingsSnapshot(source) {
+  if (globalSettingsService && typeof globalSettingsService.createSnapshot === "function") {
+    return globalSettingsService.createSnapshot(source);
+  }
+  var defaults = {
+    selmodein: "制作台Mk.Ⅰ",
+    furnace: "电弧熔炉",
+    chemical: "化工厂",
+    research: "矩阵研究站",
+    accType: "增产剂Mk.Ⅰ",
+    accValue: "无",
+  };
+  var input = source && typeof source === "object" ? source : {};
+  return {
+    selmodein: input.selmodein || defaults.selmodein,
+    furnace: input.furnace || defaults.furnace,
+    chemical: input.chemical || defaults.chemical,
+    research: input.research || defaults.research,
+    accType: input.accType || defaults.accType,
+    accValue: input.accValue || defaults.accValue,
+  };
+}
+
+function getGlobalSettingsDefaults() {
+  if (globalSettingsService && globalSettingsService.defaults) {
+    return globalSettingsService.defaults;
+  }
+  return createGlobalSettingsSnapshot({});
+}
+
+function selectControlValue(id, value) {
+  var node = document.getElementById(id);
+  if (!node) return;
+  var hasOption = false;
+  for (var i = 0; i < node.options.length; i++) {
+    if (node.options[i].value === value) {
+      hasOption = true;
+      break;
+    }
+  }
+  if (hasOption) {
+    node.value = value;
+  }
+}
+
+function applyGlobalSettingsToControls() {
+  global_settings = createGlobalSettingsSnapshot(global_settings);
+  for (var i = 0; i < GLOBAL_SETTING_CONTROL_IDS.length; i++) {
+    var id = GLOBAL_SETTING_CONTROL_IDS[i];
+    selectControlValue(id, global_settings[id]);
+  }
+  defaultAccType = global_settings.accType;
+  defaultAccValue = global_settings.accValue;
+  settingsLocal = {};
+}
+
+function readGlobalSettingsFromControls() {
+  var next = {};
+  for (var i = 0; i < GLOBAL_SETTING_CONTROL_IDS.length; i++) {
+    var id = GLOBAL_SETTING_CONTROL_IDS[i];
+    var node = document.getElementById(id);
+    if (node) {
+      next[id] = node.value;
+    }
+  }
+  global_settings = createGlobalSettingsSnapshot(next);
+  defaultAccType = global_settings.accType;
+  defaultAccValue = global_settings.accValue;
+  settingsLocal = {};
+  return global_settings;
+}
+
+function persistGlobalSettingsFromControls() {
+  readGlobalSettingsFromControls();
+  if (typeof saveGlobalSettings === "function") {
+    saveGlobalSettings();
+  }
+}
+
+function getEffectiveAccType(item) {
+  var resolved = typeof getAccType === "function" ? getAccType(item) : null;
+  return resolved || (global_settings && global_settings.accType) || defaultAccType;
+}
+
+function getEffectiveAccValue(item) {
+  var resolved = typeof getAccValue === "function" ? getAccValue(item) : null;
+  return resolved || (global_settings && global_settings.accValue) || defaultAccValue;
+}
+
+function initTrackedNumericInputs() {
+  rememberNumeric("txtnumber", {
+    fieldLabel: getNumericFieldLabel("control.rate_per_min", "每分钟产量"),
+    fallbackValue: 60,
+    requirePositive: true,
+    min: 0.000001,
+    maxFractionDigits: 6,
+  });
+  rememberNumeric("selmaince", {
+    fieldLabel: getNumericFieldLabel("control.device_count", "生产设备数"),
+    fallbackValue: 1,
+    requirePositive: true,
+    min: 1,
+    max: 1000,
+    integer: true,
+  });
+  rememberNumeric("pointLength", {
+    fieldLabel: getNumericFieldLabel("settings.speed.decimal_places", "小数点后保留"),
+    fallbackValue: pointLength,
+    min: 0,
+    max: 6,
+    integer: true,
+    clamp: true,
+  });
+}
+
 function clearProjectScopedStorage() {
   if (storageService && typeof storageService.clearByPrefixes === "function") {
     storageService.clearByPrefixes([
+      "global_settings",
       "machine_settings_time",
       "machine_settings_pf",
       "machine_settings",
@@ -75,6 +269,7 @@ function clearProjectScopedStorage() {
   }
   var keys = [
     "machine_settings" + window.version,
+    "global_settings" + window.version,
     "machine_settings_time" + window.version,
     "machine_settings_pf" + window.version,
     "settings_projects" + window.version,
@@ -344,7 +539,16 @@ function f_init() {
     },
     methods: {
       speedChange: function (item) {
-        settings_time[item.machineName] = parseFloat(item.speed);
+        if (!item || !item.machineName) {
+          return;
+        }
+        settings_time[item.machineName] = readNumeric(item.speed, {
+          fieldLabel: getNumericFieldLabel("settings.speed.title", "速度、产量设置"),
+          previousValue: settings_time[item.machineName] || Number(item.speed) || 1,
+          fallbackValue: Number(item.speed) || 1,
+          requirePositive: true,
+          maxFractionDigits: 6,
+        });
         saveSettingTime();
         scheduleUpdateAll("machine-speed-change");
       },
@@ -377,37 +581,47 @@ function f_init() {
 
       submitEditorNumber: function () {
         if (this.xqs && this.xqs[this.xps_editor_index]) {
-          if (
-            //   去掉了检查输入为整数的逻辑
-            // Number.isInteger(this.number_editor_number) &&
-            this.xps_editor_number > 0
-          ) {
-            this.xqs[this.xps_editor_index].number = this.xps_editor_number;
-            scheduleUpdateAll("requirement-number-edit");
-          }
+          var previousRequirementNumber = Number(this.xqs[this.xps_editor_index].number) || 1;
+          var nextRequirementNumber = readNumeric(this.xps_editor_number, {
+            fieldLabel: getNumericFieldLabel("control.rate_per_min", "每分钟产量"),
+            previousValue: previousRequirementNumber,
+            fallbackValue: previousRequirementNumber,
+            requirePositive: true,
+            min: 0.000001,
+            maxFractionDigits: 6,
+          });
+          this.xps_editor_number = nextRequirementNumber;
+          this.xqs[this.xps_editor_index].number = nextRequirementNumber;
+          scheduleUpdateAll("requirement-number-edit");
           this.xps_editor_index = -1;
         }
       },
       // 运行两遍可以防止1.999或2.001这种数值错误
       submitEditorNumberItem: function () {
         if (this.items && this.items[this.items_editor_index]) {
-          if (
-            // Number.isInteger(this.number_editor_number) &&
-            this.items_editor_number > 0
-          ) {
-            var multiple = this.items_editor_number / this.items[this.items_editor_index].number2;
+          var previousItemNumber = Number(this.items[this.items_editor_index].number2) || 1;
+          var nextItemNumber = readNumeric(this.items_editor_number, {
+            fieldLabel: getNumericFieldLabel("table.header.device_count", "设备数量"),
+            previousValue: previousItemNumber,
+            fallbackValue: previousItemNumber,
+            requirePositive: true,
+            min: 0.000001,
+            maxFractionDigits: 6,
+          });
+          this.items_editor_number = nextItemNumber;
+          var multiple = nextItemNumber / previousItemNumber;
 
-            for (var i = 0; i < this.xqs.length; i++) {
-              this.xqs[i].number *= multiple;
-            }
-            update_all();
-            multiple = this.items_editor_number / this.items[this.items_editor_index].number2;
-
-            for (var i = 0; i < this.xqs.length; i++) {
-              this.xqs[i].number *= multiple;
-            }
-            update_all();
+          for (var i = 0; i < this.xqs.length; i++) {
+            this.xqs[i].number *= multiple;
           }
+          update_all();
+          var refreshedNumber = Number(this.items[this.items_editor_index].number2) || nextItemNumber;
+          multiple = nextItemNumber / refreshedNumber;
+
+          for (var j = 0; j < this.xqs.length; j++) {
+            this.xqs[j].number *= multiple;
+          }
+          update_all();
           this.items_editor_index = -1;
         }
       },
@@ -474,14 +688,21 @@ function f_init() {
   });
   f_initData();
   f_fillData();
-  syncLocalizedLabels();
-  initPanelController();
-  doSpeed1();
-  update_all();
+  if (typeof loadGlobalSettings === "function") {
+    loadGlobalSettings();
+  } else {
+    global_settings = createGlobalSettingsSnapshot(global_settings || getGlobalSettingsDefaults());
+  }
+  applyGlobalSettingsToControls();
   loadSetting();
   loadSettingTime();
   loadSettingPf();
   loadSettingProjects();
+  initTrackedNumericInputs();
+  syncLocalizedLabels();
+  initPanelController();
+  doSpeed1();
+  update_all();
 
   projectsUpdate();
   window.addEventListener("dsq:locale-changed", function () {
@@ -491,12 +712,23 @@ function f_init() {
   });
 
   dom("#speed1_6").change(function () {
+    var oreValue = readNumeric("selore", {
+      fieldLabel: getNumericFieldLabel("settings.speed.mining_speed", "采矿作业速度"),
+      fallbackValue: 100,
+      requirePositive: true,
+      maxFractionDigits: 3,
+    });
+    var advancedMinerValue = readNumeric("speed1_6", {
+      fieldLabel: getNumericFieldLabel("settings.speed.advanced_miner", "大型采矿机"),
+      fallbackValue: 100,
+      requirePositive: true,
+      maxFractionDigits: 3,
+    });
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "大型采矿机") {
-            this.m[i].speed =
-              1 * 20 * 0.01 * parseFloat(dom("#selore").val()) * 0.01 * parseFloat(dom("#speed1_6").val());
+            this.m[i].speed = 1 * 20 * 0.01 * oreValue * 0.01 * advancedMinerValue;
           }
         }
       }
@@ -505,21 +737,32 @@ function f_init() {
     scheduleUpdateAll("ore-speed-multiplier-change");
   });
   dom("#selore").change(function () {
+    var oreValue = readNumeric("selore", {
+      fieldLabel: getNumericFieldLabel("settings.speed.mining_speed", "采矿作业速度"),
+      fallbackValue: 100,
+      requirePositive: true,
+      maxFractionDigits: 3,
+    });
+    var advancedMinerValue = readNumeric("speed1_6", {
+      fieldLabel: getNumericFieldLabel("settings.speed.advanced_miner", "大型采矿机"),
+      fallbackValue: 100,
+      requirePositive: true,
+      maxFractionDigits: 3,
+    });
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "矿脉") {
-            this.m[i].speed = Math.min(0.5 * 1 * 0.01 * parseFloat(dom("#selore").val()), 30);
+            this.m[i].speed = Math.min(0.5 * 1 * 0.01 * oreValue, 30);
           }
           if (this.m[i].name == "采矿机") {
-            this.m[i].speed = Math.min(0.5 * 6 * 0.01 * parseFloat(dom("#selore").val()), 30);
+            this.m[i].speed = Math.min(0.5 * 6 * 0.01 * oreValue, 30);
           }
           if (this.m[i].name == "大型采矿机") {
-            this.m[i].speed =
-              1 * 20 * 0.01 * parseFloat(dom("#selore").val()) * 0.01 * parseFloat(dom("#speed1_6").val());
+            this.m[i].speed = 1 * 20 * 0.01 * oreValue * 0.01 * advancedMinerValue;
           }
           if (this.m[i].name == "抽水机") {
-            this.m[i].speed = Math.min((50 * 0.01 * parseFloat(dom("#selore").val())) / 60, 30);
+            this.m[i].speed = Math.min((50 * 0.01 * oreValue) / 60, 30);
           }
         }
       }
@@ -549,18 +792,32 @@ function f_init() {
     scheduleUpdateAll("toggle-show-max-one-belt");
   });
   dom("#pointLength").change(function () {
-    pointLength = parseInt(dom(this).val());
+    pointLength = readNumeric(this, {
+      fieldLabel: getNumericFieldLabel("settings.speed.decimal_places", "小数点后保留"),
+      previousValue: pointLength,
+      fallbackValue: pointLength,
+      min: 0,
+      max: 6,
+      integer: true,
+      clamp: true,
+    });
     scheduleUpdateAll("decimal-point-length-change");
   });
   dom("#isAddSelfAccP").change(function () {
     scheduleUpdateAll("toggle-external-acc-input");
   });
   dom("#fractionatorSpeed").change(function () {
+    var fractionatorSpeed = readNumeric("fractionatorSpeed", {
+      fieldLabel: getNumericFieldLabel("settings.speed.fractionator_speed", "分馏塔每分钟产量"),
+      fallbackValue: 18,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "分馏塔") {
-            this.m[i].speed = parseFloat(dom("#fractionatorSpeed").val()) / (0.01 * 60);
+            this.m[i].speed = fractionatorSpeed / (0.01 * 60);
           }
         }
       }
@@ -568,11 +825,17 @@ function f_init() {
     scheduleUpdateAll("fractionator-speed-change");
   });
   dom("#oilSpeed").change(function () {
+    var oilSpeed = readNumeric("oilSpeed", {
+      fieldLabel: getNumericFieldLabel("settings.speed.oil_speed", "原油速度"),
+      fallbackValue: 4,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
           if (this.m[i].name == "原油萃取站") {
-            this.m[i].speed = parseFloat(dom("#oilSpeed").val());
+            this.m[i].speed = oilSpeed;
           }
         }
       }
@@ -601,11 +864,36 @@ function f_init() {
 氢气=132-87.9=44.1*/
 
   function doSpeed1() {
-    var speed1_1 = parseFloat(dom("#speed1_1").val());
-    var speed1_2 = parseFloat(dom("#speed1_2").val());
-    var speed1_3 = parseFloat(dom("#speed1_3").val());
-    var speed1_4 = parseFloat(dom("#speed1_4").val());
-    var ore = parseFloat(dom("#selore").val());
+    var speed1_1 = readNumeric("speed1_1", {
+      fieldLabel: getNumericFieldLabel("settings.speed.orbital_hydrogen_gas", "轨道采集-氢(气态)"),
+      fallbackValue: 1,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
+    var speed1_2 = readNumeric("speed1_2", {
+      fieldLabel: getNumericFieldLabel("settings.speed.orbital_deuterium", "轨道采集-重氢"),
+      fallbackValue: 0.02,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
+    var speed1_3 = readNumeric("speed1_3", {
+      fieldLabel: getNumericFieldLabel("settings.speed.orbital_fire_ice", "轨道采集-可燃冰"),
+      fallbackValue: 0.5,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
+    var speed1_4 = readNumeric("speed1_4", {
+      fieldLabel: getNumericFieldLabel("settings.speed.orbital_hydrogen_ice", "轨道采集-氢(巨冰)"),
+      fallbackValue: 0.5,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
+    var ore = readNumeric("selore", {
+      fieldLabel: getNumericFieldLabel("settings.speed.mining_speed", "采矿作业速度"),
+      fallbackValue: 100,
+      requirePositive: true,
+      maxFractionDigits: 3,
+    });
 
     function getSum(value1, value2, p1, p2) {
       var sum = 0;
@@ -654,6 +942,10 @@ function f_init() {
       //重置设备
       settings = {};
       saveSetting();
+      global_settings = createGlobalSettingsSnapshot(getGlobalSettingsDefaults());
+      if (typeof saveGlobalSettings === "function") {
+        saveGlobalSettings();
+      }
       //重置速度
       settings_time = {};
       saveSettingTime();
@@ -709,81 +1001,35 @@ function f_init() {
     }
   });
   dom("#selmodein").change(function () {
-    var value = dom("#selmodein").val();
-    dom(data).each(function () {
-      if (this.mName == "制作台") {
-        // TODO: 下面的初始化代码还能优化一下
-        settingsLocal[this.id] = settingsLocal[this.id] || {};
-        settingsLocal[this.id].m = value;
-      }
-    });
-
-    saveSetting();
+    persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-assembler-change");
   });
   dom("#furnace").change(function () {
-    var value = dom("#furnace").val();
-    dom(data).each(function () {
-      if (this.mName == "冶炼设备") {
-        // TODO: 下面的初始化代码还能优化一下
-        settingsLocal[this.id] = settingsLocal[this.id] || {};
-        settingsLocal[this.id].m = value;
-      }
-    });
-
-    saveSetting();
+    persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-furnace-change");
   });
   dom("#chemical").change(function () {
-    var value = dom("#chemical").val();
-    dom(data).each(function () {
-      if (this.mName == "化工设备") {
-        // TODO: 下面的初始化代码还能优化一下
-        settingsLocal[this.id] = settingsLocal[this.id] || {};
-        settingsLocal[this.id].m = value;
-      }
-    });
-
-    saveSetting();
+    persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-chemical-change");
   });
   dom("#research").change(function () {
-    var value = dom("#research").val();
-    dom(data).each(function () {
-      if (this.mName == "研究站") {
-        // TODO: 下面的初始化代码还能优化一下
-        settingsLocal[this.id] = settingsLocal[this.id] || {};
-        settingsLocal[this.id].m = value;
-      }
-    });
-
-    saveSetting();
+    persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-research-change");
   });
   dom("#accType").change(function () {
-    defaultAccType = dom("#accType").val();
+    persistGlobalSettingsFromControls();
     // 不知道为啥要写这个for
     for (var i in settings) {
       delete settings[i].accType;
     }
-    dom(data).each(function () {
-      // TODO: 下面的初始化代码还能优化一下
-      settingsLocal[this.id] = settingsLocal[this.id] || {};
-      settingsLocal[this.id].accType = defaultAccType;
-    });
     saveSetting();
     scheduleUpdateAll("global-acc-type-change");
   });
   dom("#accValue").change(function () {
-    defaultAccValue = dom("#accValue").val();
+    persistGlobalSettingsFromControls();
     for (var i in settings) {
       delete settings[i].accValue;
     }
-    dom(data).each(function () {
-      // TODO: 下面的初始化代码还能优化一下
-      settingsLocal[this.id] = settingsLocal[this.id] || {};
-      settingsLocal[this.id].accValue = defaultAccValue;
-    });
     saveSetting();
     scheduleUpdateAll("global-acc-value-change");
   });
@@ -885,8 +1131,8 @@ function loadNumber(itemName, n) {
         addOut(item.s[i].name, (-1 * n * (item.s[i].n || 1)) / (item.n || 1));
       }
     }
-    var accType = (settings[item.id] || {}).accType || defaultAccType;
-    var accValue = (settings[item.id] || {}).accValue || defaultAccValue;
+    var accType = getEffectiveAccType(item);
+    var accValue = getEffectiveAccValue(item);
     var accTotal = 0;
     for (var i = 0; item.q && i < item.q.length; i++) {
       var q = item.q[i];
@@ -1043,11 +1289,16 @@ function fixGzSpeed() {
             for (var j = 0; j < this.q.length; j++) {
               if (this.q[j].name == "引力透镜") {
                 if (manualGzSpeed) {
-                  fixedGzSpeed = parseFloat(dom("#gzSpeed").val());
+                  fixedGzSpeed = readNumeric("gzSpeed", {
+                    fieldLabel: getNumericFieldLabel("settings.speed.critical_photon", "临界光子每分钟产量"),
+                    fallbackValue: 5,
+                    requirePositive: true,
+                    maxFractionDigits: 6,
+                  });
                 } else {
                   var item = find("临界光子", true);
-                  var accType = (settings[item.id] || {}).accType || defaultAccType;
-                  var accValue = (settings[item.id] || {}).accValue || defaultAccValue;
+                  var accType = getEffectiveAccType(item);
+                  var accValue = getEffectiveAccValue(item);
                   if (accValue === "加速") {
                     switch (accType) {
                       case "增产剂Mk.Ⅰ":
@@ -1075,7 +1326,62 @@ function fixGzSpeed() {
   });
 }
 
-function update_all() {
+function formatBlueprintRate(value) {
+  var numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "0";
+  return numeric.toFixed(6).replace(/\.?0+$/, "");
+}
+
+function cloneBlueprintRateList(list, divisor) {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  var output = [];
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    output.push({
+      name: item.name,
+      rate: Number(((item.n || 1) / divisor).toFixed(8)),
+    });
+  }
+  return output;
+}
+
+function buildBlueprintSnapshot(requirements, productionLines) {
+  var requirementList = Array.isArray(requirements) ? requirements : [];
+  var outputNames = [];
+  var descriptionLines = [];
+  var title = "";
+
+  for (var i = 0; i < requirementList.length; i++) {
+    var requirement = requirementList[i];
+    if (!requirement || !requirement.item) continue;
+    var itemName = requirement.item.name;
+    var rateText = formatBlueprintRate(requirement.number);
+    if (!title) {
+      title = itemName + "-" + rateText + "min";
+    }
+    outputNames.push(itemName);
+    descriptionLines.push(itemName + "-" + rateText + "min");
+  }
+
+  var subRecipes = [];
+  for (var j = 0; j < productionLines.length; j++) {
+    var line = productionLines[j];
+    if (!line || !line.blueprint) continue;
+    subRecipes.push(line.blueprint);
+  }
+
+  return {
+    title: title,
+    description: descriptionLines.length ? descriptionLines.join("\n") + "\n" : "",
+    outputNames: outputNames,
+    iconIds: typeof resolveBlueprintIconsByNames === "function" ? resolveBlueprintIconsByNames(outputNames) : [],
+    subRecipes: subRecipes,
+  };
+}
+
+function buildCalculationResult() {
   var outResult = [];
   xh_list = [];
   out_list = [];
@@ -1085,7 +1391,15 @@ function update_all() {
   for (var m = 0; m < singleMake.length; m++) {
     var item = data[singleMake[m].id]; //配方
     var info = getValue(item);
-    var times = parseFloat(((60 * parseInt(singleMake[m].number) * info.speed) / (item.t || 1)).toFixed(6));
+    var singleMakeNumber = readNumeric(singleMake[m].number, {
+      fieldLabel: getNumericFieldLabel("split.device_count", "设备数量"),
+      previousValue: 1,
+      fallbackValue: 1,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
+    singleMake[m].number = singleMakeNumber;
+    var times = Number(((60 * singleMakeNumber * info.speed) / (item.t || 1)).toFixed(6));
     // (60 * parseInt(singleMake[m].number) * info.speed) / (item.t || 1);
 
     for (var i = 0; i < item.s.length; i++) {
@@ -1116,6 +1430,7 @@ function update_all() {
   var items0 = [];
   var items = [];
   var items2 = [];
+  var blueprintLines = [];
 
   for (var i = 0; i < xh_list.length; i++) {
     var xh = xh_list[i];
@@ -1125,8 +1440,8 @@ function update_all() {
     var info = getValue(itemName);
     if (xh.value > 0) {
       xh.value2 = xh.value / (1 / info.time) / 60 / (item.n || 1);
-      var accType = (settings[item.id] || {}).accType || defaultAccType;
-      var accValue = (settings[item.id] || {}).accValue || defaultAccValue;
+      var accType = getEffectiveAccType(item);
+      var accValue = getEffectiveAccValue(item);
       if (accValue == "增产" && item.noExtra) accValue = "无";
       if (item.q.length == 0) accValue = "无";
 
@@ -1216,6 +1531,32 @@ function update_all() {
 
     var item = find(xh_list[i].name);
     var info = getValue(xh_list[i].name);
+    var accType = getEffectiveAccType(item);
+    var accValue = getEffectiveAccValue(item);
+    if (accValue == "增产" && item.noExtra) accValue = "无";
+    if (item.q.length == 0 || item.noExtra === null) accValue = "无";
+    var acceleratorMode = -1;
+    if (accValue === "加速") {
+      acceleratorMode = 1;
+    } else if (accValue === "增产") {
+      acceleratorMode = 0;
+    }
+    var isSourceRecipe = !item.q || item.q.length === 0;
+    blueprintLines.push({
+      blueprint: {
+        itemName: xh_list[i].name,
+        recipeId: item.id,
+        buildingName: isSourceRecipe ? null : info.name,
+        buildingCount: isSourceRecipe ? 0 : Number(xh_list[i].value2) || 0,
+        input: isSourceRecipe ? null : cloneBlueprintRateList(item.q, item.t || 1),
+        output: isSourceRecipe
+          ? [{ name: xh_list[i].name, rate: Number((xh_list[i].value / 60).toFixed(8)) }]
+          : cloneBlueprintRateList(item.s, item.t || 1),
+        accType: acceleratorMode === -1 ? null : accType,
+        accValue: accValue,
+        acceleratorMode: acceleratorMode,
+      },
+    });
     if (dom("#hideSource").get(0).checked) {
       if (!item.q || !item.q.length) {
         continue;
@@ -1255,6 +1596,7 @@ function update_all() {
       accValue: [],
       accTotal: xh_list[i].accTotal || 0,
       accTotalLabel: i18nText("table.acc_need_prefix", "需求："),
+      blueprint: blueprintLines[blueprintLines.length - 1].blueprint,
     };
     if (!outitem.number2) outitem.number2full = "";
     if (xh_list[i].name == "太阳帆") {
@@ -1269,7 +1611,7 @@ function update_all() {
         getIconShow("垂直发射井", outitem.number1 / 5) +
         i18nText("table.number_other.suffix", ")");
     }
-    addTotal(info.name, Math.ceil(outitem.number2), settings[item.id]);
+    addTotal(info.name, Math.ceil(outitem.number2), { accType: accType, accValue: accValue });
     // 增产剂总和
     if (info.accValue != "无") {
       // TODO: 这里调用Math.ceil未必合理，增产剂一般放在总线起始处，所以应该在最终算出的总和处调用Math.ceil
@@ -1304,11 +1646,6 @@ function update_all() {
       }
       outitem.m.push(m);
     }
-    var accType = (settings[item.id] || {}).accType || defaultAccType;
-    var accValue = (settings[item.id] || {}).accValue || defaultAccValue;
-    if (accValue == "增产" && item.noExtra) accValue = "无";
-    if (item.q.length == 0 || item.noExtra === null) accValue = "无";
-
     ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"].forEach(function (one) {
       outitem.accType.push({
         class: one == accType ? "m selected" : "m",
@@ -1352,23 +1689,54 @@ function update_all() {
     };
     items2.push(outitem);
   }
-  app.items0 = items0;
-  app.xqs = xqs;
-  app.items = items;
-  app.items2 = items2;
-  app.total = total;
-  app.ig_names = ig_names;
   var energy = 0;
   for (var i = 0; i < total.length; i++) {
     energy += total[i].energy || 0;
   }
-  app.totalEnergy = energy.toFixed(pointLength);
   var space = 0;
   for (var i = 0; i < total.length; ++i) {
     space += total[i].space || 0;
   }
-  app.totalSpace = space;
-  app.totalAcc = totalAcc.toFixed(2);
+  var primaryRequirement = xqs && xqs.length ? xqs[0] : null;
+  var primaryItemName = primaryRequirement && primaryRequirement.item ? primaryRequirement.item.name : "";
+  var primaryRatePerMinute = primaryRequirement ? Number(primaryRequirement.number) : NaN;
+  var seoSnapshot = {
+    requirementCount: xqs.length,
+    primaryItemName: primaryItemName,
+    primaryRatePerMinute: Number.isFinite(primaryRatePerMinute) ? primaryRatePerMinute : null,
+    totalLineCount: items.length,
+    totalEnergy: Number(energy) || 0,
+    totalSpace: Number(space) || 0,
+  };
+
+  return {
+    requirements: xqs,
+    independentLines: items0,
+    productionLines: items,
+    excessOutputs: items2,
+    totals: {
+      machines: total,
+      totalAcc: totalAcc,
+      totalEnergy: energy,
+      totalSpace: space,
+    },
+    seoSnapshot: seoSnapshot,
+    blueprintSnapshot: buildBlueprintSnapshot(xqs, blueprintLines),
+  };
+}
+
+function update_all() {
+  var result = buildCalculationResult();
+  window.currentCalculationResult = result;
+  app.items0 = result.independentLines;
+  app.xqs = result.requirements;
+  app.items = result.productionLines;
+  app.items2 = result.excessOutputs;
+  app.total = result.totals.machines;
+  app.ig_names = ig_names;
+  app.totalEnergy = result.totals.totalEnergy.toFixed(pointLength);
+  app.totalSpace = result.totals.totalSpace;
+  app.totalAcc = result.totals.totalAcc.toFixed(2);
   syncLocalizedLabels();
   if (app && typeof app.$nextTick === "function") {
     app.$nextTick(function () {
@@ -1379,17 +1747,7 @@ function update_all() {
   }
 
   if (window.DSQI18n && typeof window.DSQI18n.updateSeoState === "function") {
-    var primaryRequirement = xqs && xqs.length ? xqs[0] : null;
-    var primaryItemName = primaryRequirement && primaryRequirement.item ? primaryRequirement.item.name : "";
-    var primaryRatePerMinute = primaryRequirement ? Number(primaryRequirement.number) : NaN;
-    window.DSQI18n.updateSeoState({
-      requirementCount: xqs.length,
-      primaryItemName: primaryItemName,
-      primaryRatePerMinute: Number.isFinite(primaryRatePerMinute) ? primaryRatePerMinute : null,
-      totalLineCount: items.length,
-      totalEnergy: Number(energy) || 0,
-      totalSpace: Number(space) || 0,
-    });
+    window.DSQI18n.updateSeoState(result.seoSnapshot);
   }
 }
 function selectM(id, m) {
@@ -1413,7 +1771,14 @@ function selectAccValue(id, accValue) {
 function selectPf(name, value) {
   let old_settings_pf = dom.extend(true, {}, settings_pf);
   try {
-    settings_pf[name] = parseInt(value);
+    settings_pf[name] = readNumeric(value, {
+      fieldLabel: getNumericFieldLabel("table.header.recipe", "配方"),
+      previousValue: Number(settings_pf[name]) || 0,
+      fallbackValue: 0,
+      min: 0,
+      integer: true,
+      clamp: true,
+    });
     scheduleUpdateAll("row-recipe-change");
   } catch (e) {
     settings_pf = old_settings_pf;
@@ -1471,10 +1836,16 @@ function f_remove_ig(name) {
   scheduleUpdateAll("remove-excluded-item");
 }
 function projectsUpdate() {
-  dom("#selprojects").html("");
-  dom(projects).each(function () {
-    dom("#selprojects").append("<option value='" + this.name + "'>" + this.name + "</option>");
-  });
+  var selectNode = document.getElementById("selprojects");
+  if (selectNode) {
+    selectNode.textContent = "";
+    dom(projects).each(function () {
+      var option = document.createElement("option");
+      option.value = this.name;
+      option.textContent = this.name;
+      selectNode.appendChild(option);
+    });
+  }
   if (projects.length) {
     dom("#projectdiv").show();
   } else {
@@ -1484,8 +1855,13 @@ function projectsUpdate() {
 function f_save() {
   let index = 0;
   let product_settings = {};
-  var name = prompt(i18nText("dialog.prompt_project_name", "输入方案名"));
-  if (!name) return;
+  var rawName = prompt(i18nText("dialog.prompt_project_name", "输入方案名"));
+  var normalizedName = normalizeProjectName(rawName);
+  if (!normalizedName.valid) {
+    warnUser(normalizedName.message, 3000);
+    return;
+  }
+  var name = normalizedName.value;
   for (index = 0; index < projects.length; index++) {
     // 存在相同名称的方案
     if (projects[index].name == name) {
@@ -1620,7 +1996,13 @@ function f_split(obj) {
       }
       singleMake.push({
         id: selected.id,
-        number: parseFloat(dom("#Split").find(":text").val()),
+        number: readNumeric(dom("#Split").find(":text").get(0), {
+          fieldLabel: getNumericFieldLabel("split.device_count", "设备数量"),
+          previousValue: 1,
+          fallbackValue: 1,
+          requirePositive: true,
+          maxFractionDigits: 6,
+        }),
       });
       scheduleUpdateAll("split-recipe-confirm");
       if (panelController && typeof panelController.close === "function") {

@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const REQUIRED_FILES = [
   "index.html",
+  "main.js",
   "Scripts/data.state.js",
   "Scripts/app.services.js",
   "Scripts/data.storage.js",
@@ -47,22 +48,15 @@ async function main() {
   const html = await readFile("index.html", "utf8");
 
   if (
-    !html.includes("Scripts/data.state.js") ||
-    !html.includes("Scripts/app.services.js") ||
-    !html.includes("Scripts/data.storage.js") ||
-    !html.includes("Scripts/data.js") ||
-    !html.includes("Scripts/data.recipe-init.js") ||
-    !html.includes("Scripts/data.recipe.js") ||
-    !html.includes("Scripts/data.recipe-ui.js") ||
-    !html.includes("Scripts/data.blueprint.js") ||
-    !html.includes("Scripts/data.ui-bindings.js") ||
-    !html.includes("Scripts/i18n.js") ||
-    !html.includes("Scripts/dom.legacy.js") ||
-    !html.includes("Scripts/index.events.js")
+    !html.includes('type="module" src="./main.js"') ||
+    html.includes('src="./Scripts/error-monitor.js"') ||
+    html.includes('src="./Scripts/data.state.js"') ||
+    html.includes('href="./Scripts/style.css"')
   ) {
-    throw new Error("Smoke check failed: index.html does not include expected core script references.");
+    throw new Error("Smoke check failed: index.html does not use the expected module entry layout.");
   }
 
+  assertSyntax("main.js");
   assertSyntax("Scripts/data.state.js");
   assertSyntax("Scripts/app.services.js");
   assertSyntax("Scripts/data.js");

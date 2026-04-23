@@ -6,6 +6,8 @@
   const localeCache = {};
   let currentLocale = DEFAULT_LOCALE;
   let activeDictionary = {};
+  let localeRequestVersion = 0;
+  let activeLocaleController = null;
   const DEFAULT_SEO_STATE = Object.freeze({
     requirementCount: 0,
     primaryItemName: "",
@@ -107,11 +109,16 @@
     }
   }
 
-  async function loadDictionary(locale) {
+  function isAbortError(error) {
+    var domAbortCode = typeof DOMException !== "undefined" ? DOMException.ABORT_ERR : 20;
+    return !!error && (error.name === "AbortError" || error.code === domAbortCode);
+  }
+
+  async function loadDictionary(locale, signal) {
     if (localeCache[locale]) {
       return localeCache[locale];
     }
-    const response = await fetch(`./locales/${locale}.json`);
+    const response = await fetch(`./locales/${locale}.json`, { signal: signal });
     if (!response.ok) {
       throw new Error(`i18n failed to load locale "${locale}"`);
     }
@@ -465,9 +472,24 @@
     const normalized = normalizeLocale(locale);
     const persist = options.persist !== false;
     const syncQuery = options.syncQuery !== false;
-    const dictionary = await loadDictionary(normalized).catch(async () => {
-      return loadDictionary(DEFAULT_LOCALE);
-    });
+    const requestVersion = ++localeRequestVersion;
+    if (activeLocaleController) {
+      activeLocaleController.abort();
+    }
+    activeLocaleController = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const signal = activeLocaleController ? activeLocaleController.signal : undefined;
+    let dictionary;
+    try {
+      dictionary = await loadDictionary(normalized, signal);
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      dictionary = await loadDictionary(DEFAULT_LOCALE, signal);
+    }
+    if (requestVersion !== localeRequestVersion) {
+      return;
+    }
 
     currentLocale = normalized;
     activeDictionary = dictionary;
@@ -506,12 +528,18 @@
       localeSelector.dataset.i18nBound = "true";
       localeSelector.addEventListener("change", event => {
         setLocale(event.target.value, { persist: true, syncQuery: true }).catch(error => {
+          if (isAbortError(error)) {
+            return;
+          }
           console.warn("i18n: failed to switch locale.", error);
         });
       });
     }
 
     setLocale(getInitialLocale(), { persist: true, syncQuery: true }).catch(error => {
+      if (isAbortError(error)) {
+        return;
+      }
       console.warn("i18n: failed to initialize locale.", error);
     });
   }

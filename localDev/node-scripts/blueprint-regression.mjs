@@ -30,6 +30,8 @@ function createBrowserLikeContext() {
     Set,
     RegExp,
     Error,
+    setTimeout,
+    clearTimeout,
     parseInt,
     parseFloat,
     isNaN,
@@ -812,6 +814,74 @@ async function testFacadeLockReleaseOnPostMessageFailure() {
   );
 }
 
+async function testFacadeProgressMessages() {
+  const context = createBrowserLikeContext();
+  context.__progress = [];
+  context.Worker = class WorkerProgress {
+    terminate() {}
+    postMessage(message) {
+      setTimeout(() => {
+        this.onmessage({
+          data: {
+            taskId: message.taskId,
+            type: "PROGRESS",
+            payload: { stage: "init" },
+          },
+        });
+        this.onmessage({
+          data: {
+            taskId: message.taskId,
+            type: "SUCCESS",
+            payload: "blueprint-text",
+          },
+        });
+      }, 0);
+    }
+  };
+
+  await loadScript(context, "Scripts/blueprint.facade.js");
+  const result = await readBinding(
+    context,
+    "BlueprintFacade.generateAsync('t', [0], { subRecipes: [] }, {}, { timeoutMs: 1000, onProgress: stage => __progress.push(stage) })"
+  );
+
+  assert.equal(result, "blueprint-text", "facade-progress: generateAsync should resolve worker payload.");
+  assert.deepEqual(context.__progress, ["init"], "facade-progress: progress stage should be forwarded.");
+  assert.equal(
+    readBinding(context, "BlueprintFacade._isGenerating"),
+    false,
+    "facade-progress: lock should be released."
+  );
+}
+
+async function testFacadeTimeoutReleasesLockAndTerminatesWorker() {
+  const context = createBrowserLikeContext();
+  context.__terminated = false;
+  context.Worker = class WorkerNeverResponds {
+    terminate() {
+      context.__terminated = true;
+    }
+    postMessage() {}
+  };
+
+  await loadScript(context, "Scripts/blueprint.facade.js");
+
+  let errorCode = "";
+  try {
+    await readBinding(context, "BlueprintFacade.generateAsync('t', [0], { subRecipes: [] }, {}, { timeoutMs: 20 })");
+  } catch (error) {
+    errorCode = error.code || error.message;
+  }
+
+  assert.equal(errorCode, "ERR_BLUEPRINT_TIMEOUT", "facade-timeout: timeout should reject with stable code.");
+  assert.equal(context.__terminated, true, "facade-timeout: worker should be terminated.");
+  assert.equal(
+    readBinding(context, "BlueprintFacade._isGenerating"),
+    false,
+    "facade-timeout: lock should be released."
+  );
+}
+
 async function main() {
   const runtimeContext = createBrowserLikeContext();
   await loadScripts(runtimeContext, BLUEPRINT_RUNTIME_FILES);
@@ -836,6 +906,8 @@ async function main() {
 
   await testFacadeLockReleaseOnWorkerCtorFailure();
   await testFacadeLockReleaseOnPostMessageFailure();
+  await testFacadeProgressMessages();
+  await testFacadeTimeoutReleasesLockAndTerminatesWorker();
 
   console.log("blueprint-regression: all blueprint flow checks passed.");
 }
