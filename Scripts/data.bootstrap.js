@@ -19,7 +19,6 @@
       var response = await fetch("./Scripts/data.json?v" + root.version, {
         method: "GET",
         headers: { Accept: "application/json" },
-        cache: "no-cache",
       });
       if (!response.ok) {
         throw new Error("data.json request failed: " + response.status);
@@ -37,9 +36,14 @@
   }
 
   onReady(function () {
-    loadGameData();
-    if (typeof root.f_init === "function") {
-      root.f_init();
-    }
+    loadGameData()
+      .catch(function () {
+        // loadGameData already handles user-facing errors.
+      })
+      .finally(function () {
+        if (typeof root.f_init === "function") {
+          root.f_init();
+        }
+      });
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);

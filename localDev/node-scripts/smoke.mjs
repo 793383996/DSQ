@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 const REQUIRED_FILES = [
   "index.html",
   "Scripts/data.state.js",
+  "Scripts/app.services.js",
   "Scripts/data.storage.js",
   "Scripts/data.js",
   "Scripts/data.recipe-init.js",
@@ -47,6 +48,7 @@ async function main() {
 
   if (
     !html.includes("Scripts/data.state.js") ||
+    !html.includes("Scripts/app.services.js") ||
     !html.includes("Scripts/data.storage.js") ||
     !html.includes("Scripts/data.js") ||
     !html.includes("Scripts/data.recipe-init.js") ||
@@ -62,6 +64,7 @@ async function main() {
   }
 
   assertSyntax("Scripts/data.state.js");
+  assertSyntax("Scripts/app.services.js");
   assertSyntax("Scripts/data.js");
   assertSyntax("Scripts/data.recipe-init.js");
   assertSyntax("Scripts/data.recipe.js");

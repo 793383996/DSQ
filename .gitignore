@@ -35,3 +35,6 @@ dist-vite/
 
 # Vite 缓存
 .vite/
+
+# Lighthouse CI 本地报告
+.lighthouseci/

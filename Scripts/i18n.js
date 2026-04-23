@@ -111,7 +111,7 @@
     if (localeCache[locale]) {
       return localeCache[locale];
     }
-    const response = await fetch(`./locales/${locale}.json`, { cache: "no-cache" });
+    const response = await fetch(`./locales/${locale}.json`);
     if (!response.ok) {
       throw new Error(`i18n failed to load locale "${locale}"`);
     }

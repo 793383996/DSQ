@@ -9,6 +9,7 @@ const KEY_URLS = [
   "/",
   "/index.html",
   "/Scripts/data.state.js",
+  "/Scripts/app.services.js",
   "/Scripts/data.storage.js",
   "/Scripts/data.js",
   "/Scripts/data.recipe-init.js",

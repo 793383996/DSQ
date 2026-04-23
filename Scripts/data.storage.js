@@ -1,4 +1,6 @@
 var migratedLegacyCookieKeys = {};
+var storageServices = window.DSQServices || null;
+var storageAdapter = storageServices && storageServices.storage ? storageServices.storage : null;
 
 function readCookieValue(key) {
   if (!key || typeof document === "undefined") return null;
@@ -18,6 +20,9 @@ function removeCookie(key) {
 }
 
 function hasLocalStorage() {
+  if (storageAdapter && typeof storageAdapter.hasLocalStorage === "function") {
+    return storageAdapter.hasLocalStorage();
+  }
   try {
     return !!window.localStorage;
   } catch {
@@ -25,32 +30,66 @@ function hasLocalStorage() {
   }
 }
 
+function getLocalStorageItem(key) {
+  if (!hasLocalStorage()) return null;
+  if (storageAdapter && typeof storageAdapter.getItem === "function") {
+    return storageAdapter.getItem(key);
+  }
+  return localStorage.getItem(key);
+}
+
+function setLocalStorageItem(key, value) {
+  if (!hasLocalStorage()) return;
+  if (storageAdapter && typeof storageAdapter.setItem === "function") {
+    storageAdapter.setItem(key, value);
+    return;
+  }
+  localStorage.setItem(key, value);
+}
+
 function migrateCookieToLocalStorage(key) {
   if (!hasLocalStorage()) return null;
   if (migratedLegacyCookieKeys[key]) {
-    return localStorage.getItem(key);
+    return getLocalStorageItem(key);
   }
   var cookieValue = readCookieValue(key);
   if (cookieValue == null) {
     migratedLegacyCookieKeys[key] = true;
-    return localStorage.getItem(key);
+    return getLocalStorageItem(key);
   }
-  localStorage.setItem(key, cookieValue);
+  setLocalStorageItem(key, cookieValue);
   removeCookie(key);
   migratedLegacyCookieKeys[key] = true;
   return cookieValue;
 }
 
+function parseStoredJSON(raw, fallbackValue) {
+  if (!raw) return fallbackValue;
+  if (storageServices && typeof storageServices.safeParseJSON === "function") {
+    return storageServices.safeParseJSON(raw, fallbackValue);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallbackValue;
+  }
+}
+
+function loadStoredObject(key, fallbackValue) {
+  var raw = getData(key);
+  var parsed = parseStoredJSON(raw, fallbackValue);
+  return parsed && typeof parsed === "object" ? parsed : fallbackValue;
+}
+
 window.saveData = function (key, value) {
-  if (!hasLocalStorage()) return;
-  localStorage.setItem(key, value);
+  setLocalStorageItem(key, value);
 };
 
 window.getData = function (key) {
   if (!hasLocalStorage()) {
     return readCookieValue(key);
   }
-  var localValue = localStorage.getItem(key);
+  var localValue = getLocalStorageItem(key);
   if (localValue != null) {
     return localValue;
   }
@@ -62,12 +101,18 @@ window.saveSetting = function () {
 };
 
 window.loadSetting = function () {
-  var json = getData("machine_settings" + window.version);
-  if (json) {
-    eval("window.settings = " + json);
+  var parsed = loadStoredObject("machine_settings" + window.version, {});
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    window.settings = parsed;
   }
-  document.getElementById("onlyConveyorBeltMk3").checked = true;
-  document.getElementById("onlySorterMk3").checked = true;
+  var beltNode = document.getElementById("onlyConveyorBeltMk3");
+  var sorterNode = document.getElementById("onlySorterMk3");
+  if (beltNode) {
+    beltNode.checked = true;
+  }
+  if (sorterNode) {
+    sorterNode.checked = true;
+  }
 };
 
 window.saveSettingTime = function () {
@@ -75,9 +120,9 @@ window.saveSettingTime = function () {
 };
 
 window.loadSettingTime = function () {
-  var json = getData("machine_settings_time" + window.version);
-  if (json) {
-    eval("window.settings_time = " + json);
+  var parsed = loadStoredObject("machine_settings_time" + window.version, {});
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    window.settings_time = parsed;
   }
 };
 
@@ -86,9 +131,9 @@ window.saveSettingPf = function () {
 };
 
 window.loadSettingPf = function () {
-  var json = getData("machine_settings_pf" + window.version);
-  if (json) {
-    eval("window.settings_pf = " + json);
+  var parsed = loadStoredObject("machine_settings_pf" + window.version, {});
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    window.settings_pf = parsed;
   }
 };
 
@@ -97,8 +142,8 @@ window.saveSettingProjects = function () {
 };
 
 window.loadSettingProjects = function () {
-  var json = getData("settings_projects" + window.version);
-  if (json) {
-    eval("window.projects = " + json);
+  var parsed = loadStoredObject("settings_projects" + window.version, []);
+  if (Array.isArray(parsed)) {
+    window.projects = parsed;
   }
 };

@@ -73,7 +73,7 @@
   }
 
   async function fetchHtml(pathname) {
-    var response = await fetch(pathname, { cache: "no-cache" });
+    var response = await fetch(pathname);
     if (!response.ok) {
       throw new Error("include load failed: " + response.status + " " + pathname);
     }

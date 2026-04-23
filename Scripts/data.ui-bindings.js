@@ -15,6 +15,82 @@ function i18nText(key, fallback, params) {
   return fallback;
 }
 
+var dsqServices = window.DSQServices || {};
+var storageService = dsqServices.storage || null;
+var projectService = dsqServices.project || null;
+
+function deepCloneValue(value) {
+  if (dsqServices && typeof dsqServices.deepClone === "function") {
+    return dsqServices.deepClone(value);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(deepCloneValue);
+  }
+  var output = {};
+  var keys = Object.keys(value);
+  for (var i = 0; i < keys.length; i++) {
+    output[keys[i]] = deepCloneValue(value[keys[i]]);
+  }
+  return output;
+}
+
+function createProjectSnapshotForStorage(project) {
+  project = project && typeof project === "object" ? project : {};
+  if (projectService && typeof projectService.createSnapshot === "function") {
+    return projectService.createSnapshot(project);
+  }
+  return {
+    name: typeof project.name === "string" ? project.name : "",
+    singleMake: Array.isArray(project.singleMake) ? deepCloneValue(project.singleMake) : [],
+    ig_names: Array.isArray(project.ig_names) ? deepCloneValue(project.ig_names) : [],
+    value: Array.isArray(project.value) ? deepCloneValue(project.value) : [],
+    settings: project.settings && typeof project.settings === "object" ? deepCloneValue(project.settings) : {},
+  };
+}
+
+function hydrateProjectForRuntime(project) {
+  if (projectService && typeof projectService.hydrateForRuntime === "function") {
+    return projectService.hydrateForRuntime(project);
+  }
+  return createProjectSnapshotForStorage(project || {});
+}
+
+function clearProjectScopedStorage() {
+  if (storageService && typeof storageService.clearByPrefixes === "function") {
+    storageService.clearByPrefixes([
+      "machine_settings_time",
+      "machine_settings_pf",
+      "machine_settings",
+      "settings_projects",
+      "dsq_",
+    ]);
+    return;
+  }
+
+  if (typeof localStorage === "undefined" || !localStorage) {
+    return;
+  }
+  var keys = [
+    "machine_settings" + window.version,
+    "machine_settings_time" + window.version,
+    "machine_settings_pf" + window.version,
+    "settings_projects" + window.version,
+    "dsq_locale",
+    "dsq_monitor_config",
+    "dsq_monitor_endpoint",
+    "dsq_release",
+    "dsq_error_logs",
+    "dsq_blueprint_metric_history",
+    "dsq_blueprint_stats",
+  ];
+  for (var i = 0; i < keys.length; i++) {
+    localStorage.removeItem(keys[i]);
+  }
+}
+
 var machineDisplayI18nKeys = {
   矩阵研究站: "option.research.matrix",
   自演化研究站: "option.research.self_evolution",
@@ -319,7 +395,7 @@ function f_init() {
             // Number.isInteger(this.number_editor_number) &&
             this.items_editor_number > 0
           ) {
-            multiple = this.items_editor_number / this.items[this.items_editor_index].number2;
+            var multiple = this.items_editor_number / this.items[this.items_editor_index].number2;
 
             for (var i = 0; i < this.xqs.length; i++) {
               this.xqs[i].number *= multiple;
@@ -586,9 +662,8 @@ function f_init() {
       saveSettingPf();
       //刷新数据
       update_all();
-      //清空localStorage
-      localStorage.clear();
-      localStorage;
+      // 清理 DSQ 命名空间缓存，避免误删同源其他应用数据
+      clearProjectScopedStorage();
       //刷新页面
       location.reload();
       return true;
@@ -623,10 +698,11 @@ function f_init() {
     if (!value) return;
     for (var i = 0; i < projects.length; i++) {
       if (projects[i].name == value) {
-        xqs = projects[i].value;
-        singleMake = projects[i].singleMake || [];
-        ig_names = projects[i].ig_names || [];
-        settings = projects[i].settings || {};
+        var loadedProject = hydrateProjectForRuntime(projects[i]);
+        xqs = Array.isArray(loadedProject.value) ? loadedProject.value : [];
+        singleMake = Array.isArray(loadedProject.singleMake) ? loadedProject.singleMake : [];
+        ig_names = Array.isArray(loadedProject.ig_names) ? loadedProject.ig_names : [];
+        settings = loadedProject.settings && typeof loadedProject.settings === "object" ? loadedProject.settings : {};
         scheduleUpdateAll("load-project");
         return;
       }
@@ -969,9 +1045,9 @@ function fixGzSpeed() {
                 if (manualGzSpeed) {
                   fixedGzSpeed = parseFloat(dom("#gzSpeed").val());
                 } else {
-                  item = find("临界光子", true);
-                  accType = (settings[item.id] || {}).accType || defaultAccType;
-                  accValue = (settings[item.id] || {}).accValue || defaultAccValue;
+                  var item = find("临界光子", true);
+                  var accType = (settings[item.id] || {}).accType || defaultAccType;
+                  var accValue = (settings[item.id] || {}).accValue || defaultAccValue;
                   if (accValue === "加速") {
                     switch (accType) {
                       case "增产剂Mk.Ⅰ":
@@ -1444,7 +1520,7 @@ function f_save() {
     }
     product_settings[find(item.name).id] = product_setting;
   }
-  projects[index] = {
+  var projectPayload = {
     name: name,
     singleMake: singleMake,
     ig_names: ig_names || [],
@@ -1452,6 +1528,7 @@ function f_save() {
     // 增产剂和工厂类型设置
     settings: product_settings,
   };
+  projects[index] = createProjectSnapshotForStorage(projectPayload);
   saveSettingProjects();
   projectsUpdate();
 }

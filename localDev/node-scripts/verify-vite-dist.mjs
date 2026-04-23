@@ -7,6 +7,7 @@ const REQUIRED_FILES = [
   "sitemap.xml",
   "sitemap-images.xml",
   "robots.txt",
+  "Scripts/app.services.js",
   "Scripts/data.js",
   "Scripts/blueprint.js",
   "Scripts/blueprint.layout.js",
