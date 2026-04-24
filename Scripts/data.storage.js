@@ -2,6 +2,8 @@ var migratedLegacyCookieKeys = {};
 var storageServices = window.DSQServices || null;
 var storageAdapter = storageServices && storageServices.storage ? storageServices.storage : null;
 var globalSettingsService = storageServices && storageServices.globalSettings ? storageServices.globalSettings : null;
+var projectService = storageServices && storageServices.project ? storageServices.project : null;
+var domainDictionary = window.DSQDomainDictionary || null;
 
 function readCookieValue(key) {
   if (!key || typeof document === "undefined") return null;
@@ -89,6 +91,90 @@ function normalizeGlobalSettingsForStorage(source) {
   return source && typeof source === "object" ? source : {};
 }
 
+function normalizeMachineSettingRecord(source) {
+  var input = source && typeof source === "object" ? source : {};
+  var output = {};
+  if (input.m != null) {
+    var machineId =
+      domainDictionary && typeof domainDictionary.getMachineId === "function"
+        ? domainDictionary.getMachineId(input.m)
+        : input.m;
+    if (machineId) {
+      output.m = machineId;
+    }
+  }
+  if (input.accType != null) {
+    var accTypeId =
+      domainDictionary && typeof domainDictionary.getItemId === "function"
+        ? domainDictionary.getItemId(input.accType)
+        : input.accType;
+    if (accTypeId) {
+      output.accType = accTypeId;
+    }
+  }
+  if (input.accValue != null) {
+    var accValueId =
+      domainDictionary && typeof domainDictionary.getAccValueId === "function"
+        ? domainDictionary.getAccValueId(input.accValue)
+        : input.accValue;
+    if (accValueId) {
+      output.accValue = accValueId;
+    }
+  }
+  return output;
+}
+
+function normalizeMachineSettingsForStorage(source) {
+  var input = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  var output = {};
+  var keys = Object.keys(input);
+  for (var i = 0; i < keys.length; i++) {
+    output[keys[i]] = normalizeMachineSettingRecord(input[keys[i]]);
+  }
+  return output;
+}
+
+function normalizeSpeedSettingsForStorage(source) {
+  var input = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  var output = {};
+  var keys = Object.keys(input);
+  for (var i = 0; i < keys.length; i++) {
+    var rawKey = keys[i];
+    var machineId =
+      domainDictionary && typeof domainDictionary.getMachineId === "function"
+        ? domainDictionary.getMachineId(rawKey)
+        : rawKey;
+    var numericValue = Number(input[rawKey]);
+    if (!machineId || !Number.isFinite(numericValue) || numericValue <= 0) {
+      continue;
+    }
+    output[machineId] = numericValue;
+  }
+  return output;
+}
+
+function normalizeProjectForStorage(project) {
+  var snapshot =
+    projectService && typeof projectService.createSnapshot === "function"
+      ? projectService.createSnapshot(project)
+      : project && typeof project === "object"
+        ? project
+        : {};
+  snapshot.settings = normalizeMachineSettingsForStorage(snapshot.settings);
+  return snapshot;
+}
+
+function normalizeProjectsForStorage(source) {
+  if (!Array.isArray(source)) {
+    return [];
+  }
+  var output = [];
+  for (var i = 0; i < source.length; i++) {
+    output.push(normalizeProjectForStorage(source[i]));
+  }
+  return output;
+}
+
 window.saveData = function (key, value) {
   setLocalStorageItem(key, value);
 };
@@ -105,14 +191,13 @@ window.getData = function (key) {
 };
 
 window.saveSetting = function () {
+  window.settings = normalizeMachineSettingsForStorage(window.settings);
   saveData("machine_settings" + window.version, JSON.stringify(window.settings));
 };
 
 window.loadSetting = function () {
   var parsed = loadStoredObject("machine_settings" + window.version, {});
-  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-    window.settings = parsed;
-  }
+  window.settings = normalizeMachineSettingsForStorage(parsed);
   var beltNode = document.getElementById("onlyConveyorBeltMk3");
   var sorterNode = document.getElementById("onlySorterMk3");
   if (beltNode) {
@@ -136,14 +221,13 @@ window.loadGlobalSettings = function () {
 };
 
 window.saveSettingTime = function () {
+  window.settings_time = normalizeSpeedSettingsForStorage(window.settings_time);
   saveData("machine_settings_time" + window.version, JSON.stringify(window.settings_time));
 };
 
 window.loadSettingTime = function () {
   var parsed = loadStoredObject("machine_settings_time" + window.version, {});
-  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-    window.settings_time = parsed;
-  }
+  window.settings_time = normalizeSpeedSettingsForStorage(parsed);
 };
 
 window.saveSettingPf = function () {
@@ -158,12 +242,11 @@ window.loadSettingPf = function () {
 };
 
 window.saveSettingProjects = function () {
+  window.projects = normalizeProjectsForStorage(window.projects);
   saveData("settings_projects" + window.version, JSON.stringify(window.projects));
 };
 
 window.loadSettingProjects = function () {
   var parsed = loadStoredObject("settings_projects" + window.version, []);
-  if (Array.isArray(parsed)) {
-    window.projects = parsed;
-  }
+  window.projects = normalizeProjectsForStorage(parsed);
 };

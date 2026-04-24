@@ -113,22 +113,24 @@
     return createProjectSnapshot(project);
   }
 
+  var domainDictionary = root.DSQDomainDictionary || null;
+
   var GLOBAL_SETTINGS_DEFAULTS = Object.freeze({
-    selmodein: "制作台Mk.Ⅰ",
-    furnace: "电弧熔炉",
-    chemical: "化工厂",
-    research: "矩阵研究站",
-    accType: "增产剂Mk.Ⅰ",
-    accValue: "无",
+    selmodein: "assemblingMachineMk1",
+    furnace: "arcSmelter",
+    chemical: "chemicalPlant",
+    research: "matrixLab",
+    accType: "proliferatorMk1",
+    accValue: "none",
   });
 
   var GLOBAL_SETTINGS_OPTIONS = Object.freeze({
-    selmodein: ["制作台Mk.Ⅰ", "制作台Mk.Ⅱ", "制作台Mk.Ⅲ", "重组式制造台"],
-    furnace: ["电弧熔炉", "位面熔炉", "负熵熔炉"],
-    chemical: ["化工厂", "量子化工厂"],
-    research: ["矩阵研究站", "自演化研究站"],
-    accType: ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"],
-    accValue: ["无", "加速", "增产"],
+    selmodein: ["assemblingMachineMk1", "assemblingMachineMk2", "assemblingMachineMk3", "recomposingAssembler"],
+    furnace: ["arcSmelter", "planeSmelter", "negentropySmelter"],
+    chemical: ["chemicalPlant", "quantumChemicalPlant"],
+    research: ["matrixLab", "selfEvolutionLab"],
+    accType: ["proliferatorMk1", "proliferatorMk2", "proliferatorMk3"],
+    accValue: ["none", "speedup", "extra"],
   });
 
   function normalizeEnumValue(value, allowedValues, fallbackValue) {
@@ -138,14 +140,63 @@
     return fallbackValue;
   }
 
+  function normalizeMachineValue(value, allowedValues, fallbackValue) {
+    var normalizedValue = value;
+    if (domainDictionary && typeof domainDictionary.getMachineId === "function") {
+      normalizedValue = domainDictionary.getMachineId(value) || value;
+    }
+    return normalizeEnumValue(normalizedValue, allowedValues, fallbackValue);
+  }
+
+  function normalizeItemValue(value, allowedValues, fallbackValue) {
+    var normalizedValue = value;
+    if (domainDictionary && typeof domainDictionary.getItemId === "function") {
+      normalizedValue = domainDictionary.getItemId(value) || value;
+    }
+    return normalizeEnumValue(normalizedValue, allowedValues, fallbackValue);
+  }
+
+  function normalizeAccValue(value, allowedValues, fallbackValue) {
+    var normalizedValue = value;
+    if (domainDictionary && typeof domainDictionary.getAccValueId === "function") {
+      normalizedValue = domainDictionary.getAccValueId(value) || value;
+    }
+    return normalizeEnumValue(normalizedValue, allowedValues, fallbackValue);
+  }
+
   function createGlobalSettingsSnapshot(source) {
     var output = {};
     var input = source && isObject(source) ? source : {};
-    var keys = Object.keys(GLOBAL_SETTINGS_DEFAULTS);
-    for (var i = 0; i < keys.length; i++) {
-      var key = keys[i];
-      output[key] = normalizeEnumValue(input[key], GLOBAL_SETTINGS_OPTIONS[key], GLOBAL_SETTINGS_DEFAULTS[key]);
-    }
+    output.selmodein = normalizeMachineValue(
+      input.selmodein,
+      GLOBAL_SETTINGS_OPTIONS.selmodein,
+      GLOBAL_SETTINGS_DEFAULTS.selmodein
+    );
+    output.furnace = normalizeMachineValue(
+      input.furnace,
+      GLOBAL_SETTINGS_OPTIONS.furnace,
+      GLOBAL_SETTINGS_DEFAULTS.furnace
+    );
+    output.chemical = normalizeMachineValue(
+      input.chemical,
+      GLOBAL_SETTINGS_OPTIONS.chemical,
+      GLOBAL_SETTINGS_DEFAULTS.chemical
+    );
+    output.research = normalizeMachineValue(
+      input.research,
+      GLOBAL_SETTINGS_OPTIONS.research,
+      GLOBAL_SETTINGS_DEFAULTS.research
+    );
+    output.accType = normalizeItemValue(
+      input.accType,
+      GLOBAL_SETTINGS_OPTIONS.accType,
+      GLOBAL_SETTINGS_DEFAULTS.accType
+    );
+    output.accValue = normalizeAccValue(
+      input.accValue,
+      GLOBAL_SETTINGS_OPTIONS.accValue,
+      GLOBAL_SETTINGS_DEFAULTS.accValue
+    );
     return output;
   }
 
@@ -421,7 +472,16 @@
       fallbackValue = Number.isFinite(bounds.min) ? bounds.min : 0;
     }
     updateNumericElementState(element, fallbackValue, bounds);
-    warnNumericIssue(result, fallbackValue, bounds);
+    warnNumericIssue(
+      result,
+      fallbackValue,
+      Object.assign({}, normalizedOptions, {
+        min: bounds.min,
+        max: bounds.max,
+        integer: bounds.integer,
+        maxFractionDigits: bounds.maxFractionDigits,
+      })
+    );
     return fallbackValue;
   }
 
@@ -486,6 +546,7 @@
       hydrateForRuntime: hydrateProjectForRuntime,
       normalizeName: normalizeProjectName,
     },
+    domain: domainDictionary,
     globalSettings: {
       defaults: GLOBAL_SETTINGS_DEFAULTS,
       options: GLOBAL_SETTINGS_OPTIONS,

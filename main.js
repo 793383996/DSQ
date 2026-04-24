@@ -8,6 +8,7 @@ const LEGACY_SCRIPTS = [
   "./Scripts/cocoMessage.js",
   "./Scripts/calc-core.js",
   "./Scripts/data.state.js",
+  "./Scripts/domain.dictionary.js",
   "./Scripts/app.services.js",
   "./Scripts/data.storage.js",
   "./Scripts/data.js",

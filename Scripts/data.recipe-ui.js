@@ -98,28 +98,24 @@ function f_fillData() {
 //找到这个物品的配方 - 使用索引查找 O(n) → O(k)
 
 function getIconImg(name) {
+  var dictionary = typeof window !== "undefined" ? window.DSQDomainDictionary || null : null;
   var title = [];
-  if (name == "研究站") name = "矩阵研究站";
-  if (name == "电弧熔炉") name = "电弧熔炉";
-  if (name == "位面熔炉") name = "位面熔炉";
-  if (name == "原油精炼机") name = "原油精炼厂";
-  if (name == "粒子对撞机") name = "微型粒子对撞机";
-  if (name == "射线接收塔") name = "射线接收站";
-  if (name == "轨道采集器(气态)") name = "轨道采集器";
-  if (name == "轨道采集器(巨冰)") name = "轨道采集器";
+  var iconName = dictionary && typeof dictionary.getIconName === "function" ? dictionary.getIconName(name) : name;
+  var displayName =
+    dictionary && typeof dictionary.getDisplayName === "function" ? dictionary.getDisplayName(name) : name;
 
-  if (icons[name]) {
+  if (icons[iconName]) {
     title.push(
       "<img class='sicon' src='data:image/png;base64," +
-        icons[name] +
+        icons[iconName] +
         "' title='" +
-        name +
+        displayName +
         "' alt='" +
-        name +
+        displayName +
         "' loading='lazy' />"
     );
   } else {
-    title.push(name);
+    title.push(displayName);
   }
   return title.join("");
 }
@@ -155,9 +151,9 @@ function getPfTitle(item, info) {
     if (info && isChecked("showMaxOneBelt")) {
       var csd = readInputValue("csd");
       var csdsize = calcCore ? calcCore.getBeltSpeed(csd) : 1800;
-      if (!calcCore && csd == "传送带") {
+      if (!calcCore && csd == "conveyorBeltMk1") {
         csdsize = 360;
-      } else if (!calcCore && csd == "高速传送带") {
+      } else if (!calcCore && csd == "conveyorBeltMk2") {
         csdsize = 720;
       }
       var number = calcCore
@@ -171,7 +167,7 @@ function getPfTitle(item, info) {
             accValue: info.accValue,
             direction: "input",
           })
-        : info.accValue === "增产"
+        : info.accValue === "extra"
           ? calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5)
           : calculateBaseNumber(item.t, item.q, j, info, csdsize, speed1_5) / getAccSpeed(info.accType, info.accValue);
       title.push("<sub class='maxOneBeltIn'>" + number.toFixed(1));
@@ -188,9 +184,9 @@ function getPfTitle(item, info) {
     if (info && isChecked("showMaxOneBelt")) {
       var beltType = readInputValue("csd");
       var beltSpeed = calcCore ? calcCore.getBeltSpeed(beltType) : 1800;
-      if (!calcCore && beltType == "传送带") {
+      if (!calcCore && beltType == "conveyorBeltMk1") {
         beltSpeed = 360;
-      } else if (!calcCore && beltType == "高速传送带") {
+      } else if (!calcCore && beltType == "conveyorBeltMk2") {
         beltSpeed = 720;
       }
       var outputNumber = calcCore
@@ -231,8 +227,8 @@ function f_add3(name) {
     // 设备数量支持增产剂计算
     var accType = typeof getAccType === "function" ? getAccType(currentItem) || defaultAccType : defaultAccType;
     var accValue = typeof getAccValue === "function" ? getAccValue(currentItem) || defaultAccValue : defaultAccValue;
-    if (accValue == "增产" && currentItem.noExtra) accValue = "无";
-    if (currentItem.q.length == 0) accValue = "无";
+    if (accValue == "extra" && currentItem.noExtra) accValue = "none";
+    if (currentItem.q.length == 0) accValue = "none";
 
     var info = getValue(currentItem);
     var machineCount = readRecipeUiNumber("selmaince", {

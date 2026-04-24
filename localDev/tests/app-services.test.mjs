@@ -3,6 +3,7 @@ import { runInNewContext } from "node:vm";
 import { beforeAll, describe, expect, it } from "vitest";
 
 let services;
+let runtimeContext;
 
 function createInput(value, attributes = {}) {
   return {
@@ -19,16 +20,27 @@ function createInput(value, attributes = {}) {
 }
 
 beforeAll(() => {
-  const sourceCode = readFileSync("Scripts/app.services.js", "utf8");
   const context = {
     console: {
       warn() {},
       error() {},
     },
+    __warnings: [],
+    cocoMessage: {
+      warning(message, duration) {
+        context.__warnings.push({ message, duration });
+      },
+    },
   };
   context.globalThis = context;
   context.window = context;
-  runInNewContext(sourceCode, context, { filename: "Scripts/app.services.js" });
+  runInNewContext(readFileSync("Scripts/domain.dictionary.js", "utf8"), context, {
+    filename: "Scripts/domain.dictionary.js",
+  });
+  runInNewContext(readFileSync("Scripts/app.services.js", "utf8"), context, {
+    filename: "Scripts/app.services.js",
+  });
+  runtimeContext = context;
   services = context.DSQServices;
 });
 
@@ -39,17 +51,17 @@ describe("DSQ services", () => {
       furnace: "位面熔炉",
       chemical: "bad-chemical",
       research: "自演化研究站",
-      accType: "bad-acc",
+      accType: "增产剂Mk.Ⅲ",
       accValue: "增产",
     });
 
     expect(snapshot).toEqual({
-      selmodein: "制作台Mk.Ⅰ",
-      furnace: "位面熔炉",
-      chemical: "化工厂",
-      research: "自演化研究站",
-      accType: "增产剂Mk.Ⅰ",
-      accValue: "增产",
+      selmodein: "assemblingMachineMk1",
+      furnace: "planeSmelter",
+      chemical: "chemicalPlant",
+      research: "selfEvolutionLab",
+      accType: "proliferatorMk3",
+      accValue: "extra",
     });
   });
 
@@ -133,5 +145,21 @@ describe("DSQ services", () => {
     });
     expect(pointLength).toBe(6);
     expect(pointLengthInput.value).toBe("6");
+  });
+
+  it("preserves warn=false for initialization-time numeric recovery", () => {
+    runtimeContext.__warnings.length = 0;
+    const machineCountInput = createInput("", { min: "1", max: "1000", step: "1" });
+
+    const machineCount = services.numeric.readInput(machineCountInput, {
+      fieldLabel: "生产设备数",
+      fallbackValue: 1,
+      requirePositive: true,
+      warn: false,
+    });
+
+    expect(machineCount).toBe(1);
+    expect(machineCountInput.value).toBe("1");
+    expect(runtimeContext.__warnings).toEqual([]);
   });
 });

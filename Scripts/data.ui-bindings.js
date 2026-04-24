@@ -21,14 +21,92 @@ var projectService = dsqServices.project || null;
 var numericService = dsqServices.numeric || null;
 var globalSettingsService = dsqServices.globalSettings || null;
 var notifyService = dsqServices.notify || null;
+var domainDictionary = window.DSQDomainDictionary || null;
 
 var GLOBAL_SETTING_CONTROL_IDS = ["selmodein", "furnace", "chemical", "research", "accType", "accValue"];
 var GLOBAL_SETTINGS_BY_MACHINE_NAME = {
-  制作台: "selmodein",
-  冶炼设备: "furnace",
-  化工设备: "chemical",
-  研究站: "research",
+  assembler: "selmodein",
+  smelter: "furnace",
+  chemical: "chemical",
+  research: "research",
 };
+
+function getDomainItemId(value) {
+  if (!domainDictionary || typeof domainDictionary.getItemId !== "function") {
+    return value;
+  }
+  return domainDictionary.getItemId(value) || value;
+}
+
+function getDomainMachineId(value) {
+  if (!domainDictionary || typeof domainDictionary.getMachineId !== "function") {
+    return value;
+  }
+  return domainDictionary.getMachineId(value) || value;
+}
+
+function getDomainRecipeTypeId(value) {
+  if (!domainDictionary || typeof domainDictionary.getRecipeTypeId !== "function") {
+    return value;
+  }
+  return domainDictionary.getRecipeTypeId(value) || value;
+}
+
+function getDomainAccValueId(value) {
+  if (!domainDictionary || typeof domainDictionary.getAccValueId !== "function") {
+    return value;
+  }
+  return domainDictionary.getAccValueId(value) || value;
+}
+
+function getDomainDisplayName(value) {
+  if (!domainDictionary || typeof domainDictionary.getDisplayName !== "function") {
+    return value;
+  }
+  return domainDictionary.getDisplayName(value) || value;
+}
+
+function getDomainIconName(value) {
+  if (!domainDictionary || typeof domainDictionary.getIconName !== "function") {
+    return getDomainDisplayName(value);
+  }
+  return domainDictionary.getIconName(value) || getDomainDisplayName(value);
+}
+
+function getMachineI18nKey(value) {
+  if (!domainDictionary || typeof domainDictionary.getMachineI18nKey !== "function") {
+    return null;
+  }
+  return domainDictionary.getMachineI18nKey(value);
+}
+
+function isProliferatorItemId(value) {
+  return value === "proliferatorMk1" || value === "proliferatorMk2" || value === "proliferatorMk3";
+}
+
+function getAccTypeMetrics(accTypeId) {
+  switch (accTypeId) {
+    case "proliferatorMk1":
+      return { extraRate: 1.125, sprayCount: 12, energyFactor: 1.3 };
+    case "proliferatorMk2":
+      return { extraRate: 1.2, sprayCount: 24, energyFactor: 1.7 };
+    case "proliferatorMk3":
+      return { extraRate: 1.25, sprayCount: 60, energyFactor: 2.5 };
+    default:
+      return { extraRate: 1, sprayCount: 0, energyFactor: 1 };
+  }
+}
+
+function createQuoteIncludeState() {
+  var state =
+    window.__DSQQuoteIncludeState && typeof window.__DSQQuoteIncludeState === "object"
+      ? window.__DSQQuoteIncludeState
+      : {};
+  return {
+    updata: typeof state.updata === "string" ? state.updata : "",
+    explanation: typeof state.explanation === "string" ? state.explanation : "",
+  };
+}
 
 function deepCloneValue(value) {
   if (dsqServices && typeof dsqServices.deepClone === "function") {
@@ -141,21 +219,21 @@ function createGlobalSettingsSnapshot(source) {
     return globalSettingsService.createSnapshot(source);
   }
   var defaults = {
-    selmodein: "制作台Mk.Ⅰ",
-    furnace: "电弧熔炉",
-    chemical: "化工厂",
-    research: "矩阵研究站",
-    accType: "增产剂Mk.Ⅰ",
-    accValue: "无",
+    selmodein: "assemblingMachineMk1",
+    furnace: "arcSmelter",
+    chemical: "chemicalPlant",
+    research: "matrixLab",
+    accType: "proliferatorMk1",
+    accValue: "none",
   };
   var input = source && typeof source === "object" ? source : {};
   return {
-    selmodein: input.selmodein || defaults.selmodein,
-    furnace: input.furnace || defaults.furnace,
-    chemical: input.chemical || defaults.chemical,
-    research: input.research || defaults.research,
-    accType: input.accType || defaults.accType,
-    accValue: input.accValue || defaults.accValue,
+    selmodein: getDomainMachineId(input.selmodein) || defaults.selmodein,
+    furnace: getDomainMachineId(input.furnace) || defaults.furnace,
+    chemical: getDomainMachineId(input.chemical) || defaults.chemical,
+    research: getDomainMachineId(input.research) || defaults.research,
+    accType: getDomainItemId(input.accType) || defaults.accType,
+    accValue: getDomainAccValueId(input.accValue) || defaults.accValue,
   };
 }
 
@@ -233,14 +311,17 @@ function initTrackedNumericInputs() {
     min: 0.000001,
     maxFractionDigits: 6,
   });
-  rememberNumeric("selmaince", {
-    fieldLabel: getNumericFieldLabel("control.device_count", "生产设备数"),
-    fallbackValue: 1,
-    requirePositive: true,
-    min: 1,
-    max: 1000,
-    integer: true,
-  });
+  var machineCountInput = document.getElementById("selmaince");
+  if (machineCountInput && machineCountInput.value !== "") {
+    rememberNumeric("selmaince", {
+      fieldLabel: getNumericFieldLabel("control.device_count", "生产设备数"),
+      fallbackValue: 1,
+      requirePositive: true,
+      min: 1,
+      max: 1000,
+      integer: true,
+    });
+  }
   rememberNumeric("pointLength", {
     fieldLabel: getNumericFieldLabel("settings.speed.decimal_places", "小数点后保留"),
     fallbackValue: pointLength,
@@ -286,56 +367,30 @@ function clearProjectScopedStorage() {
   }
 }
 
-var machineDisplayI18nKeys = {
-  矩阵研究站: "option.research.matrix",
-  自演化研究站: "option.research.self_evolution",
-  "制作台Mk.Ⅰ": "option.machine.mk1",
-  "制作台Mk.Ⅱ": "option.machine.mk2",
-  "制作台Mk.Ⅲ": "option.machine.mk3",
-  重组式制造台: "option.machine.recomposing",
-  电弧熔炉: "option.furnace.arc",
-  位面熔炉: "option.furnace.plane",
-  负熵熔炉: "option.furnace.negentropy",
-  化工厂: "option.chemical.plant",
-  量子化工厂: "option.chemical.quantum",
-  采矿机: "machine_name.miner",
-  大型采矿机: "machine_name.advanced_miner",
-  矿脉: "machine_name.ore_vein",
-  原油萃取站: "machine_name.oil_extractor",
-  抽水机: "machine_name.water_pump",
-  原油精炼机: "machine_name.oil_refinery",
-  粒子对撞机: "machine_name.particle_collider",
-  轨道采集器: "machine_name.orbital_collector",
-  "轨道采集器(巨冰)": "machine_name.orbital_collector_ice",
-  "轨道采集器(气态)": "machine_name.orbital_collector_gas",
-  射线接收塔: "machine_name.ray_receiver",
-  分馏塔: "machine_name.fractionator",
-  能量枢纽: "machine_name.energy_exchanger",
-  黑雾掉落: "machine_name.dark_fog_drop",
-};
-
 var accTypeI18nKeys = {
-  "增产剂Mk.Ⅰ": "option.acc_type.mk1",
-  "增产剂Mk.Ⅱ": "option.acc_type.mk2",
-  "增产剂Mk.Ⅲ": "option.acc_type.mk3",
+  proliferatorMk1: "option.acc_type.mk1",
+  proliferatorMk2: "option.acc_type.mk2",
+  proliferatorMk3: "option.acc_type.mk3",
 };
 
 var accValueI18nKeys = {
-  无: "option.acc_value.none",
-  加速: "option.acc_value.speedup",
-  增产: "option.acc_value.production",
+  none: "option.acc_value.none",
+  speedup: "option.acc_value.speedup",
+  extra: "option.acc_value.production",
 };
 
 function translateMachineDisplayName(name) {
-  var key = machineDisplayI18nKeys[name];
-  if (!key) return name;
-  return i18nText(key, name);
+  var displayName = getDomainDisplayName(name);
+  var key = getMachineI18nKey(name);
+  if (!key) return displayName;
+  return i18nText(key, displayName);
 }
 
 function translateAccTypeLabel(name) {
+  var displayName = getDomainDisplayName(name);
   var key = accTypeI18nKeys[name];
-  if (!key) return name;
-  return i18nText(key, name);
+  if (!key) return displayName;
+  return i18nText(key, displayName);
 }
 
 function translateAccTypeDisplayName(name) {
@@ -346,8 +401,9 @@ function translateAccTypeDisplayName(name) {
 
 function translateAccValueDisplayName(name) {
   var key = accValueI18nKeys[name];
-  if (!key) return name;
-  return i18nText(key, name);
+  var displayName = getDomainDisplayName(name);
+  if (!key) return displayName;
+  return i18nText(key, displayName);
 }
 
 function refreshI18nDom() {
@@ -532,6 +588,7 @@ function f_init() {
       totalAccLabel: "总喷涂增产剂数量：",
       totalSpaceLabel: "占地格子数：",
       totalEnergyLabel: "耗能估算：",
+      quoteIncludes: createQuoteIncludeState(),
       xps_editor_index: -1,
       xps_editor_number: 0,
       items_editor_index: -1,
@@ -539,12 +596,12 @@ function f_init() {
     },
     methods: {
       speedChange: function (item) {
-        if (!item || !item.machineName) {
+        if (!item || !item.machineId) {
           return;
         }
-        settings_time[item.machineName] = readNumeric(item.speed, {
+        settings_time[item.machineId] = readNumeric(item.speed, {
           fieldLabel: getNumericFieldLabel("settings.speed.title", "速度、产量设置"),
-          previousValue: settings_time[item.machineName] || Number(item.speed) || 1,
+          previousValue: settings_time[item.machineId] || Number(item.speed) || 1,
           fallbackValue: Number(item.speed) || 1,
           requirePositive: true,
           maxFractionDigits: 6,
@@ -727,7 +784,7 @@ function f_init() {
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
-          if (this.m[i].name == "大型采矿机") {
+          if (this.m[i].id == "advancedMiningMachine") {
             this.m[i].speed = 1 * 20 * 0.01 * oreValue * 0.01 * advancedMinerValue;
           }
         }
@@ -752,16 +809,16 @@ function f_init() {
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
-          if (this.m[i].name == "矿脉") {
+          if (this.m[i].id == "vein") {
             this.m[i].speed = Math.min(0.5 * 1 * 0.01 * oreValue, 30);
           }
-          if (this.m[i].name == "采矿机") {
+          if (this.m[i].id == "miningMachine") {
             this.m[i].speed = Math.min(0.5 * 6 * 0.01 * oreValue, 30);
           }
-          if (this.m[i].name == "大型采矿机") {
+          if (this.m[i].id == "advancedMiningMachine") {
             this.m[i].speed = 1 * 20 * 0.01 * oreValue * 0.01 * advancedMinerValue;
           }
-          if (this.m[i].name == "抽水机") {
+          if (this.m[i].id == "waterPump") {
             this.m[i].speed = Math.min((50 * 0.01 * oreValue) / 60, 30);
           }
         }
@@ -816,7 +873,7 @@ function f_init() {
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
-          if (this.m[i].name == "分馏塔") {
+          if (this.m[i].id == "fractionator") {
             this.m[i].speed = fractionatorSpeed / (0.01 * 60);
           }
         }
@@ -834,7 +891,7 @@ function f_init() {
     dom(data).each(function () {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
-          if (this.m[i].name == "原油萃取站") {
+          if (this.m[i].id == "oilExtractor") {
             this.m[i].speed = oilSpeed;
           }
         }
@@ -905,23 +962,26 @@ function f_init() {
       return sum;
     }
     dom(data).each(function () {
-      if (this.s && (this.s[0].name == "氢" || this.s[0].name == "重氢" || this.s[0].name == "可燃冰")) {
+      if (
+        this.s &&
+        (this.s[0].itemId == "hydrogen" || this.s[0].itemId == "deuterium" || this.s[0].itemId == "fireIce")
+      ) {
         if (this.m) {
           for (var i = 0; i < this.m.length; i++) {
-            if (this.m[i].name == "轨道采集器(气态)") {
-              if (this.s[0].name == "氢") {
+            if (this.m[i].id == "orbitalCollectorGas") {
+              if (this.s[0].itemId == "hydrogen") {
                 this.t = 1 / (getSum(speed1_1, speed1_2, 8, 8) / 60);
                 // console.log("T1:" + this.t);
-              } else if (this.s[0].name == "重氢") {
+              } else if (this.s[0].itemId == "deuterium") {
                 this.t = 1 / (getSum(speed1_2, speed1_1, 8, 8) / 60);
                 // console.log("T2:" + this.t);
               }
             }
-            if (this.m[i].name == "轨道采集器(巨冰)") {
-              if (this.s[0].name == "氢") {
+            if (this.m[i].id == "orbitalCollectorIce") {
+              if (this.s[0].itemId == "hydrogen") {
                 this.t = 1 / (getSum(speed1_4, speed1_3, 8, 4.8) / 60);
                 // console.log("T3:" + this.t);
-              } else if (this.s[0].name == "可燃冰") {
+              } else if (this.s[0].itemId == "fireIce") {
                 this.t = 1 / (getSum(speed1_3, speed1_4, 4.8, 8) / 60);
                 // console.log("T4:" + this.t);
               }
@@ -1115,18 +1175,20 @@ var ig_names = []; //排除的物品
 //加载需求
 function loadNumber(itemName, n) {
   try {
-    if (dom.inArray(itemName, ig_names) != -1) {
+    var normalizedItemName = getDomainDisplayName(itemName);
+    var normalizedItemId = getDomainItemId(itemName);
+    if (dom.inArray(normalizedItemName, ig_names) != -1) {
       return;
     }
-    if ((itemName == "增产剂Mk.Ⅰ" || itemName == "增产剂Mk.Ⅱ" || itemName == "增产剂Mk.Ⅲ") && n < 0.1) {
+    if (isProliferatorItemId(normalizedItemId) && n < 0.1) {
       return;
     }
-    var item = find(itemName, true); // [normalize_recipe=true]
-    var info = getValue(itemName);
+    var item = find(normalizedItemName, true); // [normalize_recipe=true]
+    var info = getValue(normalizedItemName);
 
-    addXH(itemName, n);
+    addXH(normalizedItemName, n);
     for (var i = 0; i < item.s.length; i++) {
-      if (item.s[i].name != itemName) {
+      if (item.s[i].itemId != normalizedItemId) {
         if (item.s[i].n === 0) continue;
         addOut(item.s[i].name, (-1 * n * (item.s[i].n || 1)) / (item.n || 1));
       }
@@ -1141,19 +1203,17 @@ function loadNumber(itemName, n) {
       }
       if (q.n === 0) continue;
       //如果配方产物和原料有相同的
-      if (q.name == itemName) {
+      if (q.itemId == normalizedItemId) {
         //addXH(itemName, -1 * n * (q.n || 1) / (item.n || 1));
       } else {
         var r = (n * (q.n || 1)) / (item.n || 1);
-        var v = 1,
-          tm = 0;
-        if (accType == "增产剂Mk.Ⅰ") ((v = 1.125), (tm = 12));
-        else if (accType == "增产剂Mk.Ⅱ") ((v = 1.2), (tm = 24));
-        else if (accType == "增产剂Mk.Ⅲ") ((v = 1.25), (tm = 60));
+        var accMetrics = getAccTypeMetrics(accType);
+        var v = accMetrics.extraRate;
+        var tm = accMetrics.sprayCount;
         // 自喷涂
         if (dom("#selfAcc")[0].checked) tm = tm * v - 1;
-        if (accValue == "增产" && item.noExtra) accValue = "无";
-        if (item.q.length == 0 || item.noExtra === null) accValue = "无";
+        if (accValue == "extra" && item.noExtra) accValue = "none";
+        if (item.q.length == 0 || item.noExtra === null) accValue = "none";
 
         // if (accValue == "加速") {
         // accTotal += r / tm;
@@ -1164,12 +1224,12 @@ function loadNumber(itemName, n) {
         // loadNumber(accType, r / tm);
         // }
 
-        if (accValue == "加速") {
+        if (accValue == "speedup") {
           accTotal += r / tm;
           if (!dom("#isAddSelfAccP").get(0).checked) {
             loadNumber(accType, r / tm);
           }
-        } else if (accValue == "增产") {
+        } else if (accValue == "extra") {
           r /= v;
           accTotal += r / tm;
           if (!dom("#isAddSelfAccP").get(0).checked) {
@@ -1180,7 +1240,7 @@ function loadNumber(itemName, n) {
         loadNumber(q.name, r);
       }
     }
-    addAccTotal(itemName, accTotal);
+    addAccTotal(normalizedItemName, accTotal);
   } catch (e) {
     // console.log(itemName);
     throw e;
@@ -1282,12 +1342,12 @@ function checkResult() {
 function fixGzSpeed() {
   let fixedGzSpeed;
   dom(data).each(function () {
-    if (this.s && this.s[0].name == "临界光子") {
+    if (this.s && this.s[0].itemId == "criticalPhoton") {
       if (this.m) {
         for (var i = 0; i < this.m.length; i++) {
-          if (this.m[i].name == "射线接收塔") {
+          if (this.m[i].id == "rayReceiver") {
             for (var j = 0; j < this.q.length; j++) {
-              if (this.q[j].name == "引力透镜") {
+              if (this.q[j].itemId == "gravitonLens") {
                 if (manualGzSpeed) {
                   fixedGzSpeed = readNumeric("gzSpeed", {
                     fieldLabel: getNumericFieldLabel("settings.speed.critical_photon", "临界光子每分钟产量"),
@@ -1296,18 +1356,18 @@ function fixGzSpeed() {
                     maxFractionDigits: 6,
                   });
                 } else {
-                  var item = find("临界光子", true);
+                  var item = find(getDomainDisplayName("criticalPhoton"), true);
                   var accType = getEffectiveAccType(item);
                   var accValue = getEffectiveAccValue(item);
-                  if (accValue === "加速") {
+                  if (accValue === "speedup") {
                     switch (accType) {
-                      case "增产剂Mk.Ⅰ":
+                      case "proliferatorMk1":
                         fixedGzSpeed = 15;
                         break;
-                      case "增产剂Mk.Ⅱ":
+                      case "proliferatorMk2":
                         fixedGzSpeed = 18;
                         break;
-                      case "增产剂Mk.Ⅲ":
+                      case "proliferatorMk3":
                         fixedGzSpeed = 24;
                         break;
                     }
@@ -1341,6 +1401,7 @@ function cloneBlueprintRateList(list, divisor) {
     var item = list[i];
     output.push({
       name: item.name,
+      itemId: item.itemId || getDomainItemId(item.name),
       rate: Number(((item.n || 1) / divisor).toFixed(8)),
     });
   }
@@ -1350,6 +1411,7 @@ function cloneBlueprintRateList(list, divisor) {
 function buildBlueprintSnapshot(requirements, productionLines) {
   var requirementList = Array.isArray(requirements) ? requirements : [];
   var outputNames = [];
+  var outputIds = [];
   var descriptionLines = [];
   var title = "";
 
@@ -1357,11 +1419,15 @@ function buildBlueprintSnapshot(requirements, productionLines) {
     var requirement = requirementList[i];
     if (!requirement || !requirement.item) continue;
     var itemName = requirement.item.name;
+    var itemId = getDomainItemId(itemName);
     var rateText = formatBlueprintRate(requirement.number);
     if (!title) {
       title = itemName + "-" + rateText + "min";
     }
     outputNames.push(itemName);
+    if (itemId) {
+      outputIds.push(itemId);
+    }
     descriptionLines.push(itemName + "-" + rateText + "min");
   }
 
@@ -1376,7 +1442,11 @@ function buildBlueprintSnapshot(requirements, productionLines) {
     title: title,
     description: descriptionLines.length ? descriptionLines.join("\n") + "\n" : "",
     outputNames: outputNames,
-    iconIds: typeof resolveBlueprintIconsByNames === "function" ? resolveBlueprintIconsByNames(outputNames) : [],
+    outputIds: outputIds,
+    iconIds:
+      typeof resolveBlueprintIconsByNames === "function"
+        ? resolveBlueprintIconsByNames(outputIds.length ? outputIds : outputNames)
+        : [],
     subRecipes: subRecipes,
   };
 }
@@ -1407,6 +1477,8 @@ function buildCalculationResult() {
         id: singleMake[m].id,
         number: singleMake[m].number,
         name: item.s[i].name,
+        itemId: item.s[i].itemId,
+        mId: info.machineId,
         mName: info.name,
         value: times * (item.s[i].n || 1),
       });
@@ -1442,14 +1514,14 @@ function buildCalculationResult() {
       xh.value2 = xh.value / (1 / info.time) / 60 / (item.n || 1);
       var accType = getEffectiveAccType(item);
       var accValue = getEffectiveAccValue(item);
-      if (accValue == "增产" && item.noExtra) accValue = "无";
-      if (item.q.length == 0) accValue = "无";
+      if (accValue == "extra" && item.noExtra) accValue = "none";
+      if (item.q.length == 0) accValue = "none";
 
-      if (item.name !== "临界光子" || item.mName !== "射线接收塔") {
+      if (item.itemId !== "criticalPhoton" || item.machineTypeId !== "rayReceiver") {
         // 修正产物与需求物相同时，生产设备计算偏少
         let fixValue2Times = 1;
         for (let j = 0; j < item.q.length; j++) {
-          if (item.q[j].name === item.name) {
+          if (item.q[j].itemId === item.itemId) {
             fixValue2Times = item.n / (item.n - item.q[j].n);
           }
         }
@@ -1499,10 +1571,8 @@ function buildCalculationResult() {
 
     var accType = (s || {}).accType || defaultAccType;
     var accValue = (s || {}).accValue || defaultAccValue;
-    if (accValue != "无") {
-      if (accType == "增产剂Mk.Ⅰ") energy *= 1.3;
-      else if (accType == "增产剂Mk.Ⅱ") energy *= 1.7;
-      else if (accType == "增产剂Mk.Ⅲ") energy *= 2.5;
+    if (accValue != "none") {
+      energy *= getAccTypeMetrics(accType).energyFactor;
     }
 
     for (var i = 0; i < total.length; i++) {
@@ -1533,24 +1603,32 @@ function buildCalculationResult() {
     var info = getValue(xh_list[i].name);
     var accType = getEffectiveAccType(item);
     var accValue = getEffectiveAccValue(item);
-    if (accValue == "增产" && item.noExtra) accValue = "无";
-    if (item.q.length == 0 || item.noExtra === null) accValue = "无";
+    if (accValue == "extra" && item.noExtra) accValue = "none";
+    if (item.q.length == 0 || item.noExtra === null) accValue = "none";
     var acceleratorMode = -1;
-    if (accValue === "加速") {
+    if (accValue === "speedup") {
       acceleratorMode = 1;
-    } else if (accValue === "增产") {
+    } else if (accValue === "extra") {
       acceleratorMode = 0;
     }
     var isSourceRecipe = !item.q || item.q.length === 0;
     blueprintLines.push({
       blueprint: {
         itemName: xh_list[i].name,
+        itemId: item.itemId || getDomainItemId(xh_list[i].name),
         recipeId: item.id,
+        buildingId: isSourceRecipe ? null : info.machineId,
         buildingName: isSourceRecipe ? null : info.name,
         buildingCount: isSourceRecipe ? 0 : Number(xh_list[i].value2) || 0,
         input: isSourceRecipe ? null : cloneBlueprintRateList(item.q, item.t || 1),
         output: isSourceRecipe
-          ? [{ name: xh_list[i].name, rate: Number((xh_list[i].value / 60).toFixed(8)) }]
+          ? [
+              {
+                name: xh_list[i].name,
+                itemId: item.itemId || getDomainItemId(xh_list[i].name),
+                rate: Number((xh_list[i].value / 60).toFixed(8)),
+              },
+            ]
           : cloneBlueprintRateList(item.s, item.t || 1),
         accType: acceleratorMode === -1 ? null : accType,
         accValue: accValue,
@@ -1562,25 +1640,28 @@ function buildCalculationResult() {
         continue;
       }
     }
-    var img = getIconImg(info.name);
+    var img = getIconImg(info.machineId);
     if (img.indexOf("<img") == -1) {
       img = "X" + img;
     }
+    var currentItemId = item.itemId || getDomainItemId(xh_list[i].name);
+    var isFlexibleByproduct = ["refinedOil", "hydrogen", "graphene", "deuterium"].indexOf(currentItemId) !== -1;
     // 当生产精炼油/氢/石墨烯/重氢的生产设施为空时，显示0生产设施以跳过“存在生产设施为空的配方”检验
     var outitem = {
       id: item.id,
       name: xh_list[i].name,
+      itemId: currentItemId,
       number1: xh_list[i].value.toFixed(pointLength),
       number2: xh_list[i].value2
         ? xh_list[i].value2.toFixed(pointLength)
-        : ["精炼油", "氢", "石墨烯", "重氢"].includes(xh_list[i].name)
+        : isFlexibleByproduct
           ? (0.0).toFixed(pointLength)
           : "",
       number2full:
         img +
         (xh_list[i].value2
           ? xh_list[i].value2.toFixed(pointLength)
-          : ["精炼油", "氢", "石墨烯", "重氢"].includes(xh_list[i].name)
+          : isFlexibleByproduct
             ? (0.0).toFixed(pointLength)
             : ""),
       number2img: img,
@@ -1589,6 +1670,7 @@ function buildCalculationResult() {
       speed: info.speed.toFixed(pointLength),
       speedClass: info.isChange ? "time time2" : "time",
       rowClass: isXqs(xh_list[i].name) ? "xqsrow" : "",
+      machineId: info.machineId,
       machineName: info.name,
       m: [],
       pf: [],
@@ -1599,21 +1681,21 @@ function buildCalculationResult() {
       blueprint: blueprintLines[blueprintLines.length - 1].blueprint,
     };
     if (!outitem.number2) outitem.number2full = "";
-    if (xh_list[i].name == "太阳帆") {
+    if (currentItemId == "solarSail") {
       outitem.numberOther =
         i18nText("table.number_other.ejector_prefix", "(可供") +
         getIconShow("电磁轨道弹射器", outitem.number1 / 20) +
         i18nText("table.number_other.suffix", ")");
     }
-    if (xh_list[i].name == "小型运载火箭") {
+    if (currentItemId == "smallCarrierRocket") {
       outitem.numberOther =
         i18nText("table.number_other.ejector_prefix", "(可供") +
         getIconShow("垂直发射井", outitem.number1 / 5) +
         i18nText("table.number_other.suffix", ")");
     }
-    addTotal(info.name, Math.ceil(outitem.number2), { accType: accType, accValue: accValue });
+    addTotal(info.machineId, Math.ceil(outitem.number2), { accType: accType, accValue: accValue });
     // 增产剂总和
-    if (info.accValue != "无") {
+    if (info.accValue != "none") {
       // TODO: 这里调用Math.ceil未必合理，增产剂一般放在总线起始处，所以应该在最终算出的总和处调用Math.ceil
       totalAcc += xh_list[i].accTotal || 0;
     }
@@ -1629,40 +1711,45 @@ function buildCalculationResult() {
     }
     for (var j = 0; j < item.m.length; j++) {
       var m = {
-        class: info.name == item.m[j].name ? "m selected" : "m",
+        class: info.machineId == item.m[j].id ? "m selected" : "m",
         itemName: item.name,
+        id: item.m[j].id,
         name: item.m[j].name,
+        iconName: item.m[j].iconName || getDomainIconName(item.m[j].id),
         title: i18nText("tooltip.machine_speed_prefix", "设备速度:") + item.m[j].speed.toFixed(pointLength),
-        showName: translateMachineDisplayName(item.m[j].name),
+        showName: translateMachineDisplayName(item.m[j].id),
       };
-      if (m.name == "采矿机") {
+      if (m.id == "miningMachine") {
         m.title += i18nText("tooltip.machine_miner_note", " 采矿机按6个矿脉计算(因所限传送带速度最高30)");
       }
-      if (m.name == "大型采矿机") {
+      if (m.id == "advancedMiningMachine") {
         m.title += i18nText("tooltip.machine_advanced_miner_note", " 大型采矿机按20个矿脉计算");
       }
-      if (m.name == "矿脉") {
+      if (m.id == "vein") {
         m.title += i18nText("tooltip.machine_ore_note", " (速度最高30)");
       }
       outitem.m.push(m);
     }
-    ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"].forEach(function (one) {
+    ["proliferatorMk1", "proliferatorMk2", "proliferatorMk3"].forEach(function (one) {
       outitem.accType.push({
         class: one == accType ? "m selected" : "m",
         itemName: item.name,
-        name: one,
+        id: one,
+        name: getDomainDisplayName(one),
+        iconName: getDomainIconName(one),
         title: translateAccTypeLabel(one),
         showName: translateAccTypeDisplayName(one),
       });
     });
 
-    ["无", "加速", "增产"].forEach(function (one) {
-      if (one != "无" && (item.q.length == 0 || item.noExtra === null)) return;
-      if (one == "增产" && item.noExtra) return;
+    ["none", "speedup", "extra"].forEach(function (one) {
+      if (one != "none" && (item.q.length == 0 || item.noExtra === null)) return;
+      if (one == "extra" && item.noExtra) return;
       outitem.accValue.push({
         class: one == accValue ? "m selected" : "m",
         itemName: item.name,
-        name: one,
+        id: one,
+        name: getDomainDisplayName(one),
         title: translateAccValueDisplayName(one),
         showName: translateAccValueDisplayName(one),
       });
@@ -1811,8 +1898,9 @@ function f_ig(obj) {
   scheduleUpdateAll("exclude-item");
 }
 function f_ig_acc() {
-  ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"].forEach(function (one) {
-    if (ig_names.indexOf(one) < 0) ig_names.push(one);
+  ["proliferatorMk1", "proliferatorMk2", "proliferatorMk3"].forEach(function (one) {
+    var displayName = getDomainDisplayName(one);
+    if (ig_names.indexOf(displayName) < 0) ig_names.push(displayName);
   });
   scheduleUpdateAll("exclude-all-acc");
 }
@@ -1881,17 +1969,17 @@ function f_save() {
     let product_setting = {};
     for (let accType of item.accType) {
       if (accType.class === "m selected") {
-        product_setting.accType = accType.name;
+        product_setting.accType = accType.id;
       }
     }
     for (let accValue of item.accValue) {
       if (accValue.class === "m selected") {
-        product_setting.accValue = accValue.name;
+        product_setting.accValue = accValue.id;
       }
     }
     for (let m of item.m) {
       if (m.class === "m selected") {
-        product_setting.m = m.name;
+        product_setting.m = m.id;
       }
     }
     product_settings[find(item.name).id] = product_setting;

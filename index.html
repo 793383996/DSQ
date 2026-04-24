@@ -101,33 +101,33 @@
     <div class="control-row-options">
       <input type="checkbox" id="hideSource" /><label for="hideSource" data-i18n="control.hide_source">隐藏原料</label>
       <select id="selmodein" aria-label="制造台类型" data-i18n-aria-label="control.machine_type_aria">
-        <option value="制作台Mk.Ⅰ" data-i18n="option.machine.mk1">制作台Mk.Ⅰ</option>
-        <option value="制作台Mk.Ⅱ" data-i18n="option.machine.mk2">制作台Mk.Ⅱ</option>
-        <option value="制作台Mk.Ⅲ" data-i18n="option.machine.mk3">制作台Mk.Ⅲ</option>
-        <option value="重组式制造台" data-i18n="option.machine.recomposing">重组式制造台</option>
+        <option value="assemblingMachineMk1" data-i18n="option.machine.mk1">制作台Mk.Ⅰ</option>
+        <option value="assemblingMachineMk2" data-i18n="option.machine.mk2">制作台Mk.Ⅱ</option>
+        <option value="assemblingMachineMk3" data-i18n="option.machine.mk3">制作台Mk.Ⅲ</option>
+        <option value="recomposingAssembler" data-i18n="option.machine.recomposing">重组式制造台</option>
       </select>
       <select id="furnace" aria-label="熔炉类型" data-i18n-aria-label="control.furnace_type_aria">
-        <option value="电弧熔炉" data-i18n="option.furnace.arc">电弧熔炉</option>
-        <option value="位面熔炉" data-i18n="option.furnace.plane">位面熔炉</option>
-        <option value="负熵熔炉" data-i18n="option.furnace.negentropy">负熵熔炉</option>
+        <option value="arcSmelter" data-i18n="option.furnace.arc">电弧熔炉</option>
+        <option value="planeSmelter" data-i18n="option.furnace.plane">位面熔炉</option>
+        <option value="negentropySmelter" data-i18n="option.furnace.negentropy">负熵熔炉</option>
       </select>
       <select id="chemical" aria-label="化工厂类型" data-i18n-aria-label="control.chemical_type_aria">
-        <option value="化工厂" data-i18n="option.chemical.plant">化工厂</option>
-        <option value="量子化工厂" data-i18n="option.chemical.quantum">量子化工厂</option>
+        <option value="chemicalPlant" data-i18n="option.chemical.plant">化工厂</option>
+        <option value="quantumChemicalPlant" data-i18n="option.chemical.quantum">量子化工厂</option>
       </select>
       <select id="accType" aria-label="增产剂等级" data-i18n-aria-label="control.acc_type_aria">
-        <option value="增产剂Mk.Ⅰ" data-i18n="option.acc_type.mk1">增产剂Mk.Ⅰ</option>
-        <option value="增产剂Mk.Ⅱ" data-i18n="option.acc_type.mk2">增产剂Mk.Ⅱ</option>
-        <option value="增产剂Mk.Ⅲ" data-i18n="option.acc_type.mk3">增产剂Mk.Ⅲ</option>
+        <option value="proliferatorMk1" data-i18n="option.acc_type.mk1">增产剂Mk.Ⅰ</option>
+        <option value="proliferatorMk2" data-i18n="option.acc_type.mk2">增产剂Mk.Ⅱ</option>
+        <option value="proliferatorMk3" data-i18n="option.acc_type.mk3">增产剂Mk.Ⅲ</option>
       </select>
       <select id="accValue" aria-label="增产剂效果" data-i18n-aria-label="control.acc_value_aria">
-        <option value="无" data-i18n="option.acc_value.none">无</option>
-        <option value="加速" data-i18n="option.acc_value.speedup">加速</option>
-        <option value="增产" data-i18n="option.acc_value.production">增产</option>
+        <option value="none" data-i18n="option.acc_value.none">无</option>
+        <option value="speedup" data-i18n="option.acc_value.speedup">加速</option>
+        <option value="extra" data-i18n="option.acc_value.production">增产</option>
       </select>
       <select id="research" aria-label="研究站类型" data-i18n-aria-label="control.research_type_aria">
-        <option value="矩阵研究站" data-i18n="option.research.matrix">矩阵研究站</option>
-        <option value="自演化研究站" data-i18n="option.research.self_evolution">自演化研究站</option>
+        <option value="matrixLab" data-i18n="option.research.matrix">矩阵研究站</option>
+        <option value="selfEvolutionLab" data-i18n="option.research.self_evolution">自演化研究站</option>
       </select>
     </div>
     <div class="control-row-options margin-top-12">
@@ -176,9 +176,9 @@
               value="1" /> <span data-i18n="settings.logistics.belt_stack_layers">传送带堆叠层数</span></p>
           <p><span class="label" data-i18n="settings.logistics.belt_capacity_calc">计算传送带支持设备： </span>
             <select id="csd" aria-label="计算传送带支持设备类型" data-i18n-aria-label="settings.logistics.belt_capacity_calc_aria">
-              <option value="传送带" data-i18n="option.belt.mk1">传送带</option>
-              <option value="高速传送带" data-i18n="option.belt.mk2">高速传送带</option>
-              <option value="极速传送带" selected data-i18n="option.belt.mk3">极速传送带</option>
+              <option value="conveyorBeltMk1" data-i18n="option.belt.mk1">传送带</option>
+              <option value="conveyorBeltMk2" data-i18n="option.belt.mk2">高速传送带</option>
+              <option value="conveyorBeltMk3" selected data-i18n="option.belt.mk3">极速传送带</option>
             </select>
           </p>
         </div>
@@ -347,19 +347,19 @@
             </td>
             <td>
               <div class="ms">
-                <a v-bind:data-modein="a.name" v-bind:data-name="a.itemName" v-for="a in item.accType"
+                <a v-bind:data-modein="a.id" v-bind:data-name="a.itemName" v-for="a in item.accType"
                   v-bind:title="a.title" v-bind:class="a.class" href="#"
-                  @click.prevent="onSelectAccType(item.id, a.name, a.class === 'm selected')">
-                  <img :src="'data:image/png;base64,' + icons[a.name]" :alt="a.name" />
+                  @click.prevent="onSelectAccType(item.id, a.id, a.class === 'm selected')">
+                  <img :src="'data:image/png;base64,' + icons[a.iconName]" :alt="a.name" />
                   {{a.showName}}
                 </a>
               </div>
             </td>
             <td>
               <div class="ms">
-                <a v-bind:data-modein="a.name" v-bind:data-name="a.itemName" v-for="a in item.accValue"
+                <a v-bind:data-modein="a.id" v-bind:data-name="a.itemName" v-for="a in item.accValue"
                   v-bind:title="a.title" v-bind:class="a.class" href="#"
-                  @click.prevent="onSelectAccValue(item.id, a.name, a.class === 'm selected')">
+                  @click.prevent="onSelectAccValue(item.id, a.id, a.class === 'm selected')">
                   {{a.showName}}
                 </a>
               </div>
@@ -367,9 +367,9 @@
             </td>
             <td>
               <div class="ms">
-                <a v-bind:data-modein="m.name" v-bind:data-name="m.itemName" v-for="m in item.m" v-bind:title="m.title"
-                  v-bind:class="m.class" href="#" @click.prevent="onSelectMachine(item.id, m.name, m.class === 'm selected')">
-                  <img :src="'data:image/png;base64,' + icons[m.name]" :alt="m.name" v-if="icons[m.name]" />
+                <a v-bind:data-modein="m.id" v-bind:data-name="m.itemName" v-for="m in item.m" v-bind:title="m.title"
+                  v-bind:class="m.class" href="#" @click.prevent="onSelectMachine(item.id, m.id, m.class === 'm selected')">
+                  <img :src="'data:image/png;base64,' + icons[m.iconName]" :alt="m.name" v-if="icons[m.iconName]" />
                   {{m.showName}}
                 </a>
               </div>
@@ -420,7 +420,7 @@
             <td colspan="1" align="right" class="section-title-cell" data-i18n="section.update_notes">更新说明 </td>
             <td colspan="7">
               <!-- 更新说明开始 -->
-              <div data-include="updata"></div>
+              <div data-include="updata" v-html="quoteIncludes.updata"></div>
               <!-- 更新说明结束 -->
             </td>
           </tr>
@@ -428,7 +428,7 @@
             <td colspan="1" align="right" class="section-title-cell" data-i18n="section.usage_notes">使用说明 </td>
             <td colspan="7">
               <!-- 使用说明开始 -->
-              <div data-include="explanation"></div>
+              <div data-include="explanation" v-html="quoteIncludes.explanation"></div>
               <!-- 使用说明结束 -->
             </td>
           </tr>

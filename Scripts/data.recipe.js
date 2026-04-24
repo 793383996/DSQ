@@ -37,19 +37,38 @@ function getGlobalSettingsSnapshot() {
   return global_settings && typeof global_settings === "object" ? global_settings : {};
 }
 
+function getDomainDictionaryRecipeSafe() {
+  if (typeof window !== "undefined" && window.DSQDomainDictionary) {
+    return window.DSQDomainDictionary;
+  }
+  if (typeof DSQDomainDictionary !== "undefined") {
+    return DSQDomainDictionary;
+  }
+  return null;
+}
+
+function normalizeItemLookupName(name) {
+  var dictionary = getDomainDictionaryRecipeSafe();
+  if (!dictionary || typeof dictionary.getItem !== "function") {
+    return name;
+  }
+  var item = dictionary.getItem(name);
+  return item ? item.displayNameZh : name;
+}
+
 function getGlobalMachineDefault(item) {
-  if (!item || !item.mName) return null;
+  if (!item || !item.machineTypeId) return null;
   var defaults = getGlobalSettingsSnapshot();
-  if (item.mName == "制作台") {
+  if (item.machineTypeId == "assembler") {
     return defaults.selmodein || null;
   }
-  if (item.mName == "冶炼设备") {
+  if (item.machineTypeId == "smelter") {
     return defaults.furnace || null;
   }
-  if (item.mName == "化工设备") {
+  if (item.machineTypeId == "chemical") {
     return defaults.chemical || null;
   }
-  if (item.mName == "研究站") {
+  if (item.machineTypeId == "research") {
     return defaults.research || null;
   }
   return null;
@@ -74,7 +93,7 @@ function getMachine(arg) {
   machine = getGlobalMachineDefault(item);
   if (machine != null) return machine;
 
-  return item.m[0].name;
+  return item.m[0].id;
 }
 // 获取配方默认的增产剂等级
 
@@ -107,14 +126,19 @@ function getAccValue(arg) {
 function getValue(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
   if (!item) return null;
-  var machine = getMachine(item);
+  var machineId = getMachine(item);
   var accType = getAccType(item),
     accValue = getAccValue(item);
-  var speed = settings_time[machine];
+  var speed = settings_time[machineId];
 
   if (speed) {
+    var dictionary = getDomainDictionaryRecipeSafe();
+    var machineName =
+      dictionary && typeof dictionary.getDisplayName === "function" ? dictionary.getDisplayName(machineId) : machineId;
     return {
-      name: machine,
+      name: machineName,
+      machineName: machineName,
+      machineId: machineId,
       t: item.t,
       speed: speed,
       time: item.t / speed,
@@ -125,9 +149,11 @@ function getValue(arg) {
   }
   for (var i = 0; i < item.m.length; i++) {
     var m = item.m[i];
-    if (m.name == machine) {
+    if (m.id == machineId) {
       return {
         name: m.name,
+        machineName: m.name,
+        machineId: m.id,
         t: item.t,
         speed: m.speed,
         time: item.t / m.speed,
@@ -139,6 +165,8 @@ function getValue(arg) {
   m = item.m[0];
   return {
     name: m.name,
+    machineName: m.name,
+    machineId: m.id,
     t: item.t,
     speed: m.speed,
     time: item.t / m.speed,
@@ -149,7 +177,8 @@ function getValue(arg) {
 
 function getPfs(name) {
   var pfs = [];
-  var indices = recipeIndexByProduct[name] || [];
+  var lookupName = normalizeItemLookupName(name);
+  var indices = recipeIndexByProduct[lookupName] || [];
   for (var i = 0; i < indices.length; i++) {
     var pf = deepCloneRecipeValue(data[indices[i]]);
     pfs.push(pf);
@@ -160,7 +189,8 @@ function getPfs(name) {
 
 function getPfsByQ(name) {
   var pfs = [];
-  var indices = recipeIndexByMaterial[name] || [];
+  var lookupName = normalizeItemLookupName(name);
+  var indices = recipeIndexByMaterial[lookupName] || [];
   for (var i = 0; i < indices.length; i++) {
     var pf = deepCloneRecipeValue(data[indices[i]]);
     pfs.push(pf);
@@ -176,6 +206,7 @@ function getAccSpeed(type, value) {
 }
 
 function find(name, normalize_recipe) {
+  var lookupName = normalizeItemLookupName(name);
   function get(item) {
     var o = deepCloneRecipeValue(item);
     if (normalize_recipe) {
@@ -216,7 +247,7 @@ function find(name, normalize_recipe) {
     }
 
     for (var j = 0; j < o.s.length; j++) {
-      if (o.s[j].name == name) {
+      if (o.s[j].name == lookupName) {
         assignRecipeTarget(o, o.s[j]);
         return o;
       }
@@ -226,13 +257,13 @@ function find(name, normalize_recipe) {
     throw new Error(i18nRecipeText("error.recipe_invalid_negative_output", "配方错误！可能是因为该配方净输出为负。"));
   }
 
-  var pf = settings_pf[name];
+  var pf = settings_pf[lookupName];
   if (pf) {
     return get(data[parseInt(pf)]);
   }
 
   // 使用索引查找，替代遍历 O(n) → O(1)
-  var indices = recipeIndexByProduct[name];
+  var indices = recipeIndexByProduct[lookupName];
   if (indices && indices.length > 0) {
     return get(data[indices[0]]); // 返回第一个匹配的配方
   }

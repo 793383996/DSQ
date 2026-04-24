@@ -1,6 +1,19 @@
 (function (root) {
   var includeBatchId = 0;
   var includeAbortController = null;
+  var includeRetryTimer = null;
+  var INCLUDE_RETRY_DELAY_MS = 400;
+  var INCLUDE_MAX_ATTEMPTS = 2;
+
+  function getQuoteIncludeState() {
+    if (!root.__DSQQuoteIncludeState || typeof root.__DSQQuoteIncludeState !== "object") {
+      root.__DSQQuoteIncludeState = {
+        updata: "",
+        explanation: "",
+      };
+    }
+    return root.__DSQQuoteIncludeState;
+  }
 
   function onReady(callback) {
     if (document.readyState === "loading") {
@@ -89,12 +102,13 @@
 
   async function loadIncludeNode(node, signal) {
     var includeName = node.getAttribute("data-include");
-    if (!includeName) return { node: node, html: "" };
+    if (!includeName) return { node: node, html: "", success: true };
     var pathInfo = resolveQuoteIncludePath(includeName);
     try {
       return {
         node: node,
         html: await fetchHtml(pathInfo.primary, signal),
+        success: true,
       };
     } catch (error) {
       if (isAbortError(error)) {
@@ -102,7 +116,7 @@
       }
       if (!pathInfo.fallback) {
         console.warn("index.events: include load failed.", includeName, error);
-        return { node: node, html: "" };
+        return { node: node, html: null, success: false };
       }
     }
 
@@ -110,19 +124,59 @@
       return {
         node: node,
         html: await fetchHtml(pathInfo.fallback, signal),
+        success: true,
       };
     } catch (error) {
       if (isAbortError(error)) {
         throw error;
       }
       console.warn("index.events: include fallback load failed.", includeName, error);
-      return { node: node, html: "" };
+      return { node: node, html: null, success: false };
     }
   }
 
-  async function loadQuoteIncludes() {
+  function commitIncludeHtml(node, html) {
+    var includeName = node && typeof node.getAttribute === "function" ? node.getAttribute("data-include") : "";
+    var state = getQuoteIncludeState();
+    if (includeName) {
+      state[includeName] = html;
+    }
+    if (root.app && root.app.quoteIncludes && includeName in root.app.quoteIncludes) {
+      root.app.quoteIncludes[includeName] = html;
+      return;
+    }
+    if (node) {
+      node.innerHTML = html;
+    }
+  }
+
+  function clearIncludeRetryTimer() {
+    if (!includeRetryTimer) {
+      return;
+    }
+    clearTimeout(includeRetryTimer);
+    includeRetryTimer = null;
+  }
+
+  function scheduleQuoteIncludeRetry(attempt, batchId) {
+    if (attempt >= INCLUDE_MAX_ATTEMPTS) {
+      return;
+    }
+    clearIncludeRetryTimer();
+    includeRetryTimer = setTimeout(function () {
+      if (batchId !== includeBatchId) {
+        return;
+      }
+      loadQuoteIncludes({ attempt: attempt + 1 });
+    }, INCLUDE_RETRY_DELAY_MS);
+  }
+
+  async function loadQuoteIncludes(options) {
+    var normalizedOptions = options && typeof options === "object" ? options : {};
+    var attempt = typeof normalizedOptions.attempt === "number" ? normalizedOptions.attempt : 1;
     includeBatchId += 1;
     var batchId = includeBatchId;
+    clearIncludeRetryTimer();
     if (includeAbortController) {
       includeAbortController.abort();
     }
@@ -138,14 +192,23 @@
       if (batchId !== includeBatchId) {
         return;
       }
+      var hasFailures = false;
       for (var i = 0; i < results.length; i++) {
-        results[i].node.innerHTML = results[i].html;
+        if (results[i].success === false) {
+          hasFailures = true;
+          continue;
+        }
+        commitIncludeHtml(results[i].node, results[i].html);
+      }
+      if (hasFailures) {
+        scheduleQuoteIncludeRetry(attempt, batchId);
       }
     } catch (error) {
       if (isAbortError(error)) {
         return;
       }
       console.warn("index.events: include batch load failed.", error);
+      scheduleQuoteIncludeRetry(attempt, batchId);
     }
   }
 

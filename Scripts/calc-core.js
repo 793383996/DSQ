@@ -5,26 +5,47 @@
   };
 
   var BELT_SPEED_MAP = {
+    conveyorBeltMk1: 360,
+    conveyorBeltMk2: 720,
+    conveyorBeltMk3: 1800,
     传送带: 360,
     高速传送带: 720,
     极速传送带: 1800,
   };
+  var ACC_TYPE_INDEX_MAP = {
+    proliferatorMk1: 0,
+    proliferatorMk2: 1,
+    proliferatorMk3: 2,
+    "增产剂Mk.Ⅰ": 0,
+    "增产剂Mk.Ⅱ": 1,
+    "增产剂Mk.Ⅲ": 2,
+  };
+  var ACC_VALUE_MAP = {
+    extra: "extra",
+    speedup: "speedup",
+    增产: "extra",
+    加速: "speedup",
+  };
 
   function normalizeTypeIndex(type) {
-    var typeIndex = ["增产剂Mk.Ⅰ", "增产剂Mk.Ⅱ", "增产剂Mk.Ⅲ"].indexOf(type);
-    return typeIndex >= 0 ? typeIndex : 0;
+    return ACC_TYPE_INDEX_MAP[type] >= 0 ? ACC_TYPE_INDEX_MAP[type] : 0;
+  }
+
+  function normalizeAccValue(value) {
+    return ACC_VALUE_MAP[value] || value;
   }
 
   function getAccSpeed(type, value) {
-    if (["增产", "加速"].indexOf(value) === -1) {
+    var normalizedValue = normalizeAccValue(value);
+    if (["extra", "speedup"].indexOf(normalizedValue) === -1) {
       return 1;
     }
     var typeIndex = normalizeTypeIndex(type);
-    return value === "增产" ? ACC_SPEED.inc[typeIndex] : ACC_SPEED.acc[typeIndex];
+    return normalizedValue === "extra" ? ACC_SPEED.inc[typeIndex] : ACC_SPEED.acc[typeIndex];
   }
 
   function getBeltSpeed(beltName) {
-    return BELT_SPEED_MAP[beltName] || BELT_SPEED_MAP["极速传送带"];
+    return BELT_SPEED_MAP[beltName] || BELT_SPEED_MAP.conveyorBeltMk3;
   }
 
   function calculateBaseMachineCount(params) {
@@ -41,8 +62,9 @@
     var baseCount = calculateBaseMachineCount(params);
     var effectSpeed = getAccSpeed(params.accType, params.accValue);
     var direction = params.direction || "input";
+    var accValue = normalizeAccValue(params.accValue);
 
-    if (direction === "input" && params.accValue === "增产") {
+    if (direction === "input" && accValue === "extra") {
       return baseCount;
     }
     return baseCount / effectSpeed;

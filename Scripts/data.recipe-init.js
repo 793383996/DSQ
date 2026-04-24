@@ -4,42 +4,10 @@
 var manualGzSpeed = false; //是否采用手动输入的临界光子每分钟产量
 
 var energyData = {};
-energyData["研究站"] = 0.48;
-energyData["制作台Mk.Ⅰ"] = 0.27;
-energyData["制作台Mk.Ⅱ"] = 0.54;
-energyData["制作台Mk.Ⅲ"] = 1.08;
-energyData["重组式制造台"] = 2.7;
-energyData["电弧熔炉"] = 0.36;
-energyData["位面熔炉"] = 1.44;
-energyData["负熵熔炉"] = 2.88;
-energyData["矿脉"] = 0.42 / 6;
-energyData["采矿机"] = 0.42;
-energyData["大型采矿机"] = 2.94;
-energyData["原油萃取站"] = 0.84;
-energyData["抽水机"] = 0.3;
-energyData["原油精炼机"] = 0.96;
-energyData["化工厂"] = 0.72;
-energyData["量子化工厂"] = 2.16;
-energyData["粒子对撞机"] = 12;
-energyData["轨道采集器"] = 0;
-energyData["射线接收塔"] = 0;
-energyData["能量枢纽"] = 0;
-energyData["分馏塔"] = 0.72;
 
 var spaceData = {}; //占用格子
-spaceData["研究站"] = 36 / 15; // 可叠加
-spaceData["制作台Mk.Ⅰ"] = spaceData["制作台Mk.Ⅱ"] = spaceData["制作台Mk.Ⅲ"] = spaceData["重组式制造台"] = 16;
-spaceData["电弧熔炉"] = spaceData["位面熔炉"] = spaceData["负熵熔炉"] = 16;
-spaceData["原油精炼机"] = 28;
-spaceData["化工厂"] = 35;
-spaceData["量子化工厂"] = 35;
-spaceData["射线接收塔"] = 24;
-spaceData["能量枢纽"] = 64;
-spaceData["分馏塔"] = 16;
-spaceData["粒子对撞机"] = 45;
-
-var defaultAccType = "增产剂Mk.Ⅰ";
-var defaultAccValue = "无";
+var defaultAccType = "proliferatorMk1";
+var defaultAccValue = "none";
 
 // 配方查找索引 - 优化查找性能从 O(n) 到 O(1)
 var recipeIndexByProduct = {}; // 产物名 → [配方索引数组]
@@ -52,6 +20,117 @@ function forEachLegacy(collection, callback) {
   }
 }
 
+function getDomainDictionarySafe() {
+  if (typeof window !== "undefined" && window.DSQDomainDictionary) {
+    return window.DSQDomainDictionary;
+  }
+  if (typeof DSQDomainDictionary !== "undefined") {
+    return DSQDomainDictionary;
+  }
+  return null;
+}
+
+function resolveMachineId(value) {
+  var dictionary = getDomainDictionarySafe();
+  if (!dictionary || typeof dictionary.getMachineId !== "function") {
+    return value;
+  }
+  return dictionary.getMachineId(value) || value;
+}
+
+function resolveRecipeTypeId(value) {
+  var dictionary = getDomainDictionarySafe();
+  if (!dictionary || typeof dictionary.getRecipeTypeId !== "function") {
+    return value;
+  }
+  return dictionary.getRecipeTypeId(value) || value;
+}
+
+function resolveItemId(value) {
+  var dictionary = getDomainDictionarySafe();
+  if (!dictionary || typeof dictionary.getItemId !== "function") {
+    return value;
+  }
+  return dictionary.getItemId(value) || value;
+}
+
+function resolveDisplayName(value) {
+  var dictionary = getDomainDictionarySafe();
+  if (!dictionary || typeof dictionary.getDisplayName !== "function") {
+    return value;
+  }
+  return dictionary.getDisplayName(value) || value;
+}
+
+function resolveIconName(value) {
+  var dictionary = getDomainDictionarySafe();
+  if (!dictionary || typeof dictionary.getIconName !== "function") {
+    return resolveDisplayName(value);
+  }
+  return dictionary.getIconName(value) || resolveDisplayName(value);
+}
+
+function assignMachineMetric(target, machineKey, value) {
+  var machineId = resolveMachineId(machineKey);
+  var displayName = resolveDisplayName(machineKey);
+  target[machineId] = value;
+  target[displayName] = value;
+  if (machineKey !== displayName) {
+    target[machineKey] = value;
+  }
+}
+
+function createMachineOption(machineKey, speed) {
+  var machineId = resolveMachineId(machineKey);
+  return {
+    id: machineId,
+    name: resolveDisplayName(machineKey),
+    iconName: resolveIconName(machineKey),
+    speed: speed,
+  };
+}
+
+assignMachineMetric(energyData, "matrixLab", 0.48);
+assignMachineMetric(energyData, "selfEvolutionLab", 0.48);
+assignMachineMetric(energyData, "assemblingMachineMk1", 0.27);
+assignMachineMetric(energyData, "assemblingMachineMk2", 0.54);
+assignMachineMetric(energyData, "assemblingMachineMk3", 1.08);
+assignMachineMetric(energyData, "recomposingAssembler", 2.7);
+assignMachineMetric(energyData, "arcSmelter", 0.36);
+assignMachineMetric(energyData, "planeSmelter", 1.44);
+assignMachineMetric(energyData, "negentropySmelter", 2.88);
+assignMachineMetric(energyData, "vein", 0.42 / 6);
+assignMachineMetric(energyData, "miningMachine", 0.42);
+assignMachineMetric(energyData, "advancedMiningMachine", 2.94);
+assignMachineMetric(energyData, "oilExtractor", 0.84);
+assignMachineMetric(energyData, "waterPump", 0.3);
+assignMachineMetric(energyData, "oilRefinery", 0.96);
+assignMachineMetric(energyData, "chemicalPlant", 0.72);
+assignMachineMetric(energyData, "quantumChemicalPlant", 2.16);
+assignMachineMetric(energyData, "particleCollider", 12);
+assignMachineMetric(energyData, "orbitalCollectorIce", 0);
+assignMachineMetric(energyData, "orbitalCollectorGas", 0);
+assignMachineMetric(energyData, "rayReceiver", 0);
+assignMachineMetric(energyData, "energyExchanger", 0);
+assignMachineMetric(energyData, "fractionator", 0.72);
+
+assignMachineMetric(spaceData, "matrixLab", 36 / 15);
+assignMachineMetric(spaceData, "selfEvolutionLab", 36 / 15);
+assignMachineMetric(spaceData, "assemblingMachineMk1", 16);
+assignMachineMetric(spaceData, "assemblingMachineMk2", 16);
+assignMachineMetric(spaceData, "assemblingMachineMk3", 16);
+assignMachineMetric(spaceData, "recomposingAssembler", 16);
+assignMachineMetric(spaceData, "arcSmelter", 16);
+assignMachineMetric(spaceData, "planeSmelter", 16);
+assignMachineMetric(spaceData, "negentropySmelter", 16);
+assignMachineMetric(spaceData, "oilRefinery", 28);
+assignMachineMetric(spaceData, "chemicalPlant", 35);
+assignMachineMetric(spaceData, "quantumChemicalPlant", 35);
+assignMachineMetric(spaceData, "rayReceiver", 24);
+assignMachineMetric(spaceData, "energyExchanger", 64);
+assignMachineMetric(spaceData, "fractionator", 16);
+assignMachineMetric(spaceData, "particleCollider", 45);
+
 function f_initData() {
   // 清空索引，准备重建
   recipeIndexByProduct = {};
@@ -63,6 +142,7 @@ function f_initData() {
     // 构建产物索引
     for (var j = 0; j < item.s.length; j++) {
       var productName = item.s[j].name;
+      item.s[j].itemId = resolveItemId(productName);
       if (!recipeIndexByProduct[productName]) {
         recipeIndexByProduct[productName] = [];
       }
@@ -73,6 +153,7 @@ function f_initData() {
     if (item.q) {
       for (var j = 0; j < item.q.length; j++) {
         var materialName = item.q[j].name;
+        item.q[j].itemId = resolveItemId(materialName);
         if (!recipeIndexByMaterial[materialName]) {
           recipeIndexByMaterial[materialName] = [];
         }
@@ -80,78 +161,74 @@ function f_initData() {
       }
     }
 
+    var machineTypeId = resolveRecipeTypeId(item.m);
     var ms = [];
-    if (item.m == "研究站") {
-      ms = [
-        { name: "矩阵研究站", speed: 1 },
-        { name: "自演化研究站", speed: 3 },
-      ];
+    if (machineTypeId == "research") {
+      ms = [createMachineOption("matrixLab", 1), createMachineOption("selfEvolutionLab", 3)];
     }
-    if (item.m == "制作台") {
+    if (machineTypeId == "assembler") {
       ms = [
-        { name: "制作台Mk.Ⅰ", speed: 0.75 },
-        { name: "制作台Mk.Ⅱ", speed: 1 },
-        { name: "制作台Mk.Ⅲ", speed: 1.5 },
-        { name: "重组式制造台", speed: 3 },
+        createMachineOption("assemblingMachineMk1", 0.75),
+        createMachineOption("assemblingMachineMk2", 1),
+        createMachineOption("assemblingMachineMk3", 1.5),
+        createMachineOption("recomposingAssembler", 3),
       ];
     }
 
-    if (item.m == "冶炼设备") {
+    if (machineTypeId == "smelter") {
       ms = [
-        { name: "电弧熔炉", speed: 1 },
-        { name: "位面熔炉", speed: 2 },
-        { name: "负熵熔炉", speed: 3 },
+        createMachineOption("arcSmelter", 1),
+        createMachineOption("planeSmelter", 2),
+        createMachineOption("negentropySmelter", 3),
       ];
     }
-    if (item.m == "采矿机") {
+    if (machineTypeId == "mining") {
       ms = [
-        { name: "采矿机", speed: 0.5 * 6 },
-        { name: "大型采矿机", speed: 1 * 20 },
-        { name: "矿脉", speed: 0.5 * 1 },
+        createMachineOption("miningMachine", 0.5 * 6),
+        createMachineOption("advancedMiningMachine", 1 * 20),
+        createMachineOption("vein", 0.5 * 1),
       ];
     }
-    if (item.m == "能量枢纽") {
-      ms = [{ name: "能量枢纽", speed: 1 }];
+    if (machineTypeId == "energyExchanger") {
+      ms = [createMachineOption("energyExchanger", 1)];
     }
 
-    if (item.m == "黑雾掉落") {
-      ms = [{ name: "黑雾掉落", speed: 1 }];
+    if (machineTypeId == "darkFogDrop") {
+      ms = [createMachineOption("darkFogDrop", 1)];
     }
 
-    if (item.m == "原油萃取站") {
-      ms = [{ name: "原油萃取站", speed: 4 }];
+    if (machineTypeId == "oilExtractor") {
+      ms = [createMachineOption("oilExtractor", 4)];
     }
-    if (item.m == "抽水机") {
-      ms = [{ name: "抽水机", speed: 50 / 60 }];
-    }
-
-    if (item.m == "原油精炼机") {
-      ms = [{ name: "原油精炼机", speed: 1 }];
-    }
-    if (item.m == "化工设备") {
-      ms = [
-        { name: "化工厂", speed: 1 },
-        { name: "量子化工厂", speed: 2 },
-      ];
-    }
-    if (item.m == "粒子对撞机") {
-      ms = [{ name: "粒子对撞机", speed: 1 }];
-    }
-    if (item.m == "轨道采集器") {
-      ms = [{ name: "轨道采集器(巨冰)", speed: 1 }];
-    }
-    if (item.m == "轨道采集器2") {
-      ms = [{ name: "轨道采集器(气态)", speed: 1 }];
+    if (machineTypeId == "waterPump") {
+      ms = [createMachineOption("waterPump", 50 / 60)];
     }
 
-    if (item.m == "射线接收塔") {
-      ms = [{ name: "射线接收塔", speed: 1 }];
+    if (machineTypeId == "oilRefinery") {
+      ms = [createMachineOption("oilRefinery", 1)];
+    }
+    if (machineTypeId == "chemical") {
+      ms = [createMachineOption("chemicalPlant", 1), createMachineOption("quantumChemicalPlant", 2)];
+    }
+    if (machineTypeId == "collider") {
+      ms = [createMachineOption("particleCollider", 1)];
+    }
+    if (machineTypeId == "orbitalCollectorIce") {
+      ms = [createMachineOption("orbitalCollectorIce", 1)];
+    }
+    if (machineTypeId == "orbitalCollectorGas") {
+      ms = [createMachineOption("orbitalCollectorGas", 1)];
     }
 
-    if (item.m == "分馏塔") {
-      ms = [{ name: "分馏塔", speed: 30 }];
+    if (machineTypeId == "rayReceiver") {
+      ms = [createMachineOption("rayReceiver", 1)];
     }
 
+    if (machineTypeId == "fractionator") {
+      ms = [createMachineOption("fractionator", 30)];
+    }
+
+    item.machineTypeId = machineTypeId;
     item.mName = item.m;
     item.m = ms;
   });

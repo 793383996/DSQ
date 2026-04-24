@@ -11,6 +11,16 @@ function getBlueprintItemMapSafe() {
   return null;
 }
 
+function getDomainDictionaryBlueprintSafe() {
+  if (typeof window !== "undefined" && window.DSQDomainDictionary) {
+    return window.DSQDomainDictionary;
+  }
+  if (typeof DSQDomainDictionary !== "undefined") {
+    return DSQDomainDictionary;
+  }
+  return null;
+}
+
 function buildBlueprintRemarkMap() {
   const rawMap = getBlueprintItemMapSafe();
   if (!rawMap) {
@@ -33,12 +43,20 @@ function resolveBlueprintIconsByNames(itemNames) {
     return [];
   }
   const remarkMap = buildBlueprintRemarkMap();
+  const dictionary = getDomainDictionaryBlueprintSafe();
   if (!remarkMap) {
     return [];
   }
   const iconIds = [];
-  itemNames.forEach(name => {
-    const entry = remarkMap[name];
+  itemNames.forEach(value => {
+    const displayName =
+      dictionary && typeof dictionary.getDisplayName === "function" ? dictionary.getDisplayName(value) : value;
+    const blueprintName =
+      dictionary && typeof dictionary.getBlueprintEntityName === "function"
+        ? dictionary.getBlueprintEntityName(value)
+        : null;
+    const rawMap = getBlueprintItemMapSafe();
+    const entry = (blueprintName && rawMap && rawMap[blueprintName]) || remarkMap[displayName];
     if (!entry) {
       return;
     }
@@ -282,19 +300,56 @@ const BLUEPRINT_NAME_MAP = BLUEPRINT_NAME_PAIRS.reduce((accumulator, pair) => {
   return accumulator;
 }, {});
 
-function mapBlueprintName(name) {
+const BLUEPRINT_NAME_ALIASES = {
+  原油精炼机: "原油精炼厂",
+  粒子对撞机: "微型粒子对撞机",
+  射线接收塔: "射线接收站",
+  "轨道采集器(气态)": "轨道采集器",
+  "轨道采集器(巨冰)": "轨道采集器",
+};
+
+function normalizeBlueprintSourceName(name) {
   if (typeof name !== "string") {
     return null;
   }
-  return BLUEPRINT_NAME_MAP[name] || null;
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    return null;
+  }
+  return BLUEPRINT_NAME_ALIASES[normalizedName] || normalizedName;
+}
+
+function mapBlueprintName(name) {
+  const dictionary = getDomainDictionaryBlueprintSafe();
+  if (dictionary && typeof dictionary.getBlueprintEntityName === "function") {
+    const blueprintName = dictionary.getBlueprintEntityName(name);
+    if (blueprintName) {
+      return blueprintName;
+    }
+  }
+  const normalizedName = normalizeBlueprintSourceName(name);
+  if (!normalizedName) {
+    return null;
+  }
+  return BLUEPRINT_NAME_MAP[normalizedName] || null;
 }
 
 function normalizeBlueprintProliferator(accType) {
+  const dictionary = getDomainDictionaryBlueprintSafe();
+  if (dictionary && typeof dictionary.getBlueprintEntityName === "function") {
+    const blueprintName = dictionary.getBlueprintEntityName(accType);
+    if (blueprintName) {
+      return blueprintName;
+    }
+  }
   switch (accType) {
+    case "proliferatorMk3":
     case "增产剂Mk.Ⅲ":
       return "proliferatorMk3";
+    case "proliferatorMk2":
     case "增产剂Mk.Ⅱ":
       return "proliferatorMk2";
+    case "proliferatorMk1":
     case "增产剂Mk.Ⅰ":
       return "proliferatorMk1";
     case null:
@@ -312,10 +367,10 @@ function mapBlueprintRateList(entries) {
     return [];
   }
   return entries.map(entry => {
-    const mappedName = mapBlueprintName(entry.name);
+    const mappedName = mapBlueprintName(entry.itemId || entry.name);
     if (!mappedName) {
       const msg = i18nBlueprintText("error.blueprint_item_map_failed", "蓝图映射失败：{name}", {
-        name: entry.name,
+        name: entry.name || entry.itemId,
       });
       cocoMessage.error(msg, 4000);
       throw new Error(msg);
@@ -344,11 +399,11 @@ function createBlueprintRecipePayloadFromSnapshot(snapshot) {
       : -1;
     let building = null;
 
-    if (recipeSnapshot.buildingName) {
-      const mappedBuildingName = mapBlueprintName(recipeSnapshot.buildingName);
+    if (recipeSnapshot.buildingId || recipeSnapshot.buildingName) {
+      const mappedBuildingName = mapBlueprintName(recipeSnapshot.buildingId || recipeSnapshot.buildingName);
       if (!mappedBuildingName) {
         const msg = i18nBlueprintText("error.blueprint_item_map_failed", "蓝图映射失败：{name}", {
-          name: recipeSnapshot.buildingName,
+          name: recipeSnapshot.buildingName || recipeSnapshot.buildingId,
         });
         cocoMessage.error(msg, 4000);
         throw new Error(msg);
@@ -412,7 +467,12 @@ function createBlueprintRecipePayloadFromSnapshot(snapshot) {
     recipeList: recipeList,
     proliferator: normalizedProliferator,
     blueprintIcon: Array.isArray(safeSnapshot.iconIds) ? safeSnapshot.iconIds.slice() : [],
-    blueprintOutputNames: Array.isArray(safeSnapshot.outputNames) ? safeSnapshot.outputNames.slice() : [],
+    blueprintOutputNames:
+      Array.isArray(safeSnapshot.outputIds) && safeSnapshot.outputIds.length
+        ? safeSnapshot.outputIds.slice()
+        : Array.isArray(safeSnapshot.outputNames)
+          ? safeSnapshot.outputNames.slice()
+          : [],
     blueprintTitle: typeof safeSnapshot.title === "string" ? safeSnapshot.title : "",
     blueprintDesc: typeof safeSnapshot.description === "string" ? safeSnapshot.description : "",
   };

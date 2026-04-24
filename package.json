@@ -13,6 +13,7 @@
     "format:check": "prettier --check \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "format": "prettier --write \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "smoke": "node ./localDev/node-scripts/smoke.mjs",
+    "check:logic-ids": "node ./localDev/node-scripts/check-logic-id-guards.mjs",
     "test:blueprint": "node ./localDev/node-scripts/blueprint-regression.mjs",
     "build": "npm run build:vite",
     "build:legacy": "node ./localDev/node-scripts/build.mjs",
@@ -31,7 +32,7 @@
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run lint:baseline && npm run jquery:check && npm run format:check && npm run smoke && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run seo:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
+    "ci:check": "npm run lint && npm run lint:baseline && npm run jquery:check && npm run format:check && npm run smoke && npm run check:logic-ids && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run seo:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"
