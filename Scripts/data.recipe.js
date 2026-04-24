@@ -47,6 +47,130 @@ function getDomainDictionaryRecipeSafe() {
   return null;
 }
 
+var LEGACY_RECIPE_TYPE_ID_MAP = {
+  research: "research",
+  assembler: "assembler",
+  smelter: "smelter",
+  mining: "mining",
+  energyExchanger: "energyExchanger",
+  darkFogDrop: "darkFogDrop",
+  oilExtractor: "oilExtractor",
+  waterPump: "waterPump",
+  oilRefinery: "oilRefinery",
+  chemical: "chemical",
+  collider: "collider",
+  orbitalCollectorIce: "orbitalCollectorIce",
+  orbitalCollectorGas: "orbitalCollectorGas",
+  rayReceiver: "rayReceiver",
+  fractionator: "fractionator",
+  研究站: "research",
+  制作台: "assembler",
+  冶炼设备: "smelter",
+  采矿机: "mining",
+  能量枢纽: "energyExchanger",
+  黑雾掉落: "darkFogDrop",
+  原油萃取站: "oilExtractor",
+  抽水机: "waterPump",
+  原油精炼机: "oilRefinery",
+  原油精炼厂: "oilRefinery",
+  化工设备: "chemical",
+  粒子对撞机: "collider",
+  微型粒子对撞机: "collider",
+  轨道采集器: "orbitalCollectorIce",
+  轨道采集器2: "orbitalCollectorGas",
+  射线接收塔: "rayReceiver",
+  射线接收站: "rayReceiver",
+  分馏塔: "fractionator",
+};
+
+var LEGACY_RECIPE_TYPE_GLOBAL_SETTING_KEY_MAP = {
+  research: "research",
+  assembler: "selmodein",
+  smelter: "furnace",
+  chemical: "chemical",
+};
+
+var LEGACY_MACHINE_ID_MAP = {
+  matrixLab: "matrixLab",
+  selfEvolutionLab: "selfEvolutionLab",
+  assemblingMachineMk1: "assemblingMachineMk1",
+  assemblingMachineMk2: "assemblingMachineMk2",
+  assemblingMachineMk3: "assemblingMachineMk3",
+  recomposingAssembler: "recomposingAssembler",
+  arcSmelter: "arcSmelter",
+  planeSmelter: "planeSmelter",
+  negentropySmelter: "negentropySmelter",
+  vein: "vein",
+  miningMachine: "miningMachine",
+  advancedMiningMachine: "advancedMiningMachine",
+  oilExtractor: "oilExtractor",
+  waterPump: "waterPump",
+  oilRefinery: "oilRefinery",
+  chemicalPlant: "chemicalPlant",
+  quantumChemicalPlant: "quantumChemicalPlant",
+  particleCollider: "particleCollider",
+  orbitalCollectorIce: "orbitalCollectorIce",
+  orbitalCollectorGas: "orbitalCollectorGas",
+  rayReceiver: "rayReceiver",
+  fractionator: "fractionator",
+  energyExchanger: "energyExchanger",
+  darkFogDrop: "darkFogDrop",
+  矩阵研究站: "matrixLab",
+  自演化研究站: "selfEvolutionLab",
+  "制作台Mk.Ⅰ": "assemblingMachineMk1",
+  "制作台Mk.Ⅱ": "assemblingMachineMk2",
+  "制作台Mk.Ⅲ": "assemblingMachineMk3",
+  重组式制造台: "recomposingAssembler",
+  电弧熔炉: "arcSmelter",
+  位面熔炉: "planeSmelter",
+  负熵熔炉: "negentropySmelter",
+  矿脉: "vein",
+  采矿机: "miningMachine",
+  大型采矿机: "advancedMiningMachine",
+  原油萃取站: "oilExtractor",
+  抽水机: "waterPump",
+  原油精炼机: "oilRefinery",
+  原油精炼厂: "oilRefinery",
+  化工厂: "chemicalPlant",
+  量子化工厂: "quantumChemicalPlant",
+  粒子对撞机: "particleCollider",
+  微型粒子对撞机: "particleCollider",
+  "轨道采集器(巨冰)": "orbitalCollectorIce",
+  "轨道采集器(气态)": "orbitalCollectorGas",
+  射线接收塔: "rayReceiver",
+  射线接收站: "rayReceiver",
+  分馏塔: "fractionator",
+  能量枢纽: "energyExchanger",
+  黑雾掉落: "darkFogDrop",
+};
+
+var LEGACY_MACHINE_DISPLAY_NAME_MAP = {
+  matrixLab: "矩阵研究站",
+  selfEvolutionLab: "自演化研究站",
+  assemblingMachineMk1: "制作台Mk.Ⅰ",
+  assemblingMachineMk2: "制作台Mk.Ⅱ",
+  assemblingMachineMk3: "制作台Mk.Ⅲ",
+  recomposingAssembler: "重组式制造台",
+  arcSmelter: "电弧熔炉",
+  planeSmelter: "位面熔炉",
+  negentropySmelter: "负熵熔炉",
+  vein: "矿脉",
+  miningMachine: "采矿机",
+  advancedMiningMachine: "大型采矿机",
+  oilExtractor: "原油萃取站",
+  waterPump: "抽水机",
+  oilRefinery: "原油精炼厂",
+  chemicalPlant: "化工厂",
+  quantumChemicalPlant: "量子化工厂",
+  particleCollider: "微型粒子对撞机",
+  orbitalCollectorIce: "轨道采集器(巨冰)",
+  orbitalCollectorGas: "轨道采集器(气态)",
+  rayReceiver: "射线接收站",
+  fractionator: "分馏塔",
+  energyExchanger: "能量枢纽",
+  darkFogDrop: "黑雾掉落",
+};
+
 function normalizeItemLookupName(name) {
   var dictionary = getDomainDictionaryRecipeSafe();
   if (!dictionary || typeof dictionary.getItem !== "function") {
@@ -56,22 +180,96 @@ function normalizeItemLookupName(name) {
   return item ? item.displayNameZh : name;
 }
 
-function getGlobalMachineDefault(item) {
-  if (!item || !item.machineTypeId) return null;
-  var defaults = getGlobalSettingsSnapshot();
-  if (item.machineTypeId == "assembler") {
-    return defaults.selmodein || null;
+function resolveRecipeTypeIdFromItem(item) {
+  if (!item) return null;
+  var dictionary = getDomainDictionaryRecipeSafe();
+  var recipeType = item.machineTypeId || item.mName || item.m || null;
+  if (dictionary && typeof dictionary.getRecipeTypeId === "function") {
+    recipeType = dictionary.getRecipeTypeId(recipeType) || recipeType;
   }
-  if (item.machineTypeId == "smelter") {
-    return defaults.furnace || null;
+  if (typeof recipeType !== "string") {
+    return recipeType;
   }
-  if (item.machineTypeId == "chemical") {
-    return defaults.chemical || null;
+  return LEGACY_RECIPE_TYPE_ID_MAP[recipeType] || recipeType;
+}
+
+function normalizeMachineSelection(value) {
+  if (value == null) return null;
+  var dictionary = getDomainDictionaryRecipeSafe();
+  var normalizedValue = value;
+  if (dictionary && typeof dictionary.getMachineId === "function") {
+    normalizedValue = dictionary.getMachineId(value) || value;
   }
-  if (item.machineTypeId == "research") {
-    return defaults.research || null;
+  if (typeof normalizedValue !== "string") {
+    return normalizedValue;
+  }
+  return LEGACY_MACHINE_ID_MAP[normalizedValue] || normalizedValue;
+}
+
+function resolveMachineDisplayName(value) {
+  if (value == null) return null;
+  var dictionary = getDomainDictionaryRecipeSafe();
+  if (dictionary && typeof dictionary.getDisplayName === "function") {
+    var displayName = dictionary.getDisplayName(value);
+    if (displayName) {
+      return displayName;
+    }
+  }
+  if (typeof value === "string" && LEGACY_MACHINE_DISPLAY_NAME_MAP[value]) {
+    return LEGACY_MACHINE_DISPLAY_NAME_MAP[value];
+  }
+  var normalizedValue = normalizeMachineSelection(value);
+  if (typeof normalizedValue === "string" && LEGACY_MACHINE_DISPLAY_NAME_MAP[normalizedValue]) {
+    return LEGACY_MACHINE_DISPLAY_NAME_MAP[normalizedValue];
+  }
+  return value;
+}
+
+function resolveMachineOptionId(option) {
+  if (!option || typeof option !== "object") return null;
+  if (option.id != null) {
+    return normalizeMachineSelection(option.id);
+  }
+  if (option.name != null) {
+    return normalizeMachineSelection(option.name);
   }
   return null;
+}
+
+function resolveMachineOptionName(option) {
+  if (!option || typeof option !== "object") {
+    return resolveMachineDisplayName(option);
+  }
+  if (typeof option.name === "string" && option.name) {
+    return option.name;
+  }
+  return resolveMachineDisplayName(resolveMachineOptionId(option));
+}
+
+function findMachineOptionById(item, machineId) {
+  if (!item || !Array.isArray(item.m)) return null;
+  for (var i = 0; i < item.m.length; i++) {
+    var option = item.m[i];
+    if (resolveMachineOptionId(option) == machineId) {
+      return option;
+    }
+  }
+  return null;
+}
+
+function getGlobalMachineDefault(item) {
+  if (!item) return null;
+  var recipeTypeId = resolveRecipeTypeIdFromItem(item);
+  if (!recipeTypeId) return null;
+  var defaults = getGlobalSettingsSnapshot();
+  var dictionary = getDomainDictionaryRecipeSafe();
+  var settingKey =
+    dictionary && typeof dictionary.getRecipeTypeGlobalSettingKey === "function"
+      ? dictionary.getRecipeTypeGlobalSettingKey(recipeTypeId)
+      : null;
+  settingKey = settingKey || LEGACY_RECIPE_TYPE_GLOBAL_SETTING_KEY_MAP[recipeTypeId] || null;
+  if (!settingKey) return null;
+  return normalizeMachineSelection(defaults[settingKey] || null);
 }
 
 function getGlobalAccTypeDefault() {
@@ -87,13 +285,14 @@ function getGlobalAccValueDefault() {
 function getMachine(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
   if (!item) return null;
-  var machine = (settings[item.id] || {}).m || null;
+  var machine = normalizeMachineSelection((settings[item.id] || {}).m || null);
   if (machine != null) return machine;
 
   machine = getGlobalMachineDefault(item);
   if (machine != null) return machine;
 
-  return item.m[0].id;
+  if (!Array.isArray(item.m) || item.m.length === 0) return null;
+  return resolveMachineOptionId(item.m[0]);
 }
 // 获取配方默认的增产剂等级
 
@@ -126,15 +325,16 @@ function getAccValue(arg) {
 function getValue(arg) {
   var item = typeof arg == "string" ? find(arg) : arg;
   if (!item) return null;
-  var machineId = getMachine(item);
+  var machineId = normalizeMachineSelection(getMachine(item));
   var accType = getAccType(item),
     accValue = getAccValue(item);
+  var machineName = resolveMachineDisplayName(machineId);
   var speed = settings_time[machineId];
+  if (!speed && machineName != null) {
+    speed = settings_time[machineName];
+  }
 
   if (speed) {
-    var dictionary = getDomainDictionaryRecipeSafe();
-    var machineName =
-      dictionary && typeof dictionary.getDisplayName === "function" ? dictionary.getDisplayName(machineId) : machineId;
     return {
       name: machineName,
       machineName: machineName,
@@ -147,26 +347,29 @@ function getValue(arg) {
       accValue: accValue,
     };
   }
-  for (var i = 0; i < item.m.length; i++) {
-    var m = item.m[i];
-    if (m.id == machineId) {
-      return {
-        name: m.name,
-        machineName: m.name,
-        machineId: m.id,
-        t: item.t,
-        speed: m.speed,
-        time: item.t / m.speed,
-        accType: accType,
-        accValue: accValue,
-      };
-    }
+  var m = findMachineOptionById(item, machineId);
+  if (m) {
+    var resolvedMachineId = resolveMachineOptionId(m) || machineId;
+    var resolvedMachineName = resolveMachineOptionName(m);
+    return {
+      name: resolvedMachineName,
+      machineName: resolvedMachineName,
+      machineId: resolvedMachineId,
+      t: item.t,
+      speed: m.speed,
+      time: item.t / m.speed,
+      accType: accType,
+      accValue: accValue,
+    };
   }
+  if (!Array.isArray(item.m) || item.m.length === 0) return null;
   m = item.m[0];
+  var fallbackMachineId = resolveMachineOptionId(m) || machineId;
+  var fallbackMachineName = resolveMachineOptionName(m);
   return {
-    name: m.name,
-    machineName: m.name,
-    machineId: m.id,
+    name: fallbackMachineName,
+    machineName: fallbackMachineName,
+    machineId: fallbackMachineId,
     t: item.t,
     speed: m.speed,
     time: item.t / m.speed,

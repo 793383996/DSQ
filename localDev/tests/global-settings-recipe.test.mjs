@@ -42,6 +42,7 @@ describe("recipe defaults with global settings", () => {
   it("uses row-level machine settings before global settings and recipe defaults", () => {
     const item = {
       id: 1,
+      t: 1,
       mName: "制作台",
       m: [
         { name: "制作台Mk.Ⅰ", speed: 0.75 },
@@ -49,14 +50,57 @@ describe("recipe defaults with global settings", () => {
       ],
     };
 
-    expect(context.getMachine(item)).toBe("制作台Mk.Ⅲ");
+    expect(context.getMachine(item)).toBe("assemblingMachineMk3");
+    context.settings_time = { "制作台Mk.Ⅲ": 2 };
+    expect(context.getValue(item)).toMatchObject({
+      machineId: "assemblingMachineMk3",
+      machineName: "制作台Mk.Ⅲ",
+      speed: 2,
+      isChange: true,
+    });
 
     context.settings[item.id] = { m: "制作台Mk.Ⅰ" };
-    expect(context.getMachine(item)).toBe("制作台Mk.Ⅰ");
+    expect(context.getMachine(item)).toBe("assemblingMachineMk1");
 
     context.global_settings = {};
     context.settings = {};
-    expect(context.getMachine(item)).toBe("制作台Mk.Ⅰ");
+    context.settings_time = {};
+    expect(context.getMachine(item)).toBe("assemblingMachineMk1");
+    expect(context.getValue(item)).toMatchObject({
+      machineId: "assemblingMachineMk1",
+      machineName: "制作台Mk.Ⅰ",
+      speed: 0.75,
+    });
+  });
+
+  it("keeps normalized runtime machine settings on english ids", () => {
+    context.global_settings = {
+      selmodein: "assemblingMachineMk3",
+      furnace: "planeSmelter",
+      chemical: "quantumChemicalPlant",
+      research: "selfEvolutionLab",
+      accType: "增产剂Mk.Ⅱ",
+      accValue: "加速",
+    };
+    const item = {
+      id: 3,
+      t: 2,
+      machineTypeId: "assembler",
+      m: [
+        { id: "assemblingMachineMk1", name: "制作台Mk.Ⅰ", speed: 0.75 },
+        { id: "assemblingMachineMk3", name: "制作台Mk.Ⅲ", speed: 1.5 },
+      ],
+    };
+
+    expect(context.getMachine(item)).toBe("assemblingMachineMk3");
+    expect(context.getValue(item)).toMatchObject({
+      machineId: "assemblingMachineMk3",
+      machineName: "制作台Mk.Ⅲ",
+      speed: 1.5,
+    });
+
+    context.settings[item.id] = { m: "assemblingMachineMk1" };
+    expect(context.getMachine(item)).toBe("assemblingMachineMk1");
   });
 
   it("uses row-level proliferator settings before global settings and recipe defaults", () => {

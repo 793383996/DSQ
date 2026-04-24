@@ -318,7 +318,7 @@ async function runE2EAttempt(attempt) {
     // Case 4: 修改配置项 -> 结果更新
     await runStep("change-config", async () => {
       const currentMode = await page.inputValue("#selmodein");
-      const targetMode = currentMode === "重组式制造台" ? "制作台Mk.Ⅰ" : "重组式制造台";
+      const targetMode = currentMode === "recomposingAssembler" ? "assemblingMachineMk1" : "recomposingAssembler";
       const beforeMachine = await readMachineMode(page, "齿轮");
       await page.selectOption("#selmodein", targetMode);
       await page.waitForFunction(
