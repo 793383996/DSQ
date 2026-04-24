@@ -1,8 +1,10 @@
 import type { Pinia } from "pinia";
 
+import { applyLegacyRuntimeOptions, readLegacyRuntimeOptions } from "./legacy-runtime-options";
 import { syncI18nLocale, type DsqI18nInstance } from "../services/i18n";
 import { normalizeMachineSettingsForStorage, normalizeSpeedSettingsForStorage } from "../services/legacy-storage";
 import { useAppStore } from "../stores/app";
+import { useBlueprintStore } from "../stores/blueprint";
 import { useCalculationStore } from "../stores/calculation";
 import { useProjectsStore } from "../stores/projects";
 import { useSeoStore } from "../stores/seo";
@@ -12,10 +14,14 @@ import {
   cloneJsonValue,
   createEmptyCalculationOutput,
   normalizeLocale,
+  normalizeRequirementEntries,
+  normalizeSingleMakeEntries,
+  normalizeStringList,
   type CalculationOutput,
   type LegacyRuntimeSnapshot,
   type ProjectSnapshot,
   type RequirementEntry,
+  type SeoSnapshot,
 } from "../types/dsq";
 
 function readLegacyLocale() {
@@ -41,13 +47,77 @@ function readLegacyRecipeSettings() {
 }
 
 function readLegacyRequirements(): RequirementEntry[] {
-  return Array.isArray(window.xqs) ? cloneJsonValue(window.xqs, []) : [];
+  return normalizeRequirementEntries(window.xqs);
+}
+
+function readLegacySingleMake() {
+  return normalizeSingleMakeEntries(window.singleMake);
+}
+
+function readLegacyExcludedNames() {
+  return normalizeStringList(window.ig_names);
 }
 
 function readLegacyCalculationResult(): CalculationOutput | null {
   return window.currentCalculationResult
     ? cloneJsonValue(window.currentCalculationResult, createEmptyCalculationOutput())
     : null;
+}
+
+function readLegacySeoSnapshot(): SeoSnapshot | null {
+  if (!window.currentCalculationResult?.seoSnapshot) {
+    return null;
+  }
+  return cloneJsonValue(window.currentCalculationResult.seoSnapshot, {
+    requirementCount: 0,
+    primaryItemName: "",
+    primaryRatePerMinute: null,
+    totalLineCount: 0,
+    totalEnergy: 0,
+    totalSpace: 0,
+  });
+}
+
+function hydrateStoresFromLegacySnapshot(pinia: Pinia, snapshot: LegacyRuntimeSnapshot) {
+  const uiStore = useUiStore(pinia);
+  const settingsStore = useSettingsStore(pinia);
+  const projectsStore = useProjectsStore(pinia);
+  const calculationStore = useCalculationStore(pinia);
+  const seoStore = useSeoStore(pinia);
+  const blueprintStore = useBlueprintStore(pinia);
+
+  uiStore.setLocale(snapshot.locale);
+  settingsStore.hydrateLegacySettings({
+    global: snapshot.globalSettings,
+    machine: snapshot.machineSettings,
+    speed: snapshot.speedSettings,
+    recipe: snapshot.recipeSettings,
+    runtimeOptions: snapshot.runtimeOptions,
+  });
+  projectsStore.hydrateProjects(snapshot.projects);
+  calculationStore.hydrateRequirements(snapshot.requirements);
+  calculationStore.hydrateSingleMake(snapshot.singleMake);
+  calculationStore.hydrateExcludedNames(snapshot.excludedNames);
+  calculationStore.hydrateCalculationResult(snapshot.currentCalculationResult);
+  const effectiveResult = snapshot.currentCalculationResult ?? calculationStore.effectiveResult;
+  seoStore.setSnapshot(effectiveResult.seoSnapshot ?? readLegacySeoSnapshot() ?? undefined);
+  blueprintStore.setSnapshot(effectiveResult.blueprintSnapshot ?? null);
+}
+
+function syncLegacyAppViewModel(result: CalculationOutput | null, excludedNames: string[], pointLength: number) {
+  if (!window.app) {
+    return;
+  }
+  const safeResult = result ? cloneJsonValue(result, createEmptyCalculationOutput()) : createEmptyCalculationOutput();
+  window.app.items0 = safeResult.independentLines;
+  window.app.xqs = safeResult.requirements;
+  window.app.items = safeResult.productionLines;
+  window.app.items2 = safeResult.excessOutputs;
+  window.app.total = safeResult.totals.machines;
+  window.app.ig_names = cloneJsonValue(excludedNames, []);
+  window.app.totalEnergy = safeResult.totals.totalEnergy.toFixed(pointLength);
+  window.app.totalSpace = safeResult.totals.totalSpace;
+  window.app.totalAcc = safeResult.totals.totalAcc.toFixed(2);
 }
 
 export function captureLegacyRuntimeSnapshot(): LegacyRuntimeSnapshot {
@@ -61,8 +131,11 @@ export function captureLegacyRuntimeSnapshot(): LegacyRuntimeSnapshot {
     machineSettings: readLegacyMachineSettings(),
     speedSettings: readLegacySpeedSettings(),
     recipeSettings: readLegacyRecipeSettings(),
+    runtimeOptions: readLegacyRuntimeOptions(),
     currentCalculationResult: readLegacyCalculationResult(),
     requirements: readLegacyRequirements(),
+    singleMake: readLegacySingleMake(),
+    excludedNames: readLegacyExcludedNames(),
     isDataLoaded: window.isDataLoaded === true,
     currentItemName: window.currentItem && typeof window.currentItem.name === "string" ? window.currentItem.name : null,
   };
@@ -74,23 +147,8 @@ export function syncLegacyRuntimeSnapshot(
 ): LegacyRuntimeSnapshot {
   const snapshot = captureLegacyRuntimeSnapshot();
   const appStore = useAppStore(pinia);
-  const uiStore = useUiStore(pinia);
-  const settingsStore = useSettingsStore(pinia);
-  const projectsStore = useProjectsStore(pinia);
-  const calculationStore = useCalculationStore(pinia);
-  const seoStore = useSeoStore(pinia);
 
-  uiStore.setLocale(snapshot.locale);
-  settingsStore.hydrateLegacySettings({
-    global: snapshot.globalSettings,
-    machine: snapshot.machineSettings,
-    speed: snapshot.speedSettings,
-    recipe: snapshot.recipeSettings,
-  });
-  projectsStore.hydrateProjects(snapshot.projects);
-  calculationStore.hydrateRequirements(snapshot.requirements);
-  calculationStore.hydrateCalculationResult(snapshot.currentCalculationResult);
-  seoStore.setSnapshot(calculationStore.effectiveResult.seoSnapshot);
+  hydrateStoresFromLegacySnapshot(pinia, snapshot);
 
   if (options?.i18n) {
     syncI18nLocale(options.i18n, snapshot.locale);
@@ -98,4 +156,75 @@ export function syncLegacyRuntimeSnapshot(
 
   appStore.markReady();
   return snapshot;
+}
+
+export function syncLegacyProjection(
+  pinia: Pinia,
+  options: { i18n?: DsqI18nInstance; seoSnapshot?: SeoSnapshot | null } = {}
+): LegacyRuntimeSnapshot {
+  const uiStore = useUiStore(pinia);
+  const settingsStore = useSettingsStore(pinia);
+  const projectsStore = useProjectsStore(pinia);
+  const calculationStore = useCalculationStore(pinia);
+  const seoStore = useSeoStore(pinia);
+  useBlueprintStore(pinia);
+
+  window.projects = cloneJsonValue(projectsStore.items, []);
+  window.settings = cloneJsonValue(settingsStore.machineSettings, {});
+  window.global_settings = cloneJsonValue(settingsStore.global, settingsStore.global);
+  window.settings_time = cloneJsonValue(settingsStore.speedSettings, {});
+  window.settings_pf = cloneJsonValue(settingsStore.recipeSettings, {});
+  window.xqs = cloneJsonValue(calculationStore.requirements, []);
+  window.singleMake = cloneJsonValue(calculationStore.singleMake, []);
+  window.ig_names = cloneJsonValue(calculationStore.excludedNames, []);
+  window.currentCalculationResult = calculationStore.currentResult
+    ? cloneJsonValue(calculationStore.currentResult, createEmptyCalculationOutput())
+    : null;
+  window.defaultAccType = settingsStore.global.accType;
+  window.defaultAccValue = settingsStore.global.accValue;
+
+  const runtimeOptions = applyLegacyRuntimeOptions(settingsStore.runtimeOptions);
+  syncLegacyAppViewModel(calculationStore.currentResult, calculationStore.excludedNames, runtimeOptions.pointLength);
+
+  const projectedSeoSnapshot = options.seoSnapshot ?? calculationStore.currentResult?.seoSnapshot ?? seoStore.snapshot;
+  if (typeof window.DSQI18n?.updateSeoState === "function") {
+    window.DSQI18n.updateSeoState(projectedSeoSnapshot);
+  }
+
+  if (options.i18n) {
+    syncI18nLocale(options.i18n, uiStore.locale);
+  }
+
+  return {
+    locale: uiStore.locale,
+    projects: cloneJsonValue(projectsStore.items, []),
+    globalSettings: cloneJsonValue(settingsStore.global, settingsStore.global),
+    machineSettings: cloneJsonValue(settingsStore.machineSettings, {}),
+    speedSettings: cloneJsonValue(settingsStore.speedSettings, {}),
+    recipeSettings: cloneJsonValue(settingsStore.recipeSettings, {}),
+    runtimeOptions,
+    currentCalculationResult: calculationStore.currentResult
+      ? cloneJsonValue(calculationStore.currentResult, createEmptyCalculationOutput())
+      : null,
+    requirements: cloneJsonValue(calculationStore.requirements, []),
+    singleMake: cloneJsonValue(calculationStore.singleMake, []),
+    excludedNames: cloneJsonValue(calculationStore.excludedNames, []),
+    isDataLoaded: window.isDataLoaded === true,
+    currentItemName: window.currentItem && typeof window.currentItem.name === "string" ? window.currentItem.name : null,
+  };
+}
+
+export function hydrateStoresFromLegacy(pinia: Pinia): LegacyRuntimeSnapshot {
+  const snapshot = captureLegacyRuntimeSnapshot();
+  hydrateStoresFromLegacySnapshot(pinia, snapshot);
+  return snapshot;
+}
+
+export function syncDerivedStoresFromCalculation(pinia: Pinia) {
+  const calculationStore = useCalculationStore(pinia);
+  const seoStore = useSeoStore(pinia);
+  const blueprintStore = useBlueprintStore(pinia);
+
+  seoStore.syncFromCalculationResult(calculationStore.currentResult);
+  blueprintStore.setSnapshot(calculationStore.currentResult?.blueprintSnapshot ?? null);
 }

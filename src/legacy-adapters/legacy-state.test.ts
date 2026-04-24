@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from "pinia";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAppStore } from "../stores/app";
 import { useCalculationStore } from "../stores/calculation";
@@ -7,12 +7,22 @@ import { useProjectsStore } from "../stores/projects";
 import { useSeoStore } from "../stores/seo";
 import { useSettingsStore } from "../stores/settings";
 import { useUiStore } from "../stores/ui";
-import { syncLegacyRuntimeSnapshot } from "./legacy-state";
+import { syncLegacyProjection, syncLegacyRuntimeSnapshot } from "./legacy-state";
+
+type FakeElement = {
+  value?: string;
+  checked?: boolean;
+};
 
 type RuntimeWindow = typeof globalThis & {
   window?: unknown;
+  document?: {
+    getElementById: (id: string) => FakeElement | null;
+  };
   DSQI18n?: {
     getLocale?: () => string;
+    updateSeoState?: (snapshot: unknown) => void;
+    refresh?: () => void;
   };
   settings?: Record<string, unknown>;
   global_settings?: Record<string, unknown>;
@@ -20,21 +30,67 @@ type RuntimeWindow = typeof globalThis & {
   settings_pf?: Record<string, unknown>;
   projects?: Array<Record<string, unknown>>;
   xqs?: Array<Record<string, unknown>>;
+  singleMake?: Array<Record<string, unknown>>;
+  ig_names?: string[];
   currentCalculationResult?: Record<string, unknown> | null;
   isDataLoaded?: boolean;
   currentItem?: {
     name?: string;
   } | null;
+  pointLength?: number;
+  app?: {
+    $nextTick?: (callback: () => void) => void;
+    [key: string]: unknown;
+  } | null;
 };
 
 describe("legacy-state adapter", () => {
   const runtimeWindow = globalThis as RuntimeWindow;
+  const updateSeoState = vi.fn();
+  const elements = new Map<string, FakeElement>();
 
   beforeEach(() => {
     setActivePinia(createPinia());
+    elements.clear();
+    [
+      ["pointLength", { value: "4" }],
+      ["hideSource", { checked: true }],
+      ["showMaxOneBelt", { checked: true }],
+      ["isMerge", { checked: false }],
+      ["isAddSelfAccP", { checked: true }],
+      ["selfAcc", { checked: false }],
+      ["csd", { value: "conveyorBeltMk2" }],
+      ["speed1_5", { value: "3" }],
+      ["selore", { value: "120" }],
+      ["speed1_6", { value: "150" }],
+      ["speed1_1", { value: "1.2" }],
+      ["speed1_2", { value: "0.05" }],
+      ["speed1_3", { value: "0.8" }],
+      ["speed1_4", { value: "0.7" }],
+      ["fractionatorSpeed", { value: "24" }],
+      ["oilSpeed", { value: "6" }],
+      ["gzSpeed", { value: "7" }],
+      ["onlyConveyorBeltMk3", { checked: false }],
+      ["onlySorterMk3", { checked: true }],
+      ["useSorterMk4", { checked: true }],
+      ["conveyorBeltStackLayer", { value: "2" }],
+      ["generateTeslaTower", { checked: false }],
+      ["teslaTowerLineInterval", { value: "2" }],
+      ["maxLabLayers", { value: "9" }],
+      ["stackLayers", { checked: true }],
+      ["x_y_ratio", { value: "1.5" }],
+    ].forEach(([id, value]) => {
+      elements.set(id, value);
+    });
+
     Reflect.set(globalThis, "window", runtimeWindow);
+    runtimeWindow.document = {
+      getElementById: (id: string) => elements.get(id) ?? null,
+    };
     runtimeWindow.DSQI18n = {
       getLocale: () => "en-US",
+      updateSeoState,
+      refresh: vi.fn(),
     };
     runtimeWindow.settings = {
       1: { m: "原油精炼机", accType: "增产剂Mk.Ⅰ", accValue: "加速" },
@@ -53,9 +109,9 @@ describe("legacy-state adapter", () => {
     runtimeWindow.projects = [
       {
         name: "Legacy",
-        singleMake: [],
-        ig_names: [],
-        value: [],
+        singleMake: [{ id: 1, number: 2 }],
+        ig_names: ["氢"],
+        value: [{ item: { name: "铁块" }, number: 60 }],
         settings: {
           1: { m: "射线接收塔" },
         },
@@ -67,22 +123,37 @@ describe("legacy-state adapter", () => {
         number: 60,
       },
     ];
+    runtimeWindow.singleMake = [{ id: 4, number: 1.5 }];
+    runtimeWindow.ig_names = ["石墨烯"];
     runtimeWindow.currentCalculationResult = null;
     runtimeWindow.isDataLoaded = true;
     runtimeWindow.currentItem = { name: "铁块" };
+    runtimeWindow.pointLength = 4;
+    runtimeWindow.app = {
+      $nextTick(callback: () => void) {
+        callback();
+      },
+    };
   });
 
   afterEach(() => {
+    updateSeoState.mockReset();
     delete runtimeWindow.DSQI18n;
+    delete runtimeWindow.document;
     delete runtimeWindow.settings;
     delete runtimeWindow.global_settings;
     delete runtimeWindow.settings_time;
     delete runtimeWindow.settings_pf;
     delete runtimeWindow.projects;
     delete runtimeWindow.xqs;
+    delete runtimeWindow.singleMake;
+    delete runtimeWindow.ig_names;
     delete runtimeWindow.currentCalculationResult;
     delete runtimeWindow.isDataLoaded;
     delete runtimeWindow.currentItem;
+    delete runtimeWindow.pointLength;
+    delete runtimeWindow.app;
+    delete runtimeWindow.window;
   });
 
   it("syncs legacy globals into Pinia stores with normalized values", () => {
@@ -94,17 +165,66 @@ describe("legacy-state adapter", () => {
     expect(useSettingsStore(pinia).machineSettings).toEqual({
       1: { m: "oilRefinery", accType: "proliferatorMk1", accValue: "speedup" },
     });
-    expect(useSettingsStore(pinia).speedSettings).toEqual({
-      oilRefinery: 2,
-    });
-    expect(useSettingsStore(pinia).recipeSettings).toEqual({
-      gear: 3,
+    expect(useSettingsStore(pinia).runtimeOptions).toMatchObject({
+      pointLength: 4,
+      hideSource: true,
+      showMaxOneBelt: true,
+      oilSpeed: 6,
+      conveyorBeltType: "conveyorBeltMk2",
     });
     expect(useProjectsStore(pinia).items[0]?.settings).toEqual({
       1: { m: "rayReceiver" },
     });
-    expect(useCalculationStore(pinia).effectiveResult.seoSnapshot.primaryItemName).toBe("铁块");
+    expect(useCalculationStore(pinia).singleMake).toEqual([{ id: 4, number: 1.5 }]);
+    expect(useCalculationStore(pinia).excludedNames).toEqual(["石墨烯"]);
     expect(useSeoStore(pinia).snapshot.requirementCount).toBe(1);
     expect(useAppStore(pinia).isReady).toBe(true);
+  });
+
+  it("projects store state back to legacy globals and app view model", () => {
+    const pinia = createPinia();
+    syncLegacyRuntimeSnapshot(pinia, undefined);
+
+    const calculationStore = useCalculationStore(pinia);
+    calculationStore.hydrateCalculationResult({
+      requirements: [{ item: { name: "铜块" }, number: 120 }],
+      independentLines: [{ id: "independent" }],
+      productionLines: [{ id: "production" }],
+      excessOutputs: [{ id: "out" }],
+      totals: {
+        machines: [{ name: "oilRefinery", value: 2, energy: 100, space: 20 }],
+        totalAcc: 9.5,
+        totalEnergy: 100,
+        totalSpace: 20,
+      },
+      seoSnapshot: {
+        requirementCount: 1,
+        primaryItemName: "铜块",
+        primaryRatePerMinute: 120,
+        totalLineCount: 1,
+        totalEnergy: 100,
+        totalSpace: 20,
+      },
+      blueprintSnapshot: {
+        title: "Copper",
+        subRecipes: [],
+      },
+    });
+
+    syncLegacyProjection(pinia);
+
+    expect(runtimeWindow.xqs).toEqual([{ item: { name: "铁块" }, number: 60 }]);
+    expect(runtimeWindow.singleMake).toEqual([{ id: 4, number: 1.5 }]);
+    expect(runtimeWindow.ig_names).toEqual(["石墨烯"]);
+    expect(runtimeWindow.currentCalculationResult?.productionLines).toEqual([{ id: "production" }]);
+    expect(runtimeWindow.app?.items).toEqual([{ id: "production" }]);
+    expect(runtimeWindow.app?.totalEnergy).toBe("100.0000");
+    expect(elements.get("pointLength")?.value).toBe("4");
+    expect(elements.get("hideSource")?.checked).toBe(true);
+    expect(updateSeoState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        primaryItemName: "铜块",
+      })
+    );
   });
 });

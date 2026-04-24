@@ -10,6 +10,8 @@ import {
   type NumericNormalizationResult,
   type ProjectSnapshot,
   type StorageAdapter,
+  normalizeRequirementEntries,
+  normalizeSingleMakeEntries,
 } from "../types/dsq";
 
 export interface TranslationFn {
@@ -164,11 +166,11 @@ export function createProjectSnapshot(project: unknown): ProjectSnapshot {
   const source = isObject(project) ? project : {};
   return {
     name: typeof source.name === "string" ? source.name : "",
-    singleMake: Array.isArray(source.singleMake) ? deepClone(source.singleMake) : [],
+    singleMake: normalizeSingleMakeEntries(source.singleMake),
     ig_names: Array.isArray(source.ig_names)
       ? source.ig_names.filter((entry): entry is string => typeof entry === "string").map((entry) => entry)
       : [],
-    value: Array.isArray(source.value) ? deepClone(source.value) : [],
+    value: normalizeRequirementEntries(source.value),
     settings: isObject(source.settings) ? (deepClone(source.settings) as MachineSettingsSnapshot) : {},
   };
 }

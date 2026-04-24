@@ -213,9 +213,20 @@
   }
 
   function handleClickAction(action) {
+    var bridge = root.DSQCommandBridge;
     if (action === "addRequirement" && typeof root.f_add === "function") {
       trackBusinessAction("add_requirement_click", { action: action });
       root.f_add();
+      return;
+    }
+    if (
+      action === "resetRequirement" &&
+      bridge &&
+      typeof bridge.has === "function" &&
+      bridge.has("resetRequirements")
+    ) {
+      trackBusinessAction("reset_requirement_click", { action: action });
+      bridge.invoke("resetRequirements");
       return;
     }
     if (action === "resetRequirement" && typeof root.f_reset === "function") {
@@ -233,9 +244,19 @@
       root.generateBlueprint();
       return;
     }
+    if (action === "resetExclude" && bridge && typeof bridge.has === "function" && bridge.has("clearExcludedNames")) {
+      trackBusinessAction("reset_exclude_click", { action: action });
+      bridge.invoke("clearExcludedNames");
+      return;
+    }
     if (action === "resetExclude" && typeof root.f_reset_ig === "function") {
       trackBusinessAction("reset_exclude_click", { action: action });
       root.f_reset_ig();
+      return;
+    }
+    if (action === "excludeAccLine" && bridge && typeof bridge.has === "function" && bridge.has("excludeAllAcc")) {
+      trackBusinessAction("exclude_acc_line_click", { action: action });
+      bridge.invoke("excludeAllAcc");
       return;
     }
     if (action === "excludeAccLine" && typeof root.f_ig_acc === "function") {

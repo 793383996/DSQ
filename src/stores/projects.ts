@@ -18,5 +18,39 @@ export const useProjectsStore = defineStore("projects", {
       this.items = Array.isArray(projects) ? projects.map((project) => normalizeProjectForStorage(project)) : [];
       this.activeProjectName = this.items.length > 0 ? this.items[0].name : null;
     },
+    replaceProjects(projects: ProjectSnapshot[] | undefined) {
+      this.hydrateProjects(projects);
+    },
+    replaceProject(project: ProjectSnapshot) {
+      const normalizedProject = normalizeProjectForStorage(project);
+      const index = this.items.findIndex(entry => entry.name === normalizedProject.name);
+      if (index >= 0) {
+        this.items = this.items.map((entry, entryIndex) => (entryIndex === index ? normalizedProject : entry));
+      } else {
+        this.items = [...this.items, normalizedProject];
+      }
+      this.activeProjectName = normalizedProject.name;
+    },
+    saveProject(name: string, project: Omit<ProjectSnapshot, "name">) {
+      this.replaceProject({
+        name,
+        ...project,
+      });
+    },
+    loadProject(name: string): ProjectSnapshot | null {
+      const project = this.items.find(entry => entry.name === name);
+      if (!project) {
+        return null;
+      }
+      this.activeProjectName = project.name;
+      return normalizeProjectForStorage(project);
+    },
+    resetProject() {
+      this.activeProjectName = null;
+    },
+    clearProjects() {
+      this.items = [];
+      this.activeProjectName = null;
+    },
   },
 });

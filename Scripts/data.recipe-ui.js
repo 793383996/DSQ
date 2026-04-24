@@ -52,6 +52,23 @@ function recipeUiText(key, fallback) {
   return fallback;
 }
 
+function getRecipeUiCommandBridge() {
+  var bridge = window.DSQCommandBridge;
+  if (!bridge || typeof bridge.invoke !== "function" || typeof bridge.has !== "function") {
+    return null;
+  }
+  return bridge;
+}
+
+function invokeRecipeUiCommand(commandName) {
+  var bridge = getRecipeUiCommandBridge();
+  if (!bridge || !bridge.has(commandName)) {
+    return undefined;
+  }
+  var args = Array.prototype.slice.call(arguments, 1);
+  return bridge.invoke.apply(bridge, [commandName].concat(args));
+}
+
 function isChecked(id) {
   var element = byId(id);
   return !!(element && element.checked);
@@ -251,6 +268,10 @@ function f_add3(name) {
 }
 
 function addItem(item, number) {
+  if (getRecipeUiCommandBridge()) {
+    invokeRecipeUiCommand("addRequirement", item, number);
+    return;
+  }
   xqs.push({
     item: item,
     number: number,

@@ -1,7 +1,7 @@
 import { createPinia } from "pinia";
 import { createApp } from "vue";
 
-import { getLegacyCommandBridge } from "../legacy-adapters/legacy-command-bridge";
+import { initializeLegacyCommandBridge } from "../legacy-adapters/legacy-command-bridge";
 import { syncLegacyRuntimeSnapshot } from "../legacy-adapters/legacy-state";
 import { createDsqI18n } from "../services/i18n";
 import { bootstrapLegacyRuntime } from "../services/legacy-runtime";
@@ -48,7 +48,7 @@ export async function bootstrapDsqApp(): Promise<void> {
       uiStore.setLocale(persistedState.locale);
     }
 
-    getLegacyCommandBridge();
+    initializeLegacyCommandBridge(pinia);
     uiStore.markCommandBridgeReady();
 
     app.mount(ensureMountHost());

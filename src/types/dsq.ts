@@ -2,13 +2,21 @@ export type LocaleCode = "zh-CN" | "en-US";
 
 export type AppBootPhase = "idle" | "mounting" | "legacy-loading" | "legacy-ready" | "ready" | "error";
 
+export interface RequirementItemRef {
+  name?: string;
+  itemId?: string;
+  [key: string]: unknown;
+}
+
 export interface RequirementEntry {
-  item?: {
-    name?: string;
-    [key: string]: unknown;
-  };
+  item?: RequirementItemRef;
   number: number;
   [key: string]: unknown;
+}
+
+export interface SingleMakeEntry {
+  id: number | string;
+  number: number;
 }
 
 export interface MachineSettingRecord {
@@ -21,11 +29,40 @@ export type MachineSettingsSnapshot = Record<string, MachineSettingRecord>;
 
 export type SpeedSettingsSnapshot = Record<string, number>;
 
+export interface CalculationRuntimeOptions {
+  pointLength: number;
+  hideSource: boolean;
+  showMaxOneBelt: boolean;
+  isMerge: boolean;
+  isAddSelfAccP: boolean;
+  selfAcc: boolean;
+  conveyorBeltType: string;
+  stationStackLayer: number;
+  oreMultiplier: number;
+  advancedMinerMultiplier: number;
+  orbitalCollectorGasHydrogen: number;
+  orbitalCollectorDeuterium: number;
+  orbitalCollectorFireIce: number;
+  orbitalCollectorIceHydrogen: number;
+  fractionatorSpeed: number;
+  oilSpeed: number;
+  gzSpeed: number;
+  onlyConveyorBeltMk3: boolean;
+  onlySorterMk3: boolean;
+  useSorterMk4: boolean;
+  conveyorBeltStackLayer: number;
+  generateTeslaTower: boolean;
+  teslaTowerLineInterval: number;
+  maxLabLayers: number;
+  stackLayers: boolean;
+  xToYRatio: number;
+}
+
 export interface ProjectSnapshot {
   name: string;
-  singleMake: unknown[];
+  singleMake: SingleMakeEntry[];
   ig_names: string[];
-  value: unknown[];
+  value: RequirementEntry[];
   settings: MachineSettingsSnapshot;
 }
 
@@ -112,6 +149,12 @@ export interface SeoSnapshot {
 }
 
 export interface BlueprintSnapshot {
+  title?: string;
+  description?: string;
+  outputNames?: string[];
+  outputIds?: string[];
+  iconIds?: string[];
+  subRecipes?: unknown[];
   [key: string]: unknown;
 }
 
@@ -125,12 +168,19 @@ export interface CalculationOutput {
   blueprintSnapshot: BlueprintSnapshot | null;
 }
 
-export interface CalculationInput {
-  requirements?: RequirementEntry[];
-  excludedNames?: string[];
-  settings?: GlobalSettings;
+export interface CalculationSnapshot {
+  requirements: RequirementEntry[];
+  singleMake: SingleMakeEntry[];
+  excludedNames: string[];
+  globalSettings: GlobalSettings;
+  machineSettings: MachineSettingsSnapshot;
+  speedSettings: SpeedSettingsSnapshot;
+  recipeSettings: Record<string, unknown>;
+  runtimeOptions: CalculationRuntimeOptions;
   currentResult?: CalculationOutput | null;
 }
+
+export type CalculationInput = CalculationSnapshot;
 
 export interface BlueprintConfig {
   [key: string]: unknown;
@@ -206,8 +256,11 @@ export interface LegacyRuntimeSnapshot {
   machineSettings: MachineSettingsSnapshot;
   speedSettings: SpeedSettingsSnapshot;
   recipeSettings: Record<string, unknown>;
+  runtimeOptions: CalculationRuntimeOptions;
   currentCalculationResult: CalculationOutput | null;
   requirements: RequirementEntry[];
+  singleMake: SingleMakeEntry[];
+  excludedNames: string[];
   isDataLoaded: boolean;
   currentItemName: string | null;
 }
@@ -227,6 +280,35 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = Object.freeze({
   accValue: "none",
 });
 
+export const DEFAULT_CALCULATION_RUNTIME_OPTIONS: CalculationRuntimeOptions = Object.freeze({
+  pointLength: 3,
+  hideSource: false,
+  showMaxOneBelt: false,
+  isMerge: false,
+  isAddSelfAccP: false,
+  selfAcc: true,
+  conveyorBeltType: "conveyorBeltMk3",
+  stationStackLayer: 1,
+  oreMultiplier: 100,
+  advancedMinerMultiplier: 100,
+  orbitalCollectorGasHydrogen: 1,
+  orbitalCollectorDeuterium: 0.02,
+  orbitalCollectorFireIce: 0.5,
+  orbitalCollectorIceHydrogen: 0.5,
+  fractionatorSpeed: 18,
+  oilSpeed: 4,
+  gzSpeed: 5,
+  onlyConveyorBeltMk3: true,
+  onlySorterMk3: true,
+  useSorterMk4: false,
+  conveyorBeltStackLayer: 4,
+  generateTeslaTower: true,
+  teslaTowerLineInterval: 1,
+  maxLabLayers: 15,
+  stackLayers: false,
+  xToYRatio: 2,
+});
+
 export function isLocaleCode(value: unknown): value is LocaleCode {
   return value === "zh-CN" || value === "en-US";
 }
@@ -237,6 +319,145 @@ export function normalizeLocale(value: unknown, fallback: LocaleCode = "zh-CN"):
 
 export function createDefaultGlobalSettings(): GlobalSettings {
   return { ...DEFAULT_GLOBAL_SETTINGS };
+}
+
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+export function normalizeRequirementEntry(entry: unknown): RequirementEntry | null {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const source = entry as Record<string, unknown>;
+  const item =
+    source.item && typeof source.item === "object" && !Array.isArray(source.item)
+      ? cloneJsonValue(source.item as RequirementItemRef, {} as RequirementItemRef)
+      : undefined;
+  return {
+    ...source,
+    item,
+    number: toFiniteNumber(source.number, 0),
+  };
+}
+
+export function normalizeRequirementEntries(entries: unknown): RequirementEntry[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  const output: RequirementEntry[] = [];
+  for (const entry of entries) {
+    const normalizedEntry = normalizeRequirementEntry(entry);
+    if (normalizedEntry) {
+      output.push(normalizedEntry);
+    }
+  }
+  return output;
+}
+
+export function normalizeSingleMakeEntry(entry: unknown): SingleMakeEntry | null {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const source = entry as Record<string, unknown>;
+  const rawId = source.id;
+  if (typeof rawId !== "string" && typeof rawId !== "number") {
+    return null;
+  }
+  return {
+    id: rawId,
+    number: toFiniteNumber(source.number, 0),
+  };
+}
+
+export function normalizeSingleMakeEntries(entries: unknown): SingleMakeEntry[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  const output: SingleMakeEntry[] = [];
+  for (const entry of entries) {
+    const normalizedEntry = normalizeSingleMakeEntry(entry);
+    if (normalizedEntry) {
+      output.push(normalizedEntry);
+    }
+  }
+  return output;
+}
+
+export function normalizeStringList(entries: unknown): string[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  return entries.filter((entry): entry is string => typeof entry === "string").map(entry => entry);
+}
+
+export function createDefaultCalculationRuntimeOptions(): CalculationRuntimeOptions {
+  return { ...DEFAULT_CALCULATION_RUNTIME_OPTIONS };
+}
+
+export function normalizeCalculationRuntimeOptions(
+  source: Partial<CalculationRuntimeOptions> | null | undefined
+): CalculationRuntimeOptions {
+  const input = source && typeof source === "object" ? source : {};
+  return {
+    pointLength: toFiniteNumber(input.pointLength, DEFAULT_CALCULATION_RUNTIME_OPTIONS.pointLength),
+    hideSource: input.hideSource === true,
+    showMaxOneBelt: input.showMaxOneBelt === true,
+    isMerge: input.isMerge === true,
+    isAddSelfAccP: input.isAddSelfAccP === true,
+    selfAcc: input.selfAcc !== false,
+    conveyorBeltType:
+      typeof input.conveyorBeltType === "string" && input.conveyorBeltType
+        ? input.conveyorBeltType
+        : DEFAULT_CALCULATION_RUNTIME_OPTIONS.conveyorBeltType,
+    stationStackLayer: toFiniteNumber(
+      input.stationStackLayer,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.stationStackLayer
+    ),
+    oreMultiplier: toFiniteNumber(input.oreMultiplier, DEFAULT_CALCULATION_RUNTIME_OPTIONS.oreMultiplier),
+    advancedMinerMultiplier: toFiniteNumber(
+      input.advancedMinerMultiplier,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.advancedMinerMultiplier
+    ),
+    orbitalCollectorGasHydrogen: toFiniteNumber(
+      input.orbitalCollectorGasHydrogen,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.orbitalCollectorGasHydrogen
+    ),
+    orbitalCollectorDeuterium: toFiniteNumber(
+      input.orbitalCollectorDeuterium,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.orbitalCollectorDeuterium
+    ),
+    orbitalCollectorFireIce: toFiniteNumber(
+      input.orbitalCollectorFireIce,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.orbitalCollectorFireIce
+    ),
+    orbitalCollectorIceHydrogen: toFiniteNumber(
+      input.orbitalCollectorIceHydrogen,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.orbitalCollectorIceHydrogen
+    ),
+    fractionatorSpeed: toFiniteNumber(
+      input.fractionatorSpeed,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.fractionatorSpeed
+    ),
+    oilSpeed: toFiniteNumber(input.oilSpeed, DEFAULT_CALCULATION_RUNTIME_OPTIONS.oilSpeed),
+    gzSpeed: toFiniteNumber(input.gzSpeed, DEFAULT_CALCULATION_RUNTIME_OPTIONS.gzSpeed),
+    onlyConveyorBeltMk3: input.onlyConveyorBeltMk3 !== false,
+    onlySorterMk3: input.onlySorterMk3 !== false,
+    useSorterMk4: input.useSorterMk4 === true,
+    conveyorBeltStackLayer: toFiniteNumber(
+      input.conveyorBeltStackLayer,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.conveyorBeltStackLayer
+    ),
+    generateTeslaTower: input.generateTeslaTower !== false,
+    teslaTowerLineInterval: toFiniteNumber(
+      input.teslaTowerLineInterval,
+      DEFAULT_CALCULATION_RUNTIME_OPTIONS.teslaTowerLineInterval
+    ),
+    maxLabLayers: toFiniteNumber(input.maxLabLayers, DEFAULT_CALCULATION_RUNTIME_OPTIONS.maxLabLayers),
+    stackLayers: input.stackLayers === true,
+    xToYRatio: toFiniteNumber(input.xToYRatio, DEFAULT_CALCULATION_RUNTIME_OPTIONS.xToYRatio),
+  };
 }
 
 export function createEmptySeoSnapshot(): SeoSnapshot {

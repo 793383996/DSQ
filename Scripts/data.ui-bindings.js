@@ -412,6 +412,23 @@ function refreshI18nDom() {
   }
 }
 
+function getCompatCommandBridge() {
+  var bridge = window.DSQCommandBridge;
+  if (!bridge || typeof bridge.invoke !== "function" || typeof bridge.has !== "function") {
+    return null;
+  }
+  return bridge;
+}
+
+function invokeCompatCommand(commandName) {
+  var bridge = getCompatCommandBridge();
+  if (!bridge || !bridge.has(commandName)) {
+    return undefined;
+  }
+  var args = Array.prototype.slice.call(arguments, 1);
+  return bridge.invoke.apply(bridge, [commandName].concat(args));
+}
+
 function syncLocalizedLabels() {
   if (!app) return;
   app.accTotalLabel = i18nText("table.acc_need_prefix", "需求：");
@@ -443,6 +460,10 @@ function cancelNextFrame(handle) {
 }
 
 function scheduleUpdateAll(reason) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("scheduleRecalculate", reason || "");
+    return;
+  }
   if (typeof reason === "string" && reason) {
     updateAllDispatch.reason = reason;
   }
@@ -458,6 +479,10 @@ function scheduleUpdateAll(reason) {
 }
 
 function flushScheduledUpdateAll(reason) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("flushRecalculate", reason || "");
+    return;
+  }
   if (typeof reason === "string" && reason) {
     updateAllDispatch.reason = reason;
   }
@@ -648,8 +673,12 @@ function f_init() {
             maxFractionDigits: 6,
           });
           this.xps_editor_number = nextRequirementNumber;
-          this.xqs[this.xps_editor_index].number = nextRequirementNumber;
-          scheduleUpdateAll("requirement-number-edit");
+          if (getCompatCommandBridge()) {
+            invokeCompatCommand("updateRequirementNumber", this.xps_editor_index, nextRequirementNumber);
+          } else {
+            this.xqs[this.xps_editor_index].number = nextRequirementNumber;
+            scheduleUpdateAll("requirement-number-edit");
+          }
           this.xps_editor_index = -1;
         }
       },
@@ -692,8 +721,12 @@ function f_init() {
 
       removeItem: function (index) {
         if (this.xqs && this.xqs[index]) {
-          this.xqs.splice(index, 1);
-          scheduleUpdateAll("requirement-remove");
+          if (getCompatCommandBridge()) {
+            invokeCompatCommand("removeRequirement", index);
+          } else {
+            this.xqs.splice(index, 1);
+            scheduleUpdateAll("requirement-remove");
+          }
         }
       },
 
@@ -1041,6 +1074,11 @@ function f_init() {
     scheduleUpdateAll("reset-recipe-settings");
   });
   dom("#btnReset5").click(function () {
+    if (getCompatCommandBridge()) {
+      invokeCompatCommand("clearProjects");
+      projectsUpdate();
+      return;
+    }
     projects = [];
     saveSettingProjects();
     projectsUpdate();
@@ -1048,6 +1086,10 @@ function f_init() {
   dom("#btnLoadProject").click(function () {
     var value = dom("#selprojects").val();
     if (!value) return;
+    if (getCompatCommandBridge()) {
+      invokeCompatCommand("loadProject", value);
+      return;
+    }
     for (var i = 0; i < projects.length; i++) {
       if (projects[i].name == value) {
         var loadedProject = hydrateProjectForRuntime(projects[i]);
@@ -1813,6 +1855,10 @@ function buildCalculationResult() {
 }
 
 function update_all() {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("syncFromLegacyAndRecalculate", "compat-update-all");
+    return;
+  }
   var result = buildCalculationResult();
   window.currentCalculationResult = result;
   app.items0 = result.independentLines;
@@ -1838,24 +1884,40 @@ function update_all() {
   }
 }
 function selectM(id, m) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("updateMachineSelection", id, m);
+    return;
+  }
   settings[id] = settings[id] || {};
   settings[id].m = m;
   saveSetting();
   scheduleUpdateAll("row-machine-change");
 }
 function selectAccType(id, accType) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("updateAccType", id, accType);
+    return;
+  }
   settings[id] = settings[id] || {};
   settings[id].accType = accType;
   saveSetting();
   scheduleUpdateAll("row-acc-type-change");
 }
 function selectAccValue(id, accValue) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("updateAccValue", id, accValue);
+    return;
+  }
   settings[id] = settings[id] || {};
   settings[id].accValue = accValue;
   saveSetting();
   scheduleUpdateAll("row-acc-value-change");
 }
 function selectPf(name, value) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("updateRecipeSelection", name, value);
+    return;
+  }
   let old_settings_pf = dom.extend(true, {}, settings_pf);
   try {
     settings_pf[name] = readNumeric(value, {
@@ -1893,11 +1955,23 @@ function f_tag(obj) {
 }
 function f_ig(obj) {
   var name = dom(obj).attr("data-name");
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("addExcludedName", name);
+    return;
+  }
   ig_names.push(name);
 
   scheduleUpdateAll("exclude-item");
 }
 function f_ig_acc() {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("excludeAllAcc", [
+      getDomainDisplayName("proliferatorMk1"),
+      getDomainDisplayName("proliferatorMk2"),
+      getDomainDisplayName("proliferatorMk3"),
+    ]);
+    return;
+  }
   ["proliferatorMk1", "proliferatorMk2", "proliferatorMk3"].forEach(function (one) {
     var displayName = getDomainDisplayName(one);
     if (ig_names.indexOf(displayName) < 0) ig_names.push(displayName);
@@ -1905,6 +1979,14 @@ function f_ig_acc() {
   scheduleUpdateAll("exclude-all-acc");
 }
 function f_reset() {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("resetRequirements");
+    if (app) {
+      app.xps_editor_index = -1;
+      app.items_editor_index = -1;
+    }
+    return;
+  }
   xqs = [];
   singleMake = [];
   app.xps_editor_index = -1;
@@ -1913,11 +1995,19 @@ function f_reset() {
   scheduleUpdateAll("reset-requirements");
 }
 function f_reset_ig() {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("clearExcludedNames");
+    return;
+  }
   ig_names = [];
 
   scheduleUpdateAll("reset-excluded-items");
 }
 function f_remove_ig(name) {
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("removeExcludedName", name);
+    return;
+  }
   ig_names = ig_names.filter(function (one) {
     return one != name;
   });
@@ -1950,6 +2040,11 @@ function f_save() {
     return;
   }
   var name = normalizedName.value;
+  if (getCompatCommandBridge()) {
+    invokeCompatCommand("saveProject", name);
+    projectsUpdate();
+    return;
+  }
   for (index = 0; index < projects.length; index++) {
     // 存在相同名称的方案
     if (projects[index].name == name) {
@@ -2082,7 +2177,7 @@ function f_split(obj) {
         alert(i18nText("alert.recipe_not_selected", "未选择配方"));
         return;
       }
-      singleMake.push({
+      var splitEntry = {
         id: selected.id,
         number: readNumeric(dom("#Split").find(":text").get(0), {
           fieldLabel: getNumericFieldLabel("split.device_count", "设备数量"),
@@ -2091,8 +2186,13 @@ function f_split(obj) {
           requirePositive: true,
           maxFractionDigits: 6,
         }),
-      });
-      scheduleUpdateAll("split-recipe-confirm");
+      };
+      if (getCompatCommandBridge()) {
+        invokeCompatCommand("appendSingleMake", splitEntry);
+      } else {
+        singleMake.push(splitEntry);
+        scheduleUpdateAll("split-recipe-confirm");
+      }
       if (panelController && typeof panelController.close === "function") {
         panelController.close("split");
       } else {
