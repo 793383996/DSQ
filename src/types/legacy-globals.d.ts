@@ -1,4 +1,11 @@
-import type { CalculationOutput, GlobalSettings, ProjectSnapshot, RequirementEntry } from "./dsq";
+import type {
+  CalculationOutput,
+  GlobalSettings,
+  MachineSettingsSnapshot,
+  ProjectSnapshot,
+  RequirementEntry,
+  SpeedSettingsSnapshot,
+} from "./dsq";
 
 declare global {
   interface Window {
@@ -9,7 +16,10 @@ declare global {
     };
     version?: string;
     projects?: ProjectSnapshot[];
+    settings?: MachineSettingsSnapshot;
     global_settings?: Partial<GlobalSettings>;
+    settings_time?: SpeedSettingsSnapshot;
+    settings_pf?: Record<string, unknown>;
     currentCalculationResult?: CalculationOutput | null;
     xqs?: RequirementEntry[];
     isDataLoaded?: boolean;

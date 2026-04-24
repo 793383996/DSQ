@@ -1,6 +1,7 @@
 import type { Pinia } from "pinia";
 
 import { syncI18nLocale, type DsqI18nInstance } from "../services/i18n";
+import { normalizeMachineSettingsForStorage, normalizeSpeedSettingsForStorage } from "../services/legacy-storage";
 import { useAppStore } from "../stores/app";
 import { useCalculationStore } from "../stores/calculation";
 import { useProjectsStore } from "../stores/projects";
@@ -25,6 +26,20 @@ function readLegacyProjects(): ProjectSnapshot[] {
   return Array.isArray(window.projects) ? cloneJsonValue(window.projects, []) : [];
 }
 
+function readLegacyMachineSettings() {
+  return normalizeMachineSettingsForStorage(window.settings);
+}
+
+function readLegacySpeedSettings() {
+  return normalizeSpeedSettingsForStorage(window.settings_time);
+}
+
+function readLegacyRecipeSettings() {
+  return window.settings_pf && typeof window.settings_pf === "object" && !Array.isArray(window.settings_pf)
+    ? cloneJsonValue(window.settings_pf, {})
+    : {};
+}
+
 function readLegacyRequirements(): RequirementEntry[] {
   return Array.isArray(window.xqs) ? cloneJsonValue(window.xqs, []) : [];
 }
@@ -43,6 +58,9 @@ export function captureLegacyRuntimeSnapshot(): LegacyRuntimeSnapshot {
       window.global_settings && typeof window.global_settings === "object"
         ? cloneJsonValue(window.global_settings, {})
         : {},
+    machineSettings: readLegacyMachineSettings(),
+    speedSettings: readLegacySpeedSettings(),
+    recipeSettings: readLegacyRecipeSettings(),
     currentCalculationResult: readLegacyCalculationResult(),
     requirements: readLegacyRequirements(),
     isDataLoaded: window.isDataLoaded === true,
@@ -63,11 +81,16 @@ export function syncLegacyRuntimeSnapshot(
   const seoStore = useSeoStore(pinia);
 
   uiStore.setLocale(snapshot.locale);
-  settingsStore.hydrateGlobalSettings(snapshot.globalSettings);
+  settingsStore.hydrateLegacySettings({
+    global: snapshot.globalSettings,
+    machine: snapshot.machineSettings,
+    speed: snapshot.speedSettings,
+    recipe: snapshot.recipeSettings,
+  });
   projectsStore.hydrateProjects(snapshot.projects);
   calculationStore.hydrateRequirements(snapshot.requirements);
   calculationStore.hydrateCalculationResult(snapshot.currentCalculationResult);
-  seoStore.setSnapshot(snapshot.currentCalculationResult?.seoSnapshot);
+  seoStore.setSnapshot(calculationStore.effectiveResult.seoSnapshot);
 
   if (options?.i18n) {
     syncI18nLocale(options.i18n, snapshot.locale);

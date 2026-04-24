@@ -203,6 +203,9 @@ export interface LegacyRuntimeSnapshot {
   locale: LocaleCode;
   projects: ProjectSnapshot[];
   globalSettings: Partial<GlobalSettings>;
+  machineSettings: MachineSettingsSnapshot;
+  speedSettings: SpeedSettingsSnapshot;
+  recipeSettings: Record<string, unknown>;
   currentCalculationResult: CalculationOutput | null;
   requirements: RequirementEntry[];
   isDataLoaded: boolean;
