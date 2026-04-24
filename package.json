@@ -6,9 +6,12 @@
   "description": "Engineering scaffold for the DSQ static frontend project.",
   "scripts": {
     "prepare": "husky",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "lint": "eslint Scripts localDev --max-warnings 100",
     "lint:baseline": "node ./localDev/node-scripts/lint-baseline.mjs",
     "jquery:check": "node ./localDev/node-scripts/no-jquery-baseline.mjs",
+    "docs:check": "node ./localDev/node-scripts/readme-doc-link-check.mjs",
+    "guard:globals": "node ./localDev/node-scripts/global-state-guard.mjs",
     "lint:fix": "eslint Scripts localDev --fix",
     "format:check": "prettier --check \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
     "format": "prettier --write \"Scripts/**/*.js\" \"localDev/**/*.mjs\"",
@@ -32,7 +35,7 @@
     "test:e2e": "node ./localDev/node-scripts/e2e.mjs",
     "test:integration": "node ./localDev/node-scripts/integration.mjs",
     "test:unit": "vitest run",
-    "ci:check": "npm run lint && npm run lint:baseline && npm run jquery:check && npm run format:check && npm run smoke && npm run check:logic-ids && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run seo:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
+    "ci:check": "npm run typecheck && npm run docs:check && npm run guard:globals && npm run lint && npm run lint:baseline && npm run jquery:check && npm run format:check && npm run smoke && npm run check:logic-ids && npm run test:blueprint && npm run test:unit && npm run monitor:check && npm run metrics:check && npm run seo:check && npm run build && npm run verify:vite-dist && npm run test:e2e && npm run test:a11y && npm run test:integration"
   },
   "engines": {
     "node": "20.19.x"
@@ -40,14 +43,18 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
     "@lhci/cli": "^0.15.1",
+    "@types/node": "^25.6.0",
+    "@vitejs/plugin-vue": "^6.0.6",
     "eslint": "^9.0.0",
     "globals": "^16.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
     "playwright": "^1.53.2",
     "prettier": "^3.0.0",
+    "typescript": "^6.0.3",
     "vite": "^5.4.19",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.2.7"
   },
   "lint-staged": {
     "Scripts/**/*.js": [
@@ -58,5 +65,10 @@
       "eslint --fix",
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "pinia": "^3.0.4",
+    "vue": "^3.5.33",
+    "vue-i18n": "^11.4.0"
   }
 }

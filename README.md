@@ -71,6 +71,7 @@ git push origin feat/your-topic
 
 | 类别 | 命令 | 作用 |
 | ---- | ---- | ---- |
+| 类型检查 | `npm run typecheck` | Vue 3 / TypeScript 新骨架类型校验 |
 | 全量门禁 | `npm run ci:check` | 本地与 CI 主验收入口 |
 | Lint | `npm run lint` | ESLint 检查 |
 | Lint 基线 | `npm run lint:baseline` | 冻结并校验 warning 基线 |
@@ -103,23 +104,27 @@ git push origin feat/your-topic
 - 发布产物目录：`dist-vite`
 - 部署配置：`vercel.json`
 - CSP 状态：`Content-Security-Policy` 已启用（Enforce）
-- 发布/回滚标准流程：`localDocs/release-governance-runbook.md`
+- 当前重构主计划：`localDocs/DSQ前端Vue3原地重构实施计划.md`
+- 发布/回滚 Runbook：待重建（旧文档已下线，不再引用失效路径）
 
 ## 文档导航
 
-- 现行执行计划：`localDocs/网站完善实施计划.md`
-- 架构差距分析：`localDocs/当前项目架构与成熟网站差距分析.md`
-- 文档状态清单：`localDocs/文档状态清单.md`
-- 监控与告警 Runbook：`localDocs/monitoring-slo-runbook.md`
-- 性能预算说明：`localDocs/lighthouse-ci-budget.md`
-- 业务指标字典：`localDocs/business-metrics-dictionary.md`
-- 依赖现代化路线：`localDocs/dependency-modernization-roadmap.md`
-- Node 版本锁定说明：`localDocs/Node版本锁定说明.md`
+- 当前重构主计划：`localDocs/DSQ前端Vue3原地重构实施计划.md`
+- legacy 运行时清单：`localDocs/legacy运行时清单与迁移边界.md`
+- 重构验收矩阵：`localDocs/重构验收矩阵.md`
+- 监控 SLO Runbook（重建版）：`localDocs/monitoring-slo-runbook-rebuild.md`
+- 业务指标字典（重建版）：`localDocs/business-metrics-dictionary-rebuild.md`
+- index 结构治理收口：`localDocs/index拆分结构清单.md`
+- 历史 index 流程归档：`localDocs/index核心流程详细文档.md`
+- 历史 data 模块归档：`localDocs/data模块详细说明文档.md`
+- 历史蓝图模块归档：`localDocs/蓝图模块详细说明文档.md`
+- 历史蓝图总览归档：`localDocs/蓝图模块说明.md`
 
 ## 项目结构（当前）
 
 ```
 DSQ/
+├─ src/                     # Vue 3 + Pinia + TypeScript 新架构骨架（逐阶段接管）
 ├─ Scripts/                 # 前端核心逻辑（计算、蓝图、UI 绑定等）
 ├─ localDev/node-scripts/   # 工程化脚本（lint/smoke/回归/校验）
 ├─ localDev/monitoring/     # 监控与业务指标基线配置

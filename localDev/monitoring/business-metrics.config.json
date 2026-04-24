@@ -77,5 +77,5 @@
     "dashboard": "monitor-dashboard/business",
     "owner": "growth-frontend"
   },
-  "doc": "localDocs/business-metrics-dictionary.md"
+  "doc": "localDocs/business-metrics-dictionary-rebuild.md"
 }

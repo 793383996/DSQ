@@ -71,5 +71,5 @@
       "notifyChannels": ["team-chat", "oncall-phone"]
     }
   ],
-  "runbook": "localDocs/monitoring-slo-runbook.md"
+  "runbook": "localDocs/monitoring-slo-runbook-rebuild.md"
 }
