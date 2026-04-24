@@ -1,0 +1,1609 @@
+{
+  "items": [
+    {
+      "id": "lab",
+      "displayNameZh": "矩阵研究站",
+      "aliasesZh": [],
+      "iconName": "矩阵研究站",
+      "blueprintEntityName": "lab"
+    },
+    {
+      "id": "配送运输机",
+      "displayNameZh": "配送运输机",
+      "aliasesZh": [],
+      "iconName": "配送运输机",
+      "blueprintEntityName": "配送运输机"
+    },
+    {
+      "id": "water",
+      "displayNameZh": "水",
+      "aliasesZh": [],
+      "iconName": "水",
+      "blueprintEntityName": "water"
+    },
+    {
+      "id": "ironOre",
+      "displayNameZh": "铁矿",
+      "aliasesZh": [],
+      "iconName": "铁矿",
+      "blueprintEntityName": "ironOre"
+    },
+    {
+      "id": "copperOre",
+      "displayNameZh": "铜矿",
+      "aliasesZh": [],
+      "iconName": "铜矿",
+      "blueprintEntityName": "copperOre"
+    },
+    {
+      "id": "siliconOre",
+      "displayNameZh": "硅石",
+      "aliasesZh": [],
+      "iconName": "硅石",
+      "blueprintEntityName": "siliconOre"
+    },
+    {
+      "id": "titaniumOre",
+      "displayNameZh": "钛石",
+      "aliasesZh": [],
+      "iconName": "钛石",
+      "blueprintEntityName": "titaniumOre"
+    },
+    {
+      "id": "coal",
+      "displayNameZh": "煤矿",
+      "aliasesZh": [],
+      "iconName": "煤矿",
+      "blueprintEntityName": "coal"
+    },
+    {
+      "id": "ironIngot",
+      "displayNameZh": "铁块",
+      "aliasesZh": [],
+      "iconName": "铁块",
+      "blueprintEntityName": "ironIngot"
+    },
+    {
+      "id": "titaniumIngot",
+      "displayNameZh": "钛块",
+      "aliasesZh": [],
+      "iconName": "钛块",
+      "blueprintEntityName": "titaniumIngot"
+    },
+    {
+      "id": "energeticGraphite",
+      "displayNameZh": "高级石墨",
+      "aliasesZh": [],
+      "iconName": "高级石墨",
+      "blueprintEntityName": "energeticGraphite"
+    },
+    {
+      "id": "diamond",
+      "displayNameZh": "金刚石",
+      "aliasesZh": [],
+      "iconName": "金刚石",
+      "blueprintEntityName": "diamond"
+    },
+    {
+      "id": "proliferatorMk1",
+      "displayNameZh": "增产剂Mk.Ⅰ",
+      "aliasesZh": [],
+      "iconName": "增产剂Mk.Ⅰ",
+      "blueprintEntityName": "proliferatorMk1"
+    },
+    {
+      "id": "proliferatorMk2",
+      "displayNameZh": "增产剂Mk.Ⅱ",
+      "aliasesZh": [],
+      "iconName": "增产剂Mk.Ⅱ",
+      "blueprintEntityName": "proliferatorMk2"
+    },
+    {
+      "id": "proliferatorMk3",
+      "displayNameZh": "增产剂Mk.Ⅲ",
+      "aliasesZh": [],
+      "iconName": "增产剂Mk.Ⅲ",
+      "blueprintEntityName": "proliferatorMk3"
+    },
+    {
+      "id": "gear",
+      "displayNameZh": "齿轮",
+      "aliasesZh": [],
+      "iconName": "齿轮",
+      "blueprintEntityName": "gear"
+    },
+    {
+      "id": "stone",
+      "displayNameZh": "石矿",
+      "aliasesZh": [],
+      "iconName": "石矿",
+      "blueprintEntityName": "stone"
+    },
+    {
+      "id": "oil",
+      "displayNameZh": "原油",
+      "aliasesZh": [],
+      "iconName": "原油",
+      "blueprintEntityName": "oil"
+    },
+    {
+      "id": "refinedOil",
+      "displayNameZh": "精炼油",
+      "aliasesZh": [],
+      "iconName": "精炼油",
+      "blueprintEntityName": "refinedOil"
+    },
+    {
+      "id": "sulfuricAcid",
+      "displayNameZh": "硫酸",
+      "aliasesZh": [],
+      "iconName": "硫酸",
+      "blueprintEntityName": "sulfuricAcid"
+    },
+    {
+      "id": "hydrogen",
+      "displayNameZh": "氢",
+      "aliasesZh": [],
+      "iconName": "氢",
+      "blueprintEntityName": "hydrogen"
+    },
+    {
+      "id": "fireIce",
+      "displayNameZh": "可燃冰",
+      "aliasesZh": [],
+      "iconName": "可燃冰",
+      "blueprintEntityName": "fireIce"
+    },
+    {
+      "id": "wood",
+      "displayNameZh": "木材",
+      "aliasesZh": [],
+      "iconName": "木材",
+      "blueprintEntityName": "wood"
+    },
+    {
+      "id": "plant_fuel",
+      "displayNameZh": "植物燃料",
+      "aliasesZh": [],
+      "iconName": "植物燃料",
+      "blueprintEntityName": "plant_fuel"
+    },
+    {
+      "id": "kimberliteOre",
+      "displayNameZh": "金伯利矿石",
+      "aliasesZh": [],
+      "iconName": "金伯利矿石",
+      "blueprintEntityName": "kimberliteOre"
+    },
+    {
+      "id": "fractalSilicon",
+      "displayNameZh": "分形硅石",
+      "aliasesZh": [],
+      "iconName": "分形硅石",
+      "blueprintEntityName": "fractalSilicon"
+    },
+    {
+      "id": "opticalGratingCrystal",
+      "displayNameZh": "光栅石",
+      "aliasesZh": [],
+      "iconName": "光栅石",
+      "blueprintEntityName": "opticalGratingCrystal"
+    },
+    {
+      "id": "spiniformStalagmiteCrystal",
+      "displayNameZh": "刺笋结晶",
+      "aliasesZh": [],
+      "iconName": "刺笋结晶",
+      "blueprintEntityName": "spiniformStalagmiteCrystal"
+    },
+    {
+      "id": "unipolarMagnet",
+      "displayNameZh": "单极磁石",
+      "aliasesZh": [],
+      "iconName": "单极磁石",
+      "blueprintEntityName": "unipolarMagnet"
+    },
+    {
+      "id": "copperIngot",
+      "displayNameZh": "铜块",
+      "aliasesZh": [],
+      "iconName": "铜块",
+      "blueprintEntityName": "copperIngot"
+    },
+    {
+      "id": "highPuritySilicon",
+      "displayNameZh": "高纯硅块",
+      "aliasesZh": [],
+      "iconName": "高纯硅块",
+      "blueprintEntityName": "highPuritySilicon"
+    },
+    {
+      "id": "stoneBrick",
+      "displayNameZh": "石材",
+      "aliasesZh": [],
+      "iconName": "石材",
+      "blueprintEntityName": "stoneBrick"
+    },
+    {
+      "id": "steel",
+      "displayNameZh": "钢材",
+      "aliasesZh": [],
+      "iconName": "钢材",
+      "blueprintEntityName": "steel"
+    },
+    {
+      "id": "titaniumAlloy",
+      "displayNameZh": "钛合金",
+      "aliasesZh": [],
+      "iconName": "钛合金",
+      "blueprintEntityName": "titaniumAlloy"
+    },
+    {
+      "id": "glass",
+      "displayNameZh": "玻璃",
+      "aliasesZh": [],
+      "iconName": "玻璃",
+      "blueprintEntityName": "glass"
+    },
+    {
+      "id": "titaniumGlass",
+      "displayNameZh": "钛化玻璃",
+      "aliasesZh": [],
+      "iconName": "钛化玻璃",
+      "blueprintEntityName": "titaniumGlass"
+    },
+    {
+      "id": "prism",
+      "displayNameZh": "棱镜",
+      "aliasesZh": [],
+      "iconName": "棱镜",
+      "blueprintEntityName": "prism"
+    },
+    {
+      "id": "crystalSilicon",
+      "displayNameZh": "晶格硅",
+      "aliasesZh": [],
+      "iconName": "晶格硅",
+      "blueprintEntityName": "crystalSilicon"
+    },
+    {
+      "id": "magnet",
+      "displayNameZh": "磁铁",
+      "aliasesZh": [],
+      "iconName": "磁铁",
+      "blueprintEntityName": "magnet"
+    },
+    {
+      "id": "magneticCoil",
+      "displayNameZh": "磁线圈",
+      "aliasesZh": [],
+      "iconName": "磁线圈",
+      "blueprintEntityName": "magneticCoil"
+    },
+    {
+      "id": "electricMotor",
+      "displayNameZh": "电动机",
+      "aliasesZh": [],
+      "iconName": "电动机",
+      "blueprintEntityName": "electricMotor"
+    },
+    {
+      "id": "electromagneticTurbine",
+      "displayNameZh": "电磁涡轮",
+      "aliasesZh": [],
+      "iconName": "电磁涡轮",
+      "blueprintEntityName": "electromagneticTurbine"
+    },
+    {
+      "id": "superMagneticRing",
+      "displayNameZh": "超级磁场环",
+      "aliasesZh": [],
+      "iconName": "超级磁场环",
+      "blueprintEntityName": "superMagneticRing"
+    },
+    {
+      "id": "particleContainer",
+      "displayNameZh": "粒子容器",
+      "aliasesZh": [],
+      "iconName": "粒子容器",
+      "blueprintEntityName": "particleContainer"
+    },
+    {
+      "id": "strangeMatter",
+      "displayNameZh": "奇异物质",
+      "aliasesZh": [],
+      "iconName": "奇异物质",
+      "blueprintEntityName": "strangeMatter"
+    },
+    {
+      "id": "circuitBoard",
+      "displayNameZh": "电路板",
+      "aliasesZh": [],
+      "iconName": "电路板",
+      "blueprintEntityName": "circuitBoard"
+    },
+    {
+      "id": "processor",
+      "displayNameZh": "处理器",
+      "aliasesZh": [],
+      "iconName": "处理器",
+      "blueprintEntityName": "processor"
+    },
+    {
+      "id": "quantumChip",
+      "displayNameZh": "量子芯片",
+      "aliasesZh": [],
+      "iconName": "量子芯片",
+      "blueprintEntityName": "quantumChip"
+    },
+    {
+      "id": "microcrystallineComponent",
+      "displayNameZh": "微晶元件",
+      "aliasesZh": [],
+      "iconName": "微晶元件",
+      "blueprintEntityName": "microcrystallineComponent"
+    },
+    {
+      "id": "planeFilter",
+      "displayNameZh": "位面过滤器",
+      "aliasesZh": [],
+      "iconName": "位面过滤器",
+      "blueprintEntityName": "planeFilter"
+    },
+    {
+      "id": "particleBroadband",
+      "displayNameZh": "粒子带宽",
+      "aliasesZh": [],
+      "iconName": "粒子带宽",
+      "blueprintEntityName": "particleBroadband"
+    },
+    {
+      "id": "plasmaExciter",
+      "displayNameZh": "电浆激发器",
+      "aliasesZh": [],
+      "iconName": "电浆激发器",
+      "blueprintEntityName": "plasmaExciter"
+    },
+    {
+      "id": "photonCombiner",
+      "displayNameZh": "光子合并器",
+      "aliasesZh": [],
+      "iconName": "光子合并器",
+      "blueprintEntityName": "photonCombiner"
+    },
+    {
+      "id": "solarSail",
+      "displayNameZh": "太阳帆",
+      "aliasesZh": [],
+      "iconName": "太阳帆",
+      "blueprintEntityName": "solarSail"
+    },
+    {
+      "id": "deuterium",
+      "displayNameZh": "重氢",
+      "aliasesZh": [],
+      "iconName": "重氢",
+      "blueprintEntityName": "deuterium"
+    },
+    {
+      "id": "antimatter",
+      "displayNameZh": "反物质",
+      "aliasesZh": [],
+      "iconName": "反物质",
+      "blueprintEntityName": "antimatter"
+    },
+    {
+      "id": "criticalPhoton",
+      "displayNameZh": "临界光子",
+      "aliasesZh": [],
+      "iconName": "临界光子",
+      "blueprintEntityName": "criticalPhoton"
+    },
+    {
+      "id": "hydrogenFuelRod",
+      "displayNameZh": "液氢燃料棒",
+      "aliasesZh": [],
+      "iconName": "液氢燃料棒",
+      "blueprintEntityName": "hydrogenFuelRod"
+    },
+    {
+      "id": "deuteriumFuelRod",
+      "displayNameZh": "氘核燃料棒",
+      "aliasesZh": [],
+      "iconName": "氘核燃料棒",
+      "blueprintEntityName": "deuteriumFuelRod"
+    },
+    {
+      "id": "antimatterFuelRod",
+      "displayNameZh": "反物质燃烧棒",
+      "aliasesZh": [],
+      "iconName": "反物质燃烧棒",
+      "blueprintEntityName": "antimatterFuelRod"
+    },
+    {
+      "id": "plastic",
+      "displayNameZh": "塑料",
+      "aliasesZh": [],
+      "iconName": "塑料",
+      "blueprintEntityName": "plastic"
+    },
+    {
+      "id": "graphene",
+      "displayNameZh": "石墨烯",
+      "aliasesZh": [],
+      "iconName": "石墨烯",
+      "blueprintEntityName": "graphene"
+    },
+    {
+      "id": "carbonNanotube",
+      "displayNameZh": "碳纳米管",
+      "aliasesZh": [],
+      "iconName": "碳纳米管",
+      "blueprintEntityName": "carbonNanotube"
+    },
+    {
+      "id": "organicCrystal",
+      "displayNameZh": "有机晶体",
+      "aliasesZh": [],
+      "iconName": "有机晶体",
+      "blueprintEntityName": "organicCrystal"
+    },
+    {
+      "id": "titaniumCrystal",
+      "displayNameZh": "钛晶石",
+      "aliasesZh": [],
+      "iconName": "钛晶石",
+      "blueprintEntityName": "titaniumCrystal"
+    },
+    {
+      "id": "casimirCrystal",
+      "displayNameZh": "卡西米尔晶片",
+      "aliasesZh": [],
+      "iconName": "卡西米尔晶片",
+      "blueprintEntityName": "casimirCrystal"
+    },
+    {
+      "id": "gravitonLens",
+      "displayNameZh": "引力透镜",
+      "aliasesZh": [],
+      "iconName": "引力透镜",
+      "blueprintEntityName": "gravitonLens"
+    },
+    {
+      "id": "spaceWarper",
+      "displayNameZh": "空间翘曲器",
+      "aliasesZh": [],
+      "iconName": "空间翘曲器",
+      "blueprintEntityName": "spaceWarper"
+    },
+    {
+      "id": "annihilationConstraintSphere",
+      "displayNameZh": "湮灭约束球",
+      "aliasesZh": [],
+      "iconName": "湮灭约束球",
+      "blueprintEntityName": "annihilationConstraintSphere"
+    },
+    {
+      "id": "thruster",
+      "displayNameZh": "推进器",
+      "aliasesZh": [],
+      "iconName": "推进器",
+      "blueprintEntityName": "thruster"
+    },
+    {
+      "id": "reinforcedThruster",
+      "displayNameZh": "加力推进器",
+      "aliasesZh": [],
+      "iconName": "加力推进器",
+      "blueprintEntityName": "reinforcedThruster"
+    },
+    {
+      "id": "logisticDrone",
+      "displayNameZh": "物流运输机",
+      "aliasesZh": [],
+      "iconName": "物流运输机",
+      "blueprintEntityName": "logisticDrone"
+    },
+    {
+      "id": "logisticVessel",
+      "displayNameZh": "星际物流运输机",
+      "aliasesZh": [],
+      "iconName": "星际物流运输机",
+      "blueprintEntityName": "logisticVessel"
+    },
+    {
+      "id": "frameMaterial",
+      "displayNameZh": "框架材料",
+      "aliasesZh": [],
+      "iconName": "框架材料",
+      "blueprintEntityName": "frameMaterial"
+    },
+    {
+      "id": "dysonSphereComponent",
+      "displayNameZh": "戴森球组件",
+      "aliasesZh": [],
+      "iconName": "戴森球组件",
+      "blueprintEntityName": "dysonSphereComponent"
+    },
+    {
+      "id": "smallCarrierRocket",
+      "displayNameZh": "小型运载火箭",
+      "aliasesZh": [],
+      "iconName": "小型运载火箭",
+      "blueprintEntityName": "smallCarrierRocket"
+    },
+    {
+      "id": "foundation",
+      "displayNameZh": "地基",
+      "aliasesZh": [],
+      "iconName": "地基",
+      "blueprintEntityName": "foundation"
+    },
+    {
+      "id": "conveyorBeltMk1",
+      "displayNameZh": "传送带",
+      "aliasesZh": [],
+      "iconName": "传送带",
+      "blueprintEntityName": "conveyorBeltMk1"
+    },
+    {
+      "id": "conveyorBeltMk2",
+      "displayNameZh": "高速传送带",
+      "aliasesZh": [],
+      "iconName": "高速传送带",
+      "blueprintEntityName": "conveyorBeltMk2"
+    },
+    {
+      "id": "conveyorBeltMk3",
+      "displayNameZh": "极速传送带",
+      "aliasesZh": [],
+      "iconName": "极速传送带",
+      "blueprintEntityName": "conveyorBeltMk3"
+    },
+    {
+      "id": "sorterMk1",
+      "displayNameZh": "分拣器",
+      "aliasesZh": [],
+      "iconName": "分拣器",
+      "blueprintEntityName": "sorterMk1"
+    },
+    {
+      "id": "sorterMk2",
+      "displayNameZh": "高速分拣器",
+      "aliasesZh": [],
+      "iconName": "高速分拣器",
+      "blueprintEntityName": "sorterMk2"
+    },
+    {
+      "id": "sorterMk3",
+      "displayNameZh": "极速分拣器",
+      "aliasesZh": [],
+      "iconName": "极速分拣器",
+      "blueprintEntityName": "sorterMk3"
+    },
+    {
+      "id": "sorterMk4",
+      "displayNameZh": "集装分拣器",
+      "aliasesZh": [],
+      "iconName": "集装分拣器",
+      "blueprintEntityName": "sorterMk4"
+    },
+    {
+      "id": "splitter",
+      "displayNameZh": "四向分流器",
+      "aliasesZh": [],
+      "iconName": "四向分流器",
+      "blueprintEntityName": "splitter"
+    },
+    {
+      "id": "autoPiler",
+      "displayNameZh": "自动集装机",
+      "aliasesZh": [],
+      "iconName": "自动集装机",
+      "blueprintEntityName": "autoPiler"
+    },
+    {
+      "id": "trafficMonitor",
+      "displayNameZh": "流速监测器",
+      "aliasesZh": [],
+      "iconName": "流速监测器",
+      "blueprintEntityName": "trafficMonitor"
+    },
+    {
+      "id": "sprayCoater",
+      "displayNameZh": "喷涂机",
+      "aliasesZh": [],
+      "iconName": "喷涂机",
+      "blueprintEntityName": "sprayCoater"
+    },
+    {
+      "id": "storageMk1",
+      "displayNameZh": "小型储物仓",
+      "aliasesZh": [],
+      "iconName": "小型储物仓",
+      "blueprintEntityName": "storageMk1"
+    },
+    {
+      "id": "storageMk2",
+      "displayNameZh": "大型储物仓",
+      "aliasesZh": [],
+      "iconName": "大型储物仓",
+      "blueprintEntityName": "storageMk2"
+    },
+    {
+      "id": "storageTank",
+      "displayNameZh": "储液灌",
+      "aliasesZh": [],
+      "iconName": "储液灌",
+      "blueprintEntityName": "storageTank"
+    },
+    {
+      "id": "assemblingMachineMk1",
+      "displayNameZh": "制作台Mk.Ⅰ",
+      "aliasesZh": [],
+      "iconName": "制作台Mk.Ⅰ",
+      "blueprintEntityName": "assemblingMachineMk1"
+    },
+    {
+      "id": "assemblingMachineMk2",
+      "displayNameZh": "制作台Mk.Ⅱ",
+      "aliasesZh": [],
+      "iconName": "制作台Mk.Ⅱ",
+      "blueprintEntityName": "assemblingMachineMk2"
+    },
+    {
+      "id": "assemblingMachineMk3",
+      "displayNameZh": "制作台Mk.Ⅲ",
+      "aliasesZh": [],
+      "iconName": "制作台Mk.Ⅲ",
+      "blueprintEntityName": "assemblingMachineMk3"
+    },
+    {
+      "id": "teslaTower",
+      "displayNameZh": "电力感应塔",
+      "aliasesZh": [],
+      "iconName": "电力感应塔",
+      "blueprintEntityName": "teslaTower"
+    },
+    {
+      "id": "wirelessPowerTower",
+      "displayNameZh": "无线输电塔",
+      "aliasesZh": [],
+      "iconName": "无线输电塔",
+      "blueprintEntityName": "wirelessPowerTower"
+    },
+    {
+      "id": "satelliteSubstation",
+      "displayNameZh": "卫星配电站",
+      "aliasesZh": [],
+      "iconName": "卫星配电站",
+      "blueprintEntityName": "satelliteSubstation"
+    },
+    {
+      "id": "windTurbine",
+      "displayNameZh": "风力涡轮机",
+      "aliasesZh": [],
+      "iconName": "风力涡轮机",
+      "blueprintEntityName": "windTurbine"
+    },
+    {
+      "id": "thermalPowerPlant",
+      "displayNameZh": "火力发电机",
+      "aliasesZh": [],
+      "iconName": "火力发电机",
+      "blueprintEntityName": "thermalPowerPlant"
+    },
+    {
+      "id": "miniFusionPowerPlant",
+      "displayNameZh": "微型聚变发电站",
+      "aliasesZh": [],
+      "iconName": "微型聚变发电站",
+      "blueprintEntityName": "miniFusionPowerPlant"
+    },
+    {
+      "id": "geothermalPowerStation",
+      "displayNameZh": "地热发电站",
+      "aliasesZh": [],
+      "iconName": "地热发电站",
+      "blueprintEntityName": "geothermalPowerStation"
+    },
+    {
+      "id": "miningMachine",
+      "displayNameZh": "采矿机",
+      "aliasesZh": [],
+      "iconName": "采矿机",
+      "blueprintEntityName": "miningMachine"
+    },
+    {
+      "id": "advancedMiningMachine",
+      "displayNameZh": "大型采矿机",
+      "aliasesZh": [],
+      "iconName": "大型采矿机",
+      "blueprintEntityName": "advancedMiningMachine"
+    },
+    {
+      "id": "waterPump",
+      "displayNameZh": "抽水机",
+      "aliasesZh": [],
+      "iconName": "抽水机",
+      "blueprintEntityName": "waterPump"
+    },
+    {
+      "id": "arcSmelter",
+      "displayNameZh": "电弧熔炉",
+      "aliasesZh": [],
+      "iconName": "电弧熔炉",
+      "blueprintEntityName": "arcSmelter"
+    },
+    {
+      "id": "planeSmelter",
+      "displayNameZh": "位面熔炉",
+      "aliasesZh": [],
+      "iconName": "位面熔炉",
+      "blueprintEntityName": "planeSmelter"
+    },
+    {
+      "id": "oilExtractor",
+      "displayNameZh": "原油萃取站",
+      "aliasesZh": [],
+      "iconName": "原油萃取站",
+      "blueprintEntityName": "oilExtractor"
+    },
+    {
+      "id": "oilRefinery",
+      "displayNameZh": "原油精炼厂",
+      "aliasesZh": [],
+      "iconName": "原油精炼厂",
+      "blueprintEntityName": "oilRefinery"
+    },
+    {
+      "id": "chemicalPlant",
+      "displayNameZh": "化工厂",
+      "aliasesZh": [],
+      "iconName": "化工厂",
+      "blueprintEntityName": "chemicalPlant"
+    },
+    {
+      "id": "fractionator",
+      "displayNameZh": "分馏塔",
+      "aliasesZh": [],
+      "iconName": "分馏塔",
+      "blueprintEntityName": "fractionator"
+    },
+    {
+      "id": "量子化工厂",
+      "displayNameZh": "量子化工厂",
+      "aliasesZh": [],
+      "iconName": "量子化工厂",
+      "blueprintEntityName": "量子化工厂"
+    },
+    {
+      "id": "太阳能板",
+      "displayNameZh": "太阳能板",
+      "aliasesZh": [],
+      "iconName": "太阳能板",
+      "blueprintEntityName": "太阳能板"
+    },
+    {
+      "id": "蓄电池",
+      "displayNameZh": "蓄电池",
+      "aliasesZh": [],
+      "iconName": "蓄电池",
+      "blueprintEntityName": "蓄电池"
+    },
+    {
+      "id": "蓄电池满",
+      "displayNameZh": "蓄电池满",
+      "aliasesZh": [],
+      "iconName": "蓄电池满",
+      "blueprintEntityName": "蓄电池满"
+    },
+    {
+      "id": "电磁轨道弹射器",
+      "displayNameZh": "电磁轨道弹射器",
+      "aliasesZh": [],
+      "iconName": "电磁轨道弹射器",
+      "blueprintEntityName": "电磁轨道弹射器"
+    },
+    {
+      "id": "射线接收站",
+      "displayNameZh": "射线接收站",
+      "aliasesZh": [],
+      "iconName": "射线接收站",
+      "blueprintEntityName": "射线接收站"
+    },
+    {
+      "id": "垂直发射井",
+      "displayNameZh": "垂直发射井",
+      "aliasesZh": [],
+      "iconName": "垂直发射井",
+      "blueprintEntityName": "垂直发射井"
+    },
+    {
+      "id": "energyExchanger",
+      "displayNameZh": "能量枢纽",
+      "aliasesZh": [],
+      "iconName": "能量枢纽",
+      "blueprintEntityName": "energyExchanger"
+    },
+    {
+      "id": "微型粒子对撞机",
+      "displayNameZh": "微型粒子对撞机",
+      "aliasesZh": [],
+      "iconName": "微型粒子对撞机",
+      "blueprintEntityName": "微型粒子对撞机"
+    },
+    {
+      "id": "人造恒星",
+      "displayNameZh": "人造恒星",
+      "aliasesZh": [],
+      "iconName": "人造恒星",
+      "blueprintEntityName": "人造恒星"
+    },
+    {
+      "id": "物流配送器",
+      "displayNameZh": "物流配送器",
+      "aliasesZh": [],
+      "iconName": "物流配送器",
+      "blueprintEntityName": "物流配送器"
+    },
+    {
+      "id": "行星内物流运输站",
+      "displayNameZh": "行星内物流运输站",
+      "aliasesZh": [],
+      "iconName": "行星内物流运输站",
+      "blueprintEntityName": "行星内物流运输站"
+    },
+    {
+      "id": "星际物流运输站",
+      "displayNameZh": "星际物流运输站",
+      "aliasesZh": [],
+      "iconName": "星际物流运输站",
+      "blueprintEntityName": "星际物流运输站"
+    },
+    {
+      "id": "轨道采集器",
+      "displayNameZh": "轨道采集器",
+      "aliasesZh": [],
+      "iconName": "轨道采集器",
+      "blueprintEntityName": "轨道采集器"
+    },
+    {
+      "id": "蓝矩阵",
+      "displayNameZh": "蓝矩阵",
+      "aliasesZh": [],
+      "iconName": "蓝矩阵",
+      "blueprintEntityName": "蓝矩阵"
+    },
+    {
+      "id": "红矩阵",
+      "displayNameZh": "红矩阵",
+      "aliasesZh": [],
+      "iconName": "红矩阵",
+      "blueprintEntityName": "红矩阵"
+    },
+    {
+      "id": "黄矩阵",
+      "displayNameZh": "黄矩阵",
+      "aliasesZh": [],
+      "iconName": "黄矩阵",
+      "blueprintEntityName": "黄矩阵"
+    },
+    {
+      "id": "紫矩阵",
+      "displayNameZh": "紫矩阵",
+      "aliasesZh": [],
+      "iconName": "紫矩阵",
+      "blueprintEntityName": "紫矩阵"
+    },
+    {
+      "id": "绿矩阵",
+      "displayNameZh": "绿矩阵",
+      "aliasesZh": [],
+      "iconName": "绿矩阵",
+      "blueprintEntityName": "绿矩阵"
+    },
+    {
+      "id": "宇宙矩阵",
+      "displayNameZh": "宇宙矩阵",
+      "aliasesZh": [],
+      "iconName": "宇宙矩阵",
+      "blueprintEntityName": "宇宙矩阵"
+    },
+    {
+      "id": "燃烧单元",
+      "displayNameZh": "燃烧单元",
+      "aliasesZh": [],
+      "iconName": "燃烧单元",
+      "blueprintEntityName": "燃烧单元"
+    },
+    {
+      "id": "爆破单元",
+      "displayNameZh": "爆破单元",
+      "aliasesZh": [],
+      "iconName": "爆破单元",
+      "blueprintEntityName": "爆破单元"
+    },
+    {
+      "id": "晶石爆破单元",
+      "displayNameZh": "晶石爆破单元",
+      "aliasesZh": [],
+      "iconName": "晶石爆破单元",
+      "blueprintEntityName": "晶石爆破单元"
+    },
+    {
+      "id": "机枪弹箱",
+      "displayNameZh": "机枪弹箱",
+      "aliasesZh": [],
+      "iconName": "机枪弹箱",
+      "blueprintEntityName": "机枪弹箱"
+    },
+    {
+      "id": "钛化弹箱",
+      "displayNameZh": "钛化弹箱",
+      "aliasesZh": [],
+      "iconName": "钛化弹箱",
+      "blueprintEntityName": "钛化弹箱"
+    },
+    {
+      "id": "超合金弹箱",
+      "displayNameZh": "超合金弹箱",
+      "aliasesZh": [],
+      "iconName": "超合金弹箱",
+      "blueprintEntityName": "超合金弹箱"
+    },
+    {
+      "id": "导弹组",
+      "displayNameZh": "导弹组",
+      "aliasesZh": [],
+      "iconName": "导弹组",
+      "blueprintEntityName": "导弹组"
+    },
+    {
+      "id": "超音速导弹组",
+      "displayNameZh": "超音速导弹组",
+      "aliasesZh": [],
+      "iconName": "超音速导弹组",
+      "blueprintEntityName": "超音速导弹组"
+    },
+    {
+      "id": "引力导弹组",
+      "displayNameZh": "引力导弹组",
+      "aliasesZh": [],
+      "iconName": "引力导弹组",
+      "blueprintEntityName": "引力导弹组"
+    },
+    {
+      "id": "炮弹组",
+      "displayNameZh": "炮弹组",
+      "aliasesZh": [],
+      "iconName": "炮弹组",
+      "blueprintEntityName": "炮弹组"
+    },
+    {
+      "id": "高爆炮弹组",
+      "displayNameZh": "高爆炮弹组",
+      "aliasesZh": [],
+      "iconName": "高爆炮弹组",
+      "blueprintEntityName": "高爆炮弹组"
+    },
+    {
+      "id": "晶石炮弹组",
+      "displayNameZh": "晶石炮弹组",
+      "aliasesZh": [],
+      "iconName": "晶石炮弹组",
+      "blueprintEntityName": "晶石炮弹组"
+    },
+    {
+      "id": "原型机",
+      "displayNameZh": "原型机",
+      "aliasesZh": [],
+      "iconName": "原型机",
+      "blueprintEntityName": "原型机"
+    },
+    {
+      "id": "精准无人机",
+      "displayNameZh": "精准无人机",
+      "aliasesZh": [],
+      "iconName": "精准无人机",
+      "blueprintEntityName": "精准无人机"
+    },
+    {
+      "id": "攻击无人机",
+      "displayNameZh": "攻击无人机",
+      "aliasesZh": [],
+      "iconName": "攻击无人机",
+      "blueprintEntityName": "攻击无人机"
+    },
+    {
+      "id": "护卫舰",
+      "displayNameZh": "护卫舰",
+      "aliasesZh": [],
+      "iconName": "护卫舰",
+      "blueprintEntityName": "护卫舰"
+    },
+    {
+      "id": "驱逐舰",
+      "displayNameZh": "驱逐舰",
+      "aliasesZh": [],
+      "iconName": "驱逐舰",
+      "blueprintEntityName": "驱逐舰"
+    },
+    {
+      "id": "等离子胶囊",
+      "displayNameZh": "等离子胶囊",
+      "aliasesZh": [],
+      "iconName": "等离子胶囊",
+      "blueprintEntityName": "等离子胶囊"
+    },
+    {
+      "id": "反物质胶囊",
+      "displayNameZh": "反物质胶囊",
+      "aliasesZh": [],
+      "iconName": "反物质胶囊",
+      "blueprintEntityName": "反物质胶囊"
+    },
+    {
+      "id": "重组式制造台",
+      "displayNameZh": "重组式制造台",
+      "aliasesZh": [],
+      "iconName": "重组式制造台",
+      "blueprintEntityName": "重组式制造台"
+    },
+    {
+      "id": "自演化研究站",
+      "displayNameZh": "自演化研究站",
+      "aliasesZh": [],
+      "iconName": "自演化研究站",
+      "blueprintEntityName": "自演化研究站"
+    },
+    {
+      "id": "负熵熔炉",
+      "displayNameZh": "负熵熔炉",
+      "aliasesZh": [],
+      "iconName": "负熵熔炉",
+      "blueprintEntityName": "负熵熔炉"
+    },
+    {
+      "id": "高斯机枪塔",
+      "displayNameZh": "高斯机枪塔",
+      "aliasesZh": [],
+      "iconName": "高斯机枪塔",
+      "blueprintEntityName": "高斯机枪塔"
+    },
+    {
+      "id": "导弹防御塔",
+      "displayNameZh": "导弹防御塔",
+      "aliasesZh": [],
+      "iconName": "导弹防御塔",
+      "blueprintEntityName": "导弹防御塔"
+    },
+    {
+      "id": "聚爆加农炮",
+      "displayNameZh": "聚爆加农炮",
+      "aliasesZh": [],
+      "iconName": "聚爆加农炮",
+      "blueprintEntityName": "聚爆加农炮"
+    },
+    {
+      "id": "高频激光塔",
+      "displayNameZh": "高频激光塔",
+      "aliasesZh": [],
+      "iconName": "高频激光塔",
+      "blueprintEntityName": "高频激光塔"
+    },
+    {
+      "id": "磁化电浆炮",
+      "displayNameZh": "磁化电浆炮",
+      "aliasesZh": [],
+      "iconName": "磁化电浆炮",
+      "blueprintEntityName": "磁化电浆炮"
+    },
+    {
+      "id": "战场分析基站",
+      "displayNameZh": "战场分析基站",
+      "aliasesZh": [],
+      "iconName": "战场分析基站",
+      "blueprintEntityName": "战场分析基站"
+    },
+    {
+      "id": "信号塔",
+      "displayNameZh": "信号塔",
+      "aliasesZh": [],
+      "iconName": "信号塔",
+      "blueprintEntityName": "信号塔"
+    },
+    {
+      "id": "行星护盾发生器",
+      "displayNameZh": "行星护盾发生器",
+      "aliasesZh": [],
+      "iconName": "行星护盾发生器",
+      "blueprintEntityName": "行星护盾发生器"
+    },
+    {
+      "id": "动力引擎",
+      "displayNameZh": "动力引擎",
+      "aliasesZh": [],
+      "iconName": "动力引擎",
+      "blueprintEntityName": "动力引擎"
+    },
+    {
+      "id": "奇异湮灭燃料棒",
+      "displayNameZh": "奇异湮灭燃料棒",
+      "aliasesZh": [],
+      "iconName": "奇异湮灭燃料棒",
+      "blueprintEntityName": "奇异湮灭燃料棒"
+    },
+    {
+      "id": "负熵奇点",
+      "displayNameZh": "负熵奇点",
+      "aliasesZh": [],
+      "iconName": "负熵奇点",
+      "blueprintEntityName": "负熵奇点"
+    },
+    {
+      "id": "能量碎片",
+      "displayNameZh": "能量碎片",
+      "aliasesZh": [],
+      "iconName": "能量碎片",
+      "blueprintEntityName": "能量碎片"
+    },
+    {
+      "id": "硅基神经元",
+      "displayNameZh": "硅基神经元",
+      "aliasesZh": [],
+      "iconName": "硅基神经元",
+      "blueprintEntityName": "硅基神经元"
+    },
+    {
+      "id": "核心素",
+      "displayNameZh": "核心素",
+      "aliasesZh": [],
+      "iconName": "核心素",
+      "blueprintEntityName": "核心素"
+    },
+    {
+      "id": "黑雾矩阵",
+      "displayNameZh": "黑雾矩阵",
+      "aliasesZh": [],
+      "iconName": "黑雾矩阵",
+      "blueprintEntityName": "黑雾矩阵"
+    },
+    {
+      "id": "物质重组器",
+      "displayNameZh": "物质重组器",
+      "aliasesZh": [],
+      "iconName": "物质重组器",
+      "blueprintEntityName": "物质重组器"
+    },
+    {
+      "id": "矿脉",
+      "displayNameZh": "矿脉",
+      "aliasesZh": [],
+      "iconName": "矿脉",
+      "blueprintEntityName": "矿脉"
+    },
+    {
+      "id": "干扰胶囊",
+      "displayNameZh": "干扰胶囊",
+      "aliasesZh": [],
+      "iconName": "干扰胶囊",
+      "blueprintEntityName": "干扰胶囊"
+    },
+    {
+      "id": "压制胶囊",
+      "displayNameZh": "压制胶囊",
+      "aliasesZh": [],
+      "iconName": "压制胶囊",
+      "blueprintEntityName": "压制胶囊"
+    },
+    {
+      "id": "近程电浆炮",
+      "displayNameZh": "近程电浆炮",
+      "aliasesZh": [],
+      "iconName": "近程电浆炮",
+      "blueprintEntityName": "近程电浆炮"
+    },
+    {
+      "id": "干扰塔",
+      "displayNameZh": "干扰塔",
+      "aliasesZh": [],
+      "iconName": "干扰塔",
+      "blueprintEntityName": "干扰塔"
+    },
+    {
+      "id": "全息信标",
+      "displayNameZh": "全息信标",
+      "aliasesZh": [],
+      "iconName": "全息信标",
+      "blueprintEntityName": "全息信标"
+    },
+    {
+      "id": "None",
+      "displayNameZh": "None",
+      "aliasesZh": [],
+      "iconName": "None",
+      "blueprintEntityName": "None"
+    }
+  ],
+  "machines": [
+    {
+      "id": "matrixLab",
+      "displayNameZh": "矩阵研究站",
+      "aliasesZh": [
+        "研究站"
+      ],
+      "i18nKey": "option.research.matrix",
+      "iconName": "矩阵研究站",
+      "blueprintEntityName": "lab",
+      "recipeTypeId": "research"
+    },
+    {
+      "id": "selfEvolutionLab",
+      "displayNameZh": "自演化研究站",
+      "aliasesZh": [],
+      "i18nKey": "option.research.self_evolution",
+      "iconName": "自演化研究站",
+      "blueprintEntityName": "自演化研究站",
+      "recipeTypeId": "research"
+    },
+    {
+      "id": "assemblingMachineMk1",
+      "displayNameZh": "制作台Mk.Ⅰ",
+      "aliasesZh": [],
+      "i18nKey": "option.machine.mk1",
+      "iconName": "制作台Mk.Ⅰ",
+      "blueprintEntityName": "assemblingMachineMk1",
+      "recipeTypeId": "assembler"
+    },
+    {
+      "id": "assemblingMachineMk2",
+      "displayNameZh": "制作台Mk.Ⅱ",
+      "aliasesZh": [],
+      "i18nKey": "option.machine.mk2",
+      "iconName": "制作台Mk.Ⅱ",
+      "blueprintEntityName": "assemblingMachineMk2",
+      "recipeTypeId": "assembler"
+    },
+    {
+      "id": "assemblingMachineMk3",
+      "displayNameZh": "制作台Mk.Ⅲ",
+      "aliasesZh": [],
+      "i18nKey": "option.machine.mk3",
+      "iconName": "制作台Mk.Ⅲ",
+      "blueprintEntityName": "assemblingMachineMk3",
+      "recipeTypeId": "assembler"
+    },
+    {
+      "id": "recomposingAssembler",
+      "displayNameZh": "重组式制造台",
+      "aliasesZh": [],
+      "i18nKey": "option.machine.recomposing",
+      "iconName": "重组式制造台",
+      "blueprintEntityName": "重组式制造台",
+      "recipeTypeId": "assembler"
+    },
+    {
+      "id": "arcSmelter",
+      "displayNameZh": "电弧熔炉",
+      "aliasesZh": [],
+      "i18nKey": "option.furnace.arc",
+      "iconName": "电弧熔炉",
+      "blueprintEntityName": "arcSmelter",
+      "recipeTypeId": "smelter"
+    },
+    {
+      "id": "planeSmelter",
+      "displayNameZh": "位面熔炉",
+      "aliasesZh": [],
+      "i18nKey": "option.furnace.plane",
+      "iconName": "位面熔炉",
+      "blueprintEntityName": "planeSmelter",
+      "recipeTypeId": "smelter"
+    },
+    {
+      "id": "negentropySmelter",
+      "displayNameZh": "负熵熔炉",
+      "aliasesZh": [],
+      "i18nKey": "option.furnace.negentropy",
+      "iconName": "负熵熔炉",
+      "blueprintEntityName": "负熵熔炉",
+      "recipeTypeId": "smelter"
+    },
+    {
+      "id": "vein",
+      "displayNameZh": "矿脉",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.ore_vein",
+      "iconName": "矿脉",
+      "blueprintEntityName": "矿脉",
+      "recipeTypeId": "mining"
+    },
+    {
+      "id": "miningMachine",
+      "displayNameZh": "采矿机",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.miner",
+      "iconName": "采矿机",
+      "blueprintEntityName": "miningMachine",
+      "recipeTypeId": "mining"
+    },
+    {
+      "id": "advancedMiningMachine",
+      "displayNameZh": "大型采矿机",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.advanced_miner",
+      "iconName": "大型采矿机",
+      "blueprintEntityName": "advancedMiningMachine",
+      "recipeTypeId": "mining"
+    },
+    {
+      "id": "oilExtractor",
+      "displayNameZh": "原油萃取站",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.oil_extractor",
+      "iconName": "原油萃取站",
+      "blueprintEntityName": "oilExtractor",
+      "recipeTypeId": "oilExtractor"
+    },
+    {
+      "id": "waterPump",
+      "displayNameZh": "抽水机",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.water_pump",
+      "iconName": "抽水机",
+      "blueprintEntityName": "waterPump",
+      "recipeTypeId": "waterPump"
+    },
+    {
+      "id": "oilRefinery",
+      "displayNameZh": "原油精炼厂",
+      "aliasesZh": [
+        "原油精炼机"
+      ],
+      "i18nKey": "machine_name.oil_refinery",
+      "iconName": "原油精炼厂",
+      "blueprintEntityName": "oilRefinery",
+      "recipeTypeId": "oilRefinery"
+    },
+    {
+      "id": "chemicalPlant",
+      "displayNameZh": "化工厂",
+      "aliasesZh": [],
+      "i18nKey": "option.chemical.plant",
+      "iconName": "化工厂",
+      "blueprintEntityName": "chemicalPlant",
+      "recipeTypeId": "chemical"
+    },
+    {
+      "id": "quantumChemicalPlant",
+      "displayNameZh": "量子化工厂",
+      "aliasesZh": [],
+      "i18nKey": "option.chemical.quantum",
+      "iconName": "量子化工厂",
+      "blueprintEntityName": "量子化工厂",
+      "recipeTypeId": "chemical"
+    },
+    {
+      "id": "particleCollider",
+      "displayNameZh": "微型粒子对撞机",
+      "aliasesZh": [
+        "粒子对撞机"
+      ],
+      "i18nKey": "machine_name.particle_collider",
+      "iconName": "微型粒子对撞机",
+      "blueprintEntityName": "微型粒子对撞机",
+      "recipeTypeId": "collider"
+    },
+    {
+      "id": "orbitalCollectorIce",
+      "displayNameZh": "轨道采集器(巨冰)",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.orbital_collector_ice",
+      "iconName": "轨道采集器",
+      "blueprintEntityName": "轨道采集器",
+      "recipeTypeId": "orbitalCollectorIce"
+    },
+    {
+      "id": "orbitalCollectorGas",
+      "displayNameZh": "轨道采集器(气态)",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.orbital_collector_gas",
+      "iconName": "轨道采集器",
+      "blueprintEntityName": "轨道采集器",
+      "recipeTypeId": "orbitalCollectorGas"
+    },
+    {
+      "id": "rayReceiver",
+      "displayNameZh": "射线接收站",
+      "aliasesZh": [
+        "射线接收塔"
+      ],
+      "i18nKey": "machine_name.ray_receiver",
+      "iconName": "射线接收站",
+      "blueprintEntityName": "射线接收站",
+      "recipeTypeId": "rayReceiver"
+    },
+    {
+      "id": "fractionator",
+      "displayNameZh": "分馏塔",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.fractionator",
+      "iconName": "分馏塔",
+      "blueprintEntityName": "fractionator",
+      "recipeTypeId": "fractionator"
+    },
+    {
+      "id": "energyExchanger",
+      "displayNameZh": "能量枢纽",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.energy_exchanger",
+      "iconName": "能量枢纽",
+      "blueprintEntityName": "energyExchanger",
+      "recipeTypeId": "energyExchanger"
+    },
+    {
+      "id": "darkFogDrop",
+      "displayNameZh": "黑雾掉落",
+      "aliasesZh": [],
+      "i18nKey": "machine_name.dark_fog_drop",
+      "iconName": "黑雾掉落",
+      "blueprintEntityName": null,
+      "recipeTypeId": "darkFogDrop"
+    }
+  ],
+  "recipeTypes": [
+    {
+      "id": "research",
+      "displayNameZh": "研究站",
+      "aliasesZh": [
+        "研究站"
+      ],
+      "globalSettingKey": "research",
+      "defaultMachineId": "matrixLab"
+    },
+    {
+      "id": "assembler",
+      "displayNameZh": "制作台",
+      "aliasesZh": [
+        "制作台"
+      ],
+      "globalSettingKey": "selmodein",
+      "defaultMachineId": "assemblingMachineMk1"
+    },
+    {
+      "id": "smelter",
+      "displayNameZh": "冶炼设备",
+      "aliasesZh": [
+        "冶炼设备"
+      ],
+      "globalSettingKey": "furnace",
+      "defaultMachineId": "arcSmelter"
+    },
+    {
+      "id": "mining",
+      "displayNameZh": "采矿机",
+      "aliasesZh": [
+        "采矿机"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "miningMachine"
+    },
+    {
+      "id": "energyExchanger",
+      "displayNameZh": "能量枢纽",
+      "aliasesZh": [
+        "能量枢纽"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "energyExchanger"
+    },
+    {
+      "id": "darkFogDrop",
+      "displayNameZh": "黑雾掉落",
+      "aliasesZh": [
+        "黑雾掉落"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "darkFogDrop"
+    },
+    {
+      "id": "oilExtractor",
+      "displayNameZh": "原油萃取站",
+      "aliasesZh": [
+        "原油萃取站"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "oilExtractor"
+    },
+    {
+      "id": "waterPump",
+      "displayNameZh": "抽水机",
+      "aliasesZh": [
+        "抽水机"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "waterPump"
+    },
+    {
+      "id": "oilRefinery",
+      "displayNameZh": "原油精炼机",
+      "aliasesZh": [
+        "原油精炼厂"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "oilRefinery"
+    },
+    {
+      "id": "chemical",
+      "displayNameZh": "化工设备",
+      "aliasesZh": [
+        "化工设备"
+      ],
+      "globalSettingKey": "chemical",
+      "defaultMachineId": "chemicalPlant"
+    },
+    {
+      "id": "collider",
+      "displayNameZh": "粒子对撞机",
+      "aliasesZh": [
+        "微型粒子对撞机"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "particleCollider"
+    },
+    {
+      "id": "orbitalCollectorIce",
+      "displayNameZh": "轨道采集器",
+      "aliasesZh": [
+        "轨道采集器"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "orbitalCollectorIce"
+    },
+    {
+      "id": "orbitalCollectorGas",
+      "displayNameZh": "轨道采集器2",
+      "aliasesZh": [
+        "轨道采集器2"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "orbitalCollectorGas"
+    },
+    {
+      "id": "rayReceiver",
+      "displayNameZh": "射线接收塔",
+      "aliasesZh": [
+        "射线接收站"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "rayReceiver"
+    },
+    {
+      "id": "fractionator",
+      "displayNameZh": "分馏塔",
+      "aliasesZh": [
+        "分馏塔"
+      ],
+      "globalSettingKey": null,
+      "defaultMachineId": "fractionator"
+    }
+  ],
+  "accValues": [
+    {
+      "id": "none",
+      "displayNameZh": "无",
+      "aliasesZh": []
+    },
+    {
+      "id": "speedup",
+      "displayNameZh": "加速",
+      "aliasesZh": []
+    },
+    {
+      "id": "extra",
+      "displayNameZh": "增产",
+      "aliasesZh": []
+    }
+  ]
+}

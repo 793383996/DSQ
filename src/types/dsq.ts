@@ -11,12 +11,22 @@ export interface RequirementEntry {
   [key: string]: unknown;
 }
 
+export interface MachineSettingRecord {
+  m?: string;
+  accType?: string;
+  accValue?: string;
+}
+
+export type MachineSettingsSnapshot = Record<string, MachineSettingRecord>;
+
+export type SpeedSettingsSnapshot = Record<string, number>;
+
 export interface ProjectSnapshot {
   name: string;
   singleMake: unknown[];
   ig_names: string[];
   value: unknown[];
-  settings: Record<string, unknown>;
+  settings: MachineSettingsSnapshot;
 }
 
 export interface GlobalSettings {
@@ -26,6 +36,63 @@ export interface GlobalSettings {
   research: string;
   accType: string;
   accValue: string;
+}
+
+export interface ItemRecord {
+  id: string;
+  displayNameZh: string;
+  aliasesZh: string[];
+  iconName: string;
+  blueprintEntityName: string | null;
+}
+
+export interface MachineOption {
+  id: string;
+  displayNameZh: string;
+  aliasesZh: string[];
+  i18nKey: string | null;
+  iconName: string;
+  blueprintEntityName: string | null;
+  recipeTypeId: string;
+}
+
+export interface RecipeTypeRecord {
+  id: string;
+  displayNameZh: string;
+  aliasesZh: string[];
+  globalSettingKey: keyof GlobalSettings | null;
+  defaultMachineId: string;
+}
+
+export interface AccValueRecord {
+  id: string;
+  displayNameZh: string;
+  aliasesZh: string[];
+}
+
+export type DomainLookupKind = "item" | "machine" | "recipeType" | "accValue";
+
+export interface DomainDictionaryApi {
+  items: readonly Readonly<ItemRecord>[];
+  machines: readonly Readonly<MachineOption>[];
+  recipeTypes: readonly Readonly<RecipeTypeRecord>[];
+  accValues: readonly Readonly<AccValueRecord>[];
+  getItem(value: unknown): Readonly<ItemRecord> | null;
+  getMachine(value: unknown): Readonly<MachineOption> | null;
+  getRecipeType(value: unknown): Readonly<RecipeTypeRecord> | null;
+  getAccValue(value: unknown): Readonly<AccValueRecord> | null;
+  getItemId(value: unknown): string | null;
+  getMachineId(value: unknown): string | null;
+  getRecipeTypeId(value: unknown): string | null;
+  getAccValueId(value: unknown): string | null;
+  getDisplayName(value: unknown): string;
+  getIconName(value: unknown): string;
+  getBlueprintEntityName(value: unknown): string | null;
+  getMachineI18nKey(value: unknown): string | null;
+  getRecipeTypeGlobalSettingKey(value: unknown): keyof GlobalSettings | null;
+  getDefaultMachineIdForRecipeType(value: unknown): string | null;
+  getMachineOptionsForRecipeType(value: unknown): string[];
+  normalizeLegacyValue(kind: DomainLookupKind, value: unknown): string | null;
 }
 
 export interface CalculationTotals {
@@ -73,6 +140,63 @@ export interface BlueprintResult {
   text: string;
   durationMs?: number;
   meta?: Record<string, unknown>;
+}
+
+export interface BasicStorageLike {
+  readonly length: number;
+  key(index: number): string | null;
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+export interface StorageAdapter {
+  hasLocalStorage(): boolean;
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): boolean;
+  removeItem(key: string): boolean;
+  clearByPrefixes(prefixes: readonly string[]): number;
+}
+
+export interface NumericInputLike {
+  nodeType?: number;
+  value: string;
+  dataset?: Record<string, string | undefined>;
+  hasAttribute?(name: string): boolean;
+  getAttribute?(name: string): string | null | undefined;
+}
+
+export interface NumericNormalizationOptions {
+  fieldLabel?: string;
+  min?: number;
+  max?: number;
+  step?: number | string;
+  integer?: boolean;
+  maxFractionDigits?: number;
+  requirePositive?: boolean;
+  clamp?: boolean;
+  warn?: boolean;
+  warningDuration?: number;
+  fallbackValue?: number;
+  previousValue?: number;
+  useInputAttributes?: boolean;
+}
+
+export type NumericNormalizationReason =
+  | "invalid"
+  | "not_integer"
+  | "not_positive"
+  | "below_min"
+  | "above_max"
+  | "adjusted"
+  | "ok";
+
+export interface NumericNormalizationResult {
+  valid: boolean;
+  adjusted: boolean;
+  value: number;
+  reason: NumericNormalizationReason;
+  fieldLabel: string;
 }
 
 export interface LegacyRuntimeSnapshot {

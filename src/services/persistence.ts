@@ -1,28 +1,15 @@
 import { normalizeLocale, type PersistedAppState } from "../types/dsq";
+import { createBrowserStorageAdapter } from "./app-services";
+import { LEGACY_STORAGE_KEY_PREFIXES } from "./legacy-storage";
 
 const PERSISTED_STATE_KEY = "dsq:vue3:bootstrap";
-
-const LEGACY_STORAGE_KEY_PREFIXES = [
-  "machine_settings",
-  "global_settings",
-  "machine_settings_time",
-  "machine_settings_pf",
-  "settings_projects",
-] as const;
-
-function hasLocalStorage(): boolean {
-  try {
-    return typeof window !== "undefined" && !!window.localStorage;
-  } catch {
-    return false;
-  }
-}
+const browserStorage = createBrowserStorageAdapter();
 
 export function loadPersistedState(): PersistedAppState | null {
-  if (!hasLocalStorage()) {
+  if (!browserStorage.hasLocalStorage()) {
     return null;
   }
-  const rawValue = window.localStorage.getItem(PERSISTED_STATE_KEY);
+  const rawValue = browserStorage.getItem(PERSISTED_STATE_KEY);
   if (!rawValue) {
     return null;
   }
@@ -39,25 +26,20 @@ export function loadPersistedState(): PersistedAppState | null {
 }
 
 export function savePersistedState(state: PersistedAppState): boolean {
-  if (!hasLocalStorage()) {
+  if (!browserStorage.hasLocalStorage()) {
     return false;
   }
-  try {
-    window.localStorage.setItem(PERSISTED_STATE_KEY, JSON.stringify(state));
-    return true;
-  } catch {
-    return false;
-  }
+  return browserStorage.setItem(PERSISTED_STATE_KEY, JSON.stringify(state));
 }
 
 export function migrateLegacyStorage(version: string = window.version || ""): Record<string, string | null> {
-  if (!hasLocalStorage()) {
+  if (!browserStorage.hasLocalStorage()) {
     return {};
   }
   const snapshot: Record<string, string | null> = {};
   for (const prefix of LEGACY_STORAGE_KEY_PREFIXES) {
     const storageKey = `${prefix}${version}`;
-    snapshot[storageKey] = window.localStorage.getItem(storageKey);
+    snapshot[storageKey] = browserStorage.getItem(storageKey);
   }
   return snapshot;
 }

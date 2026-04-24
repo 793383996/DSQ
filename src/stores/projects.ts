@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 
-import { cloneJsonValue, type ProjectSnapshot } from "../types/dsq";
+import { dsqServices } from "../services/app-services";
+import type { ProjectSnapshot } from "../types/dsq";
 
 interface ProjectsState {
   items: ProjectSnapshot[];
@@ -14,7 +15,9 @@ export const useProjectsStore = defineStore("projects", {
   }),
   actions: {
     hydrateProjects(projects: ProjectSnapshot[] | undefined) {
-      this.items = Array.isArray(projects) ? cloneJsonValue(projects, []) : [];
+      this.items = Array.isArray(projects)
+        ? projects.map((project) => dsqServices.project.createSnapshot(project))
+        : [];
       this.activeProjectName = this.items.length > 0 ? this.items[0].name : null;
     },
   },
