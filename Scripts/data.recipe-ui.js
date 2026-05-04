@@ -69,6 +69,18 @@ function invokeRecipeUiCommand(commandName) {
   return bridge.invoke.apply(bridge, [commandName].concat(args));
 }
 
+function getRequirementDraftFromBridge() {
+  var bridge = getRecipeUiCommandBridge();
+  if (!bridge || !bridge.has("getRequirementDraft")) {
+    return null;
+  }
+  var draft = bridge.invoke("getRequirementDraft");
+  if (!draft || typeof draft !== "object") {
+    return null;
+  }
+  return draft;
+}
+
 function isChecked(id) {
   var element = byId(id);
   return !!(element && element.checked);
@@ -232,14 +244,22 @@ function getPfTitle(item, info) {
 
 function f_add3(name) {
   currentItem = find(name);
-  var number = readRecipeUiNumber("txtnumber", {
-    fieldLabel: recipeUiText("control.rate_per_min", "每分钟产量"),
-    fallbackValue: 60,
-    requirePositive: true,
-    min: 0.000001,
-    maxFractionDigits: 6,
-  });
-  var v = readInputValue("selmaince");
+  var draft = getRequirementDraftFromBridge();
+  var number =
+    draft && Number.isFinite(Number(draft.ratePerMinute))
+      ? Number(draft.ratePerMinute)
+      : readRecipeUiNumber("txtnumber", {
+          fieldLabel: recipeUiText("control.rate_per_min", "每分钟产量"),
+          fallbackValue: 60,
+          requirePositive: true,
+          min: 0.000001,
+          maxFractionDigits: 6,
+        });
+  var machineCountValue =
+    draft && draft.machineCount != null && Number.isFinite(Number(draft.machineCount))
+      ? String(draft.machineCount)
+      : readInputValue("selmaince");
+  var v = machineCountValue;
   if (v) {
     // 设备数量支持增产剂计算
     var accType = typeof getAccType === "function" ? getAccType(currentItem) || defaultAccType : defaultAccType;
@@ -248,14 +268,17 @@ function f_add3(name) {
     if (currentItem.q.length == 0) accValue = "none";
 
     var info = getValue(currentItem);
-    var machineCount = readRecipeUiNumber("selmaince", {
-      fieldLabel: recipeUiText("control.device_count", "生产设备数"),
-      fallbackValue: 1,
-      min: 1,
-      max: 1000,
-      integer: true,
-      clamp: true,
-    });
+    var machineCount =
+      draft && draft.machineCount != null && Number.isFinite(Number(draft.machineCount))
+        ? Number(draft.machineCount)
+        : readRecipeUiNumber("selmaince", {
+            fieldLabel: recipeUiText("control.device_count", "生产设备数"),
+            fallbackValue: 1,
+            min: 1,
+            max: 1000,
+            integer: true,
+            clamp: true,
+          });
     for (var i = 0; i < currentItem.s.length; i++) {
       if (currentItem.s[i].name == name) {
         number = ((machineCount * 60) / (currentItem.t || 1)) * info.speed * (currentItem.s[i].n || 1);

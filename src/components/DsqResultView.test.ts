@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDsqI18n } from "../services/i18n";
 import { useCalculationStore } from "../stores/calculation";
 import { useSettingsStore } from "../stores/settings";
+import { useUiStore } from "../stores/ui";
 import DsqResultView from "./DsqResultView.vue";
 
 type RuntimeWindow = typeof globalThis & {
@@ -17,13 +18,16 @@ type RuntimeWindow = typeof globalThis & {
     has: (commandName: string) => boolean;
     invoke: (commandName: string, ...args: unknown[]) => unknown;
   };
-  __DSQQuoteIncludeState?: Record<string, string>;
-  app?: Record<string, unknown> | null;
+  DSQPanelController?: {
+    open: (id: string, options?: { triggerElement?: Element | null; initialFocusSelector?: string | null }) => boolean;
+  };
+  alert?: (message?: string) => void;
 };
 
 describe("DsqResultView", () => {
   const runtimeWindow = globalThis as RuntimeWindow;
   const bridgeInvoke = vi.fn();
+  const panelOpen = vi.fn(() => true);
   const i18n = createDsqI18n();
   let pinia: ReturnType<typeof createPinia>;
 
@@ -47,11 +51,30 @@ describe("DsqResultView", () => {
       },
       invoke: bridgeInvoke,
     };
+    runtimeWindow.DSQPanelController = {
+      open: panelOpen,
+    };
+    runtimeWindow.alert = vi.fn();
     bridgeInvoke.mockReset();
+    panelOpen.mockClear();
+    bridgeInvoke.mockImplementation((commandName: string) => {
+      if (commandName === "getSplitDialogPayload") {
+        return {
+          itemName: "齿轮",
+          recipes: [
+            { id: 1, titleHtml: "<span>配方A</span>" },
+            { id: 2, titleHtml: "<span>配方B</span>" },
+          ],
+          defaultNumber: 1,
+        };
+      }
+      return undefined;
+    });
     i18n.global.locale.value = "zh-CN";
 
     const calculationStore = useCalculationStore();
     const settingsStore = useSettingsStore();
+    const uiStore = useUiStore();
 
     calculationStore.setRequirements([
       {
@@ -176,13 +199,17 @@ describe("DsqResultView", () => {
       },
     });
     settingsStore.applyRuntimeOptions({ pointLength: 3 });
+    uiStore.setQuoteIncludes({
+      updata: "<p>更新内容</p>",
+      explanation: "<p>使用说明内容</p>",
+    });
   });
 
   afterEach(() => {
     Reflect.deleteProperty(runtimeWindow, "icons");
     Reflect.deleteProperty(runtimeWindow, "DSQCommandBridge");
-    Reflect.deleteProperty(runtimeWindow, "__DSQQuoteIncludeState");
-    Reflect.deleteProperty(runtimeWindow, "app");
+    Reflect.deleteProperty(runtimeWindow, "DSQPanelController");
+    Reflect.deleteProperty(runtimeWindow, "alert");
     Reflect.deleteProperty(runtimeWindow, "window");
     document.body.innerHTML = "";
   });
@@ -202,12 +229,17 @@ describe("DsqResultView", () => {
     expect(wrapper.text()).toContain("排除增产剂产线");
     expect(wrapper.find("img[title='氢']").exists()).toBe(true);
 
-    runtimeWindow.__DSQQuoteIncludeState!.updata = "<p>更新内容</p>";
-    runtimeWindow.__DSQQuoteIncludeState!.explanation = "<p>使用说明内容</p>";
-    await nextTick();
-
     expect(wrapper.html()).toContain("更新内容");
     expect(wrapper.html()).toContain("使用说明内容");
+
+    useUiStore().setQuoteIncludes({
+      updata: "<p>新的更新内容</p>",
+      explanation: "<p>新的使用说明</p>",
+    });
+    await nextTick();
+
+    expect(wrapper.html()).toContain("新的更新内容");
+    expect(wrapper.html()).toContain("新的使用说明");
 
     i18n.global.locale.value = "en-US";
     await nextTick();
@@ -254,5 +286,32 @@ describe("DsqResultView", () => {
     bridgeInvoke.mockClear();
     await wrapper.find("img[title='石墨烯']").trigger("contextmenu");
     expect(bridgeInvoke).toHaveBeenCalledWith("removeExcludedName", "石墨烯");
+
+    bridgeInvoke.mockClear();
+    await wrapper.get("a[data-action='ig']").trigger("click");
+    expect(bridgeInvoke).toHaveBeenCalledWith("addExcludedName", "齿轮");
+
+    bridgeInvoke.mockClear();
+    await wrapper.get("a[data-action='split']").trigger("click");
+    expect(bridgeInvoke).toHaveBeenCalledWith("getSplitDialogPayload", "齿轮");
+    expect(panelOpen).toHaveBeenCalledWith("split", expect.any(Object));
+    expect(useUiStore().splitDialog).toEqual(
+      expect.objectContaining({
+        itemName: "齿轮",
+        recipes: expect.arrayContaining([{ id: 2, titleHtml: "<span>配方B</span>" }]),
+      })
+    );
+
+    bridgeInvoke.mockClear();
+    await wrapper.get("a[data-action='tag']").trigger("click");
+    expect(wrapper.find("tr.row-tag").exists()).toBe(true);
+
+    bridgeInvoke.mockClear();
+    useCalculationStore().hydrateCalculationResult({
+      ...useCalculationStore().currentResult!,
+      blueprintSnapshot: { title: "齿轮-120min", subRecipes: [] },
+    });
+    await nextTick();
+    expect(wrapper.find("tr.row-tag").exists()).toBe(false);
   });
 });

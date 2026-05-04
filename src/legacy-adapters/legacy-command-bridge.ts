@@ -1,13 +1,28 @@
 import type { Pinia } from "pinia";
 
+import {
+  buildRequirementEntryFromName,
+  getRequirementSelectorCatalog,
+  getSplitDialogPayload as getSplitDialogPayloadFromLegacy,
+} from "./legacy-recipe-ui";
 import { hydrateStoresFromLegacy, syncDerivedStoresFromCalculation, syncLegacyProjection } from "./legacy-state";
+import { dsqServices } from "../services/app-services";
+import { LEGACY_STORAGE_KEY_PREFIXES } from "../services/legacy-storage";
+import { clearPersistedState } from "../services/persistence";
+import { useBlueprintStore } from "../stores/blueprint";
 import { useCalculationStore } from "../stores/calculation";
 import { useProjectsStore } from "../stores/projects";
+import { useSeoStore } from "../stores/seo";
 import { useSettingsStore } from "../stores/settings";
+import { useUiStore } from "../stores/ui";
 import {
+  createBlueprintGenerationConfig,
   cloneJsonValue,
+  createDefaultCalculationRuntimeOptions,
+  createDefaultGlobalSettings,
   type CalculationOutput,
   type CalculationSnapshot,
+  type BlueprintResult,
   type ProjectSnapshot,
   type RequirementEntry,
   type SingleMakeEntry,
@@ -79,12 +94,39 @@ function persistLegacyState(kind: "machine" | "speed" | "recipe" | "project" | "
   }
 }
 
+function normalizeBlueprintResult(result: unknown): BlueprintResult {
+  const source = result && typeof result === "object" ? (result as BlueprintResult) : null;
+  return {
+    text: typeof source?.text === "string" ? source.text : "",
+    durationMs: Number.isFinite(source?.durationMs) ? Number(source?.durationMs) : undefined,
+    meta: source?.meta && typeof source.meta === "object" && !Array.isArray(source.meta) ? cloneJsonValue(source.meta, {}) : undefined,
+  };
+}
+
+function clearScopedRuntimeStorage(): void {
+  dsqServices.storage.clearByPrefixes([...LEGACY_STORAGE_KEY_PREFIXES, "dsq_"]);
+  clearPersistedState();
+}
+
+function reloadRuntimePage(): void {
+  if (typeof window.__DSQReloadPage === "function") {
+    window.__DSQReloadPage();
+    return;
+  }
+  window.location?.reload?.();
+}
+
 function ensureLegacyStateHydrated(pinia: Pinia): void {
   if (hasHydratedLegacyState) {
     return;
   }
   hydrateStoresFromLegacy(pinia);
   hasHydratedLegacyState = true;
+}
+
+function withHydratedLegacyState<T>(pinia: Pinia, action: () => T): T {
+  ensureLegacyStateHydrated(pinia);
+  return action();
 }
 
 function createCalculationSnapshot(pinia: Pinia): CalculationSnapshot {
@@ -168,6 +210,44 @@ function getCurrentCalculationResultFromStores(pinia: Pinia): CalculationOutput 
   return cloneJsonValue(calculationStore.currentResult, calculationStore.currentResult);
 }
 
+function getRequirementDraftFromStores(pinia: Pinia) {
+  const uiStore = useUiStore(pinia);
+  return cloneJsonValue(uiStore.requirementDraft, uiStore.requirementDraft);
+}
+
+function getCurrentBlueprintConfigFromStores(pinia: Pinia) {
+  ensureLegacyStateHydrated(pinia);
+  const blueprintStore = useBlueprintStore(pinia);
+  return createBlueprintGenerationConfig(blueprintStore.config);
+}
+
+function resetStoreOwnedRuntimeState(pinia: Pinia): void {
+  const calculationStore = useCalculationStore(pinia);
+  const settingsStore = useSettingsStore(pinia);
+  const projectsStore = useProjectsStore(pinia);
+  const blueprintStore = useBlueprintStore(pinia);
+  const seoStore = useSeoStore(pinia);
+  const uiStore = useUiStore(pinia);
+
+  settingsStore.hydrateGlobalSettings(createDefaultGlobalSettings());
+  settingsStore.resetMachineSettings();
+  settingsStore.resetSpeedSettings();
+  settingsStore.resetRecipeSettings();
+  settingsStore.applyRuntimeOptions(createDefaultCalculationRuntimeOptions());
+
+  calculationStore.resetRequirements();
+  calculationStore.clearSingleMake();
+  calculationStore.clearExcludedNames();
+  calculationStore.clearCalculationResult();
+
+  projectsStore.clearProjects();
+  blueprintStore.reset();
+  seoStore.setSnapshot(undefined);
+  uiStore.resetRuntimeUiState();
+
+  syncLegacyProjection(pinia);
+}
+
 function createLegacyCommandRegistry(pinia: Pinia): LegacyCommandRegistry {
   return {
     scheduleRecalculate(reason?: string) {
@@ -203,157 +283,265 @@ function createLegacyCommandRegistry(pinia: Pinia): LegacyCommandRegistry {
     getCurrentCalculationResult() {
       return getCurrentCalculationResultFromStores(pinia);
     },
-    addRequirement(item: RequirementEntry["item"], number: number) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.addRequirement({
-        item,
-        number,
+    getRequirementDraft() {
+      return withHydratedLegacyState(pinia, () => getRequirementDraftFromStores(pinia));
+    },
+    getRequirementSelectorCatalog() {
+      return getRequirementSelectorCatalog();
+    },
+    setRequirementDraft(snapshot: { ratePerMinute?: number; machineCount?: number | null } | null | undefined) {
+      return withHydratedLegacyState(pinia, () => {
+        const uiStore = useUiStore(pinia);
+        uiStore.setRequirementDraft(snapshot ?? undefined);
+        return getRequirementDraftFromStores(pinia);
       });
-      return runStoreRecalculation(pinia, "add-requirement");
+    },
+    getCurrentBlueprintConfig() {
+      return getCurrentBlueprintConfigFromStores(pinia);
+    },
+    startBlueprintGeneration(meta?: Record<string, unknown>) {
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        const blueprintStore = useBlueprintStore(pinia);
+        blueprintStore.setSnapshot(calculationStore.currentResult?.blueprintSnapshot ?? null);
+        blueprintStore.startGeneration();
+        return meta ?? null;
+      });
+    },
+    finishBlueprintGeneration(result?: BlueprintResult) {
+      return withHydratedLegacyState(pinia, () => {
+        const blueprintStore = useBlueprintStore(pinia);
+        const normalizedResult = normalizeBlueprintResult(result);
+        blueprintStore.finishGeneration(normalizedResult);
+        return cloneJsonValue(blueprintStore.lastResult, normalizedResult);
+      });
+    },
+    failBlueprintGeneration(error: unknown) {
+      return withHydratedLegacyState(pinia, () => {
+        const blueprintStore = useBlueprintStore(pinia);
+        blueprintStore.failGeneration(error);
+        return blueprintStore.errorMessage;
+      });
+    },
+    addRequirement(item: RequirementEntry["item"], number: number) {
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.addRequirement({
+          item,
+          number,
+        });
+        return runStoreRecalculation(pinia, "add-requirement");
+      });
+    },
+    addRequirementByName(name: string) {
+      return withHydratedLegacyState(pinia, () => {
+        const entry = buildRequirementEntryFromName(name, getRequirementDraftFromStores(pinia));
+        if (!entry) {
+          return null;
+        }
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.addRequirement(entry);
+        return runStoreRecalculation(pinia, "add-requirement-by-name");
+      });
     },
     updateRequirementNumber(index: number, number: number) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.updateRequirementNumber(index, number);
-      return runStoreRecalculation(pinia, "requirement-number-edit");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.updateRequirementNumber(index, number);
+        return runStoreRecalculation(pinia, "requirement-number-edit");
+      });
     },
     scaleRequirementsByFactor(index: number, nextMachineCount: number) {
-      const calculationStore = useCalculationStore(pinia);
-      const currentResult = calculationStore.currentResult ?? calculationStore.effectiveResult;
-      const currentLine = currentResult.productionLines[index] as { number2?: string | number } | undefined;
-      const previousMachineCount = Number(currentLine?.number2) || 1;
-      if (!Number.isFinite(nextMachineCount) || nextMachineCount <= 0 || !Number.isFinite(previousMachineCount) || previousMachineCount <= 0) {
-        return runStoreRecalculation(pinia, "requirement-scale-noop");
-      }
-      calculationStore.scaleRequirementNumbers(nextMachineCount / previousMachineCount);
-      let result = runStoreRecalculation(pinia, "requirement-scale-pass-1");
-      const refreshedLine = result.productionLines[index] as { number2?: string | number } | undefined;
-      const refreshedMachineCount = Number(refreshedLine?.number2) || nextMachineCount;
-      if (Number.isFinite(refreshedMachineCount) && refreshedMachineCount > 0) {
-        calculationStore.scaleRequirementNumbers(nextMachineCount / refreshedMachineCount);
-        result = runStoreRecalculation(pinia, "requirement-scale-pass-2");
-      }
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        const currentResult = calculationStore.currentResult ?? calculationStore.effectiveResult;
+        const currentLine = currentResult.productionLines[index] as { number2?: string | number } | undefined;
+        const previousMachineCount = Number(currentLine?.number2) || 1;
+        if (!Number.isFinite(nextMachineCount) || nextMachineCount <= 0 || !Number.isFinite(previousMachineCount) || previousMachineCount <= 0) {
+          return runStoreRecalculation(pinia, "requirement-scale-noop");
+        }
+        calculationStore.scaleRequirementNumbers(nextMachineCount / previousMachineCount);
+        let result = runStoreRecalculation(pinia, "requirement-scale-pass-1");
+        const refreshedLine = result.productionLines[index] as { number2?: string | number } | undefined;
+        const refreshedMachineCount = Number(refreshedLine?.number2) || nextMachineCount;
+        if (Number.isFinite(refreshedMachineCount) && refreshedMachineCount > 0) {
+          calculationStore.scaleRequirementNumbers(nextMachineCount / refreshedMachineCount);
+          result = runStoreRecalculation(pinia, "requirement-scale-pass-2");
+        }
+        return result;
+      });
     },
     removeRequirement(index: number) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.removeRequirement(index);
-      return runStoreRecalculation(pinia, "requirement-remove");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.removeRequirement(index);
+        return runStoreRecalculation(pinia, "requirement-remove");
+      });
     },
     resetRequirements() {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.resetRequirements();
-      calculationStore.clearSingleMake();
-      return runStoreRecalculation(pinia, "reset-requirements");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.resetRequirements();
+        calculationStore.clearSingleMake();
+        return runStoreRecalculation(pinia, "reset-requirements");
+      });
     },
     addExcludedName(name: string) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.addExcludedName(name);
-      return runStoreRecalculation(pinia, "exclude-item");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.addExcludedName(name);
+        return runStoreRecalculation(pinia, "exclude-item");
+      });
     },
     removeExcludedName(name: string) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.removeExcludedName(name);
-      return runStoreRecalculation(pinia, "remove-excluded-item");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.removeExcludedName(name);
+        return runStoreRecalculation(pinia, "remove-excluded-item");
+      });
     },
     clearExcludedNames() {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.clearExcludedNames();
-      return runStoreRecalculation(pinia, "reset-excluded-items");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.clearExcludedNames();
+        return runStoreRecalculation(pinia, "reset-excluded-items");
+      });
     },
     excludeAllAcc(names?: string[]) {
-      const calculationStore = useCalculationStore(pinia);
-      const normalizedNames = Array.isArray(names) && names.length > 0 ? names : ["proliferatorMk1", "proliferatorMk2", "proliferatorMk3"];
-      normalizedNames.forEach(name => {
-        calculationStore.addExcludedName(name);
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        const normalizedNames = Array.isArray(names) && names.length > 0 ? names : ["proliferatorMk1", "proliferatorMk2", "proliferatorMk3"];
+        normalizedNames.forEach(name => {
+          calculationStore.addExcludedName(name);
+        });
+        return runStoreRecalculation(pinia, "exclude-all-acc");
       });
-      return runStoreRecalculation(pinia, "exclude-all-acc");
     },
     appendSingleMake(entry: SingleMakeEntry) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.appendSingleMake(entry);
-      return runStoreRecalculation(pinia, "split-recipe-confirm");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.appendSingleMake(entry);
+        return runStoreRecalculation(pinia, "split-recipe-confirm");
+      });
+    },
+    getSplitDialogPayload(name: string) {
+      return getSplitDialogPayloadFromLegacy(name);
+    },
+    prepareSplitDialog(name: string) {
+      return withHydratedLegacyState(pinia, () => {
+        const payload = getSplitDialogPayloadFromLegacy(name);
+        const uiStore = useUiStore(pinia);
+        if (!payload) {
+          uiStore.closeSplitDialog();
+          return null;
+        }
+        uiStore.openSplitDialog(payload);
+        return cloneJsonValue(payload, payload);
+      });
     },
     setSingleMake(entries: SingleMakeEntry[]) {
-      const calculationStore = useCalculationStore(pinia);
-      calculationStore.setSingleMake(entries);
-      return runStoreRecalculation(pinia, "set-single-make");
+      return withHydratedLegacyState(pinia, () => {
+        const calculationStore = useCalculationStore(pinia);
+        calculationStore.setSingleMake(entries);
+        return runStoreRecalculation(pinia, "set-single-make");
+      });
     },
     updateMachineSelection(id: number | string, machineId: string) {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.updateMachineSetting(id, { m: machineId });
-      const result = runStoreRecalculation(pinia, "row-machine-change");
-      persistLegacyState("machine");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.updateMachineSetting(id, { m: machineId });
+        const result = runStoreRecalculation(pinia, "row-machine-change");
+        persistLegacyState("machine");
+        return result;
+      });
     },
     updateAccType(id: number | string, accType: string) {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.updateMachineSetting(id, { accType });
-      const result = runStoreRecalculation(pinia, "row-acc-type-change");
-      persistLegacyState("machine");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.updateMachineSetting(id, { accType });
+        const result = runStoreRecalculation(pinia, "row-acc-type-change");
+        persistLegacyState("machine");
+        return result;
+      });
     },
     updateAccValue(id: number | string, accValue: string) {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.updateMachineSetting(id, { accValue });
-      const result = runStoreRecalculation(pinia, "row-acc-value-change");
-      persistLegacyState("machine");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.updateMachineSetting(id, { accValue });
+        const result = runStoreRecalculation(pinia, "row-acc-value-change");
+        persistLegacyState("machine");
+        return result;
+      });
     },
     updateMachineSpeed(machineId: string, speed: number) {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.updateSpeedSetting(machineId, speed);
-      const result = runStoreRecalculation(pinia, "machine-speed-change");
-      persistLegacyState("speed");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.updateSpeedSetting(machineId, speed);
+        const result = runStoreRecalculation(pinia, "machine-speed-change");
+        persistLegacyState("speed");
+        return result;
+      });
     },
     updateRecipeSelection(name: string, value: unknown) {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.updateRecipeSetting(name, value);
-      const result = runStoreRecalculation(pinia, "row-recipe-change");
-      persistLegacyState("recipe");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.updateRecipeSetting(name, value);
+        const result = runStoreRecalculation(pinia, "row-recipe-change");
+        persistLegacyState("recipe");
+        return result;
+      });
     },
     updateGlobalSetting(key: string, value: unknown, reason?: string) {
-      const settingsStore = useSettingsStore(pinia);
-      if (key !== "selmodein" && key !== "furnace" && key !== "chemical" && key !== "research" && key !== "accType" && key !== "accValue") {
-        return runStoreRecalculation(pinia, "global-setting-noop");
-      }
-      settingsStore.updateGlobalSetting(key, value);
-      if (key === "accType" || key === "accValue") {
-        settingsStore.clearMachineSettingField(key);
-      }
-      const result = runStoreRecalculation(pinia, typeof reason === "string" && reason ? reason : "global-setting-change");
-      persistLegacyState("global");
-      if (key === "accType" || key === "accValue") {
-        persistLegacyState("machine");
-      }
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        if (key !== "selmodein" && key !== "furnace" && key !== "chemical" && key !== "research" && key !== "accType" && key !== "accValue") {
+          return runStoreRecalculation(pinia, "global-setting-noop");
+        }
+        settingsStore.updateGlobalSetting(key, value);
+        if (key === "accType" || key === "accValue") {
+          settingsStore.clearMachineSettingField(key);
+        }
+        const result = runStoreRecalculation(pinia, typeof reason === "string" && reason ? reason : "global-setting-change");
+        persistLegacyState("global");
+        if (key === "accType" || key === "accValue") {
+          persistLegacyState("machine");
+        }
+        return result;
+      });
     },
     updateRuntimeOptions(patch: Record<string, unknown>, reason?: string) {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.updateRuntimeOptions(patch);
-      return runStoreRecalculation(pinia, typeof reason === "string" && reason ? reason : "runtime-options-change");
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.updateRuntimeOptions(patch);
+        return runStoreRecalculation(pinia, typeof reason === "string" && reason ? reason : "runtime-options-change");
+      });
     },
     resetMachineSettings() {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.resetMachineSettings();
-      const result = runStoreRecalculation(pinia, "reset-machine-settings");
-      persistLegacyState("machine");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.resetMachineSettings();
+        const result = runStoreRecalculation(pinia, "reset-machine-settings");
+        persistLegacyState("machine");
+        return result;
+      });
     },
     resetSpeedSettings() {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.resetSpeedSettings();
-      const result = runStoreRecalculation(pinia, "reset-speed-settings");
-      persistLegacyState("speed");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.resetSpeedSettings();
+        const result = runStoreRecalculation(pinia, "reset-speed-settings");
+        persistLegacyState("speed");
+        return result;
+      });
     },
     resetRecipeSettings() {
-      const settingsStore = useSettingsStore(pinia);
-      settingsStore.resetRecipeSettings();
-      const result = runStoreRecalculation(pinia, "reset-recipe-settings");
-      persistLegacyState("recipe");
-      return result;
+      return withHydratedLegacyState(pinia, () => {
+        const settingsStore = useSettingsStore(pinia);
+        settingsStore.resetRecipeSettings();
+        const result = runStoreRecalculation(pinia, "reset-recipe-settings");
+        persistLegacyState("recipe");
+        return result;
+      });
     },
     saveProject(name: string) {
       const projectsStore = useProjectsStore(pinia);
@@ -366,6 +554,7 @@ function createLegacyCommandRegistry(pinia: Pinia): LegacyCommandRegistry {
     loadProject(name: string) {
       const projectsStore = useProjectsStore(pinia);
       ensureLegacyStateHydrated(pinia);
+      projectsStore.selectProject(name);
       const project = projectsStore.loadProject(name);
       if (!project) {
         return null;
@@ -387,6 +576,14 @@ function createLegacyCommandRegistry(pinia: Pinia): LegacyCommandRegistry {
       syncLegacyProjection(pinia);
       persistLegacyState("project");
       return null;
+    },
+    resetAllRuntimeState() {
+      return withHydratedLegacyState(pinia, () => {
+        resetStoreOwnedRuntimeState(pinia);
+        clearScopedRuntimeStorage();
+        reloadRuntimePage();
+        return true;
+      });
     },
   };
 }

@@ -34,6 +34,7 @@
         data-click-action="resetRequirement"
         data-i18n="action.reset_requirement"
         class="btn-gradient-red"
+        @click="resetRequirements"
       >
         {{ t("action.reset_requirement") }}
       </button>
@@ -42,6 +43,7 @@
         data-click-action="saveProject"
         data-i18n="action.save_project"
         class="btn-gradient-green"
+        @click="saveProject"
       >
         {{ t("action.save_project") }}
       </button>
@@ -50,6 +52,7 @@
         data-click-action="generateBlueprint"
         data-i18n="action.generate_blueprint"
         class="btn-gradient-purple"
+        @click="generateBlueprint"
       >
         {{ t("action.generate_blueprint") }}
       </button>
@@ -71,7 +74,7 @@
       />
       <span v-else class="name">{{ name }}</span>
     </span>
-    <button id="btnResetExclude" data-click-action="resetExclude" data-i18n="action.reset">
+    <button id="btnResetExclude" data-click-action="resetExclude" data-i18n="action.reset" @click="resetExcludedNames">
       {{ t("action.reset") }}
     </button>
     <br />
@@ -149,10 +152,18 @@
         <tr
           v-for="(item, index) in productionLines"
           :key="`production-${item.id ?? item.name ?? 'item'}-${index}`"
-          :class="String(item.rowClass || '')"
+          :class="productionRowClass(item, index)"
         >
           <td class="opcell">
-            <a href="#" data-action="ig" :data-name="String(item.name || '')" data-i18n="action.exclude">{{ t("action.exclude") }}</a>
+            <a
+              href="#"
+              data-action="ig"
+              :data-name="String(item.name || '')"
+              data-i18n="action.exclude"
+              @click="excludeLine($event, String(item.name || ''))"
+            >
+              {{ t("action.exclude") }}
+            </a>
             <a
               v-if="Array.isArray(item.pf) && item.pf.length > 1"
               href="#"
@@ -160,10 +171,19 @@
               :data-name="String(item.name || '')"
               aria-haspopup="dialog"
               aria-controls="Split"
+              @click="openSplitDialog($event, String(item.name || ''))"
             >
               <span data-i18n="action.multi_recipe">{{ t("action.multi_recipe") }}</span>
             </a>
-            <a href="#" data-action="tag" :data-name="String(item.name || '')" data-i18n="action.tag">{{ t("action.tag") }}</a>
+            <a
+              href="#"
+              data-action="tag"
+              :data-name="String(item.name || '')"
+              data-i18n="action.tag"
+              @click="toggleTaggedRow($event, item, index)"
+            >
+              {{ t("action.tag") }}
+            </a>
           </td>
           <td class="cell-name" :data-name="String(item.name || '')">
             <img
@@ -308,6 +328,7 @@
                 data-click-action="excludeAccLine"
                 data-i18n="action.exclude_acc_line"
                 class="btn-exclude-acc-line"
+                @click="excludeAccLines"
               >
                 {{ t("action.exclude_acc_line") }}
               </a>
@@ -369,13 +390,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { domainDictionary } from "../domain/domain-dictionary";
-import { registerLegacyAppCompat } from "../legacy-adapters/legacy-app-compat";
+import { dsqServices, normalizeProjectName } from "../services/app-services";
 import { useCalculationStore } from "../stores/calculation";
+import { useProjectsStore } from "../stores/projects";
 import { useSettingsStore } from "../stores/settings";
+import { useUiStore } from "../stores/ui";
 
 interface LegacyCommandBridge {
   has(commandName: string): boolean;
@@ -421,17 +444,15 @@ interface ResultLine {
 
 const { t } = useI18n();
 const calculationStore = useCalculationStore();
+const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
-
-const quoteIncludes = reactive<Record<string, string>>({
-  updata: "",
-  explanation: "",
-});
+const uiStore = useUiStore();
 
 const requirementEditorIndex = ref(-1);
 const requirementEditorValue = ref(0);
 const productionEditorIndex = ref(-1);
 const productionEditorValue = ref(0);
+const taggedRowKeys = ref<string[]>([]);
 const requirementEditorInput = ref<HTMLInputElement | null>(null);
 const productionEditorInput = ref<HTMLInputElement | null>(null);
 
@@ -443,6 +464,7 @@ const productionLines = computed(() => (currentResult.value.productionLines as R
 const excessOutputs = computed(() => (currentResult.value.excessOutputs as ResultLine[]) ?? []);
 const pointLength = computed(() => settingsStore.runtimeOptions.pointLength);
 const icons = computed<Record<string, string>>(() => window.icons ?? {});
+const quoteIncludes = computed(() => uiStore.quoteIncludes);
 const totalDisplay = computed(() =>
   currentResult.value.totals.machines.map(item => ({
     name: translateMachineDisplayName((item as { name?: unknown }).name),
@@ -467,6 +489,18 @@ function invokeBridge(commandName: string, ...args: unknown[]): void {
     return;
   }
   bridge.invoke(commandName, ...args);
+}
+
+function productionRowKey(item: ResultLine, index: number): string {
+  return String(item.id ?? item.itemId ?? item.name ?? index);
+}
+
+function stopLegacyAction(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
+  if (typeof event.stopImmediatePropagation === "function") {
+    event.stopImmediatePropagation();
+  }
 }
 
 function numericValue(value: unknown): number {
@@ -494,6 +528,18 @@ function translateMachineDisplayName(value: unknown): string {
   const fallback = domainDictionary.getDisplayName(value);
   const i18nKey = domainDictionary.getMachineI18nKey(value);
   return i18nKey ? t(i18nKey) : fallback;
+}
+
+function isTaggedRow(item: ResultLine, index: number): boolean {
+  return taggedRowKeys.value.includes(productionRowKey(item, index));
+}
+
+function productionRowClass(item: ResultLine, index: number): Array<string> {
+  const classes = [String(item.rowClass || "")].filter(Boolean);
+  if (isTaggedRow(item, index)) {
+    classes.push("row-tag");
+  }
+  return classes;
 }
 
 function selectInputText(event: FocusEvent): void {
@@ -593,6 +639,52 @@ function removeExcludedName(name: string): void {
   invokeBridge("removeExcludedName", name);
 }
 
+function resetRequirements(event: Event): void {
+  stopLegacyAction(event);
+  invokeBridge("resetRequirements");
+}
+
+function resetExcludedNames(event: Event): void {
+  stopLegacyAction(event);
+  invokeBridge("clearExcludedNames");
+}
+
+function excludeAccLines(event: Event): void {
+  stopLegacyAction(event);
+  invokeBridge("excludeAllAcc");
+}
+
+function generateBlueprint(event: Event): void {
+  stopLegacyAction(event);
+  window.generateBlueprint?.();
+}
+
+function excludeLine(event: Event, name: string): void {
+  stopLegacyAction(event);
+  if (!name) {
+    return;
+  }
+  invokeBridge("addExcludedName", name);
+}
+
+function saveProject(event: Event): void {
+  stopLegacyAction(event);
+  const rawName = window.prompt(t("dialog.prompt_project_name"));
+  const normalizedName = normalizeProjectName(rawName);
+  if (!normalizedName.valid) {
+    dsqServices.notify.warning(normalizedName.message, 3000);
+    return;
+  }
+  const existingProject = projectsStore.items.find(project => project.name === normalizedName.value);
+  if (
+    existingProject &&
+    !window.confirm(t("dialog.confirm_project_overwrite", { name: normalizedName.value }))
+  ) {
+    return;
+  }
+  invokeBridge("saveProject", normalizedName.value);
+}
+
 function selectRecipe(itemName: string, recipeId: number | string | undefined, isSelected: boolean): void {
   if (isSelected || recipeId == null) {
     return;
@@ -621,12 +713,44 @@ function selectAccValue(itemId: number | string | undefined, accValue: string, i
   invokeBridge("updateAccValue", itemId, accValue);
 }
 
-onMounted(() => {
-  registerLegacyAppCompat({
-    quoteIncludes,
-    nextTick(callback) {
-      void nextTick(callback);
-    },
+function openSplitDialog(event: Event, itemName: string): void {
+  stopLegacyAction(event);
+  if (!itemName) {
+    return;
+  }
+  const bridge = getCommandBridge();
+  if (!bridge || !bridge.has("getSplitDialogPayload")) {
+    return;
+  }
+  const payload = bridge.invoke("getSplitDialogPayload", itemName);
+  if (!payload || typeof payload !== "object") {
+    window.alert?.(t("alert.no_multiple_recipe"));
+    return;
+  }
+  uiStore.openSplitDialog(payload as Parameters<typeof uiStore.openSplitDialog>[0]);
+  const opened = window.DSQPanelController?.open?.("split", {
+    triggerElement: event.currentTarget as Element | null,
+    initialFocusSelector: ".split-number",
   });
-});
+  if (opened === false) {
+    uiStore.closeSplitDialog();
+  }
+}
+
+function toggleTaggedRow(event: Event, item: ResultLine, index: number): void {
+  stopLegacyAction(event);
+  const key = productionRowKey(item, index);
+  if (taggedRowKeys.value.includes(key)) {
+    taggedRowKeys.value = taggedRowKeys.value.filter(entry => entry !== key);
+    return;
+  }
+  taggedRowKeys.value = [...taggedRowKeys.value, key];
+}
+
+watch(
+  () => calculationStore.currentResult,
+  () => {
+    taggedRowKeys.value = [];
+  }
+);
 </script>

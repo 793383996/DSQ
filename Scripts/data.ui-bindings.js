@@ -97,17 +97,6 @@ function getAccTypeMetrics(accTypeId) {
   }
 }
 
-function createQuoteIncludeState() {
-  var state =
-    window.__DSQQuoteIncludeState && typeof window.__DSQQuoteIncludeState === "object"
-      ? window.__DSQQuoteIncludeState
-      : {};
-  return {
-    updata: typeof state.updata === "string" ? state.updata : "",
-    explanation: typeof state.explanation === "string" ? state.explanation : "",
-  };
-}
-
 function deepCloneValue(value) {
   if (dsqServices && typeof dsqServices.deepClone === "function") {
     return dsqServices.deepClone(value);
@@ -534,17 +523,6 @@ function showInfoTooltip(target, messageHtml) {
   tooltip.className = "dsq-inline-tooltip";
   tooltip.setAttribute("role", "tooltip");
   tooltip.innerHTML = messageHtml;
-  tooltip.style.position = "absolute";
-  tooltip.style.zIndex = "10176523";
-  tooltip.style.maxWidth = "420px";
-  tooltip.style.padding = "8px 10px";
-  tooltip.style.borderRadius = "8px";
-  tooltip.style.background = "#4A5C72";
-  tooltip.style.color = "#FFFFFF";
-  tooltip.style.boxShadow = "0 4px 16px rgba(0,0,0,0.25)";
-  tooltip.style.fontSize = "12px";
-  tooltip.style.lineHeight = "1.4";
-  tooltip.style.cursor = "pointer";
 
   document.body.appendChild(tooltip);
   var rect = target.getBoundingClientRect();
@@ -629,19 +607,11 @@ function runLegacyNextTick(callback) {
 
 function createLegacyAppState() {
   var existingApp = window.app && typeof window.app === "object" ? window.app : {};
-  var quoteIncludes =
-    existingApp.quoteIncludes && typeof existingApp.quoteIncludes === "object"
-      ? existingApp.quoteIncludes
-      : createQuoteIncludeState();
-  window.__DSQQuoteIncludeState = quoteIncludes;
   return {
-    quoteIncludes: quoteIncludes,
     accTotalLabel: typeof existingApp.accTotalLabel === "string" ? existingApp.accTotalLabel : "需求：",
     totalAccLabel: typeof existingApp.totalAccLabel === "string" ? existingApp.totalAccLabel : "总喷涂增产剂数量：",
     totalSpaceLabel: typeof existingApp.totalSpaceLabel === "string" ? existingApp.totalSpaceLabel : "占地格子数：",
     totalEnergyLabel: typeof existingApp.totalEnergyLabel === "string" ? existingApp.totalEnergyLabel : "耗能估算：",
-    xps_editor_index: typeof existingApp.xps_editor_index === "number" ? existingApp.xps_editor_index : -1,
-    items_editor_index: typeof existingApp.items_editor_index === "number" ? existingApp.items_editor_index : -1,
     $nextTick:
       typeof existingApp.$nextTick === "function"
         ? existingApp.$nextTick
@@ -1977,16 +1947,10 @@ function f_ig_acc() {
 function f_reset() {
   if (getCompatCommandBridge()) {
     invokeCompatCommand("resetRequirements");
-    if (app) {
-      app.xps_editor_index = -1;
-      app.items_editor_index = -1;
-    }
     return;
   }
   xqs = [];
   singleMake = [];
-  app.xps_editor_index = -1;
-  app.items_editor_index = -1;
 
   scheduleUpdateAll("reset-requirements");
 }
@@ -2010,6 +1974,9 @@ function f_remove_ig(name) {
   scheduleUpdateAll("remove-excluded-item");
 }
 function projectsUpdate() {
+  if (document.querySelector("[data-runtime='vue3-control']")) {
+    return;
+  }
   var selectNode = document.getElementById("selprojects");
   if (selectNode) {
     selectNode.textContent = "";
@@ -2096,11 +2063,25 @@ function f_add() {
     alert(i18nText("alert.data_not_ready", "游戏资源尚未加载完毕"));
     return;
   }
+  var panelController = getPanelController();
+  if (getCompatCommandBridge()) {
+    var catalog = invokeCompatCommand("getRequirementSelectorCatalog");
+    if (!catalog) {
+      alert(i18nText("alert.data_load_failed", "游戏资源加载失败，图标将无法显示正常，请刷新再试"));
+      return;
+    }
+    if (panelController && typeof panelController.open === "function") {
+      panelController.open("uiSelector", {
+        triggerElement: document.getElementById("btnAddRequirement"),
+        initialFocusSelector: ".selector .icon",
+      });
+      return;
+    }
+  }
   if (!ensureUISelectorInitialized()) {
     alert(i18nText("alert.data_load_failed", "游戏资源加载失败，图标将无法显示正常，请刷新再试"));
     return;
   }
-  var panelController = getPanelController();
   if (panelController && typeof panelController.toggle === "function") {
     panelController.toggle("uiSelector", {
       triggerElement: document.getElementById("btnAddRequirement"),
@@ -2148,6 +2129,20 @@ function actions(that) {
 function f_split(obj) {
   var panelController = getPanelController();
   var name = dom(obj).attr("data-name");
+  if (getCompatCommandBridge()) {
+    var payload = invokeCompatCommand("prepareSplitDialog", name);
+    if (!payload) {
+      alert(i18nText("alert.no_multiple_recipe", "不存在多配方"));
+      return;
+    }
+    if (panelController && typeof panelController.open === "function") {
+      panelController.open("split", {
+        triggerElement: obj,
+        initialFocusSelector: ".split-number",
+      });
+    }
+    return;
+  }
 
   dom("#Split").html(`<p>${i18nText("split.select_recipe", "选择配方：")}</p>`);
   var pfs = getPfs(name);

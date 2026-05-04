@@ -14,6 +14,7 @@ import {
   cloneJsonValue,
   createEmptyCalculationOutput,
   normalizeLocale,
+  normalizeRequirementDraft,
   normalizeRequirementEntries,
   normalizeSingleMakeEntries,
   normalizeStringList,
@@ -58,6 +59,16 @@ function readLegacyExcludedNames() {
   return normalizeStringList(window.ig_names);
 }
 
+function readLegacyRequirementDraft() {
+  const rateNode = window.document?.getElementById?.("txtnumber") as HTMLInputElement | null | undefined;
+  const machineNode = window.document?.getElementById?.("selmaince") as HTMLInputElement | null | undefined;
+  const rawMachineCount = machineNode?.value ? Number(machineNode.value) : null;
+  return normalizeRequirementDraft({
+    ratePerMinute: rateNode?.value ? Number(rateNode.value) : undefined,
+    machineCount: rawMachineCount,
+  });
+}
+
 function readLegacyCalculationResult(): CalculationOutput | null {
   return window.currentCalculationResult
     ? cloneJsonValue(window.currentCalculationResult, createEmptyCalculationOutput())
@@ -87,6 +98,7 @@ function hydrateStoresFromLegacySnapshot(pinia: Pinia, snapshot: LegacyRuntimeSn
   const blueprintStore = useBlueprintStore(pinia);
 
   uiStore.setLocale(snapshot.locale);
+  uiStore.hydrateRequirementDraft(readLegacyRequirementDraft());
   settingsStore.hydrateLegacySettings({
     global: snapshot.globalSettings,
     machine: snapshot.machineSettings,
@@ -102,6 +114,7 @@ function hydrateStoresFromLegacySnapshot(pinia: Pinia, snapshot: LegacyRuntimeSn
   const effectiveResult = snapshot.currentCalculationResult ?? calculationStore.effectiveResult;
   seoStore.setSnapshot(effectiveResult.seoSnapshot ?? readLegacySeoSnapshot() ?? undefined);
   blueprintStore.setSnapshot(effectiveResult.blueprintSnapshot ?? null);
+  blueprintStore.hydrateConfigFromRuntimeOptions(settingsStore.runtimeOptions);
 }
 
 export function captureLegacyRuntimeSnapshot(): LegacyRuntimeSnapshot {
@@ -207,7 +220,9 @@ export function syncDerivedStoresFromCalculation(pinia: Pinia) {
   const calculationStore = useCalculationStore(pinia);
   const seoStore = useSeoStore(pinia);
   const blueprintStore = useBlueprintStore(pinia);
+  const settingsStore = useSettingsStore(pinia);
 
   seoStore.syncFromCalculationResult(calculationStore.currentResult);
   blueprintStore.setSnapshot(calculationStore.currentResult?.blueprintSnapshot ?? null);
+  blueprintStore.hydrateConfigFromRuntimeOptions(settingsStore.runtimeOptions);
 }

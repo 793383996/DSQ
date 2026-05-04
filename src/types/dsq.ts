@@ -19,6 +19,47 @@ export interface SingleMakeEntry {
   number: number;
 }
 
+export interface RequirementDraftSnapshot {
+  ratePerMinute: number;
+  machineCount: number | null;
+}
+
+export interface QuoteIncludeMap {
+  updata: string;
+  explanation: string;
+}
+
+export type RequirementSelectorTabId = "components" | "buildings";
+
+export interface RequirementSelectorItem {
+  name: string;
+  iconValue: string;
+  row: number;
+  column: number;
+}
+
+export interface RequirementSelectorSection {
+  id: RequirementSelectorTabId;
+  items: RequirementSelectorItem[];
+}
+
+export interface RequirementSelectorCatalog {
+  sections: RequirementSelectorSection[];
+}
+
+export interface SplitRecipeOption {
+  id: number | string;
+  titleHtml: string;
+}
+
+export interface SplitDialogPayload {
+  itemName: string;
+  recipes: SplitRecipeOption[];
+  defaultNumber: number;
+}
+
+export interface SplitDialogState extends SplitDialogPayload {}
+
 export interface MachineSettingRecord {
   m?: string;
   accType?: string;
@@ -57,6 +98,37 @@ export interface CalculationRuntimeOptions {
   maxLabLayers: number;
   stackLayers: boolean;
   xToYRatio: number;
+}
+
+export interface BlueprintConfigSnapshot {
+  onlyConveyorBeltMk3: boolean;
+  onlySorterMk3: boolean;
+  useSorterMk4: boolean;
+  conveyorBeltStackLayer: number;
+  generateTeslaTower: boolean;
+  teslaTowerLineInterval: number;
+  maxLabLayers: number;
+  stackLayers: boolean;
+  xToYRatio: number;
+  selfSpray: boolean;
+}
+
+export interface BlueprintGenerationConfig {
+  maxSorterNumOneBelt: number;
+  conveyorBeltStackLayer: number;
+  x_y_ratio: number;
+  compactLayout: boolean;
+  upgradeConveyorBelt: boolean;
+  onlyConveyorBeltMk3: boolean;
+  onlySorterMk3: boolean;
+  useSorterMk4: boolean;
+  maxLabLayers: number;
+  selfSpray: boolean;
+  generateTeslaTower: boolean;
+  teslaTowerInterval: number;
+  teslaTowerLineInterval: number;
+  onlyConveyorBeltMk3Downgrade: boolean;
+  stackLayers: number;
 }
 
 export interface ProjectSnapshot {
@@ -315,6 +387,16 @@ export const DEFAULT_CALCULATION_RUNTIME_OPTIONS: CalculationRuntimeOptions = Ob
   xToYRatio: 2,
 });
 
+export const DEFAULT_REQUIREMENT_DRAFT: RequirementDraftSnapshot = Object.freeze({
+  ratePerMinute: 60,
+  machineCount: null,
+});
+
+export const DEFAULT_QUOTE_INCLUDES: QuoteIncludeMap = Object.freeze({
+  updata: "",
+  explanation: "",
+});
+
 export function isLocaleCode(value: unknown): value is LocaleCode {
   return value === "zh-CN" || value === "en-US";
 }
@@ -464,6 +546,90 @@ export function normalizeCalculationRuntimeOptions(
     maxLabLayers: toFiniteNumber(input.maxLabLayers, DEFAULT_CALCULATION_RUNTIME_OPTIONS.maxLabLayers),
     stackLayers: input.stackLayers === true,
     xToYRatio: toFiniteNumber(input.xToYRatio, DEFAULT_CALCULATION_RUNTIME_OPTIONS.xToYRatio),
+  };
+}
+
+export function normalizeRequirementDraft(
+  source: Partial<RequirementDraftSnapshot> | null | undefined
+): RequirementDraftSnapshot {
+  const input = source && typeof source === "object" ? source : {};
+  const ratePerMinute = toFiniteNumber(input.ratePerMinute, DEFAULT_REQUIREMENT_DRAFT.ratePerMinute);
+  const rawMachineCount = Number(input.machineCount);
+  return {
+    ratePerMinute,
+    machineCount: Number.isFinite(rawMachineCount) && rawMachineCount > 0 ? rawMachineCount : null,
+  };
+}
+
+export function createEmptyQuoteIncludes(): QuoteIncludeMap {
+  return { ...DEFAULT_QUOTE_INCLUDES };
+}
+
+export function normalizeQuoteIncludes(source: Partial<QuoteIncludeMap> | null | undefined): QuoteIncludeMap {
+  const input = source && typeof source === "object" ? source : {};
+  return {
+    updata: typeof input.updata === "string" ? input.updata : DEFAULT_QUOTE_INCLUDES.updata,
+    explanation: typeof input.explanation === "string" ? input.explanation : DEFAULT_QUOTE_INCLUDES.explanation,
+  };
+}
+
+export function createBlueprintConfigSnapshotFromRuntimeOptions(
+  runtimeOptions: Partial<CalculationRuntimeOptions> | null | undefined
+): BlueprintConfigSnapshot {
+  const normalizedRuntimeOptions = normalizeCalculationRuntimeOptions(runtimeOptions);
+  return {
+    onlyConveyorBeltMk3: normalizedRuntimeOptions.onlyConveyorBeltMk3,
+    onlySorterMk3: normalizedRuntimeOptions.onlySorterMk3,
+    useSorterMk4: normalizedRuntimeOptions.useSorterMk4,
+    conveyorBeltStackLayer: normalizedRuntimeOptions.conveyorBeltStackLayer,
+    generateTeslaTower: normalizedRuntimeOptions.generateTeslaTower,
+    teslaTowerLineInterval: normalizedRuntimeOptions.teslaTowerLineInterval,
+    maxLabLayers: normalizedRuntimeOptions.maxLabLayers,
+    stackLayers: normalizedRuntimeOptions.stackLayers,
+    xToYRatio: normalizedRuntimeOptions.xToYRatio,
+    selfSpray: normalizedRuntimeOptions.selfAcc,
+  };
+}
+
+export function normalizeBlueprintConfigSnapshot(
+  source: Partial<BlueprintConfigSnapshot> | null | undefined
+): BlueprintConfigSnapshot {
+  const input = source && typeof source === "object" ? source : {};
+  return createBlueprintConfigSnapshotFromRuntimeOptions({
+    ...createDefaultCalculationRuntimeOptions(),
+    onlyConveyorBeltMk3: input.onlyConveyorBeltMk3,
+    onlySorterMk3: input.onlySorterMk3,
+    useSorterMk4: input.useSorterMk4,
+    conveyorBeltStackLayer: input.conveyorBeltStackLayer,
+    generateTeslaTower: input.generateTeslaTower,
+    teslaTowerLineInterval: input.teslaTowerLineInterval,
+    maxLabLayers: input.maxLabLayers,
+    stackLayers: input.stackLayers,
+    xToYRatio: input.xToYRatio,
+    selfAcc: input.selfSpray,
+  });
+}
+
+export function createBlueprintGenerationConfig(
+  source: Partial<BlueprintConfigSnapshot> | null | undefined
+): BlueprintGenerationConfig {
+  const snapshot = normalizeBlueprintConfigSnapshot(source);
+  return {
+    maxSorterNumOneBelt: 8,
+    conveyorBeltStackLayer: snapshot.conveyorBeltStackLayer,
+    x_y_ratio: snapshot.xToYRatio,
+    compactLayout: false,
+    upgradeConveyorBelt: false,
+    onlyConveyorBeltMk3: snapshot.onlyConveyorBeltMk3,
+    onlySorterMk3: snapshot.onlySorterMk3,
+    useSorterMk4: snapshot.useSorterMk4,
+    maxLabLayers: snapshot.maxLabLayers,
+    selfSpray: snapshot.selfSpray,
+    generateTeslaTower: snapshot.generateTeslaTower,
+    teslaTowerInterval: 10,
+    teslaTowerLineInterval: snapshot.teslaTowerLineInterval,
+    onlyConveyorBeltMk3Downgrade: false,
+    stackLayers: snapshot.stackLayers ? 4 : 1,
   };
 }
 

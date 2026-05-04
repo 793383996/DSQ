@@ -461,6 +461,70 @@
             margin-top: 15px;
         }
 
+        /* ========== 蓝图 Loading 样式 ========== */
+        .bp-loading-shell {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            z-index: 9999;
+        }
+
+        .bp-loading-card {
+            background: #fff;
+            padding: 30px 50px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes bp-loading-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .bp-loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: bp-loading-spin 1s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+
+        .bp-loading-title {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .bp-loading-progress {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        /* ========== 内联 Tooltip 样式 ========== */
+        .dsq-inline-tooltip {
+            position: absolute;
+            z-index: 10176523;
+            max-width: 420px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: #4A5C72;
+            color: #FFFFFF;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            font-size: 12px;
+            line-height: 1.4;
+            cursor: pointer;
+        }
+
         .textbox {
             background: #fff;
             border: 1px solid #d1d5db;

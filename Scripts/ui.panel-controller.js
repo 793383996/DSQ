@@ -124,6 +124,7 @@
       descriptor.state = "closed";
       this._panels[id] = descriptor;
       this._syncTriggerAria(descriptor, false);
+      this._emitStateChange(descriptor);
       return descriptor;
     },
 
@@ -167,6 +168,7 @@
         panel.classList.add(descriptor.openClass);
         descriptor.state = "open";
         that._focusOnOpen(descriptor, options);
+        that._emitStateChange(descriptor);
       });
       return true;
     },
@@ -197,6 +199,7 @@
         panel.classList.remove("show");
         panel.classList.remove("panel-closing");
         descriptor.state = "closed";
+        that._emitStateChange(descriptor);
         if (
           shouldRestoreFocus &&
           triggerToRestore &&
@@ -388,6 +391,29 @@
       this._openOrder = this._openOrder.filter(function (openId) {
         return openId !== id;
       });
+    },
+
+    _emitStateChange: function (descriptor) {
+      if (
+        !descriptor ||
+        !descriptor.element ||
+        typeof root.dispatchEvent !== "function" ||
+        typeof root.CustomEvent !== "function"
+      ) {
+        return;
+      }
+      root.dispatchEvent(
+        new root.CustomEvent("dsq:panel-state-changed", {
+          detail: {
+            id: descriptor.id,
+            isDialog: descriptor.isDialog === true,
+            isOpen: descriptor.state === "open" || descriptor.state === "opening",
+            state: descriptor.state,
+            hidden: descriptor.element.hidden === true,
+            ariaHidden: descriptor.element.getAttribute("aria-hidden"),
+          },
+        })
+      );
     },
   };
 

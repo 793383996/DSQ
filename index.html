@@ -75,72 +75,28 @@
   <main id="main-content" role="main" data-layout-section="main-shell">
   <!-- IX-01: 控制区块（layout-control） -->
   <section id="layout-control" data-layout-section="control">
-  <!-- 顶部控制区域 -->
-  <div class="control-bar" role="toolbar" aria-label="产量控制" data-i18n-aria-label="control.toolbar_aria">
-    <div class="control-row-main">
-      <div class="control-field-inline">
-        <span data-i18n="control.rate_per_min" class="control-label-muted">每分钟产量：</span>
-        <input type="text" id="txtnumber" aria-label="每分钟产量" data-i18n-aria-label="control.rate_per_min_aria" value="60" class="input-min-70" />
-      </div>
-      <div class="control-field-inline">
-        <span data-i18n="control.device_count" class="control-label-muted">或生产设备数：</span>
-        <input type="number" id="selmaince" aria-label="生产设备数" data-i18n-aria-label="control.device_count_aria" min="1" max="1000" class="input-min-70 input-number-plain" />
-      </div>
-      <a href="#" id="btnAddRequirement" data-click-action="addRequirement" class="btn-add-requirement" title="添加" data-i18n-title="action.add_requirement_title" aria-haspopup="dialog" aria-controls="UIselector" aria-expanded="false">
-        <img alt="添加需求" data-i18n-alt="action.add_requirement_alt" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAZVJREFUWEftl89VwkAQh3+DBRjTgHpYrtKBdCB0gEfDRSsQK5AL8YgdiB1gB3gll1CAMRTgjm9XCZslIf7Je8khe0y+N5m3mfl2h1Dxooq/jyQB5yHothhPAJx0UhxKRj8ethfquTNZdlqkODqxko8loR9fibnmdDyeFnFJAq4fxAAOs3aEgJc3T3TVO9cPQgDHOTsXR544KuY4jLz2qeLMBHjf74g8oVnXD0rlmgRqtQO5xcWM5/eh6H3XgOqGs5x6WUWe0N1RUKwJt23DybJzQDRm4NwMrj7O4JHZhgQaEeHC5FSnfDBfm1xWPJurj4iqMmLqF+QYbiGZL9MmpCmATrExizmzC8oowsaE+K2yayWiUg+Znx5aZRfhOvKEvk/8yYQtokdbs1mGy+IAvErmgdWuO/FsrjFhyoREdE+AvnptFgMzZr5LHUZEtwTo09FYO8bMiTdn5ptNvJKLcHvXc/1gz7Hd3AmRGLMxYdmDyT9M+DWaKXPZU89KMvcsw80yuLUk9JLRTI9wlMWtJGGw4RoTfgKyI5kwSL6MMgAAAABJRU5ErkJggg==" class="icon-20" />
-      </a>
-      <div class="custom-dropdown">
-        <button id="btnSetting" data-i18n="control.settings" aria-controls="MoreSetting" aria-expanded="false">参数设置</button>
-        <button id="btnReset1" data-i18n="control.fix_blank" class="btn-gradient-orange">修复计算空白</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 选项控制区域 -->
-  <div class="control-bar">
-    <div class="control-row-options">
-      <input type="checkbox" id="hideSource" /><label for="hideSource" data-i18n="control.hide_source">隐藏原料</label>
-      <select id="selmodein" aria-label="制造台类型" data-i18n-aria-label="control.machine_type_aria">
-        <option value="assemblingMachineMk1" data-i18n="option.machine.mk1">制作台Mk.Ⅰ</option>
-        <option value="assemblingMachineMk2" data-i18n="option.machine.mk2">制作台Mk.Ⅱ</option>
-        <option value="assemblingMachineMk3" data-i18n="option.machine.mk3">制作台Mk.Ⅲ</option>
-        <option value="recomposingAssembler" data-i18n="option.machine.recomposing">重组式制造台</option>
-      </select>
-      <select id="furnace" aria-label="熔炉类型" data-i18n-aria-label="control.furnace_type_aria">
-        <option value="arcSmelter" data-i18n="option.furnace.arc">电弧熔炉</option>
-        <option value="planeSmelter" data-i18n="option.furnace.plane">位面熔炉</option>
-        <option value="negentropySmelter" data-i18n="option.furnace.negentropy">负熵熔炉</option>
-      </select>
-      <select id="chemical" aria-label="化工厂类型" data-i18n-aria-label="control.chemical_type_aria">
-        <option value="chemicalPlant" data-i18n="option.chemical.plant">化工厂</option>
-        <option value="quantumChemicalPlant" data-i18n="option.chemical.quantum">量子化工厂</option>
-      </select>
-      <select id="accType" aria-label="增产剂等级" data-i18n-aria-label="control.acc_type_aria">
-        <option value="proliferatorMk1" data-i18n="option.acc_type.mk1">增产剂Mk.Ⅰ</option>
-        <option value="proliferatorMk2" data-i18n="option.acc_type.mk2">增产剂Mk.Ⅱ</option>
-        <option value="proliferatorMk3" data-i18n="option.acc_type.mk3">增产剂Mk.Ⅲ</option>
-      </select>
-      <select id="accValue" aria-label="增产剂效果" data-i18n-aria-label="control.acc_value_aria">
-        <option value="none" data-i18n="option.acc_value.none">无</option>
-        <option value="speedup" data-i18n="option.acc_value.speedup">加速</option>
-        <option value="extra" data-i18n="option.acc_value.production">增产</option>
-      </select>
-      <select id="research" aria-label="研究站类型" data-i18n-aria-label="control.research_type_aria">
-        <option value="matrixLab" data-i18n="option.research.matrix">矩阵研究站</option>
-        <option value="selfEvolutionLab" data-i18n="option.research.self_evolution">自演化研究站</option>
-      </select>
-    </div>
-    <div class="control-row-options margin-top-12">
-      <input type="checkbox" id="selfAcc" checked /><label for="selfAcc" data-i18n="control.self_acc">自喷涂增产剂</label>
-      <input type="checkbox" id="isAddSelfAccP" /><label for="isAddSelfAccP" data-i18n="control.external_acc">外部输入增产剂</label>
-      <input type="checkbox" id="showMaxOneBelt" /><label for="showMaxOneBelt" data-i18n="control.max_one_belt">1条传送带最高支持设备数量</label>
-      <span id="projectdiv" class="project-panel-hidden">
-        <select id="selprojects" aria-label="方案列表" data-i18n-aria-label="control.project_list_aria"></select>
-        <button id="btnLoadProject" data-i18n="control.load_project">加载方案</button>
-        <button id="btnReset5" data-i18n="control.reset_project" class="btn-gradient-orange">重置方案</button>
-      </span>
-    </div>
-  </div>
+  <div class="control-runtime-placeholder" data-runtime="vue3-control-placeholder"></div>
+  <template id="control-runtime-markers">
+    <input id="txtnumber" />
+    <input id="selmaince" />
+    <a id="btnAddRequirement" data-click-action="addRequirement"></a>
+    <button id="btnSetting"></button>
+    <input id="hideSource" type="checkbox" />
+    <select id="selmodein"></select>
+    <select id="furnace"></select>
+    <select id="chemical"></select>
+    <select id="accType"></select>
+    <select id="accValue"></select>
+    <select id="research"></select>
+    <input id="selfAcc" type="checkbox" />
+    <input id="isAddSelfAccP" type="checkbox" />
+    <input id="showMaxOneBelt" type="checkbox" />
+    <span id="projectdiv">
+      <select id="selprojects"></select>
+      <button id="btnLoadProject"></button>
+      <button id="btnReset5"></button>
+    </span>
+  </template>
   </section>
 
   <!-- IX-01: 弹层区块（layout-dialog） -->
@@ -150,62 +106,30 @@
   <div id="UIselector" hidden role="dialog" aria-modal="true" aria-hidden="true" tabindex="-1" aria-label="选择物品" data-i18n-aria-label="dialog.ui_selector_aria">
   </div>
   <div id="MoreSetting" hidden aria-hidden="true" role="region" aria-label="参数设置面板" data-i18n-aria-label="dialog.more_setting_aria">
-    <div class="settings-layout-row">
-      <div class="settings-col-gap">
-        <h4 data-i18n="settings.speed.title">速度、产量设置：</h4>
-        <p><span class="label" data-i18n="settings.speed.mining_speed">采矿作业速度： </span><input id="selore" aria-label="采矿作业速度百分比" data-i18n-aria-label="settings.speed.mining_speed_aria" class="textbox" type="number" value="100" />% </p>
-        <p><span class="label" data-i18n="settings.speed.fractionator_speed">分馏塔每分钟产量： </span><input id="fractionatorSpeed" aria-label="分馏塔每分钟产量" data-i18n-aria-label="settings.speed.fractionator_speed_aria" class="textbox" type="number"
-            value="18" /> </p>
-        <p><span class="label" data-i18n="settings.speed.advanced_miner">大型采矿机：</span><input id="speed1_6" aria-label="大型采矿机速度" data-i18n-aria-label="settings.speed.advanced_miner_aria" class="textbox" type="number" value="100" /> </p>
-        <p><span class="label" data-i18n="settings.speed.oil_speed">原油速度：</span><input id="oilSpeed" aria-label="原油速度" data-i18n-aria-label="settings.speed.oil_speed_aria" class="textbox" type="number" value="4" /> </p>
-        <p><span class="label" data-i18n="settings.speed.orbital_deuterium">轨道采集-重氢：</span><input data-name="重氢" id="speed1_2" aria-label="轨道采集重氢速度" data-i18n-aria-label="settings.speed.orbital_deuterium_aria" class="speed1 textbox" type="number"
-            step="0.01" value="0.02" /> </p>
-        <p><span class="label" data-i18n="settings.speed.orbital_fire_ice">轨道采集-可燃冰：</span><input data-name="可燃冰" id="speed1_3" aria-label="轨道采集可燃冰速度" data-i18n-aria-label="settings.speed.orbital_fire_ice_aria" class="speed1 textbox"
-            type="number" step="0.1" value="0.5" /> </p>
-        <p><span class="label" data-i18n="settings.speed.orbital_hydrogen_ice">轨道采集-氢(巨冰)：</span><input data-name="氢" id="speed1_4" aria-label="轨道采集氢巨冰速度" data-i18n-aria-label="settings.speed.orbital_hydrogen_ice_aria" class="speed1 textbox"
-            type="number" step="0.1" value="0.5" /> </p>
-        <p><span class="label" data-i18n="settings.speed.orbital_hydrogen_gas">轨道采集-氢(气态)：</span><input data-name="氢" id="speed1_1" aria-label="轨道采集氢气态速度" data-i18n-aria-label="settings.speed.orbital_hydrogen_gas_aria" class="speed1 textbox"
-            type="number" step="0.1" value="1" /> </p>
-        <p><span class="label" data-i18n="settings.speed.critical_photon">临界光子每分钟产量： </span><input id="gzSpeed" aria-label="临界光子每分钟产量" data-i18n-aria-label="settings.speed.critical_photon_aria" class="textbox" type="number" value="5" /> </p>
-        <p><span class="label" data-i18n="settings.speed.decimal_places">小数点后保留： </span><input id="pointLength" aria-label="小数点后保留位数" data-i18n-aria-label="settings.speed.decimal_places_aria" class="textbox" type="number" value="1" /> <span data-i18n="settings.speed.decimal_places_unit">位</span></p>
-      </div>
-      <div class="settings-col-width">
-        <div>
-          <h4 data-i18n="settings.logistics.title">物流配置：</h4>
-          <p><span class="label" data-i18n="settings.logistics.station_stack">运输站集装物流：</span> <input id="speed1_5" aria-label="运输站集装物流堆叠层数" data-i18n-aria-label="settings.logistics.station_stack_aria" class="textbox" type="number" min="1" max="4"
-              value="1" /> <span data-i18n="settings.logistics.belt_stack_layers">传送带堆叠层数</span></p>
-          <p><span class="label" data-i18n="settings.logistics.belt_capacity_calc">计算传送带支持设备： </span>
-            <select id="csd" aria-label="计算传送带支持设备类型" data-i18n-aria-label="settings.logistics.belt_capacity_calc_aria">
-              <option value="conveyorBeltMk1" data-i18n="option.belt.mk1">传送带</option>
-              <option value="conveyorBeltMk2" data-i18n="option.belt.mk2">高速传送带</option>
-              <option value="conveyorBeltMk3" selected data-i18n="option.belt.mk3">极速传送带</option>
-            </select>
-          </p>
-        </div>
-        <div>
-          <h4 data-i18n="settings.blueprint.title">蓝图配置：</h4>
-          <div class="settings-blueprint-inner">
-            <!-- <span class="label">紧凑布局</span><input type="checkbox" id="compactLayout">（高纬度可能出现碰撞）<br/> -->
-            <!-- <span class="label">临界运力传送带自升级</span><input type="checkbox" id="upgradeConveyorBelt"><br /> -->
-            <span class="label" data-i18n="settings.blueprint.only_belt_mk3">只使用三级传送带</span><input type="checkbox" id="onlyConveyorBeltMk3" aria-label="只使用三级传送带" data-i18n-aria-label="settings.blueprint.only_belt_mk3_aria" checked><br />
-            <span class="label" data-i18n="settings.blueprint.only_sorter_mk3">只使用三级分拣器</span><input type="checkbox" id="onlySorterMk3" aria-label="只使用三级分拣器" data-i18n-aria-label="settings.blueprint.only_sorter_mk3_aria" checked><br />
-            <span class="label" data-i18n="settings.blueprint.use_sorter_mk4">只使用四级分拣器</span><input type="checkbox" id="useSorterMk4" aria-label="只使用四级分拣器" data-i18n-aria-label="settings.blueprint.use_sorter_mk4_aria"><br />
-            <!-- <span class="label">三级传送带运力降级</span><input type="checkbox" id="onlyConveyorBeltMk3Downgrade">（三级传送带运力锁定在1680/min，可在一定程度上解决蓝图产量低于预期的问题）<br/> -->
-            <span class="label" data-i18n="settings.blueprint.auto_tesla">自动插入电力感应塔</span><input type="checkbox" id="generateTeslaTower" aria-label="自动插入电力感应塔" data-i18n-aria-label="settings.blueprint.auto_tesla_aria" checked="checked"><br />
-            <span class="label" data-i18n="settings.blueprint.tesla_interval">电力感应塔间隔排数</span><input type="number" id="teslaTowerLineInterval" aria-label="电力感应塔间隔排数" data-i18n-aria-label="settings.blueprint.tesla_interval_aria" min="1" max="2"
-              value="1" class="textbox"><span data-i18n="settings.blueprint.tesla_interval_hint">（建议取值1或2）</span><br />
-            <span class="label" data-i18n="settings.blueprint.belt_stack">传送带物品堆叠层数</span><input type="number" id="conveyorBeltStackLayer" aria-label="传送带物品堆叠层数" data-i18n-aria-label="settings.blueprint.belt_stack_aria" min="1" max="4"
-              value="4" class="textbox"><br />
-            <span class="label" data-i18n="settings.blueprint.lab_layers">研究站层数</span><input type="number" id="maxLabLayers" aria-label="研究站层数" data-i18n-aria-label="settings.blueprint.lab_layers_aria" min="1" max="15" value="15"
-              class="textbox"><br />
-            <!-- <span class="label">电线杆间隔</span><input type="number" id="teslaTowerInterval" min="1" max="15" value="15" class="textbox"><br/> -->
-            <span class="label" data-i18n="settings.blueprint.enable_stack">开启堆叠</span><input type="checkbox" id="stackLayers" aria-label="开启堆叠" data-i18n-aria-label="settings.blueprint.enable_stack_aria"><span data-i18n="settings.blueprint.vertical_4">垂直4层</span><br />
-            <span class="label" data-i18n="settings.blueprint.xy_ratio">蓝图长宽比</span><input type="number" id="x_y_ratio" aria-label="蓝图长宽比" data-i18n-aria-label="settings.blueprint.xy_ratio_aria" min="1" step="0.1" value="2"
-              class="textbox"><br />
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="settings-runtime-placeholder" data-runtime="vue3-settings-placeholder"></div>
+    <template id="settings-runtime-markers">
+      <input id="selore" />
+      <input id="fractionatorSpeed" />
+      <input id="speed1_6" />
+      <input id="oilSpeed" />
+      <input id="speed1_2" />
+      <input id="speed1_3" />
+      <input id="speed1_4" />
+      <input id="speed1_1" />
+      <input id="gzSpeed" />
+      <input id="pointLength" />
+      <input id="speed1_5" />
+      <select id="csd"></select>
+      <input id="onlyConveyorBeltMk3" type="checkbox" />
+      <input id="onlySorterMk3" type="checkbox" />
+      <input id="useSorterMk4" type="checkbox" />
+      <input id="generateTeslaTower" type="checkbox" />
+      <input id="stackLayers" type="checkbox" />
+      <input id="teslaTowerLineInterval" />
+      <input id="conveyorBeltStackLayer" />
+      <input id="maxLabLayers" />
+      <input id="x_y_ratio" />
+    </template>
   </div>
   </section>
 

@@ -489,6 +489,23 @@ function getBlueprintCommandBridge() {
   return bridge;
 }
 
+function getCurrentBlueprintConfigFromBridge() {
+  const bridge = getBlueprintCommandBridge();
+  if (!bridge || !bridge.has("getCurrentBlueprintConfig")) {
+    return null;
+  }
+  const config = bridge.invoke("getCurrentBlueprintConfig");
+  return config && typeof config === "object" ? config : null;
+}
+
+function reportBlueprintLifecycle(commandName, payload) {
+  const bridge = getBlueprintCommandBridge();
+  if (!bridge || !bridge.has(commandName)) {
+    return;
+  }
+  bridge.invoke(commandName, payload);
+}
+
 function getRecipe() {
   const bridge = getBlueprintCommandBridge();
   const bridgedResult =
@@ -607,26 +624,11 @@ function showLoadingDialog() {
     _loadingOverlay = document.createElement("div");
     _loadingOverlay.id = "blueprint-loading-overlay";
     _loadingOverlay.innerHTML = `
-      <style>
-        @keyframes bp-loading-spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .bp-loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid #e0e0e0;
-          border-top: 4px solid #3498db;
-          border-radius: 50%;
-          animation: bp-loading-spin 1s linear infinite;
-          margin: 0 auto 15px auto;
-        }
-      </style>
-      <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:9999;">
-        <div style="background:#fff;padding:30px 50px;border-radius:12px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+      <div class="bp-loading-shell">
+        <div class="bp-loading-card">
           <div class="bp-loading-spinner"></div>
-          <div style="font-size:16px;color:#333;font-weight:500;">${i18nBlueprintText("loading.blueprint_generating", "蓝图生成中...")}</div>
-          <div id="blueprint-loading-progress" style="font-size:12px;color:#888;margin-top:8px;">${i18nBlueprintText("loading.blueprint_generating_hint", "请稍候，正在计算最优布局")}</div>
+          <div class="bp-loading-title">${i18nBlueprintText("loading.blueprint_generating", "蓝图生成中...")}</div>
+          <div id="blueprint-loading-progress" class="bp-loading-progress">${i18nBlueprintText("loading.blueprint_generating_hint", "请稍候，正在计算最优布局")}</div>
         </div>
       </div>
     `;
@@ -686,6 +688,7 @@ function generateBlueprint() {
   const hasClipboardWrite =
     typeof navigator !== "undefined" && !!navigator.clipboard && typeof navigator.clipboard.writeText === "function";
   if (!hasSecureContext || !hasClipboardWrite) {
+    reportBlueprintLifecycle("failBlueprintGeneration", new Error("clipboard_unavailable"));
     trackBlueprintBusinessEvent("blueprint_generate_blocked_clipboard_unavailable", {
       protocol: location.protocol,
       isSecureContext: hasSecureContext,
@@ -699,12 +702,16 @@ function generateBlueprint() {
     );
     return;
   }
+  reportBlueprintLifecycle("startBlueprintGeneration", {
+    protocol: location.protocol,
+  });
   _isBlueprintGenerating = true;
   let recipe = null;
   try {
     recipe = getRecipe();
   } catch (err) {
     _isBlueprintGenerating = false;
+    reportBlueprintLifecycle("failBlueprintGeneration", err);
     const normalizedError = err && err.message ? err.message : "recipe_parse_failed";
     trackBlueprintBusinessEvent("blueprint_generate_failed_recipe_parse", {
       error: normalizedError,
@@ -717,9 +724,11 @@ function generateBlueprint() {
   };
   if (!outputRecipe.subRecipes) {
     _isBlueprintGenerating = false;
+    reportBlueprintLifecycle("failBlueprintGeneration", new Error("blueprint_recipe_missing"));
     return;
   }
-  let config = {
+  const bridgedConfig = getCurrentBlueprintConfigFromBridge();
+  let config = bridgedConfig || {
     maxSorterNumOneBelt: 8, // 一个传送带节点连接的最大分拣器数量
     conveyorBeltStackLayer: readBlueprintNumeric("conveyorBeltStackLayer", {
       fieldLabel: i18nBlueprintText("settings.blueprint.belt_stack", "传送带物品堆叠层数"),
@@ -764,6 +773,9 @@ function generateBlueprint() {
     // onlyConveyorBeltMk3Downgrade: document.getElementById('onlyConveyorBeltMk3Downgrade').checked  // 三级传送带运力降级
     onlyConveyorBeltMk3Downgrade: false, // 三级传送带运力降级
     stackLayers: document.getElementById("stackLayers").checked ? 4 : 1, // 建筑堆叠层数（开关开启=4层堆叠，关闭=1层普通模式）
+  };
+  config = {
+    ...config,
     blueprintDesc: recipe.blueprintDesc.trimEnd(),
     blueprintIconLength: recipe.blueprintIcon.length,
   };
@@ -818,6 +830,15 @@ function generateBlueprint() {
       await navigator.clipboard.writeText(bpStr);
       cocoMessage.success(i18nBlueprintText("message.blueprint_copied", "已复制到粘贴板"), 1000);
       const durationMs = commitBlueprintMetric(true);
+      reportBlueprintLifecycle("finishBlueprintGeneration", {
+        text: bpStr,
+        durationMs: durationMs,
+        meta: {
+          recipeCount: outputRecipe.subRecipes.length,
+          blueprintLength: bpStr.length,
+          protocol: location.protocol,
+        },
+      });
       trackBlueprintBusinessEvent("blueprint_generate_success", {
         recipeCount: outputRecipe.subRecipes.length,
         durationMs,
@@ -825,6 +846,7 @@ function generateBlueprint() {
       });
     })
     .catch(err => {
+      reportBlueprintLifecycle("failBlueprintGeneration", err);
       const normalizedError = err && err.message ? err.message : "unknown_error";
       const durationMs = commitBlueprintMetric(false, normalizedError);
       trackBlueprintBusinessEvent("blueprint_generate_failed", {

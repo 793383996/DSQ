@@ -32,6 +32,13 @@ export function savePersistedState(state: PersistedAppState): boolean {
   return browserStorage.setItem(PERSISTED_STATE_KEY, JSON.stringify(state));
 }
 
+export function clearPersistedState(): boolean {
+  if (!browserStorage.hasLocalStorage()) {
+    return false;
+  }
+  return browserStorage.removeItem(PERSISTED_STATE_KEY);
+}
+
 export function migrateLegacyStorage(version: string = window.version || ""): Record<string, string | null> {
   if (!browserStorage.hasLocalStorage()) {
     return {};

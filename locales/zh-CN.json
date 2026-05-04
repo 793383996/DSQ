@@ -177,6 +177,8 @@
   "dialog.ui_selector_aria": "物品选择弹窗",
   "dialog.split_aria": "多配方设置弹窗",
   "dialog.more_setting_aria": "参数设置面板",
+  "selector.components": "组件",
+  "selector.buildings": "建筑",
   "alert.data_not_ready": "游戏资源尚未加载完毕",
   "alert.no_multiple_recipe": "不存在多配方",
   "alert.recipe_not_selected": "未选择配方",

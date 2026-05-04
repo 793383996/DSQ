@@ -177,6 +177,8 @@
   "dialog.ui_selector_aria": "Item selector dialog",
   "dialog.split_aria": "Multi-recipe dialog",
   "dialog.more_setting_aria": "Settings panel",
+  "selector.components": "Components",
+  "selector.buildings": "Buildings",
   "alert.data_not_ready": "Game resources are not fully loaded yet.",
   "alert.no_multiple_recipe": "No multiple recipes available.",
   "alert.recipe_not_selected": "No recipe selected.",

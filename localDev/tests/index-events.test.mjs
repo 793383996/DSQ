@@ -23,36 +23,17 @@ function createIncludeNode(name, initialHtml) {
   };
 }
 
-function createEnvironment(options = {}) {
-  const fetchMap = options.fetchMap || {};
+function createEnvironment() {
   const includeNodes = [
-    createIncludeNode("updata", options.initialHtml && options.initialHtml.updata),
-    createIncludeNode("explanation", options.initialHtml && options.initialHtml.explanation),
+    createIncludeNode("updata", "<p>cached updata</p>"),
+    createIncludeNode("explanation", "<p>cached explanation</p>"),
   ];
-  const timerQueue = [];
-  const listeners = {};
+  const documentListeners = new Map();
+  const trackedEvents = [];
   const inputs = {
     txtnumber: { value: "60", style: {}, addEventListener() {} },
     selmaince: { value: "", style: {}, addEventListener() {} },
   };
-
-  async function fetchStub(pathname) {
-    const entry = fetchMap[pathname];
-    const response = Array.isArray(entry) ? entry.shift() : entry;
-    if (response instanceof Error) {
-      throw response;
-    }
-    if (!response) {
-      throw new Error("Unexpected fetch: " + pathname);
-    }
-    return {
-      ok: response.ok !== false,
-      status: response.status || 200,
-      text() {
-        return Promise.resolve(response.text || "");
-      },
-    };
-  }
 
   const context = {
     console: {
@@ -74,102 +55,82 @@ function createEnvironment(options = {}) {
         }
         return [];
       },
-      addEventListener() {},
-    },
-    fetch: fetchStub,
-    AbortController,
-    setTimeout(callback) {
-      timerQueue.push(callback);
-      return timerQueue.length;
-    },
-    clearTimeout(id) {
-      if (id > 0 && id <= timerQueue.length) {
-        timerQueue[id - 1] = null;
-      }
-    },
-    addEventListener(type, handler) {
-      listeners[type] = handler;
-    },
-    DSQI18n: {
-      getLocale() {
-        return options.locale || "zh-CN";
+      addEventListener(type, listener) {
+        documentListeners.set(type, listener);
       },
     },
-    __DSQQuoteIncludeState: options.quoteState || undefined,
-    app: options.app || undefined,
+    fetch() {
+      throw new Error("index.events.js should no longer fetch quote includes");
+    },
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    DSQI18n: {
+      getLocale() {
+        return "zh-CN";
+      },
+    },
+    PerformanceTracker: {
+      trackBusinessEvent(name, attributes, chain) {
+        trackedEvents.push({ name, attributes, chain });
+      },
+    },
   };
   context.globalThis = context;
   context.window = context;
 
   return {
     context,
+    documentListeners,
     includeNodes,
-    hasPendingRetry() {
-      return timerQueue.some(Boolean);
-    },
-    runNextRetry() {
-      const next = timerQueue.shift();
-      if (typeof next === "function") {
-        next();
-      }
-    },
-    listeners,
+    trackedEvents,
   };
 }
 
-describe("index events include loading", () => {
-  it("keeps previous include content and retries after transient fetch failures", async () => {
+describe("index events runtime", () => {
+  it("no longer owns quote include loading after the Vue store migration", async () => {
     const sourceCode = readFileSync("Scripts/index.events.js", "utf8");
-    const env = createEnvironment({
-      initialHtml: {
-        updata: "<p>cached updata</p>",
-        explanation: "<p>cached explanation</p>",
-      },
-      fetchMap: {
-        "quote/updata.html": [new Error("network failed"), { text: "<p>fresh updata</p>" }],
-        "quote/explanation.html": [new Error("network failed"), { text: "<p>fresh explanation</p>" }],
-      },
-    });
+    const env = createEnvironment();
 
     runInNewContext(sourceCode, env.context, { filename: "Scripts/index.events.js" });
     await flushPromises();
 
     expect(env.includeNodes[0].innerHTML).toBe("<p>cached updata</p>");
     expect(env.includeNodes[1].innerHTML).toBe("<p>cached explanation</p>");
-    expect(env.hasPendingRetry()).toBe(true);
-
-    env.runNextRetry();
-    await flushPromises();
-
-    expect(env.includeNodes[0].innerHTML).toBe("<p>fresh updata</p>");
-    expect(env.includeNodes[1].innerHTML).toBe("<p>fresh explanation</p>");
   });
 
-  it("commits include html into shared app state when Vue owns the target nodes", async () => {
+  it("keeps funnel click tracking without restoring legacy business dispatch", async () => {
     const sourceCode = readFileSync("Scripts/index.events.js", "utf8");
-    const env = createEnvironment({
-      app: {
-        quoteIncludes: {
-          updata: "",
-          explanation: "",
-        },
-      },
-      fetchMap: {
-        "quote/updata.html": { text: "<p>state updata</p>" },
-        "quote/explanation.html": { text: "<p>state explanation</p>" },
-      },
-    });
+    const env = createEnvironment();
 
     runInNewContext(sourceCode, env.context, { filename: "Scripts/index.events.js" });
     await flushPromises();
 
-    expect(env.context.__DSQQuoteIncludeState).toEqual({
-      updata: "<p>state updata</p>",
-      explanation: "<p>state explanation</p>",
+    const clickListener = env.documentListeners.get("click");
+    expect(typeof clickListener).toBe("function");
+
+    const actionNode = {
+      getAttribute(attributeName) {
+        return attributeName === "data-click-action" ? "addRequirement" : null;
+      },
+    };
+
+    clickListener({
+      target: {
+        closest(selector) {
+          return selector === "[data-click-action]" ? actionNode : null;
+        },
+      },
     });
-    expect(env.context.app.quoteIncludes).toEqual({
-      updata: "<p>state updata</p>",
-      explanation: "<p>state explanation</p>",
-    });
+
+    expect(env.trackedEvents).toEqual(
+      expect.arrayContaining([
+        {
+          name: "add_requirement_click",
+          attributes: { action: "addRequirement" },
+          chain: "ui_funnel",
+        },
+      ])
+    );
   });
 });

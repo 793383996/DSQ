@@ -21,6 +21,9 @@ export const useProjectsStore = defineStore("projects", {
     replaceProjects(projects: ProjectSnapshot[] | undefined) {
       this.hydrateProjects(projects);
     },
+    selectProject(name: string | null) {
+      this.activeProjectName = typeof name === "string" && name ? name : null;
+    },
     replaceProject(project: ProjectSnapshot) {
       const normalizedProject = normalizeProjectForStorage(project);
       const index = this.items.findIndex(entry => entry.name === normalizedProject.name);

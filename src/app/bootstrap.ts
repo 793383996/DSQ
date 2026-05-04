@@ -1,7 +1,11 @@
 import { createPinia } from "pinia";
-import { createApp } from "vue";
+import { createApp, nextTick, type App as VueApp } from "vue";
 
+import { registerLegacyAppCompat } from "../legacy-adapters/legacy-app-compat";
 import { initializeLegacyCommandBridge } from "../legacy-adapters/legacy-command-bridge";
+import { bindLegacyLocaleBridge } from "../legacy-adapters/legacy-locale-bridge";
+import { bindLegacyPanelStateBridge } from "../legacy-adapters/legacy-panel-state-bridge";
+import { bindLegacyQuoteIncludeBridge } from "../legacy-adapters/legacy-quote-include-bridge";
 import { syncLegacyRuntimeSnapshot } from "../legacy-adapters/legacy-state";
 import { createDsqI18n } from "../services/i18n";
 import { bootstrapLegacyRuntime } from "../services/legacy-runtime";
@@ -11,6 +15,8 @@ import { useUiStore } from "../stores/ui";
 import AppShell from "./AppShell.vue";
 
 let bootstrapPromise: Promise<void> | null = null;
+let mountedApp: VueApp<Element> | null = null;
+let runtimeDisposers: Array<() => void> = [];
 
 function ensureMountHost(): HTMLDivElement {
   const existing = document.getElementById("dsq-vue3-root");
@@ -27,6 +33,36 @@ function ensureMountHost(): HTMLDivElement {
   return host;
 }
 
+function registerRuntimeDisposer(disposer: (() => void) | null | undefined): void {
+  if (typeof disposer === "function") {
+    runtimeDisposers.push(disposer);
+  }
+}
+
+function cleanupRuntimeBindings(): void {
+  const pendingDisposers = runtimeDisposers.slice().reverse();
+  runtimeDisposers = [];
+  pendingDisposers.forEach(disposer => {
+    try {
+      disposer();
+    } catch (error) {
+      console.warn("bootstrapDsqApp: failed to dispose a runtime binding.", error);
+    }
+  });
+}
+
+function teardownMountedApp(): void {
+  cleanupRuntimeBindings();
+  if (mountedApp) {
+    mountedApp.unmount();
+    mountedApp = null;
+  }
+  const host = document.getElementById("dsq-vue3-root");
+  if (host instanceof HTMLDivElement) {
+    host.innerHTML = "";
+  }
+}
+
 export async function bootstrapDsqApp(): Promise<void> {
   if (bootstrapPromise) {
     return bootstrapPromise;
@@ -35,9 +71,12 @@ export async function bootstrapDsqApp(): Promise<void> {
   let appStore: ReturnType<typeof useAppStore> | null = null;
 
   bootstrapPromise = (async () => {
+    teardownMountedApp();
+
     const pinia = createPinia();
     const i18n = createDsqI18n();
     const app = createApp(AppShell);
+    mountedApp = app;
     app.use(pinia);
     app.use(i18n);
 
@@ -60,6 +99,16 @@ export async function bootstrapDsqApp(): Promise<void> {
     appStore.markLegacyReady();
 
     const snapshot = syncLegacyRuntimeSnapshot(pinia, { i18n });
+    registerRuntimeDisposer(bindLegacyLocaleBridge(pinia, i18n));
+    registerRuntimeDisposer(bindLegacyPanelStateBridge(pinia));
+    registerRuntimeDisposer(bindLegacyQuoteIncludeBridge(pinia));
+    registerRuntimeDisposer(
+      registerLegacyAppCompat({
+        nextTick(callback) {
+          void nextTick(callback);
+        },
+      })
+    );
     savePersistedState({
       locale: snapshot.locale,
       legacyStorage: migrateLegacyStorage(window.version || ""),
@@ -68,6 +117,7 @@ export async function bootstrapDsqApp(): Promise<void> {
   })().catch(error => {
     appStore?.markError(error);
     console.error("bootstrapDsqApp: failed to initialize the Vue 3 bridge runtime.", error);
+    teardownMountedApp();
     bootstrapPromise = null;
     throw error;
   });

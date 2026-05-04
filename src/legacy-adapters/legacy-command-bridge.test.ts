@@ -1,9 +1,13 @@
+// @vitest-environment jsdom
+
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useBlueprintStore } from "../stores/blueprint";
 import { useCalculationStore } from "../stores/calculation";
 import { useProjectsStore } from "../stores/projects";
 import { useSettingsStore } from "../stores/settings";
+import { useUiStore } from "../stores/ui";
 import { installFakeLegacyCalculationRuntime, uninstallFakeLegacyCalculationRuntime, type FakeLegacyElement } from "../test-support/fake-legacy-runtime";
 import { initializeLegacyCommandBridge } from "./legacy-command-bridge";
 
@@ -27,11 +31,14 @@ type RuntimeWindow = typeof globalThis & {
   saveGlobalSettings?: () => void;
   saveSettingPf?: () => void;
   saveSettingProjects?: () => void;
+  version?: string;
+  __DSQReloadPage?: () => void;
 };
 
 describe("legacy command bridge", () => {
   const runtimeWindow = globalThis as RuntimeWindow;
   const elements = new Map<string, FakeLegacyElement>();
+  const reloadSpy = vi.fn();
 
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -92,7 +99,11 @@ describe("legacy command bridge", () => {
     runtimeWindow.saveGlobalSettings = vi.fn();
     runtimeWindow.saveSettingPf = vi.fn();
     runtimeWindow.saveSettingProjects = vi.fn();
+    runtimeWindow.version = "test";
+    runtimeWindow.__DSQReloadPage = reloadSpy;
+    localStorage.clear();
     installFakeLegacyCalculationRuntime(runtimeWindow);
+    reloadSpy.mockReset();
   });
 
   afterEach(() => {
@@ -108,8 +119,12 @@ describe("legacy command bridge", () => {
     Reflect.deleteProperty(runtimeWindow, "saveGlobalSettings");
     Reflect.deleteProperty(runtimeWindow, "saveSettingPf");
     Reflect.deleteProperty(runtimeWindow, "saveSettingProjects");
+    Reflect.deleteProperty(runtimeWindow, "version");
+    Reflect.deleteProperty(runtimeWindow, "__DSQReloadPage");
     Reflect.deleteProperty(runtimeWindow, "currentCalculationResult");
     Reflect.deleteProperty(runtimeWindow, "window");
+    localStorage.clear();
+    reloadSpy.mockReset();
   });
 
   it("hydrates from legacy once and then keeps recalculation store-first", () => {
@@ -176,5 +191,151 @@ describe("legacy command bridge", () => {
       manualGzSpeed: true,
       gzSpeed: 8,
     });
+  });
+
+  it("exposes requirement drafts and blueprint config from store-owned state", () => {
+    const pinia = createPinia();
+    const bridge = initializeLegacyCommandBridge(pinia);
+
+    bridge.invoke("setRequirementDraft", { ratePerMinute: 180, machineCount: 12 });
+    expect(bridge.invoke("getRequirementDraft")).toEqual({
+      ratePerMinute: 180,
+      machineCount: 12,
+    });
+    expect(useUiStore(pinia).requirementDraft).toEqual({
+      ratePerMinute: 180,
+      machineCount: 12,
+    });
+
+    bridge.invoke(
+      "updateRuntimeOptions",
+      {
+        onlySorterMk3: false,
+        useSorterMk4: true,
+        conveyorBeltStackLayer: 3,
+        maxLabLayers: 9,
+        generateTeslaTower: false,
+        teslaTowerLineInterval: 2,
+        stackLayers: true,
+        xToYRatio: 1.5,
+        selfAcc: false,
+      },
+      "blueprint-config-change"
+    );
+
+    expect(bridge.invoke("getCurrentBlueprintConfig")).toEqual(
+      expect.objectContaining({
+        conveyorBeltStackLayer: 3,
+        useSorterMk4: true,
+        onlySorterMk3: false,
+        maxLabLayers: 9,
+        generateTeslaTower: false,
+        teslaTowerLineInterval: 2,
+        x_y_ratio: 1.5,
+        selfSpray: false,
+        stackLayers: 4,
+      })
+    );
+    expect(useBlueprintStore(pinia).config.useSorterMk4).toBe(true);
+  });
+
+  it("exposes selector catalog and split payload while adding requirements by name through the bridge", () => {
+    const pinia = createPinia();
+    const bridge = initializeLegacyCommandBridge(pinia);
+
+    expect(bridge.invoke("getRequirementSelectorCatalog")).toEqual(
+      expect.objectContaining({
+        sections: expect.arrayContaining([
+          expect.objectContaining({
+            id: "components",
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                name: "铁块",
+                iconValue: "iron-icon",
+              }),
+            ]),
+          }),
+          expect.objectContaining({
+            id: "buildings",
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                name: "电弧熔炉",
+                iconValue: "smelter-icon",
+              }),
+            ]),
+          }),
+        ]),
+      })
+    );
+
+    bridge.invoke("setRequirementDraft", { ratePerMinute: 60, machineCount: 2 });
+    bridge.invoke("addRequirementByName", "铜块");
+
+    expect(useCalculationStore(pinia).requirements).toEqual([
+      { item: { name: "铁块", itemId: "ironIngot" }, number: 60 },
+      expect.objectContaining({
+        item: expect.objectContaining({
+          name: "铜块",
+          itemId: "copperIngot",
+        }),
+        number: 120,
+      }),
+    ]);
+
+    expect(bridge.invoke("getSplitDialogPayload", "铁块")).toEqual({
+      itemName: "铁块",
+      recipes: [
+        { id: 2, titleHtml: "<span>铁块</span><sub></sub>" },
+        { id: 4, titleHtml: "<span>铁块</span><sub></sub>" },
+      ],
+      defaultNumber: 1,
+    });
+    expect(bridge.invoke("getSplitDialogPayload", "铜块")).toBeNull();
+  });
+
+  it("tracks blueprint lifecycle commands and clears runtime state on full reset", () => {
+    const pinia = createPinia();
+    const bridge = initializeLegacyCommandBridge(pinia);
+
+    bridge.invoke("syncFromLegacyAndRecalculate", "initial-pass");
+    bridge.invoke("startBlueprintGeneration", { protocol: "https:" });
+    expect(useBlueprintStore(pinia).isGenerating).toBe(true);
+
+    bridge.invoke("finishBlueprintGeneration", {
+      text: "blueprint-code",
+      durationMs: 1200,
+      meta: { recipeCount: 1 },
+    });
+    expect(useBlueprintStore(pinia).isGenerating).toBe(false);
+    expect(useBlueprintStore(pinia).lastResult).toEqual(
+      expect.objectContaining({
+        text: "blueprint-code",
+        durationMs: 1200,
+      })
+    );
+
+    bridge.invoke("startBlueprintGeneration");
+    bridge.invoke("failBlueprintGeneration", new Error("blueprint_failed"));
+    expect(useBlueprintStore(pinia).isGenerating).toBe(false);
+    expect(useBlueprintStore(pinia).errorMessage).toBe("blueprint_failed");
+
+    localStorage.setItem("machine_settingstest", "{}");
+    localStorage.setItem("settings_projectstest", "[]");
+    localStorage.setItem("dsq:vue3:bootstrap", JSON.stringify({ locale: "zh-CN" }));
+
+    bridge.invoke("resetAllRuntimeState");
+
+    expect(useCalculationStore(pinia).requirements).toEqual([]);
+    expect(useCalculationStore(pinia).singleMake).toEqual([]);
+    expect(useCalculationStore(pinia).excludedNames).toEqual([]);
+    expect(useProjectsStore(pinia).items).toEqual([]);
+    expect(useSettingsStore(pinia).machineSettings).toEqual({});
+    expect(useSettingsStore(pinia).speedSettings).toEqual({});
+    expect(useSettingsStore(pinia).recipeSettings).toEqual({});
+    expect(useBlueprintStore(pinia).isGenerating).toBe(false);
+    expect(localStorage.getItem("machine_settingstest")).toBeNull();
+    expect(localStorage.getItem("settings_projectstest")).toBeNull();
+    expect(localStorage.getItem("dsq:vue3:bootstrap")).toBeNull();
+    expect(reloadSpy).toHaveBeenCalled();
   });
 });
