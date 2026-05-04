@@ -14,6 +14,8 @@ type FakeElement = {
   checked?: boolean;
 };
 
+type LegacyInputEntry = [string, FakeElement];
+
 type RuntimeWindow = typeof globalThis & {
   window?: unknown;
   document?: {
@@ -38,6 +40,7 @@ type RuntimeWindow = typeof globalThis & {
     name?: string;
   } | null;
   pointLength?: number;
+  manualGzSpeed?: boolean;
   app?: {
     $nextTick?: (callback: () => void) => void;
     [key: string]: unknown;
@@ -52,7 +55,7 @@ describe("legacy-state adapter", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     elements.clear();
-    [
+    const runtimeInputs: LegacyInputEntry[] = [
       ["pointLength", { value: "4" }],
       ["hideSource", { checked: true }],
       ["showMaxOneBelt", { checked: true }],
@@ -79,14 +82,15 @@ describe("legacy-state adapter", () => {
       ["maxLabLayers", { value: "9" }],
       ["stackLayers", { checked: true }],
       ["x_y_ratio", { value: "1.5" }],
-    ].forEach(([id, value]) => {
+    ];
+    runtimeInputs.forEach(([id, value]) => {
       elements.set(id, value);
     });
 
     Reflect.set(globalThis, "window", runtimeWindow);
     runtimeWindow.document = {
       getElementById: (id: string) => elements.get(id) ?? null,
-    };
+    } as unknown as Document;
     runtimeWindow.DSQI18n = {
       getLocale: () => "en-US",
       updateSeoState,
@@ -129,6 +133,7 @@ describe("legacy-state adapter", () => {
     runtimeWindow.isDataLoaded = true;
     runtimeWindow.currentItem = { name: "铁块" };
     runtimeWindow.pointLength = 4;
+    runtimeWindow.manualGzSpeed = true;
     runtimeWindow.app = {
       $nextTick(callback: () => void) {
         callback();
@@ -138,22 +143,23 @@ describe("legacy-state adapter", () => {
 
   afterEach(() => {
     updateSeoState.mockReset();
-    delete runtimeWindow.DSQI18n;
-    delete runtimeWindow.document;
-    delete runtimeWindow.settings;
-    delete runtimeWindow.global_settings;
-    delete runtimeWindow.settings_time;
-    delete runtimeWindow.settings_pf;
-    delete runtimeWindow.projects;
-    delete runtimeWindow.xqs;
-    delete runtimeWindow.singleMake;
-    delete runtimeWindow.ig_names;
-    delete runtimeWindow.currentCalculationResult;
-    delete runtimeWindow.isDataLoaded;
-    delete runtimeWindow.currentItem;
-    delete runtimeWindow.pointLength;
-    delete runtimeWindow.app;
-    delete runtimeWindow.window;
+    Reflect.deleteProperty(runtimeWindow, "DSQI18n");
+    Reflect.deleteProperty(runtimeWindow, "document");
+    Reflect.deleteProperty(runtimeWindow, "settings");
+    Reflect.deleteProperty(runtimeWindow, "global_settings");
+    Reflect.deleteProperty(runtimeWindow, "settings_time");
+    Reflect.deleteProperty(runtimeWindow, "settings_pf");
+    Reflect.deleteProperty(runtimeWindow, "projects");
+    Reflect.deleteProperty(runtimeWindow, "xqs");
+    Reflect.deleteProperty(runtimeWindow, "singleMake");
+    Reflect.deleteProperty(runtimeWindow, "ig_names");
+    Reflect.deleteProperty(runtimeWindow, "currentCalculationResult");
+    Reflect.deleteProperty(runtimeWindow, "isDataLoaded");
+    Reflect.deleteProperty(runtimeWindow, "currentItem");
+    Reflect.deleteProperty(runtimeWindow, "pointLength");
+    Reflect.deleteProperty(runtimeWindow, "manualGzSpeed");
+    Reflect.deleteProperty(runtimeWindow, "app");
+    Reflect.deleteProperty(runtimeWindow, "window");
   });
 
   it("syncs legacy globals into Pinia stores with normalized values", () => {
@@ -171,6 +177,7 @@ describe("legacy-state adapter", () => {
       showMaxOneBelt: true,
       oilSpeed: 6,
       conveyorBeltType: "conveyorBeltMk2",
+      manualGzSpeed: true,
     });
     expect(useProjectsStore(pinia).items[0]?.settings).toEqual({
       1: { m: "rayReceiver" },
@@ -221,6 +228,7 @@ describe("legacy-state adapter", () => {
     expect(runtimeWindow.app?.totalEnergy).toBe("100.0000");
     expect(elements.get("pointLength")?.value).toBe("4");
     expect(elements.get("hideSource")?.checked).toBe(true);
+    expect(runtimeWindow.manualGzSpeed).toBe(true);
     expect(updateSeoState).toHaveBeenCalledWith(
       expect.objectContaining({
         primaryItemName: "铜块",

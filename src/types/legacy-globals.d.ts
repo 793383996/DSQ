@@ -32,6 +32,36 @@ interface LegacyCommandBridge {
   invoke<T = unknown>(commandName: string, ...args: unknown[]): T | undefined;
 }
 
+interface LegacyRecipeComponent {
+  name: string;
+  itemId?: string;
+  n?: number;
+  [key: string]: unknown;
+}
+
+interface LegacyMachineOption {
+  id?: string;
+  name?: string;
+  iconName?: string;
+  speed?: number;
+  [key: string]: unknown;
+}
+
+interface LegacyRecipeRecord {
+  id?: number;
+  name?: string;
+  itemId?: string;
+  machineTypeId?: string;
+  mName?: string;
+  noExtra?: boolean | null;
+  n?: number;
+  t?: number;
+  s: LegacyRecipeComponent[];
+  q: LegacyRecipeComponent[];
+  m: LegacyMachineOption[];
+  [key: string]: unknown;
+}
+
 declare global {
   interface Window {
     __DSQLegacyBootstrapPromise?: Promise<void>;
@@ -53,9 +83,16 @@ declare global {
     singleMake?: SingleMakeEntry[];
     ig_names?: string[];
     pointLength?: number;
+    manualGzSpeed?: boolean;
     defaultAccType?: string;
     defaultAccValue?: string;
     isDataLoaded?: boolean;
+    icons?: Record<string, string>;
+    data?: LegacyRecipeRecord[];
+    energyData?: Record<string, number>;
+    spaceData?: Record<string, number>;
+    recipeIndexByProduct?: Record<string, number[]>;
+    recipeIndexByMaterial?: Record<string, number[]>;
     currentItem?: {
       name?: string;
       [key: string]: unknown;
@@ -76,6 +113,8 @@ declare global {
     f_remove_ig?: (name: string) => void;
     generateBlueprint?: () => void;
     saveSetting?: () => void;
+    saveSettingTime?: () => void;
+    saveGlobalSettings?: () => void;
     saveSettingPf?: () => void;
     saveSettingProjects?: () => void;
   }

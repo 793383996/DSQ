@@ -1,26 +1,30 @@
 import { createPinia, setActivePinia } from "pinia";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { installFakeLegacyCalculationRuntime, uninstallFakeLegacyCalculationRuntime } from "../test-support/fake-legacy-runtime";
 import {
   createDefaultCalculationRuntimeOptions,
   createDefaultGlobalSettings,
-  createEmptyCalculationOutput,
 } from "../types/dsq";
 import { useCalculationStore } from "./calculation";
 
 describe("calculation store", () => {
   const runtimeWindow = globalThis as typeof globalThis & {
     window?: unknown;
-    buildCalculationResult?: () => ReturnType<typeof createEmptyCalculationOutput>;
   };
 
   beforeEach(() => {
     setActivePinia(createPinia());
     Reflect.set(globalThis, "window", runtimeWindow);
-    delete runtimeWindow.buildCalculationResult;
+    uninstallFakeLegacyCalculationRuntime(runtimeWindow);
   });
 
-  it("builds a fallback result from current requirements when no legacy result exists", () => {
+  afterEach(() => {
+    uninstallFakeLegacyCalculationRuntime(runtimeWindow);
+    Reflect.deleteProperty(runtimeWindow, "window");
+  });
+
+  it("builds a fallback result from current requirements when runtime data is unavailable", () => {
     const store = useCalculationStore();
     store.setRequirements([
       {
@@ -41,22 +45,16 @@ describe("calculation store", () => {
     expect(store.effectiveResult.seoSnapshot.primaryRatePerMinute).toBe(60);
   });
 
-  it("recalculates through the domain entrypoint and records the last reason", () => {
-    runtimeWindow.buildCalculationResult = () => {
-      const result = createEmptyCalculationOutput();
-      result.requirements = [{ item: { name: "铜块" }, number: 30 }];
-      result.seoSnapshot.requirementCount = 3;
-      result.productionLines = [{ id: "legacy-line" }];
-      return result;
-    };
+  it("recalculates through the typed domain entrypoint and records the last reason", () => {
+    installFakeLegacyCalculationRuntime(runtimeWindow);
 
     const store = useCalculationStore();
     const result = store.recalculate(
       {
         requirements: [
           {
-            item: { name: "铁块" },
-            number: 60,
+            item: { name: "铜块", itemId: "copperIngot" },
+            number: 30,
           },
         ],
         singleMake: [],
@@ -70,8 +68,8 @@ describe("calculation store", () => {
       "store-contract"
     );
 
-    expect(result.seoSnapshot.requirementCount).toBe(3);
-    expect(store.currentResult?.productionLines).toEqual([{ id: "legacy-line" }]);
+    expect(result.seoSnapshot.requirementCount).toBe(1);
+    expect(store.currentResult?.productionLines).toHaveLength(2);
     expect(store.lastReason).toBe("store-contract");
   });
 });

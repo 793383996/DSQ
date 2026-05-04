@@ -87,6 +87,15 @@ export const useCalculationStore = defineStore("calculation", {
           : entry
       );
     },
+    scaleRequirementNumbers(factor: number) {
+      if (!Number.isFinite(factor) || factor <= 0) {
+        return;
+      }
+      this.requirements = this.requirements.map(entry => ({
+        ...entry,
+        number: entry.number * factor,
+      }));
+    },
     removeRequirement(index: number) {
       if (!Number.isInteger(index) || index < 0 || index >= this.requirements.length) {
         return;

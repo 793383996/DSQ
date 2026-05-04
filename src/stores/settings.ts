@@ -56,6 +56,12 @@ export const useSettingsStore = defineStore("settings", {
     applyRuntimeOptions(snapshot: Partial<CalculationRuntimeOptions> | undefined) {
       this.runtimeOptions = normalizeCalculationRuntimeOptions(snapshot);
     },
+    updateRuntimeOptions(patch: Partial<CalculationRuntimeOptions> | undefined) {
+      this.runtimeOptions = normalizeCalculationRuntimeOptions({
+        ...this.runtimeOptions,
+        ...(patch && typeof patch === "object" ? patch : {}),
+      });
+    },
     updateGlobalSetting(key: keyof GlobalSettings, value: unknown) {
       this.hydrateGlobalSettings({
         ...this.global,
@@ -72,6 +78,19 @@ export const useSettingsStore = defineStore("settings", {
           ...patch,
         }),
       };
+    },
+    clearMachineSettingField(field: keyof MachineSettingRecord) {
+      const nextEntries = Object.entries(this.machineSettings)
+        .map(([key, record]) => {
+          if (!record || typeof record !== "object" || !(field in record)) {
+            return [key, record] as const;
+          }
+          const nextRecord = { ...record };
+          delete nextRecord[field];
+          return [key, normalizeMachineSettingRecord(nextRecord)] as const;
+        })
+        .filter(([, record]) => Object.keys(record).length > 0);
+      this.machineSettings = Object.fromEntries(nextEntries);
     },
     resetMachineSettings() {
       this.machineSettings = {};

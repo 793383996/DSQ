@@ -36,6 +36,7 @@ export interface CalculationRuntimeOptions {
   isMerge: boolean;
   isAddSelfAccP: boolean;
   selfAcc: boolean;
+  manualGzSpeed: boolean;
   conveyorBeltType: string;
   stationStackLayer: number;
   oreMultiplier: number;
@@ -64,6 +65,10 @@ export interface ProjectSnapshot {
   ig_names: string[];
   value: RequirementEntry[];
   settings: MachineSettingsSnapshot;
+  globalSettings?: GlobalSettings;
+  speedSettings?: SpeedSettingsSnapshot;
+  recipeSettings?: Record<string, unknown>;
+  runtimeOptions?: CalculationRuntimeOptions;
 }
 
 export interface GlobalSettings {
@@ -287,6 +292,7 @@ export const DEFAULT_CALCULATION_RUNTIME_OPTIONS: CalculationRuntimeOptions = Ob
   isMerge: false,
   isAddSelfAccP: false,
   selfAcc: true,
+  manualGzSpeed: false,
   conveyorBeltType: "conveyorBeltMk3",
   stationStackLayer: 1,
   oreMultiplier: 100,
@@ -407,6 +413,7 @@ export function normalizeCalculationRuntimeOptions(
     isMerge: input.isMerge === true,
     isAddSelfAccP: input.isAddSelfAccP === true,
     selfAcc: input.selfAcc !== false,
+    manualGzSpeed: input.manualGzSpeed === true,
     conveyorBeltType:
       typeof input.conveyorBeltType === "string" && input.conveyorBeltType
         ? input.conveyorBeltType

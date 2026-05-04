@@ -11,6 +11,7 @@ interface LegacyRuntimeDocumentLike {
 interface LegacyRuntimeRootLike {
   document?: LegacyRuntimeDocumentLike;
   pointLength?: number;
+  manualGzSpeed?: boolean;
 }
 
 function resolveRoot(root?: LegacyRuntimeRootLike): LegacyRuntimeRootLike | undefined {
@@ -75,6 +76,7 @@ export function readLegacyRuntimeOptions(root?: LegacyRuntimeRootLike): Calculat
     isMerge: readCheckboxValue(resolvedRoot, "isMerge") ?? defaults.isMerge,
     isAddSelfAccP: readCheckboxValue(resolvedRoot, "isAddSelfAccP") ?? defaults.isAddSelfAccP,
     selfAcc: readCheckboxValue(resolvedRoot, "selfAcc") ?? defaults.selfAcc,
+    manualGzSpeed: resolvedRoot?.manualGzSpeed === true,
     conveyorBeltType: readElementValue(resolvedRoot, "csd") ?? defaults.conveyorBeltType,
     stationStackLayer: readNumericValue(resolvedRoot, "speed1_5", defaults.stationStackLayer),
     oreMultiplier: readNumericValue(resolvedRoot, "selore", defaults.oreMultiplier),
@@ -127,6 +129,7 @@ export function applyLegacyRuntimeOptions(
 
   if (resolvedRoot) {
     resolvedRoot.pointLength = normalizedRuntimeOptions.pointLength;
+    resolvedRoot.manualGzSpeed = normalizedRuntimeOptions.manualGzSpeed;
   }
 
   writeElementValue(resolvedRoot, "pointLength", String(normalizedRuntimeOptions.pointLength));

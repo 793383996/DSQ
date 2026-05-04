@@ -429,6 +429,24 @@ function invokeCompatCommand(commandName) {
   return bridge.invoke.apply(bridge, [commandName].concat(args));
 }
 
+function updateRuntimeOptionsThroughBridge(patch, reason) {
+  var bridge = getCompatCommandBridge();
+  if (!bridge || !bridge.has("updateRuntimeOptions")) {
+    return false;
+  }
+  bridge.invoke("updateRuntimeOptions", patch || {}, reason || "");
+  return true;
+}
+
+function updateGlobalSettingThroughBridge(key, value, reason) {
+  var bridge = getCompatCommandBridge();
+  if (!bridge || !bridge.has("updateGlobalSetting")) {
+    return false;
+  }
+  bridge.invoke("updateGlobalSetting", key, value, reason || "");
+  return true;
+}
+
 function syncLocalizedLabels() {
   if (!app) return;
   app.accTotalLabel = i18nText("table.acc_need_prefix", "需求：");
@@ -823,7 +841,22 @@ function f_init() {
         }
       }
     });
-    doSpeed1();
+    var runtimeSpeedOptions = doSpeed1();
+    if (
+      updateRuntimeOptionsThroughBridge(
+        {
+          oreMultiplier: oreValue,
+          advancedMinerMultiplier: advancedMinerValue,
+          orbitalCollectorGasHydrogen: runtimeSpeedOptions.orbitalCollectorGasHydrogen,
+          orbitalCollectorDeuterium: runtimeSpeedOptions.orbitalCollectorDeuterium,
+          orbitalCollectorFireIce: runtimeSpeedOptions.orbitalCollectorFireIce,
+          orbitalCollectorIceHydrogen: runtimeSpeedOptions.orbitalCollectorIceHydrogen,
+        },
+        "ore-speed-multiplier-change"
+      )
+    ) {
+      return;
+    }
     scheduleUpdateAll("ore-speed-multiplier-change");
   });
   dom("#selore").change(function () {
@@ -857,7 +890,22 @@ function f_init() {
         }
       }
     });
-    doSpeed1();
+    var runtimeSpeedOptions = doSpeed1();
+    if (
+      updateRuntimeOptionsThroughBridge(
+        {
+          oreMultiplier: oreValue,
+          advancedMinerMultiplier: advancedMinerValue,
+          orbitalCollectorGasHydrogen: runtimeSpeedOptions.orbitalCollectorGasHydrogen,
+          orbitalCollectorDeuterium: runtimeSpeedOptions.orbitalCollectorDeuterium,
+          orbitalCollectorFireIce: runtimeSpeedOptions.orbitalCollectorFireIce,
+          orbitalCollectorIceHydrogen: runtimeSpeedOptions.orbitalCollectorIceHydrogen,
+        },
+        "ore-base-speed-change"
+      )
+    ) {
+      return;
+    }
     scheduleUpdateAll("ore-base-speed-change");
   });
   dom("#btnSetting").click(function (event) {
@@ -879,6 +927,9 @@ function f_init() {
     }
   });
   dom("#showMaxOneBelt").change(function () {
+    if (updateRuntimeOptionsThroughBridge({ showMaxOneBelt: this.checked === true }, "toggle-show-max-one-belt")) {
+      return;
+    }
     scheduleUpdateAll("toggle-show-max-one-belt");
   });
   dom("#pointLength").change(function () {
@@ -891,9 +942,15 @@ function f_init() {
       integer: true,
       clamp: true,
     });
+    if (updateRuntimeOptionsThroughBridge({ pointLength: pointLength }, "decimal-point-length-change")) {
+      return;
+    }
     scheduleUpdateAll("decimal-point-length-change");
   });
   dom("#isAddSelfAccP").change(function () {
+    if (updateRuntimeOptionsThroughBridge({ isAddSelfAccP: this.checked === true }, "toggle-external-acc-input")) {
+      return;
+    }
     scheduleUpdateAll("toggle-external-acc-input");
   });
   dom("#fractionatorSpeed").change(function () {
@@ -912,6 +969,9 @@ function f_init() {
         }
       }
     });
+    if (updateRuntimeOptionsThroughBridge({ fractionatorSpeed: fractionatorSpeed }, "fractionator-speed-change")) {
+      return;
+    }
     scheduleUpdateAll("fractionator-speed-change");
   });
   dom("#oilSpeed").change(function () {
@@ -930,9 +990,21 @@ function f_init() {
         }
       }
     });
+    if (updateRuntimeOptionsThroughBridge({ oilSpeed: oilSpeed }, "oil-speed-change")) {
+      return;
+    }
     scheduleUpdateAll("oil-speed-change");
   });
   dom("#gzSpeed").change(function () {
+    var gzSpeed = readNumeric("gzSpeed", {
+      fieldLabel: getNumericFieldLabel("settings.speed.critical_photon", "临界光子每分钟产量"),
+      fallbackValue: 5,
+      requirePositive: true,
+      maxFractionDigits: 6,
+    });
+    if (updateRuntimeOptionsThroughBridge({ gzSpeed: gzSpeed, manualGzSpeed: true }, "critical-photon-speed-change")) {
+      return;
+    }
     manualGzSpeed = true;
     update_all();
     manualGzSpeed = false;
@@ -1023,10 +1095,20 @@ function f_init() {
         }
       }
     });
+    return {
+      orbitalCollectorGasHydrogen: speed1_1,
+      orbitalCollectorDeuterium: speed1_2,
+      orbitalCollectorFireIce: speed1_3,
+      orbitalCollectorIceHydrogen: speed1_4,
+      oreMultiplier: ore,
+    };
   }
 
   dom(".speed1").change(function () {
-    doSpeed1();
+    var runtimeSpeedOptions = doSpeed1();
+    if (updateRuntimeOptionsThroughBridge(runtimeSpeedOptions, "orbital-collector-speed-change")) {
+      return;
+    }
     scheduleUpdateAll("orbital-collector-speed-change");
   });
 
@@ -1057,18 +1139,30 @@ function f_init() {
   });
 
   dom("#btnReset2").click(function () {
+    if (getCompatCommandBridge()) {
+      invokeCompatCommand("resetMachineSettings");
+      return;
+    }
     settings = {};
     saveSetting();
     scheduleUpdateAll("reset-machine-settings");
   });
 
   dom("#btnReset3").click(function () {
+    if (getCompatCommandBridge()) {
+      invokeCompatCommand("resetSpeedSettings");
+      return;
+    }
     settings_time = {};
     saveSettingTime();
     scheduleUpdateAll("reset-speed-settings");
   });
 
   dom("#btnReset4").click(function () {
+    if (getCompatCommandBridge()) {
+      invokeCompatCommand("resetRecipeSettings");
+      return;
+    }
     settings_pf = {};
     saveSettingPf();
     scheduleUpdateAll("reset-recipe-settings");
@@ -1103,22 +1197,37 @@ function f_init() {
     }
   });
   dom("#selmodein").change(function () {
+    if (updateGlobalSettingThroughBridge("selmodein", this.value, "global-assembler-change")) {
+      return;
+    }
     persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-assembler-change");
   });
   dom("#furnace").change(function () {
+    if (updateGlobalSettingThroughBridge("furnace", this.value, "global-furnace-change")) {
+      return;
+    }
     persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-furnace-change");
   });
   dom("#chemical").change(function () {
+    if (updateGlobalSettingThroughBridge("chemical", this.value, "global-chemical-change")) {
+      return;
+    }
     persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-chemical-change");
   });
   dom("#research").change(function () {
+    if (updateGlobalSettingThroughBridge("research", this.value, "global-research-change")) {
+      return;
+    }
     persistGlobalSettingsFromControls();
     scheduleUpdateAll("global-research-change");
   });
   dom("#accType").change(function () {
+    if (updateGlobalSettingThroughBridge("accType", this.value, "global-acc-type-change")) {
+      return;
+    }
     persistGlobalSettingsFromControls();
     // 不知道为啥要写这个for
     for (var i in settings) {
@@ -1128,6 +1237,9 @@ function f_init() {
     scheduleUpdateAll("global-acc-type-change");
   });
   dom("#accValue").change(function () {
+    if (updateGlobalSettingThroughBridge("accValue", this.value, "global-acc-value-change")) {
+      return;
+    }
     persistGlobalSettingsFromControls();
     for (var i in settings) {
       delete settings[i].accValue;
@@ -1136,12 +1248,21 @@ function f_init() {
     scheduleUpdateAll("global-acc-value-change");
   });
   dom("#isMerge").change(function () {
+    if (updateRuntimeOptionsThroughBridge({ isMerge: this.checked === true }, "toggle-merge")) {
+      return;
+    }
     scheduleUpdateAll("toggle-merge");
   });
   dom("#hideSource").change(function () {
+    if (updateRuntimeOptionsThroughBridge({ hideSource: this.checked === true }, "toggle-hide-source")) {
+      return;
+    }
     scheduleUpdateAll("toggle-hide-source");
   });
   dom("#selfAcc").change(function () {
+    if (updateRuntimeOptionsThroughBridge({ selfAcc: this.checked === true }, "toggle-self-acc")) {
+      return;
+    }
     scheduleUpdateAll("toggle-self-acc");
   });
   dom(document).click(function (e) {

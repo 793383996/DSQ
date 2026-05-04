@@ -146,9 +146,19 @@ export function normalizeProjectForStorage(
   const projectService = options.projectService ?? createDsqServices().project;
   const dictionary = options.domainDictionary ?? domainDictionary;
   const snapshot = projectService.createSnapshot(project);
+  const normalizedSpeedSettings = snapshot.speedSettings
+    ? normalizeSpeedSettingsForStorage(snapshot.speedSettings, dictionary)
+    : undefined;
   return {
     ...snapshot,
     settings: normalizeMachineSettingsForStorage(snapshot.settings, dictionary),
+    globalSettings: snapshot.globalSettings,
+    speedSettings: normalizedSpeedSettings,
+    recipeSettings:
+      snapshot.recipeSettings && typeof snapshot.recipeSettings === "object" && !Array.isArray(snapshot.recipeSettings)
+        ? (snapshot.recipeSettings as Record<string, unknown>)
+        : undefined,
+    runtimeOptions: snapshot.runtimeOptions,
   };
 }
 

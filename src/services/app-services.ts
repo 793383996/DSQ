@@ -2,6 +2,7 @@ import { domainDictionary } from "../domain/domain-dictionary";
 import {
   DEFAULT_GLOBAL_SETTINGS,
   type BasicStorageLike,
+  type CalculationRuntimeOptions,
   type DomainDictionaryApi,
   type GlobalSettings,
   type MachineSettingsSnapshot,
@@ -9,7 +10,9 @@ import {
   type NumericNormalizationOptions,
   type NumericNormalizationResult,
   type ProjectSnapshot,
+  type SpeedSettingsSnapshot,
   type StorageAdapter,
+  normalizeCalculationRuntimeOptions,
   normalizeRequirementEntries,
   normalizeSingleMakeEntries,
 } from "../types/dsq";
@@ -164,6 +167,22 @@ export function createBrowserStorageAdapter(root: ServiceRootLike | undefined = 
 
 export function createProjectSnapshot(project: unknown): ProjectSnapshot {
   const source = isObject(project) ? project : {};
+  const globalSettings =
+    source.globalSettings && typeof source.globalSettings === "object"
+      ? createGlobalSettingsSnapshot(source.globalSettings)
+      : undefined;
+  const speedSettings =
+    source.speedSettings && typeof source.speedSettings === "object" && !Array.isArray(source.speedSettings)
+      ? (deepClone(source.speedSettings) as SpeedSettingsSnapshot)
+      : undefined;
+  const recipeSettings =
+    source.recipeSettings && typeof source.recipeSettings === "object" && !Array.isArray(source.recipeSettings)
+      ? (deepClone(source.recipeSettings) as Record<string, unknown>)
+      : undefined;
+  const runtimeOptions =
+    source.runtimeOptions && typeof source.runtimeOptions === "object"
+      ? normalizeCalculationRuntimeOptions(source.runtimeOptions as Partial<CalculationRuntimeOptions>)
+      : undefined;
   return {
     name: typeof source.name === "string" ? source.name : "",
     singleMake: normalizeSingleMakeEntries(source.singleMake),
@@ -172,6 +191,10 @@ export function createProjectSnapshot(project: unknown): ProjectSnapshot {
       : [],
     value: normalizeRequirementEntries(source.value),
     settings: isObject(source.settings) ? (deepClone(source.settings) as MachineSettingsSnapshot) : {},
+    globalSettings,
+    speedSettings,
+    recipeSettings,
+    runtimeOptions,
   };
 }
 

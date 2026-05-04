@@ -478,13 +478,29 @@ function createBlueprintRecipePayloadFromSnapshot(snapshot) {
   };
 }
 
+function getBlueprintCommandBridge() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const bridge = window.DSQCommandBridge;
+  if (!bridge || typeof bridge.has !== "function" || typeof bridge.invoke !== "function") {
+    return null;
+  }
+  return bridge;
+}
+
 function getRecipe() {
+  const bridge = getBlueprintCommandBridge();
+  const bridgedResult =
+    bridge && bridge.has("getCurrentCalculationResult") ? bridge.invoke("getCurrentCalculationResult") : null;
   const result =
-    typeof window !== "undefined" &&
-    window.currentCalculationResult &&
-    typeof window.currentCalculationResult === "object"
-      ? window.currentCalculationResult
-      : null;
+    bridgedResult && typeof bridgedResult === "object"
+      ? bridgedResult
+      : typeof window !== "undefined" &&
+          window.currentCalculationResult &&
+          typeof window.currentCalculationResult === "object"
+        ? window.currentCalculationResult
+        : null;
   const snapshot = result && result.blueprintSnapshot ? result.blueprintSnapshot : null;
   return createBlueprintRecipePayloadFromSnapshot(snapshot);
 }
