@@ -2,6 +2,7 @@
 
 > 文档状态（2026-04-04）：历史归档，不再与当前代码同步维护。  
 > 说明：文中大量行号、文件关系与架构描述基于 2026-03 的单体脚本阶段。  
+> 补记（2026-05-04）：`Scripts/jquery-2.2.4.min.js`、`Scripts/jquery.cookie.min.js` 与 `Scripts/vue.min.js` 已从当前首页主链和仓库移除；结果区现由 Vue 3 组件接管，本文其余关于 Vue 2 结果区的描述仅保留为历史归档。  
 > 当前请优先参考：localDocs/网站完善实施计划.md、localDocs/当前项目架构与成熟网站差距分析.md、localDocs/index拆分结构清单.md。
 
 ## 目录
@@ -50,10 +51,8 @@ DSQ/
 │   ├── blueprint.worker.js   # 蓝图Worker线程
 │   ├── data.json             # 游戏图标资源
 │   ├── style.css             # 样式文件
-│   ├── jquery-2.2.4.min.js   # jQuery库
-│   ├── jquery.cookie.min.js  # Cookie操作库
 │   ├── jquery.tips.js        # 提示框插件
-│   ├── vue.min.js            # Vue.js框架
+│   ├── vue.min.js            # 已删除（历史归档说明）
 │   ├── cocoMessage.js        # 消息提示组件
 │   └── pako.js               # 压缩库（蓝图编码用）
 ├── quote/
@@ -173,11 +172,11 @@ flowchart LR
 
 ### 4.2 脚本加载顺序
 
+以下时序图为历史脚本顺序注入阶段的归档说明，不代表 2026-05-04 之后的当前首页运行时。
+
 ```mermaid
 sequenceDiagram
     participant HTML as index.html
-    participant JQ as jquery.min.js
-    participant Cookie as jquery.cookie.js
     participant Tips as jquery.tips.js
     participant Vue as vue.min.js
     participant Pako as pako.js
@@ -187,9 +186,6 @@ sequenceDiagram
     participant Facade as blueprint.facade.js
     participant Worker as blueprint.worker.js
     
-    HTML->>JQ: 加载jQuery
-    JQ-->>HTML: 就绪
-    HTML->>Cookie: 加载Cookie插件
     HTML->>Tips: 加载Tips插件
     HTML->>Vue: 加载Vue.js
     HTML->>Pako: 加载Pako压缩库
@@ -203,13 +199,19 @@ sequenceDiagram
 
 ### 4.3 动态加载模块
 
+以下代码块为历史内联实现；当前主链路已不再依赖 jQuery 来加载说明区块。
+
 ```javascript
-// index.html 内联脚本
-$(function () {
-    var includes = $('[data-include]');
-    jQuery.each(includes, function () {
-        var file = 'quote/' + $(this).data('include') + '.html';
-        $(this).load(file);
+// historical: pre-refactor inline include loader
+document.addEventListener("DOMContentLoaded", function () {
+    var includes = document.querySelectorAll("[data-include]");
+    Array.prototype.forEach.call(includes, function (element) {
+        var file = "quote/" + element.getAttribute("data-include") + ".html";
+        fetch(file).then(function (response) {
+            return response.text();
+        }).then(function (html) {
+            element.innerHTML = html;
+        });
     });
 });
 ```

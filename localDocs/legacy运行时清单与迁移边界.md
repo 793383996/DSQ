@@ -28,7 +28,6 @@
 error-monitor.js
 i18n.js
 dom.legacy.js
-vue.min.js
 cocoMessage.js
 calc-core.js
 data.state.js
@@ -50,8 +49,9 @@ index.events.js
 
 1. `data.bootstrap.js` 负责加载 `Scripts/data.json`
 2. 数据加载完成后触发 `f_init()`
-3. `f_init()` 在 `data.ui-bindings.js` 中创建 Vue2 实例并绑定页面交互
-4. 大多数业务刷新仍通过 `scheduleUpdateAll() -> update_all()`
+3. `f_init()` 在 `data.ui-bindings.js` 中完成 legacy 设置加载、数值初始化与首轮重算
+4. `#result` 由 Vue 3 组件通过 Teleport 接管渲染，legacy 仅保留兼容命令与控制区职责
+5. 大多数业务刷新仍通过 `scheduleUpdateAll() -> update_all()` 兼容入口触发，但真实计算与结果写回已进入 Store/TS 主链
 
 ## 3. 当前全局状态清单
 
@@ -135,16 +135,20 @@ index.events.js
 
 关键 legacy 依赖如下：
 
-1. `Vue 2.7.16`
-2. `jQuery 2.2.4` 文件仍在仓库，但首页主链路已不直接引用
-3. `jquery.cookie`
-4. `jquery.tips`
-5. `cocoMessage`
-6. `pako`
+1. `jquery.tips`
+2. `cocoMessage`
+3. `pako`
+
+补记（2026-05-04）：
+
+1. `Scripts/jquery-2.2.4.min.js` 已从仓库删除
+2. `Scripts/jquery.cookie.min.js` 已从仓库删除
+3. `Scripts/vue.min.js` 已从首页主链与仓库中删除，结果区改由 Vue 3 接管
+4. 首页继续通过 `npm run jquery:check` 防止 jQuery 运行时回流
 
 迁移优先级：
 
-1. `Vue2`、`jquery.cookie`、`jquery.tips`、`jQuery` 为高优先退场对象
+1. `jquery.tips` 为高优先退场对象
 2. `cocoMessage` 先封装后替换
 3. `pako` 可暂时保留
 

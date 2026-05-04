@@ -13,8 +13,6 @@
       margin: 0;
     }
   </style>
-  <script src="./Scripts/jquery-2.2.4.min.js"></script>
-  <script src="./Scripts/jquery.cookie.min.js"></script>
   <script src="./Scripts/vue.min.js"></script>
   <script src="./Scripts/jquery.tips.js"></script>
   <script src="./Scripts/cocoMessage.js"></script>
@@ -23,11 +21,28 @@
   <script src="./Scripts/blueprint.js"></script>
   <script src="./Scripts/blueprint.facade.js"></script>
   <script>
-    $(function () {
-      var includes = $('[data-include]');
-      jQuery.each(includes, function () {
-        var file = 'quote/' + $(this).data('include') + '.html';
-        $(this).load(file);
+    document.addEventListener('DOMContentLoaded', function () {
+      var includes = document.querySelectorAll('[data-include]');
+      Array.prototype.forEach.call(includes, function (element) {
+        var includeName = element.getAttribute('data-include');
+        if (!includeName) {
+          return;
+        }
+
+        var file = 'quote/' + includeName + '.html';
+        fetch(file)
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error('Failed to load include: ' + file);
+            }
+            return response.text();
+          })
+          .then(function (html) {
+            element.innerHTML = html;
+          })
+          .catch(function (error) {
+            console.error(error);
+          });
       });
     });
   </script>

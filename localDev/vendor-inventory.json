@@ -1,43 +1,7 @@
 {
-  "updatedAt": "2026-03-24",
+  "updatedAt": "2026-05-04",
   "owner": "frontend-engineering",
   "dependencies": [
-    {
-      "name": "jQuery",
-      "file": "Scripts/jquery-2.2.4.min.js",
-      "version": "2.2.4",
-      "source": "https://jquery.com/",
-      "license": "MIT",
-      "riskLevel": "high",
-      "status": "replace",
-      "alternative": "Native DOM APIs plus targeted helpers",
-      "migrationPlan": "Remove jQuery usage from page bootstrapping and event binding in favor of native DOM and delegated listeners.",
-      "targetQuarter": "2026-Q3"
-    },
-    {
-      "name": "jquery.cookie",
-      "file": "Scripts/jquery.cookie.min.js",
-      "version": "1.4.1",
-      "source": "https://github.com/carhartl/jquery-cookie",
-      "license": "MIT",
-      "riskLevel": "high",
-      "status": "replace",
-      "alternative": "js-cookie or localStorage-only persistence",
-      "migrationPlan": "Migrate cookie read/write calls to a maintained package or localStorage fallback module.",
-      "targetQuarter": "2026-Q2"
-    },
-    {
-      "name": "Vue",
-      "file": "Scripts/vue.min.js",
-      "version": "2.7.16",
-      "source": "https://github.com/vuejs/vue",
-      "license": "MIT",
-      "riskLevel": "high",
-      "status": "upgrade",
-      "alternative": "Vue 3 + composition API or petite-vue for incremental migration",
-      "migrationPlan": "Create compatibility layer for legacy option API blocks, then incrementally migrate templates and state adapters to Vue 3.",
-      "targetQuarter": "2026-Q4"
-    },
     {
       "name": "pako",
       "file": "Scripts/pako.js",
@@ -81,24 +45,24 @@
       "goal": "Stabilize and inventory all vendored dependencies",
       "deliverables": [
         "Freeze vendored inventory with owner and risk tags",
-        "Replace jquery.cookie usage with maintained storage abstraction",
+        "Complete jquery.cookie retirement and lock the storage abstraction baseline",
         "Publish quarterly dependency review checklist"
       ]
     },
     {
       "quarter": "2026-Q3",
-      "goal": "Retire legacy jQuery plugin surface",
+      "goal": "Retire remaining legacy plugin surface",
       "deliverables": [
-        "Replace jQuery bootstrapping/event hooks with native DOM implementation",
+        "Keep jQuery runtime retired and prevent reintroduction through baseline checks",
         "Retire jquery.tips and move to maintained feedback component",
         "Run security regression checks on all replacement paths"
       ]
     },
     {
       "quarter": "2026-Q4",
-      "goal": "Modernize framework layer and isolate remaining legacy bundles",
+      "goal": "Complete framework cutover and isolate remaining legacy bundles",
       "deliverables": [
-        "Start Vue 3 migration pilot for key interactive modules",
+        "Retire the Vue 2 result runtime and verify Vue 3 ownership of the primary result surface",
         "Wrap cocoMessage behind internal adapter",
         "Re-audit third-party dependency posture and publish next-year plan"
       ]
