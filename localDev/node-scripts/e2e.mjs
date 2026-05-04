@@ -285,6 +285,39 @@ async function runE2EAttempt(attempt) {
       await page.locator("#btnAddRequirement").first().focus();
       await page.keyboard.press("Enter");
       await waitForPanelState(page, "UIselector", true);
+      const selectorMetrics = await page.evaluate(() => {
+        const row = document.querySelector("#UIselector .icons.icons-selected .iconrow");
+        const button = document.querySelector("#UIselector .icons.icons-selected .selector-icon-button:not(:disabled)");
+        if (!(row instanceof HTMLElement) || !(button instanceof HTMLElement)) {
+          return null;
+        }
+        const buttonStyle = window.getComputedStyle(button);
+        return {
+          rowHeight: row.getBoundingClientRect().height,
+          buttonHeight: button.getBoundingClientRect().height,
+          boxShadow: buttonStyle.boxShadow,
+          transform: buttonStyle.transform,
+        };
+      });
+      assert.ok(selectorMetrics, "e2e: selector should expose measurable icon rows.");
+      assert.ok(
+        selectorMetrics.rowHeight > 52,
+        "e2e: selector row height should be driven by icon content, not global buttons."
+      );
+      assert.ok(
+        selectorMetrics.buttonHeight > 52,
+        "e2e: selector icon buttons should not collapse to the global button height."
+      );
+      assert.equal(
+        selectorMetrics.boxShadow,
+        "none",
+        "e2e: selector icon buttons should not inherit global button shadows."
+      );
+      assert.equal(
+        selectorMetrics.transform,
+        "none",
+        "e2e: selector icon buttons should not inherit button lift transforms."
+      );
       await page.keyboard.press("Tab");
       const focusInsideSelector = await page.evaluate(() => {
         const panel = document.getElementById("UIselector");

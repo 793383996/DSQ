@@ -146,9 +146,41 @@ watch(
 <style scoped>
 .selector-tab-button,
 .selector-icon-button {
+  appearance: none;
+  -webkit-appearance: none;
   border: 0;
+  margin: 0;
   padding: 0;
   background: transparent;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  box-shadow: none;
+  font: inherit;
+  color: inherit;
+  line-height: normal;
+  transform: none;
+}
+
+.selector-tab-button:hover,
+.selector-tab-button:active,
+.selector-icon-button:hover,
+.selector-icon-button:active {
+  box-shadow: none;
+  transform: none;
+}
+
+.selector-tab-button {
+  display: block;
+  cursor: pointer;
+}
+
+.selector-icon-button {
+  display: block;
+  width: auto;
+  background: rgba(255, 255, 255, 0.5);
+  transition: background 0.2s ease;
+  text-align: center;
 }
 
 .selector-icon-button:disabled {
