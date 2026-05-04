@@ -188,7 +188,7 @@ describe("legacy-state adapter", () => {
     expect(useAppStore(pinia).isReady).toBe(true);
   });
 
-  it("projects store state back to legacy globals and app view model", () => {
+  it("projects store state back to legacy globals without rebuilding the legacy result view model", () => {
     const pinia = createPinia();
     syncLegacyRuntimeSnapshot(pinia, undefined);
 
@@ -224,8 +224,8 @@ describe("legacy-state adapter", () => {
     expect(runtimeWindow.singleMake).toEqual([{ id: 4, number: 1.5 }]);
     expect(runtimeWindow.ig_names).toEqual(["石墨烯"]);
     expect(runtimeWindow.currentCalculationResult?.productionLines).toEqual([{ id: "production" }]);
-    expect(runtimeWindow.app?.items).toEqual([{ id: "production" }]);
-    expect(runtimeWindow.app?.totalEnergy).toBe("100.0000");
+    expect(runtimeWindow.app?.items).toBeUndefined();
+    expect(runtimeWindow.app?.totalEnergy).toBeUndefined();
     expect(elements.get("pointLength")?.value).toBe("4");
     expect(elements.get("hideSource")?.checked).toBe(true);
     expect(runtimeWindow.manualGzSpeed).toBe(true);

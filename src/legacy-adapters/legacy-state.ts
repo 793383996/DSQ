@@ -104,22 +104,6 @@ function hydrateStoresFromLegacySnapshot(pinia: Pinia, snapshot: LegacyRuntimeSn
   blueprintStore.setSnapshot(effectiveResult.blueprintSnapshot ?? null);
 }
 
-function syncLegacyAppViewModel(result: CalculationOutput | null, excludedNames: string[], pointLength: number) {
-  if (!window.app) {
-    return;
-  }
-  const safeResult = result ? cloneJsonValue(result, createEmptyCalculationOutput()) : createEmptyCalculationOutput();
-  window.app.items0 = safeResult.independentLines;
-  window.app.xqs = safeResult.requirements;
-  window.app.items = safeResult.productionLines;
-  window.app.items2 = safeResult.excessOutputs;
-  window.app.total = safeResult.totals.machines;
-  window.app.ig_names = cloneJsonValue(excludedNames, []);
-  window.app.totalEnergy = safeResult.totals.totalEnergy.toFixed(pointLength);
-  window.app.totalSpace = safeResult.totals.totalSpace;
-  window.app.totalAcc = safeResult.totals.totalAcc.toFixed(2);
-}
-
 export function captureLegacyRuntimeSnapshot(): LegacyRuntimeSnapshot {
   return {
     locale: readLegacyLocale(),
@@ -184,7 +168,6 @@ export function syncLegacyProjection(
   window.defaultAccValue = settingsStore.global.accValue;
 
   const runtimeOptions = applyLegacyRuntimeOptions(settingsStore.runtimeOptions);
-  syncLegacyAppViewModel(calculationStore.currentResult, calculationStore.excludedNames, runtimeOptions.pointLength);
 
   const projectedSeoSnapshot = options.seoSnapshot ?? calculationStore.currentResult?.seoSnapshot ?? seoStore.snapshot;
   if (typeof window.DSQI18n?.updateSeoState === "function") {

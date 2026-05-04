@@ -612,188 +612,75 @@ function initPanelController() {
   });
 }
 
+function runLegacyNextTick(callback) {
+  if (typeof callback !== "function") {
+    return;
+  }
+  if (typeof window !== "undefined" && window.app && typeof window.app.$nextTick === "function") {
+    window.app.$nextTick(callback);
+    return;
+  }
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(callback);
+    return;
+  }
+  setTimeout(callback, 0);
+}
+
+function createLegacyAppState() {
+  var existingApp = window.app && typeof window.app === "object" ? window.app : {};
+  var quoteIncludes =
+    existingApp.quoteIncludes && typeof existingApp.quoteIncludes === "object"
+      ? existingApp.quoteIncludes
+      : createQuoteIncludeState();
+  window.__DSQQuoteIncludeState = quoteIncludes;
+  return {
+    quoteIncludes: quoteIncludes,
+    accTotalLabel: typeof existingApp.accTotalLabel === "string" ? existingApp.accTotalLabel : "需求：",
+    totalAccLabel: typeof existingApp.totalAccLabel === "string" ? existingApp.totalAccLabel : "总喷涂增产剂数量：",
+    totalSpaceLabel: typeof existingApp.totalSpaceLabel === "string" ? existingApp.totalSpaceLabel : "占地格子数：",
+    totalEnergyLabel: typeof existingApp.totalEnergyLabel === "string" ? existingApp.totalEnergyLabel : "耗能估算：",
+    xps_editor_index: typeof existingApp.xps_editor_index === "number" ? existingApp.xps_editor_index : -1,
+    items_editor_index: typeof existingApp.items_editor_index === "number" ? existingApp.items_editor_index : -1,
+    $nextTick:
+      typeof existingApp.$nextTick === "function"
+        ? existingApp.$nextTick
+        : function (callback) {
+            if (typeof callback !== "function") {
+              return;
+            }
+            if (typeof queueMicrotask === "function") {
+              queueMicrotask(callback);
+              return;
+            }
+            setTimeout(callback, 0);
+          },
+  };
+}
+
+function dispatchLegacyRuntimeReady() {
+  if (
+    typeof window === "undefined" ||
+    typeof window.dispatchEvent !== "function" ||
+    typeof CustomEvent !== "function"
+  ) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent("dsq:legacy-runtime-ready", {
+      detail: {
+        isDataLoaded: window.isDataLoaded === true,
+        hasApp: !!window.app,
+        hasResult: !!window.currentCalculationResult,
+      },
+    })
+  );
+}
+
 // 这里加入了一些用法和一些变量，用于处理“设备数量”处的输入框
 function f_init() {
-  app = new Vue({
-    el: "#result",
-    data: {
-      totalEnergy: 0,
-      totalSpace: 0,
-      totalAcc: 0,
-      total: [],
-      xqs: [],
-      icons: icons,
-      items: [],
-      items2: [],
-      items0: [],
-      ig_names: [],
-      accTotalLabel: "需求：",
-      totalAccLabel: "总喷涂增产剂数量：",
-      totalSpaceLabel: "占地格子数：",
-      totalEnergyLabel: "耗能估算：",
-      quoteIncludes: createQuoteIncludeState(),
-      xps_editor_index: -1,
-      xps_editor_number: 0,
-      items_editor_index: -1,
-      items_editor_number: 0,
-    },
-    methods: {
-      speedChange: function (item) {
-        if (!item || !item.machineId) {
-          return;
-        }
-        settings_time[item.machineId] = readNumeric(item.speed, {
-          fieldLabel: getNumericFieldLabel("settings.speed.title", "速度、产量设置"),
-          previousValue: settings_time[item.machineId] || Number(item.speed) || 1,
-          fallbackValue: Number(item.speed) || 1,
-          requirePositive: true,
-          maxFractionDigits: 6,
-        });
-        saveSettingTime();
-        scheduleUpdateAll("machine-speed-change");
-      },
-
-      onClickNumber: function (index) {
-        if (this.xqs && this.xqs[index]) {
-          this.xps_editor_index = index;
-          this.xps_editor_number = this.xqs[index].number;
-          Vue.nextTick(() => {
-            if (this.$refs.input && this.$refs.input[0]) {
-              let input = this.$refs.input[0];
-              input.focus();
-            }
-          });
-        }
-      },
-
-      onClickNumberItem: function (index_item) {
-        if (this.items && this.items[index_item]) {
-          this.items_editor_index = index_item;
-          this.items_editor_number = this.items[index_item].number2;
-          Vue.nextTick(() => {
-            if (this.$refs.input && this.$refs.input[0]) {
-              let input = this.$refs.input[0];
-              input.focus();
-            }
-          });
-        }
-      },
-
-      submitEditorNumber: function () {
-        if (this.xqs && this.xqs[this.xps_editor_index]) {
-          var previousRequirementNumber = Number(this.xqs[this.xps_editor_index].number) || 1;
-          var nextRequirementNumber = readNumeric(this.xps_editor_number, {
-            fieldLabel: getNumericFieldLabel("control.rate_per_min", "每分钟产量"),
-            previousValue: previousRequirementNumber,
-            fallbackValue: previousRequirementNumber,
-            requirePositive: true,
-            min: 0.000001,
-            maxFractionDigits: 6,
-          });
-          this.xps_editor_number = nextRequirementNumber;
-          if (getCompatCommandBridge()) {
-            invokeCompatCommand("updateRequirementNumber", this.xps_editor_index, nextRequirementNumber);
-          } else {
-            this.xqs[this.xps_editor_index].number = nextRequirementNumber;
-            scheduleUpdateAll("requirement-number-edit");
-          }
-          this.xps_editor_index = -1;
-        }
-      },
-      // 运行两遍可以防止1.999或2.001这种数值错误
-      submitEditorNumberItem: function () {
-        if (this.items && this.items[this.items_editor_index]) {
-          var previousItemNumber = Number(this.items[this.items_editor_index].number2) || 1;
-          var nextItemNumber = readNumeric(this.items_editor_number, {
-            fieldLabel: getNumericFieldLabel("table.header.device_count", "设备数量"),
-            previousValue: previousItemNumber,
-            fallbackValue: previousItemNumber,
-            requirePositive: true,
-            min: 0.000001,
-            maxFractionDigits: 6,
-          });
-          this.items_editor_number = nextItemNumber;
-          var multiple = nextItemNumber / previousItemNumber;
-
-          for (var i = 0; i < this.xqs.length; i++) {
-            this.xqs[i].number *= multiple;
-          }
-          update_all();
-          var refreshedNumber = Number(this.items[this.items_editor_index].number2) || nextItemNumber;
-          multiple = nextItemNumber / refreshedNumber;
-
-          for (var j = 0; j < this.xqs.length; j++) {
-            this.xqs[j].number *= multiple;
-          }
-          update_all();
-          this.items_editor_index = -1;
-        }
-      },
-
-      cancelEditorNumber: function () {
-        this.xps_editor_index = -1;
-      },
-      cancelEditorNumberItem: function () {
-        this.items_editor_index = -1;
-      },
-
-      removeItem: function (index) {
-        if (this.xqs && this.xqs[index]) {
-          if (getCompatCommandBridge()) {
-            invokeCompatCommand("removeRequirement", index);
-          } else {
-            this.xqs.splice(index, 1);
-            scheduleUpdateAll("requirement-remove");
-          }
-        }
-      },
-
-      removeExcluded: function (name) {
-        f_remove_ig(name);
-      },
-
-      onSelectPf: function (itemName, recipeId, isSelected) {
-        if (isSelected) {
-          return;
-        }
-        selectPf(itemName, recipeId);
-      },
-
-      onSelectMachine: function (itemId, machineName, isSelected) {
-        if (isSelected) {
-          return;
-        }
-        selectM(itemId, machineName);
-      },
-
-      onSelectAccType: function (itemId, accTypeName, isSelected) {
-        if (isSelected) {
-          return;
-        }
-        selectAccType(itemId, accTypeName);
-      },
-
-      onSelectAccValue: function (itemId, accValueName, isSelected) {
-        if (isSelected) {
-          return;
-        }
-        selectAccValue(itemId, accValueName);
-      },
-    },
-    computed: {
-      totalDisplay: function () {
-        if (!this.total || !this.total.length) return [];
-        return this.total.map(function (item) {
-          return {
-            name: translateMachineDisplayName(item.name),
-            value: item.value,
-            energy: item.energy ? item.energy.toFixed(2) : "0.00",
-            space: item.space ? Math.round(item.space) : 0,
-          };
-        });
-      },
-    },
-  });
+  app = createLegacyAppState();
+  window.app = app;
   f_initData();
   f_fillData();
   if (typeof loadGlobalSettings === "function") {
@@ -813,6 +700,7 @@ function f_init() {
   update_all();
 
   projectsUpdate();
+  dispatchLegacyRuntimeReady();
   window.addEventListener("dsq:locale-changed", function () {
     syncLocalizedLabels();
     projectsUpdate();
@@ -1982,23 +1870,10 @@ function update_all() {
   }
   var result = buildCalculationResult();
   window.currentCalculationResult = result;
-  app.items0 = result.independentLines;
-  app.xqs = result.requirements;
-  app.items = result.productionLines;
-  app.items2 = result.excessOutputs;
-  app.total = result.totals.machines;
-  app.ig_names = ig_names;
-  app.totalEnergy = result.totals.totalEnergy.toFixed(pointLength);
-  app.totalSpace = result.totals.totalSpace;
-  app.totalAcc = result.totals.totalAcc.toFixed(2);
   syncLocalizedLabels();
-  if (app && typeof app.$nextTick === "function") {
-    app.$nextTick(function () {
-      refreshI18nDom();
-    });
-  } else {
+  runLegacyNextTick(function () {
     refreshI18nDom();
-  }
+  });
 
   if (window.DSQI18n && typeof window.DSQI18n.updateSeoState === "function") {
     window.DSQI18n.updateSeoState(result.seoSnapshot);
@@ -2181,7 +2056,11 @@ function f_save() {
     }
   }
   // TODO: 优化处理方案
-  for (let item of app.items) {
+  var runtimeItems =
+    window.currentCalculationResult && Array.isArray(window.currentCalculationResult.productionLines)
+      ? window.currentCalculationResult.productionLines
+      : [];
+  for (let item of runtimeItems) {
     let product_setting = {};
     for (let accType of item.accType) {
       if (accType.class === "m selected") {

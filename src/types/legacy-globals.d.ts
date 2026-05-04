@@ -65,6 +65,7 @@ interface LegacyRecipeRecord {
 declare global {
   interface Window {
     __DSQLegacyBootstrapPromise?: Promise<void>;
+    __DSQQuoteIncludeState?: Record<string, string>;
     DSQI18n?: {
       getLocale?: () => string;
       t?: (key: string, params?: Record<string, unknown> | null, fallback?: string) => string;

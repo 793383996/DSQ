@@ -32,6 +32,8 @@ export async function bootstrapDsqApp(): Promise<void> {
     return bootstrapPromise;
   }
 
+  let appStore: ReturnType<typeof useAppStore> | null = null;
+
   bootstrapPromise = (async () => {
     const pinia = createPinia();
     const i18n = createDsqI18n();
@@ -39,7 +41,7 @@ export async function bootstrapDsqApp(): Promise<void> {
     app.use(pinia);
     app.use(i18n);
 
-    const appStore = useAppStore(pinia);
+    appStore = useAppStore(pinia);
     const uiStore = useUiStore(pinia);
     const persistedState = loadPersistedState();
 
@@ -64,6 +66,7 @@ export async function bootstrapDsqApp(): Promise<void> {
       updatedAt: new Date().toISOString(),
     });
   })().catch(error => {
+    appStore?.markError(error);
     console.error("bootstrapDsqApp: failed to initialize the Vue 3 bridge runtime.", error);
     bootstrapPromise = null;
     throw error;
